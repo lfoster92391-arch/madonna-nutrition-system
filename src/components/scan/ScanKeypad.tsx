@@ -103,22 +103,22 @@ export function ScanKeypad({
   const isV2 = variant === "v2"
 
   const digitClass = isV2
-    ? "flex min-h-[68px] select-none items-center justify-center rounded-2xl border border-[#AEB6C2] bg-white text-xl font-bold text-[#111827] transition active:scale-[0.98] active:bg-[#F5F6F8] disabled:cursor-not-allowed disabled:opacity-40 touch-manipulation lg:min-h-[72px] lg:text-2xl"
+    ? "scan-keypad-v2__key flex select-none items-center justify-center rounded-xl border border-[#AEB6C2] bg-white font-bold text-[#111827] transition active:scale-[0.98] active:bg-[#F5F6F8] disabled:cursor-not-allowed disabled:opacity-40 touch-manipulation sm:rounded-2xl"
     : "flex min-h-[88px] select-none items-center justify-center rounded-2xl border-2 border-[#001E62]/20 bg-white text-3xl font-bold text-[#001E62] transition active:scale-[0.98] active:bg-[#F5F6F8] disabled:cursor-not-allowed disabled:opacity-40 touch-manipulation"
 
   const clearClass = isV2
     ? cn(
         digitClass,
-        "border-[#AEB6C2] bg-[#E8EBF0] text-base font-semibold text-[#64748B] lg:text-lg"
+        "scan-keypad-v2__clear border-[#AEB6C2] bg-[#E8EBF0] font-semibold text-[#64748B]"
       )
     : cn(digitClass, "text-xl")
 
   const enterClass = isV2
-    ? "flex min-h-[68px] select-none items-center justify-center rounded-2xl border border-[#00A83E] bg-[#00A83E] text-lg font-bold text-white transition active:scale-[0.98] active:bg-[#009234] disabled:cursor-not-allowed disabled:opacity-40 touch-manipulation lg:min-h-[72px] lg:text-xl"
+    ? "scan-keypad-v2__enter flex select-none items-center justify-center rounded-xl border border-[#00A83E] bg-[#00A83E] font-bold text-white transition active:scale-[0.98] active:bg-[#009234] disabled:cursor-not-allowed disabled:opacity-40 touch-manipulation sm:rounded-2xl"
     : cn(digitClass, "border-[#001E62]/30 bg-[#F5F6F8]")
 
   return (
-    <div className={cn("grid grid-cols-3 gap-1.5 lg:gap-2", className)}>
+    <div className={cn(isV2 ? "scan-keypad-v2 grid grid-cols-3" : "grid grid-cols-3 gap-1.5 lg:gap-2", className)}>
       {DIGITS.slice(0, 9).map((digit) => (
         <Key
           key={digit}
@@ -138,7 +138,7 @@ export function ScanKeypad({
           className={clearClass}
         />
       ) : (
-        <div aria-hidden className="min-h-[68px] lg:min-h-[72px]" />
+        <div aria-hidden className={isV2 ? "scan-keypad-v2__spacer" : "min-h-[68px] lg:min-h-[72px]"} />
       )}
 
       <Key label="0" disabled={disabled} onPress={() => onDigit("0")} className={digitClass} />
@@ -158,7 +158,7 @@ export function ScanKeypad({
           onPress={onBackspace}
           className={enterClass}
         >
-          <Delete className="h-8 w-8" strokeWidth={2.25} aria-hidden />
+          <Delete className="h-5 w-5 sm:h-6 sm:w-6 lg:h-7 lg:w-7" strokeWidth={2.25} aria-hidden />
         </Key>
       )}
     </div>

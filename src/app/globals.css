@@ -109,4 +109,63 @@ body {
   --scan-red: #d62828;
   --scan-silver: #aeb6c2;
   --scan-text: #111827;
+  /* Keypad sizing — mobile → desktop */
+  --scan-keypad-min-h: 52px;
+  --scan-keypad-gap: 4px;
+  --scan-keypad-font: 1rem;
+}
+
+@media (min-width: 640px) {
+  .scan-station-v2 {
+    --scan-keypad-min-h: 58px;
+    --scan-keypad-gap: 5px;
+    --scan-keypad-font: 1.0625rem;
+  }
+}
+
+@media (min-width: 768px) {
+  .scan-station-v2 {
+    --scan-keypad-min-h: 62px;
+    --scan-keypad-gap: 6px;
+    --scan-keypad-font: 1.125rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .scan-station-v2 {
+    --scan-keypad-min-h: 64px;
+    --scan-keypad-gap: 7px;
+    --scan-keypad-font: 1.25rem;
+  }
+}
+
+@media (min-width: 1440px) {
+  .scan-station-v2 {
+    --scan-keypad-min-h: 68px;
+    --scan-keypad-gap: 8px;
+    --scan-keypad-font: 1.375rem;
+  }
+}
+
+.scan-keypad-v2 {
+  gap: var(--scan-keypad-gap);
+}
+
+.scan-keypad-v2__key {
+  min-height: var(--scan-keypad-min-h);
+  font-size: var(--scan-keypad-font);
+}
+
+.scan-keypad-v2__enter {
+  min-height: var(--scan-keypad-min-h);
+  font-size: clamp(0.875rem, 1.5vw, 1.25rem);
+}
+
+.scan-keypad-v2__clear {
+  min-height: var(--scan-keypad-min-h);
+  font-size: clamp(0.8125rem, 1.2vw, 1.125rem);
+}
+
+.scan-keypad-v2__spacer {
+  min-height: var(--scan-keypad-min-h);
 }

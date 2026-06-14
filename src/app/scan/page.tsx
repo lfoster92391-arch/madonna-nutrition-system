@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import Image from "next/image"
 import Link from "next/link"
+import { useQueryClient } from "@tanstack/react-query"
 import {
   AlertTriangle,
   BadgeCheck,
@@ -26,9 +27,23 @@ import {
 import { useDemo } from "@/components/providers/DemoProvider"
 import { getAllergyBannerStyle, getHighestAllergySeverity } from "@/data/demo"
 import { ScanKeypad } from "@/components/scan/ScanKeypad"
+import { OfflineBanner } from "@/components/scan/OfflineBanner"
 import { MEAL_PRICES } from "@/lib/types"
 import type { Student, Transaction } from "@/lib/types"
 import { checkMealCompatibility } from "@/lib/food-safety"
+import {
+  cachedToStudent,
+  findCachedStudent,
+  getPendingTransactions,
+  queueTransaction,
+  updateCachedStudentBalance,
+} from "@/lib/offline/scan-offline-db"
+import {
+  createQueuedTransaction,
+  isBrowserOnline,
+  refreshStudentCache,
+  syncPendingTransactions,
+} from "@/lib/offline/sync-manager"
 import { cn, formatCurrency } from "@/lib/utils"
 
 const MEAL_RESET_MS = 1200
@@ -66,7 +81,14 @@ function formatTxTime(timestamp: string) {
   })
 }
 
-function StatusDot({ phase }: { phase: ScanPhase }) {
+function StatusDot({ phase, isOffline }: { phase: ScanPhase; isOffline?: boolean }) {
+  if (isOffline && (phase === "ready" || phase === "found")) {
+    return (
+      <span className="relative flex h-4 w-4 shrink-0 items-center justify-center" aria-hidden>
+        <span className="scan-ready-dot scan-ready-dot--amber relative inline-flex h-3 w-3 rounded-full" />
+      </span>
+    )
+  }
   if (phase === "scanning") {
     return (
       <span className="relative flex h-4 w-4 shrink-0 items-center justify-center" aria-hidden>
@@ -117,6 +139,7 @@ function RecentActivityItem({ tx }: { tx: Transaction }) {
 
 export default function ScanStationPage() {
   const { students, transactions, processMeal } = useDemo()
+  const queryClient = useQueryClient()
   const [clock, setClock] = useState(formatKioskTime())
   const [dateStr, setDateStr] = useState("")
   const [scanValue, setScanValue] = useState("")
@@ -126,6 +149,11 @@ export default function ScanStationPage() {
   const [flashMessage, setFlashMessage] = useState("")
   const [countdownEnd, setCountdownEnd] = useState<number | null>(null)
   const [tick, setTick] = useState(0)
+  const [isOffline, setIsOffline] = useState(false)
+  const [isSyncing, setIsSyncing] = useState(false)
+  const [syncMessage, setSyncMessage] = useState("")
+  const [pendingCount, setPendingCount] = useState(0)
+  const [offlineRecent, setOfflineRecent] = useState<Transaction[]>([])
 
   const scanInputRef = useRef<HTMLInputElement>(null)
   const scanTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -139,13 +167,14 @@ export default function ScanStationPage() {
   const mealBlocked = mealCompatibility === "BLOCKED"
   const primaryAllergy = student?.allergies[0]?.name.toUpperCase() ?? ""
 
-  const recentTransactions = useMemo(
-    () =>
-      [...transactions]
-        .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-        .slice(0, 3),
-    [transactions]
-  )
+  const recentTransactions = useMemo(() => {
+    if (isOffline && offlineRecent.length > 0) {
+      return offlineRecent.slice(0, 3)
+    }
+    return [...transactions]
+      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+      .slice(0, 3)
+  }, [transactions, isOffline, offlineRecent])
 
   const nextScanSeconds = useMemo(() => {
     if (countdownEnd === null) return null
@@ -205,6 +234,66 @@ export default function ScanStationPage() {
   }, [focusScan])
 
   useEffect(() => {
+    setIsOffline(!isBrowserOnline())
+    void getPendingTransactions().then(async (txs) => {
+      setPendingCount(txs.length)
+      if (txs.length > 0 && isBrowserOnline()) {
+        setIsSyncing(true)
+        const result = await syncPendingTransactions({
+          demoReplay: async (tx) => processMeal(tx.studentId, tx.mealType, tx.amount),
+        })
+        setIsSyncing(false)
+        if (result.ok) {
+          setSyncMessage(result.message)
+          setPendingCount(0)
+          void queryClient.invalidateQueries({ queryKey: ["students"] })
+          void queryClient.invalidateQueries({ queryKey: ["transactions"] })
+          window.setTimeout(() => setSyncMessage(""), 4000)
+        }
+      }
+    })
+  }, [processMeal, queryClient])
+
+  useEffect(() => {
+    if (isOffline || students.length === 0) return
+    void refreshStudentCache(students).catch(() => setIsOffline(true))
+  }, [students, isOffline])
+
+  useEffect(() => {
+    const handleOffline = () => setIsOffline(true)
+
+    const handleOnline = async () => {
+      setIsSyncing(true)
+      setSyncMessage("")
+      const result = await syncPendingTransactions({
+        demoReplay: async (tx) => processMeal(tx.studentId, tx.mealType, tx.amount),
+      })
+      setIsSyncing(false)
+      if (result.ok) {
+        setSyncMessage(result.message)
+        setPendingCount(0)
+        setOfflineRecent([])
+        setIsOffline(false)
+        if (students.length > 0) {
+          await refreshStudentCache(students).catch(() => undefined)
+        }
+        void queryClient.invalidateQueries({ queryKey: ["students"] })
+        void queryClient.invalidateQueries({ queryKey: ["transactions"] })
+        window.setTimeout(() => setSyncMessage(""), 4000)
+      } else {
+        setIsOffline(true)
+      }
+    }
+
+    window.addEventListener("online", handleOnline)
+    window.addEventListener("offline", handleOffline)
+    return () => {
+      window.removeEventListener("online", handleOnline)
+      window.removeEventListener("offline", handleOffline)
+    }
+  }, [students, processMeal, queryClient])
+
+  useEffect(() => {
     if (!flashMessage) return
     if (flashTimerRef.current) clearTimeout(flashTimerRef.current)
     flashTimerRef.current = setTimeout(() => setFlashMessage(""), FLASH_DISMISS_MS)
@@ -242,20 +331,41 @@ export default function ScanStationPage() {
   )
 
   const lookupStudent = useCallback(
-    (id: string) => {
+    async (id: string) => {
       const trimmed = id.trim()
       if (!trimmed) return
-      const found = students.find((s) => s.id === trimmed)
-      if (!found) {
-        setScanStatus("error")
-        setFlashMessage("Student not found. Try again.")
-        setScanValue("")
-        window.setTimeout(focusScan, 50)
+
+      if (isOffline) {
+        const cached = await findCachedStudent(trimmed)
+        if (!cached) {
+          setScanStatus("error")
+          setFlashMessage("Student not in offline cache.")
+          setScanValue("")
+          window.setTimeout(focusScan, 50)
+          return
+        }
+        loadStudent(cachedToStudent(cached))
         return
       }
-      loadStudent(found)
+
+      const found = students.find((s) => s.id === trimmed)
+      if (found) {
+        loadStudent(found)
+        return
+      }
+
+      const cached = await findCachedStudent(trimmed)
+      if (cached) {
+        loadStudent(cachedToStudent(cached))
+        return
+      }
+
+      setScanStatus("error")
+      setFlashMessage("Student not found. Try again.")
+      setScanValue("")
+      window.setTimeout(focusScan, 50)
     },
-    [students, loadStudent, focusScan]
+    [students, loadStudent, focusScan, isOffline]
   )
 
   function handleScanChange(value: string) {
@@ -294,6 +404,46 @@ export default function ScanStationPage() {
       window.setTimeout(focusScan, 50)
       return
     }
+
+    const recordOfflineMeal = async () => {
+      const balanceAfter = localBalance - price
+      const queued = createQueuedTransaction({
+        studentId: student.id,
+        studentName: `${student.firstName} ${student.lastName}`,
+        mealType: mealLabel,
+        amount: price,
+        balanceAfter,
+      })
+      await queueTransaction(queued)
+      await updateCachedStudentBalance(student.id, balanceAfter)
+      setLocalBalance(balanceAfter)
+      setPendingCount((count) => count + 1)
+      setOfflineRecent((prev) => [
+        {
+          id: queued.clientTxId,
+          studentId: student.id,
+          studentName: queued.studentName,
+          meal: mealLabel,
+          amount: price,
+          balanceAfter,
+          timestamp: queued.timestamp,
+          processedByName: "Station",
+        },
+        ...prev,
+      ])
+      setFlashMessage(`${mealLabel} recorded for ${student.firstName}! (offline)`)
+      setScanStatus("complete")
+      setCountdownEnd(Date.now() + MEAL_RESET_MS)
+      if (resetTimerRef.current) clearTimeout(resetTimerRef.current)
+      resetTimerRef.current = setTimeout(resetStation, MEAL_RESET_MS)
+      window.setTimeout(focusScan, 50)
+    }
+
+    if (isOffline) {
+      await recordOfflineMeal()
+      return
+    }
+
     const tx = await processMeal(student.id, mealLabel, price)
     if (tx) {
       setLocalBalance(tx.balanceAfter)
@@ -303,7 +453,11 @@ export default function ScanStationPage() {
       if (resetTimerRef.current) clearTimeout(resetTimerRef.current)
       resetTimerRef.current = setTimeout(resetStation, MEAL_RESET_MS)
       window.setTimeout(focusScan, 50)
+      return
     }
+
+    setIsOffline(true)
+    await recordOfflineMeal()
   }
 
   const statusLabel =
@@ -316,11 +470,13 @@ export default function ScanStationPage() {
           : "READY TO SCAN"
 
   const statusColor =
-    scanStatus === "scanning"
+    isOffline && scanStatus !== "error" && scanStatus !== "complete"
       ? "text-amber-400"
-      : scanStatus === "error"
-        ? "text-[#D62828]"
-        : "text-[#00A83E]"
+      : scanStatus === "scanning"
+        ? "text-amber-400"
+        : scanStatus === "error"
+          ? "text-[#D62828]"
+          : "text-[#00A83E]"
 
   const statusSubtitle =
     scanStatus === "scanning"
@@ -351,8 +507,10 @@ export default function ScanStationPage() {
         disabled={disabled}
         onClick={() => handleMeal(meal.label, meal.price)}
         className={cn(
-          "relative flex flex-col items-center justify-center rounded-2xl border transition disabled:cursor-not-allowed disabled:opacity-40",
-          compact ? "min-h-[64px] gap-1 px-3 py-3" : "min-h-[120px] flex-1 gap-2 px-4 py-5 lg:min-h-[140px]",
+          "relative flex flex-col items-center justify-center rounded-xl border transition disabled:cursor-not-allowed disabled:opacity-40 sm:rounded-2xl",
+          compact
+            ? "min-h-[44px] gap-0.5 px-2 py-2 sm:min-h-[52px] sm:gap-1 sm:px-3 sm:py-2.5 md:min-h-[56px] lg:min-h-[64px]"
+            : "min-h-[72px] flex-1 gap-1 px-2 py-3 sm:min-h-[88px] sm:gap-1.5 sm:px-3 sm:py-4 md:min-h-[100px] lg:min-h-[120px] lg:gap-2 lg:px-4 lg:py-5 xl:min-h-[140px]",
           isSelected
             ? "border-[#00A83E] bg-[#00A83E] text-white"
             : meal.type === "ala_carte"
@@ -363,132 +521,155 @@ export default function ScanStationPage() {
         )}
       >
         {isSelected && (
-          <span className="absolute left-3 top-3 flex h-6 w-6 items-center justify-center rounded-full bg-white/20">
-            <Check className="h-4 w-4 text-white" strokeWidth={3} aria-hidden />
+          <span className="absolute left-2 top-2 flex h-5 w-5 items-center justify-center rounded-full bg-white/20 sm:left-3 sm:top-3 sm:h-6 sm:w-6">
+            <Check className="h-3 w-3 text-white sm:h-4 sm:w-4" strokeWidth={3} aria-hidden />
           </span>
         )}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1 sm:gap-2">
           <Icon
-            className={cn(compact ? "h-6 w-6" : "h-8 w-8", isSelected ? "text-white" : "text-[#041B52]")}
+            className={cn(
+              compact ? "h-4 w-4 sm:h-5 sm:w-5 md:h-6 md:w-6" : "h-5 w-5 sm:h-6 sm:w-6 md:h-7 md:w-7 lg:h-8 lg:w-8",
+              isSelected ? "text-white" : "text-[#041B52]"
+            )}
             aria-hidden
           />
           {meal.type === "student_meal" && !compact && (
             <CupSoda
-              className={cn("h-7 w-7", isSelected ? "text-white" : "text-[#041B52]")}
+              className={cn(
+                "h-4 w-4 sm:h-5 sm:w-5 md:h-6 md:w-6 lg:h-7 lg:w-7",
+                isSelected ? "text-white" : "text-[#041B52]"
+              )}
               aria-hidden
             />
           )}
           {meal.type === "ala_carte" && !compact && (
-            <Wine className="h-7 w-7 text-[#041B52]" aria-hidden />
+            <Wine className="h-4 w-4 text-[#041B52] sm:h-5 sm:w-5 md:h-6 md:w-6 lg:h-7 lg:w-7" aria-hidden />
           )}
         </div>
-        <span className={cn("font-bold", compact ? "text-sm" : "text-lg lg:text-xl")}>
+        <span
+          className={cn(
+            "font-bold leading-tight",
+            compact ? "text-xs sm:text-sm" : "text-sm sm:text-base md:text-lg lg:text-xl"
+          )}
+        >
           {blocked && isStudentMeal ? "BLOCKED" : meal.label.toUpperCase()}
         </span>
         {meal.type === "ala_carte" && !compact && (
-          <span className="text-xs font-medium text-[#64748B]">Available Grades 9–12</span>
+          <span className="hidden text-xs font-medium text-[#64748B] sm:block">Available Grades 9–12</span>
         )}
       </button>
     )
   }
 
   return (
-    <div className="scan-station-v2 flex h-full flex-col overflow-hidden bg-white text-[#111827]">
-      <header className="flex h-[90px] shrink-0 items-center justify-between border-[1.5px] border-[#AEB6C2] border-b-[#AEB6C2]/60 bg-[#041B52] px-5 lg:px-8">
-        <div className="flex min-w-0 items-center gap-4">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-white/20 bg-white/10">
-            <ScanLine className="h-6 w-6 text-white" aria-hidden />
+    <div className="scan-station-v2 flex h-full min-h-0 flex-col overflow-hidden bg-white text-[#111827]">
+      <OfflineBanner
+        isOffline={isOffline}
+        isSyncing={isSyncing}
+        syncMessage={syncMessage}
+        pendingCount={pendingCount}
+        staleBalanceWarning={isOffline && !!student}
+      />
+      <header className="flex h-[56px] shrink-0 items-center justify-between border-[1.5px] border-[#AEB6C2] border-b-[#AEB6C2]/60 bg-[#041B52] px-3 sm:h-[64px] sm:px-4 md:h-[72px] md:px-5 lg:h-[90px] lg:px-8">
+        <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3 md:gap-4">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-white/20 bg-white/10 sm:h-9 sm:w-9 md:h-10 md:w-10 lg:h-11 lg:w-11">
+            <ScanLine className="h-4 w-4 text-white sm:h-5 sm:w-5 lg:h-6 lg:w-6" aria-hidden />
           </div>
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-3">
-              <StatusDot phase={scanStatus} />
-              <p className={cn("text-xl font-bold tracking-wide lg:text-2xl", statusColor)}>
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 md:gap-3">
+              <StatusDot phase={scanStatus} isOffline={isOffline} />
+              <p
+                className={cn(
+                  "text-sm font-bold tracking-wide sm:text-base md:text-lg lg:text-2xl",
+                  statusColor
+                )}
+              >
                 {statusLabel}
               </p>
               {nextScanSeconds !== null && nextScanSeconds > 0 && (
-                <p className="text-sm font-semibold text-[#00A83E] lg:text-base">
+                <p className="text-xs font-semibold text-[#00A83E] sm:text-sm lg:text-base">
                   Next Scan: {nextScanSeconds.toFixed(1)}s
                 </p>
               )}
             </div>
-            <p className="truncate text-sm text-white/70 lg:text-base">{statusSubtitle}</p>
+            <p className="truncate text-xs text-white/70 sm:text-sm lg:text-base">{statusSubtitle}</p>
           </div>
         </div>
 
-        <div className="flex shrink-0 items-center gap-4 lg:gap-6">
-          <div className="hidden text-right text-white sm:block">
-            <p className="text-2xl font-bold tabular-nums lg:text-3xl">{clock}</p>
-            <p className="text-sm text-white/70">{dateStr}</p>
+        <div className="flex shrink-0 items-center gap-2 sm:gap-3 md:gap-4 lg:gap-6">
+          <div className="text-right text-white">
+            <p className="text-base font-bold tabular-nums sm:text-lg md:text-xl lg:text-3xl">{clock}</p>
+            <p className="hidden text-xs text-white/70 md:block md:text-sm">{dateStr}</p>
           </div>
           <Link
             href="/"
-            className="flex items-center gap-2 rounded-2xl border border-white/30 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-white/10"
+            className="flex items-center gap-1.5 rounded-xl border border-white/30 px-2.5 py-1.5 text-xs font-semibold text-white transition hover:bg-white/10 sm:gap-2 sm:rounded-2xl sm:px-3 sm:py-2 sm:text-sm md:px-4 md:py-2.5"
           >
-            <Settings className="h-4 w-4" aria-hidden />
+            <Settings className="h-3.5 w-3.5 sm:h-4 sm:w-4" aria-hidden />
             <span className="hidden sm:inline">MENU</span>
-            <Menu className="h-4 w-4 sm:hidden" aria-hidden />
+            <Menu className="h-3.5 w-3.5 sm:hidden" aria-hidden />
           </Link>
         </div>
       </header>
 
-      <main className="flex min-h-0 flex-1">
-        <section className="flex w-[55%] min-w-0 flex-col border-r border-[#AEB6C2]/60 p-4 lg:p-6">
+      <main className="flex min-h-0 flex-1 flex-col overflow-hidden lg:flex-row">
+        <section className="flex max-h-[38dvh] min-h-0 w-full shrink-0 flex-col overflow-hidden border-b border-[#AEB6C2]/60 p-2 sm:max-h-[40dvh] sm:p-3 md:max-h-none md:p-4 lg:w-[55%] lg:max-h-none lg:border-b-0 lg:border-r lg:p-6">
           {student ? (
-            <div className="flex min-h-0 flex-1 flex-col gap-4">
-              <div className="flex gap-4">
+            <div className="flex min-h-0 flex-1 flex-col gap-2 sm:gap-3 md:gap-4">
+              <div className="flex gap-2 sm:gap-3 md:gap-4">
                 <Image
                   src={student.photo}
                   alt={`${student.firstName} ${student.lastName}`}
                   width={120}
                   height={120}
-                  className="h-[100px] w-[100px] shrink-0 rounded-2xl border border-[#AEB6C2] object-cover lg:h-[120px] lg:w-[120px]"
+                  className="h-[64px] w-[64px] shrink-0 rounded-xl border border-[#AEB6C2] object-cover sm:h-[80px] sm:w-[80px] sm:rounded-2xl md:h-[100px] md:w-[100px] lg:h-[120px] lg:w-[120px]"
                 />
                 <div className="min-w-0 flex-1">
-                  <h2 className="truncate text-2xl font-bold uppercase tracking-tight lg:text-3xl">
+                  <h2 className="truncate text-lg font-bold uppercase tracking-tight sm:text-xl md:text-2xl lg:text-3xl">
                     {student.firstName} {student.lastName}
                   </h2>
-                  <p className="mt-1 flex items-center gap-2 text-base text-[#64748B] lg:text-lg">
-                    <GraduationCap className="h-5 w-5 shrink-0" aria-hidden />
+                  <p className="mt-0.5 flex items-center gap-1.5 text-xs text-[#64748B] sm:mt-1 sm:gap-2 sm:text-sm md:text-base lg:text-lg">
+                    <GraduationCap className="h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4 md:h-5 md:w-5" aria-hidden />
                     Grade {student.grade}
                   </p>
-                  <p className="mt-1 flex items-center gap-2 text-base text-[#64748B] lg:text-lg">
-                    <IdCard className="h-5 w-5 shrink-0" aria-hidden />
+                  <p className="mt-0.5 flex items-center gap-1.5 text-xs text-[#64748B] sm:mt-1 sm:gap-2 sm:text-sm md:text-base lg:text-lg">
+                    <IdCard className="h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4 md:h-5 md:w-5" aria-hidden />
                     ID: {student.id}
                   </p>
                 </div>
               </div>
 
               {student.allergies.length > 0 && bannerStyle && (
-                <div className="scan-allergy-alert rounded-2xl border-2 border-[#D62828] bg-[#FEF2F2] px-4 py-3">
+                <div className="scan-allergy-alert shrink-0 rounded-xl border-2 border-[#D62828] bg-[#FEF2F2] px-3 py-2 sm:rounded-2xl sm:px-4 sm:py-3">
                   <div className="flex items-center gap-2">
-                    <AlertTriangle className="h-5 w-5 shrink-0 text-[#D62828]" aria-hidden />
-                    <p className="text-sm font-bold uppercase tracking-wide text-[#D62828]">
+                    <AlertTriangle className="h-4 w-4 shrink-0 text-[#D62828] sm:h-5 sm:w-5" aria-hidden />
+                    <p className="text-xs font-bold uppercase tracking-wide text-[#D62828] sm:text-sm">
                       Allergy Alert
                     </p>
                   </div>
-                  <p className="mt-2 text-lg font-bold text-[#D62828] lg:text-xl">
+                  <p className="mt-1 text-base font-bold text-[#D62828] sm:mt-2 sm:text-lg lg:text-xl">
                     {primaryAllergy || bannerStyle.label}
                   </p>
                   {mealBlocked && (
-                    <p className="mt-1 text-sm font-semibold text-[#D62828]">
+                    <p className="mt-0.5 text-xs font-semibold text-[#D62828] sm:mt-1 sm:text-sm">
                       Meal Compatibility: BLOCKED
                     </p>
                   )}
                 </div>
               )}
 
-              <div className="mt-auto rounded-2xl border border-[#AEB6C2] bg-white p-4 lg:p-5">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#00A83E]/10">
-                    <Wallet className="h-5 w-5 text-[#00A83E]" aria-hidden />
+              <div className="mt-auto shrink-0 rounded-xl border border-[#AEB6C2] bg-white p-2.5 sm:rounded-2xl sm:p-3 md:p-4 lg:p-5">
+                <div className="flex items-center gap-2 sm:gap-3">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#00A83E]/10 sm:h-9 sm:w-9 md:h-10 md:w-10">
+                    <Wallet className="h-4 w-4 text-[#00A83E] sm:h-5 sm:w-5" aria-hidden />
                   </div>
-                  <p className="text-xs font-semibold uppercase tracking-wider text-[#64748B]">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-[#64748B] sm:text-xs">
                     Account Balance
                   </p>
                 </div>
                 <p
                   className={cn(
-                    "mt-2 text-4xl font-bold tabular-nums lg:text-5xl",
+                    "mt-1 text-2xl font-bold tabular-nums sm:mt-2 sm:text-3xl md:text-4xl lg:text-5xl",
                     localBalance <= 0 ? "text-[#D62828]" : "text-[#00A83E]"
                   )}
                 >
@@ -496,41 +677,45 @@ export default function ScanStationPage() {
                 </p>
                 <Link
                   href="/parent/add-funds"
-                  className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-[#00A83E] py-3 text-base font-bold text-[#00A83E] transition hover:bg-[#00A83E]/5"
+                  className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-xl border-2 border-[#00A83E] py-2 text-xs font-bold text-[#00A83E] transition hover:bg-[#00A83E]/5 sm:mt-3 sm:gap-2 sm:rounded-2xl sm:py-2.5 sm:text-sm md:mt-4 md:py-3 md:text-base"
                 >
-                  <Plus className="h-5 w-5" aria-hidden />
+                  <Plus className="h-4 w-4 sm:h-5 sm:w-5" aria-hidden />
                   ADD FUNDS
                 </Link>
               </div>
             </div>
           ) : (
-            <div className="flex flex-1 flex-col items-center justify-center text-center text-[#64748B]">
-              <StatusDot phase={scanStatus} />
-              <p className="mt-4 text-xl font-bold text-[#041B52]">Ready to scan</p>
-              <p className="mt-2 text-sm lg:text-base">
+            <div className="flex flex-1 flex-col items-center justify-center py-4 text-center text-[#64748B] sm:py-6">
+              <StatusDot phase={scanStatus} isOffline={isOffline} />
+              <p className="mt-2 text-base font-bold text-[#041B52] sm:mt-4 sm:text-lg md:text-xl">
+                Ready to scan
+              </p>
+              <p className="mt-1 px-4 text-xs sm:mt-2 sm:text-sm lg:text-base">
                 Demo student: 10457 — James Anderson (peanut allergy)
               </p>
             </div>
           )}
         </section>
 
-        <section className="flex w-[45%] min-w-0 flex-col p-3 lg:p-5">
-          <p className="text-xs font-semibold uppercase tracking-wider text-[#64748B]">Select Meal</p>
+        <section className="flex min-h-0 w-full flex-1 flex-col overflow-hidden p-2 sm:p-3 md:p-4 lg:w-[45%] lg:shrink-0 lg:p-5">
+          <p className="shrink-0 text-[10px] font-semibold uppercase tracking-wider text-[#64748B] sm:text-xs">
+            Select Meal
+          </p>
 
-          <div className="mt-3 flex gap-3">
+          <div className="mt-1.5 flex shrink-0 gap-1.5 sm:mt-2 sm:gap-2 md:mt-3 md:gap-3">
             {primaryMeals.map((meal) => renderMealButton(meal))}
           </div>
 
           {secondaryMeals.length > 0 && (
-            <div className="mt-3 flex gap-3">
+            <div className="mt-1.5 flex shrink-0 gap-1.5 sm:mt-2 sm:gap-2 md:mt-3 md:gap-3">
               {secondaryMeals.map((meal) => renderMealButton(meal, true))}
             </div>
           )}
 
           {studentMealAvailable && scanStatus !== "complete" && (
-            <div className="mt-3 flex items-center gap-2 rounded-2xl border border-[#00A83E]/40 bg-[#00A83E]/10 px-4 py-2.5">
-              <BadgeCheck className="h-5 w-5 shrink-0 text-[#00A83E]" aria-hidden />
-              <p className="text-sm font-semibold text-[#00A83E]">STUDENT MEAL SELECTED</p>
+            <div className="mt-1.5 flex shrink-0 items-center gap-1.5 rounded-xl border border-[#00A83E]/40 bg-[#00A83E]/10 px-2.5 py-1.5 sm:mt-2 sm:gap-2 sm:rounded-2xl sm:px-3 sm:py-2 md:mt-3 md:px-4 md:py-2.5">
+              <BadgeCheck className="h-4 w-4 shrink-0 text-[#00A83E] sm:h-5 sm:w-5" aria-hidden />
+              <p className="text-xs font-semibold text-[#00A83E] sm:text-sm">STUDENT MEAL SELECTED</p>
             </div>
           )}
 
@@ -539,7 +724,7 @@ export default function ScanStationPage() {
               role="status"
               aria-live="polite"
               className={cn(
-                "mt-3 rounded-2xl border px-4 py-3 text-sm font-semibold lg:text-base",
+                "mt-1.5 shrink-0 rounded-xl border px-2.5 py-2 text-xs font-semibold sm:mt-2 sm:rounded-2xl sm:px-3 sm:py-2.5 sm:text-sm md:mt-3 md:px-4 md:py-3 md:text-base",
                 flashMessage.includes("BLOCKED")
                   ? "border-[#D62828] bg-[#FEF2F2] text-[#D62828]"
                   : "border-[#00A83E] bg-[#00A83E]/10 text-[#00A83E]"
@@ -549,11 +734,11 @@ export default function ScanStationPage() {
             </div>
           )}
 
-          <div className="mt-auto">
-            <p className="text-xs font-semibold uppercase tracking-wider text-[#64748B]">
+          <div className="mt-auto min-h-0 shrink pt-1 sm:pt-2">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-[#64748B] sm:text-xs">
               Enter Student ID
             </p>
-            <div className="relative mt-2">
+            <div className="relative mt-1 sm:mt-1.5 md:mt-2">
               <input
                 ref={scanInputRef}
                 id="badge-input"
@@ -582,17 +767,17 @@ export default function ScanStationPage() {
                 role="textbox"
                 aria-readonly="true"
                 aria-labelledby="badge-input"
-                className="flex h-14 items-center rounded-2xl border border-[#AEB6C2] bg-[#F5F6F8] px-4 text-2xl font-bold tracking-wide text-[#111827] lg:h-16 lg:text-3xl"
+                className="flex h-10 items-center rounded-xl border border-[#AEB6C2] bg-[#F5F6F8] px-3 text-lg font-bold tracking-wide text-[#111827] sm:h-11 sm:rounded-2xl sm:px-4 sm:text-xl md:h-12 md:text-2xl lg:h-14 lg:text-3xl xl:h-16"
               >
                 {scanValue || (
-                  <span className="text-lg font-normal text-[#64748B] lg:text-xl">
+                  <span className="text-sm font-normal text-[#64748B] sm:text-base md:text-lg lg:text-xl">
                     {scanValue === "" && student ? student.id : "Enter ID"}
                   </span>
                 )}
               </div>
             </div>
             <ScanKeypad
-              className="mt-3"
+              className="mt-1 sm:mt-1.5 md:mt-2 lg:mt-3"
               variant="v2"
               onDigit={appendDigit}
               onBackspace={deleteLastDigit}
@@ -603,13 +788,15 @@ export default function ScanStationPage() {
         </section>
       </main>
 
-      <footer className="shrink-0 border-t border-[#AEB6C2] bg-white px-5 py-3 lg:px-8">
-        <div className="flex flex-wrap items-center gap-4 lg:gap-8">
-          <div className="flex items-center gap-2">
-            <Clock className="h-4 w-4 text-[#64748B]" aria-hidden />
-            <p className="text-sm font-bold uppercase tracking-wide text-[#64748B]">Recent Activity</p>
+      <footer className="hidden shrink-0 border-t border-[#AEB6C2] bg-white px-3 py-2 sm:block sm:px-4 md:px-5 md:py-2.5 lg:px-8 lg:py-3">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3 md:gap-4 lg:gap-8">
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            <Clock className="h-3.5 w-3.5 text-[#64748B] sm:h-4 sm:w-4" aria-hidden />
+            <p className="text-xs font-bold uppercase tracking-wide text-[#64748B] sm:text-sm">
+              Recent Activity
+            </p>
           </div>
-          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-6 gap-y-2">
+          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1 sm:gap-x-4 md:gap-x-6 md:gap-y-2">
             {recentTransactions.length > 0 ? (
               recentTransactions.map((tx, i) => (
                 <div key={tx.id} className="flex items-center gap-6">
