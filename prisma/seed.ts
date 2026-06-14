@@ -12,6 +12,7 @@ import {
   demoCalendarSettings,
   demoUsers,
 } from "../src/data/demo"
+import { demoMealTemplates } from "../src/data/demo/meal-templates"
 
 const prisma = new PrismaClient()
 
@@ -39,6 +40,9 @@ async function main() {
   console.log("School ID (set SCHOOL_ID on Vercel):", school.id)
 
   for (const user of demoUsers) {
+    const badgeId =
+      user.role === "parent" ? null : user.badgeId?.trim() ? user.badgeId.trim() : null
+
     await prisma.user.upsert({
       where: { email: user.email },
       update: {
@@ -55,6 +59,7 @@ async function main() {
                 : UserRole.STAFF,
         status: user.status === "disabled" ? UserStatus.DISABLED : UserStatus.ACTIVE,
         phone: user.phone,
+        badgeId,
         linkedStudentIds: user.linkedStudentIds ?? [],
         passwordHash,
         schoolId: school.id,
@@ -74,6 +79,7 @@ async function main() {
                 : UserRole.STAFF,
         status: user.status === "disabled" ? UserStatus.DISABLED : UserStatus.ACTIVE,
         phone: user.phone,
+        badgeId,
         linkedStudentIds: user.linkedStudentIds ?? [],
         passwordHash,
         schoolId: school.id,
@@ -371,6 +377,49 @@ async function main() {
         performedBy: "Nutrition Office",
         metadata: { reviewedBy: "Nutrition Office", allergies: ["Peanut", "Tree Nut"] },
         schoolId: school.id,
+      },
+    })
+  }
+
+  await prisma.mealPhoto.deleteMany({
+    where: { mealTemplate: { schoolId: school.id } },
+  })
+  await prisma.mealTemplateItem.deleteMany({
+    where: { mealTemplate: { schoolId: school.id } },
+  })
+  await prisma.mealTemplate.deleteMany({ where: { schoolId: school.id } })
+
+  for (const template of demoMealTemplates) {
+    await prisma.mealTemplate.create({
+      data: {
+        name: template.name,
+        description: template.description,
+        category: template.category,
+        mealType: template.mealType,
+        allergens: template.allergens,
+        nutritionNotes: template.nutritionNotes,
+        portionNotes: template.portionNotes,
+        gradeAvailability: template.gradeAvailability,
+        isFavorite: template.isFavorite,
+        isPublished: template.isPublished,
+        isArchived: template.isArchived,
+        lastUsedAt: template.lastUsedAt ? new Date(template.lastUsedAt) : null,
+        studentMealPrice: template.studentMealPrice,
+        alaCartePrice: template.alaCartePrice,
+        staffMealPrice: template.staffMealPrice,
+        schoolId: school.id,
+        items: {
+          create: template.items.map((item) => ({
+            name: item.name,
+            sortOrder: item.sortOrder,
+          })),
+        },
+        photos: {
+          create: template.photos.map((photo) => ({
+            slot: photo.slot,
+            url: photo.url,
+          })),
+        },
       },
     })
   }

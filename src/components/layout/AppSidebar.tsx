@@ -10,6 +10,7 @@ import {
   ScanLine,
   ShieldAlert,
   Users,
+  UtensilsCrossed,
   Wallet,
 } from "lucide-react"
 import { SidebarBrand } from "@/components/layout/SidebarBrand"
@@ -18,6 +19,7 @@ import { cn } from "@/lib/utils"
 const navLinks = [
   { label: "Scan Station", href: "/scan", icon: ScanLine },
   { label: "Admin Portal", href: "/admin", icon: Users },
+  { label: "Menu Library", href: "/admin/menu-library", icon: UtensilsCrossed },
   { label: "Allergy Review", href: "/admin/allergy-review", icon: ShieldAlert },
   { label: "Transactions", href: "/transactions", icon: Wallet },
   { label: "Inventory", href: "/inventory", icon: Package },

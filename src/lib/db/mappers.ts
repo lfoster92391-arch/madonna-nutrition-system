@@ -11,6 +11,9 @@ import type {
   AuditLog as DbAuditLog,
   CalendarEvent as DbCalendarEvent,
   CalendarSettings as DbCalendarSettings,
+  MealPhoto as DbMealPhoto,
+  MealTemplate as DbMealTemplate,
+  MealTemplateItem as DbMealTemplateItem,
   MedicalDocument as DbMedicalDocument,
   ParentStudent,
   Student as DbStudent,
@@ -26,6 +29,9 @@ import type {
   CalendarEvent,
   CalendarSettings,
   FoodSafetyFormPayload,
+  MealPhoto,
+  MealTemplate,
+  MealTemplateItem,
   MedicalDocument,
   Student,
   StudentProfile,
@@ -43,6 +49,7 @@ type StudentWithRelations = DbStudent & {
 
 type TransactionWithStudent = DbTransaction & {
   student: Pick<DbStudent, "externalId" | "firstName" | "lastName">
+  processedBy?: Pick<DbUser, "firstName" | "lastName" | "badgeId"> | null
 }
 
 const ALLERGY_SEVERITY_TO_APP: Record<PrismaAllergySeverity, Allergy["severity"]> = {
@@ -152,6 +159,10 @@ export function mapTransaction(tx: TransactionWithStudent): Transaction {
     timestamp: tx.createdAt.toISOString(),
     type: isDeposit ? "deposit" : "meal",
     stripeSessionId: tx.stripeSessionId ?? undefined,
+    processedByUserId: tx.processedByUserId ?? undefined,
+    processedByName: tx.processedBy
+      ? `${tx.processedBy.firstName} ${tx.processedBy.lastName}`
+      : undefined,
   }
 }
 
@@ -165,6 +176,7 @@ export function mapUser(user: DbUser): User {
     role: USER_ROLE_TO_APP[user.role],
     status: USER_STATUS_TO_APP[user.status],
     phone: user.phone ?? undefined,
+    badgeId: user.badgeId ?? undefined,
     linkedStudentIds: user.linkedStudentIds,
     lastLoginAt: user.lastLoginAt?.toISOString(),
     createdAt: user.createdAt.toISOString(),
@@ -197,6 +209,56 @@ export function mapCalendarEvent(event: DbCalendarEvent): CalendarEvent {
     description: event.description ?? undefined,
     category: event.category as CalendarEvent["category"],
     color: event.color ?? undefined,
+    mealTemplateId: event.mealTemplateId ?? undefined,
+  }
+}
+
+export function mapMealPhoto(photo: DbMealPhoto): MealPhoto {
+  return {
+    id: photo.id,
+    slot: photo.slot as MealPhoto["slot"],
+    url: photo.url,
+  }
+}
+
+export function mapMealTemplateItem(item: DbMealTemplateItem): MealTemplateItem {
+  return {
+    id: item.id,
+    name: item.name,
+    sortOrder: item.sortOrder,
+  }
+}
+
+type MealTemplateWithRelations = DbMealTemplate & {
+  items: DbMealTemplateItem[]
+  photos: DbMealPhoto[]
+}
+
+export function mapMealTemplate(template: MealTemplateWithRelations): MealTemplate {
+  return {
+    id: template.id,
+    name: template.name,
+    description: template.description ?? undefined,
+    category: template.category as MealTemplate["category"],
+    mealType: template.mealType as MealTemplate["mealType"],
+    allergens: template.allergens,
+    nutritionNotes: template.nutritionNotes ?? undefined,
+    portionNotes: template.portionNotes ?? undefined,
+    gradeAvailability: template.gradeAvailability as MealTemplate["gradeAvailability"],
+    isFavorite: template.isFavorite,
+    isPublished: template.isPublished,
+    isArchived: template.isArchived,
+    lastUsedAt: template.lastUsedAt?.toISOString(),
+    studentMealPrice: template.studentMealPrice != null ? Number(template.studentMealPrice) : undefined,
+    alaCartePrice: template.alaCartePrice != null ? Number(template.alaCartePrice) : undefined,
+    staffMealPrice: template.staffMealPrice != null ? Number(template.staffMealPrice) : undefined,
+    items: template.items
+      .slice()
+      .sort((a, b) => a.sortOrder - b.sortOrder)
+      .map(mapMealTemplateItem),
+    photos: template.photos.map(mapMealPhoto),
+    createdAt: template.createdAt.toISOString(),
+    updatedAt: template.updatedAt.toISOString(),
   }
 }
 

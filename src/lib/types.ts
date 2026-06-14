@@ -81,6 +81,7 @@ export interface User {
   lastName: string
   role: UserRole
   status: UserStatus
+  badgeId?: string
   linkedStudentIds?: string[]
   phone?: string
   lastLoginAt?: string
@@ -148,6 +149,8 @@ export interface Transaction {
   timestamp: string
   type?: TransactionKind
   stripeSessionId?: string
+  processedByUserId?: string
+  processedByName?: string
 }
 
 export interface InventoryItem {
@@ -223,6 +226,55 @@ export interface CalendarEvent {
   description?: string
   category: CalendarEventCategory
   color?: string
+  /** Links a calendar menu_day event to a reusable meal template */
+  mealTemplateId?: string
+}
+
+export type MealCategory =
+  | "breakfast"
+  | "lunch"
+  | "special_event"
+  | "holiday"
+  | "seasonal"
+  | "archived"
+
+export type MealPhotoSlot = "entree" | "side" | "dessert" | "drink" | "additional"
+
+export type GradeAvailability = "grades_7_8" | "grades_9_12" | "teacher" | "staff"
+
+export interface MealPhoto {
+  id: string
+  slot: MealPhotoSlot
+  url: string
+}
+
+export interface MealTemplateItem {
+  id: string
+  name: string
+  sortOrder: number
+}
+
+export interface MealTemplate {
+  id: string
+  name: string
+  description?: string
+  category: MealCategory
+  mealType: "breakfast" | "lunch" | "special"
+  allergens: string[]
+  nutritionNotes?: string
+  portionNotes?: string
+  gradeAvailability: GradeAvailability[]
+  isFavorite: boolean
+  isPublished: boolean
+  isArchived: boolean
+  lastUsedAt?: string
+  studentMealPrice?: number
+  alaCartePrice?: number
+  staffMealPrice?: number
+  items: MealTemplateItem[]
+  photos: MealPhoto[]
+  createdAt: string
+  updatedAt: string
 }
 
 export interface CalendarSettings {

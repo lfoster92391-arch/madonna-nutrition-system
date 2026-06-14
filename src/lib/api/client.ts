@@ -32,10 +32,10 @@ export const api = {
       method: "DELETE",
     }),
   getTransactions: () => fetchJson<import("@/lib/types").Transaction[]>("/api/transactions"),
-  processMeal: (studentId: string, meal: string, amount: number) =>
+  processMeal: (studentId: string, meal: string, amount: number, processedByUserId?: string) =>
     fetchJson<import("@/lib/types").Transaction>("/api/transactions/meal", {
       method: "POST",
-      body: JSON.stringify({ studentId, meal, amount }),
+      body: JSON.stringify({ studentId, meal, amount, processedByUserId }),
     }),
   getUsers: () => fetchJson<import("@/lib/types").User[]>("/api/users"),
   createUser: (input: Record<string, unknown>) =>
@@ -92,6 +92,25 @@ export const api = {
     fetchJson<import("@/lib/types").CalendarSettings>("/api/calendar/settings", {
       method: "PATCH",
       body: JSON.stringify(updates),
+    }),
+  getMealTemplates: () => fetchJson<import("@/lib/types").MealTemplate[]>("/api/meal-templates"),
+  createMealTemplate: (template: Omit<import("@/lib/types").MealTemplate, "id" | "createdAt" | "updatedAt">) =>
+    fetchJson<import("@/lib/types").MealTemplate>("/api/meal-templates", {
+      method: "POST",
+      body: JSON.stringify(template),
+    }),
+  updateMealTemplate: (id: string, updates: Partial<import("@/lib/types").MealTemplate>) =>
+    fetchJson<import("@/lib/types").MealTemplate>(`/api/meal-templates/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(updates),
+    }),
+  duplicateMealTemplate: (id: string) =>
+    fetchJson<import("@/lib/types").MealTemplate>(`/api/meal-templates/${id}/duplicate`, {
+      method: "POST",
+    }),
+  archiveMealTemplate: (id: string) =>
+    fetchJson<import("@/lib/types").MealTemplate>(`/api/meal-templates/${id}/archive`, {
+      method: "POST",
     }),
   getAllergySubmissions: () =>
     fetchJson<import("@/lib/types").AllergySubmission[]>("/api/allergy-submissions"),

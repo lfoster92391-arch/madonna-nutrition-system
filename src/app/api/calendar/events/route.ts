@@ -35,6 +35,7 @@ export async function POST(request: Request) {
           description: data.description,
           category: data.category,
           color: data.color,
+          mealTemplateId: data.mealTemplateId,
           schoolId,
         },
       })

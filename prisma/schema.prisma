@@ -28,6 +28,7 @@ model School {
   logs             AuditLog[]
   calendarEvents   CalendarEvent[]
   calendarSettings CalendarSettings?
+  mealTemplates    MealTemplate[]
 }
 
 model User {
@@ -38,6 +39,7 @@ model User {
   firstName        String
   lastName         String
   phone            String?
+  badgeId          String?
   role             UserRole   @default(STAFF)
   status           UserStatus @default(ACTIVE)
   passwordHash     String?
@@ -47,6 +49,10 @@ model User {
   school           School     @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   createdAt        DateTime   @default(now())
   updatedAt        DateTime   @updatedAt
+
+  processedTransactions Transaction[] @relation("ProcessedByUser")
+
+  @@unique([schoolId, badgeId])
 }
 
 enum UserRole {
@@ -175,17 +181,19 @@ enum TransactionType {
 }
 
 model Transaction {
-  id              String          @id @default(cuid())
-  studentId       String
-  student         Student         @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  schoolId        String
-  school          School          @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  type            TransactionType @default(MEAL)
-  mealType        String
-  amount          Decimal         @db.Decimal(10, 2)
-  balanceAfter    Decimal         @db.Decimal(10, 2)
-  stripeSessionId String?         @unique
-  createdAt       DateTime        @default(now())
+  id                 String          @id @default(cuid())
+  studentId          String
+  student            Student         @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  schoolId           String
+  school             School          @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  processedByUserId  String?
+  processedBy        User?           @relation("ProcessedByUser", fields: [processedByUserId], references: [id], onDelete: SetNull)
+  type               TransactionType @default(MEAL)
+  mealType           String
+  amount             Decimal         @db.Decimal(10, 2)
+  balanceAfter       Decimal         @db.Decimal(10, 2)
+  stripeSessionId    String?         @unique
+  createdAt          DateTime        @default(now())
 }
 
 model InventoryItem {
@@ -251,16 +259,61 @@ model Form {
 }
 
 model CalendarEvent {
-  id          String   @id @default(cuid())
-  title       String
-  date        DateTime @db.Date
-  description String?
-  category    String
-  color       String?
-  schoolId    String
-  school      School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id             String        @id @default(cuid())
+  title          String
+  date           DateTime      @db.Date
+  description    String?
+  category       String
+  color          String?
+  mealTemplateId String?
+  mealTemplate   MealTemplate? @relation(fields: [mealTemplateId], references: [id], onDelete: SetNull)
+  schoolId       String
+  school         School        @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+}
+
+model MealTemplate {
+  id                String             @id @default(cuid())
+  name              String
+  description       String?
+  category          String
+  mealType          String
+  allergens         String[]           @default([])
+  nutritionNotes    String?
+  portionNotes      String?
+  gradeAvailability String[]           @default([])
+  isFavorite        Boolean            @default(false)
+  isPublished       Boolean            @default(false)
+  isArchived        Boolean            @default(false)
+  lastUsedAt        DateTime?
+  studentMealPrice  Decimal?           @db.Decimal(10, 2)
+  alaCartePrice     Decimal?           @db.Decimal(10, 2)
+  staffMealPrice    Decimal?           @db.Decimal(10, 2)
+  schoolId          String
+  school            School             @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  items             MealTemplateItem[]
+  photos            MealPhoto[]
+  calendarEvents    CalendarEvent[]
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+}
+
+model MealTemplateItem {
+  id             String       @id @default(cuid())
+  name           String
+  sortOrder      Int          @default(0)
+  mealTemplateId String
+  mealTemplate   MealTemplate @relation(fields: [mealTemplateId], references: [id], onDelete: Cascade)
+}
+
+model MealPhoto {
+  id             String       @id @default(cuid())
+  slot           String
+  url            String
+  mealTemplateId String
+  mealTemplate   MealTemplate @relation(fields: [mealTemplateId], references: [id], onDelete: Cascade)
+  createdAt      DateTime     @default(now())
 }
 
 model CalendarSettings {

@@ -10,6 +10,7 @@ import {
   Plus,
   Save,
   Trash2,
+  UtensilsCrossed,
 } from "lucide-react"
 import { CalendarMonthGrid, CategoryLegend } from "@/components/calendar/CalendarMonthGrid"
 import { useDemo } from "@/components/providers/DemoProvider"
@@ -27,6 +28,8 @@ import {
 } from "@/lib/calendar"
 import type { CalendarAccentColor, CalendarEvent, CalendarEventCategory } from "@/lib/types"
 import { cn } from "@/lib/utils"
+import { getMealCoverPhoto } from "@/lib/meal-templates"
+import type { MealTemplate } from "@/lib/types"
 
 const CATEGORIES = Object.keys(EVENT_CATEGORIES) as CalendarEventCategory[]
 
@@ -36,6 +39,7 @@ interface EventFormState {
   description: string
   category: CalendarEventCategory
   color: string
+  mealTemplateId?: string
 }
 
 const emptyForm = (date: string): EventFormState => ({
@@ -44,16 +48,19 @@ const emptyForm = (date: string): EventFormState => ({
   description: "",
   category: "menu_day",
   color: "",
+  mealTemplateId: undefined,
 })
 
 export function AdminCalendarDesigner() {
   const {
     calendarEvents,
     calendarSettings,
+    mealTemplates,
     updateCalendarSettings,
     addCalendarEvent,
     updateCalendarEvent,
     deleteCalendarEvent,
+    updateMealTemplate,
   } = useDemo()
 
   const now = new Date()
@@ -64,6 +71,7 @@ export function AdminCalendarDesigner() {
   const [showEventForm, setShowEventForm] = useState(false)
   const [eventForm, setEventForm] = useState<EventFormState>(emptyForm(formatDateKey(now)))
   const [savedFlash, setSavedFlash] = useState(false)
+  const [showMealPicker, setShowMealPicker] = useState(false)
 
   const accentHex = getAccentHex(calendarSettings.accentColor)
 
@@ -126,8 +134,21 @@ export function AdminCalendarDesigner() {
       description: event.description ?? "",
       category: event.category,
       color: event.color ?? "",
+      mealTemplateId: event.mealTemplateId,
     })
     setShowEventForm(true)
+  }
+
+  function applyMealTemplate(template: MealTemplate) {
+    const itemsList = template.items.map((i) => i.name).join(", ")
+    setEventForm((prev) => ({
+      ...prev,
+      title: template.name,
+      description: template.description ?? itemsList,
+      category: "menu_day",
+      mealTemplateId: template.id,
+    }))
+    setShowMealPicker(false)
   }
 
   async function handleSaveEvent() {
@@ -138,11 +159,17 @@ export function AdminCalendarDesigner() {
       description: eventForm.description.trim() || undefined,
       category: eventForm.category,
       color: eventForm.color.trim() || undefined,
+      mealTemplateId: eventForm.mealTemplateId,
     }
     if (editingEvent) {
       await updateCalendarEvent(editingEvent.id, payload)
     } else {
       await addCalendarEvent(payload)
+    }
+    if (eventForm.mealTemplateId) {
+      await updateMealTemplate(eventForm.mealTemplateId, {
+        lastUsedAt: new Date().toISOString(),
+      })
     }
     setShowEventForm(false)
     setEditingEvent(null)
@@ -348,6 +375,25 @@ export function AdminCalendarDesigner() {
                       placeholder="Menu items, dismissal time, or notes for parents"
                     />
                   </div>
+                  {eventForm.category === "menu_day" && (
+                    <div className="md:col-span-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setShowMealPicker(true)}
+                        className="w-full justify-start"
+                      >
+                        <UtensilsCrossed className="h-4 w-4" />
+                        Choose Existing Meal from Menu Library
+                      </Button>
+                      {eventForm.mealTemplateId && (
+                        <p className="mt-2 text-xs text-success">
+                          Linked to template: {eventForm.mealTemplateId}
+                          {/* TODO: Full calendar ↔ library sync when scheduling recurring menus */}
+                        </p>
+                      )}
+                    </div>
+                  )}
                   {eventForm.category === "special_event" && (
                     <div className="md:col-span-2">
                       <Label>Custom Color (optional hex)</Label>
@@ -457,6 +503,46 @@ export function AdminCalendarDesigner() {
           </aside>
         </div>
       </div>
+
+      {showMealPicker && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-primary/40 p-4 backdrop-blur-sm">
+          <div className="max-h-[80vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-silver/60 bg-white p-6 shadow-2xl">
+            <h3 className="text-lg font-bold text-primary">Choose Existing Meal</h3>
+            <p className="mb-4 text-sm text-silver-foreground">
+              Select a template from the Menu Library to schedule on the calendar.
+            </p>
+            <div className="space-y-2">
+              {mealTemplates
+                .filter((t) => !t.isArchived)
+                .map((template) => {
+                  const cover = getMealCoverPhoto(template.photos)
+                  return (
+                    <button
+                      key={template.id}
+                      type="button"
+                      onClick={() => applyMealTemplate(template)}
+                      className="flex w-full items-center gap-3 rounded-2xl border border-silver/60 p-3 text-left transition hover:border-success"
+                    >
+                      <div className="h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-silver/20">
+                        {cover ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={cover} alt="" className="h-full w-full object-cover" />
+                        ) : null}
+                      </div>
+                      <div>
+                        <p className="font-semibold text-primary">{template.name}</p>
+                        <p className="text-xs capitalize text-silver-foreground">{template.category}</p>
+                      </div>
+                    </button>
+                  )
+                })}
+            </div>
+            <Button variant="outline" className="mt-4 w-full" onClick={() => setShowMealPicker(false)}>
+              Cancel
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

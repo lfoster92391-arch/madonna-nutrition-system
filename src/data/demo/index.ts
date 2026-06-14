@@ -175,6 +175,7 @@ export const demoUsers: User[] = [
     lastName: "Garcia",
     role: "admin",
     status: "active",
+    badgeId: "90001",
     phone: "555-1001",
     lastLoginAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
     createdAt: oneMonthAgo,
@@ -188,6 +189,7 @@ export const demoUsers: User[] = [
     lastName: "Torres",
     role: "admin",
     status: "active",
+    badgeId: "90002",
     phone: "555-1002",
     lastLoginAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
     createdAt: oneMonthAgo,
@@ -201,6 +203,7 @@ export const demoUsers: User[] = [
     lastName: "Chen",
     role: "admin",
     status: "active",
+    badgeId: "90003",
     phone: "555-1003",
     lastLoginAt: eightDaysAgo,
     createdAt: oneMonthAgo,
@@ -214,6 +217,7 @@ export const demoUsers: User[] = [
     lastName: "Wilson",
     role: "cashier",
     status: "active",
+    badgeId: "90004",
     phone: "555-2001",
     lastLoginAt: new Date(Date.now() - 45 * 60 * 1000).toISOString(),
     createdAt: twoWeeksAgo,
@@ -227,6 +231,7 @@ export const demoUsers: User[] = [
     lastName: "Santos",
     role: "cashier",
     status: "active",
+    badgeId: "90005",
     phone: "555-2002",
     lastLoginAt: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(),
     createdAt: twoWeeksAgo,
@@ -254,6 +259,7 @@ export const demoUsers: User[] = [
     lastName: "Kim",
     role: "staff",
     status: "active",
+    badgeId: "90006",
     phone: "555-3001",
     lastLoginAt: new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString(),
     createdAt: twoWeeksAgo,
@@ -267,6 +273,7 @@ export const demoUsers: User[] = [
     lastName: "Nguyen",
     role: "staff",
     status: "active",
+    badgeId: "90007",
     phone: "555-3002",
     lastLoginAt: threeDaysAgo,
     createdAt: twoWeeksAgo,
@@ -280,6 +287,7 @@ export const demoUsers: User[] = [
     lastName: "Bradley",
     role: "cashier",
     status: "disabled",
+    badgeId: "90008",
     phone: "555-2003",
     lastLoginAt: new Date(Date.now() - 45 * 24 * 60 * 60 * 1000).toISOString(),
     createdAt: oneMonthAgo,
@@ -745,3 +753,5 @@ export function getMedicalDocumentsForStudent(
     .filter((d) => d.studentId === studentId)
     .sort((a, b) => b.version - a.version)
 }
+
+export { demoMealTemplates } from "./meal-templates"

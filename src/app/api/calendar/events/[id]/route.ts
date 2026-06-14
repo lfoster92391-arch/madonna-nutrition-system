@@ -30,6 +30,7 @@ export async function PATCH(request: Request, { params }: RouteParams) {
           description: data.description,
           category: data.category,
           color: data.color,
+          mealTemplateId: data.mealTemplateId,
         },
       })
 

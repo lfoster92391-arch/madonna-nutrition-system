@@ -32,7 +32,14 @@ export const mealTransactionSchema = z.object({
   studentId: z.string().min(1),
   meal: z.string().min(1),
   amount: z.number().nonnegative(),
+  processedByUserId: z.string().min(1).optional(),
 })
+
+export const badgeIdSchema = z
+  .string()
+  .regex(/^\d{4,6}$/, "Badge ID must be 4–6 digits")
+  .optional()
+  .nullable()
 
 export const userRoleSchema = z.enum(["admin", "cashier", "parent", "staff"])
 
@@ -43,6 +50,7 @@ export const createUserSchema = z.object({
   lastName: z.string().min(1),
   role: userRoleSchema,
   phone: z.string().optional(),
+  badgeId: badgeIdSchema,
   linkedStudentIds: z.array(z.string()).optional(),
   performedBy: z.string().optional(),
 })
@@ -54,6 +62,7 @@ export const updateUserSchema = z.object({
   lastName: z.string().min(1).optional(),
   role: userRoleSchema.optional(),
   phone: z.string().optional(),
+  badgeId: badgeIdSchema,
   linkedStudentIds: z.array(z.string()).optional(),
   performedBy: z.string().optional(),
   reason: z.string().optional(),
@@ -76,6 +85,49 @@ export const calendarEventSchema = z.object({
   description: z.string().optional(),
   category: z.enum(["menu_day", "holiday", "early_dismissal", "special_event", "no_school"]),
   color: z.string().optional(),
+  mealTemplateId: z.string().optional(),
+})
+
+const mealPhotoSlotSchema = z.enum(["entree", "side", "dessert", "drink", "additional"])
+const mealCategorySchema = z.enum([
+  "breakfast",
+  "lunch",
+  "special_event",
+  "holiday",
+  "seasonal",
+  "archived",
+])
+const gradeAvailabilitySchema = z.enum(["grades_7_8", "grades_9_12", "teacher", "staff"])
+
+export const mealTemplateItemSchema = z.object({
+  id: z.string().optional(),
+  name: z.string().min(1),
+  sortOrder: z.number().int().nonnegative(),
+})
+
+export const mealPhotoSchema = z.object({
+  id: z.string().optional(),
+  slot: mealPhotoSlotSchema,
+  url: z.string().min(1),
+})
+
+export const mealTemplateSchema = z.object({
+  name: z.string().min(1),
+  description: z.string().optional(),
+  category: mealCategorySchema,
+  mealType: z.enum(["breakfast", "lunch", "special"]),
+  allergens: z.array(z.string()).optional(),
+  nutritionNotes: z.string().optional(),
+  portionNotes: z.string().optional(),
+  gradeAvailability: z.array(gradeAvailabilitySchema).optional(),
+  isFavorite: z.boolean().optional(),
+  isPublished: z.boolean().optional(),
+  isArchived: z.boolean().optional(),
+  studentMealPrice: z.number().nonnegative().optional(),
+  alaCartePrice: z.number().nonnegative().optional(),
+  staffMealPrice: z.number().nonnegative().optional(),
+  items: z.array(mealTemplateItemSchema).optional(),
+  photos: z.array(mealPhotoSchema).optional(),
 })
 
 export const calendarSettingsSchema = z.object({

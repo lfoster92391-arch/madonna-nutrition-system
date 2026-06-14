@@ -17,6 +17,7 @@ import {
   demoCalendarSettings,
   demoImportLogs,
   demoInventory,
+  demoMealTemplates,
   demoMedicalDocuments,
   demoNotifications,
   demoStudentProfiles,
@@ -36,6 +37,7 @@ import type {
   FoodSafetyFormPayload,
   ImportLog,
   InventoryItem,
+  MealTemplate,
   MedicalDocument,
   Notification,
   Student,
@@ -52,6 +54,7 @@ interface CreateUserInput {
   lastName: string
   role: UserRole
   phone?: string
+  badgeId?: string
   linkedStudentIds?: string[]
 }
 
@@ -69,11 +72,17 @@ interface DemoContextValue {
   auditLogs: AuditLogEntry[]
   calendarEvents: CalendarEvent[]
   calendarSettings: CalendarSettings
+  mealTemplates: MealTemplate[]
   users: User[]
   addStudent: (student: Student) => void | Promise<void>
   updateStudent: (id: string, updates: Partial<Student>) => void | Promise<void>
   disableStudent: (id: string) => void | Promise<void>
-  processMeal: (studentId: string, meal: string, amount: number) => Transaction | null | Promise<Transaction | null>
+  processMeal: (
+    studentId: string,
+    meal: string,
+    amount: number,
+    processedByUserId?: string
+  ) => Transaction | null | Promise<Transaction | null>
   addFunds: (
     studentId: string,
     amount: number,
@@ -108,6 +117,12 @@ interface DemoContextValue {
   addCalendarEvent: (event: Omit<CalendarEvent, "id">) => CalendarEvent | Promise<CalendarEvent>
   updateCalendarEvent: (id: string, updates: Partial<CalendarEvent>) => void | Promise<void>
   deleteCalendarEvent: (id: string) => void | Promise<void>
+  addMealTemplate: (
+    template: Omit<MealTemplate, "id" | "createdAt" | "updatedAt">
+  ) => MealTemplate | Promise<MealTemplate>
+  updateMealTemplate: (id: string, updates: Partial<MealTemplate>) => void | Promise<void>
+  duplicateMealTemplate: (id: string) => MealTemplate | Promise<MealTemplate>
+  archiveMealTemplate: (id: string) => void | Promise<void>
   getUserByUsername: (username: string) => User | undefined
   createUser: (input: CreateUserInput, performedBy: string) => User | Promise<User>
   updateUser: (
@@ -139,6 +154,7 @@ function useDemoLocalState() {
   const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>(demoAuditLogs)
   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>(demoCalendarEvents)
   const [calendarSettings, setCalendarSettings] = useState<CalendarSettings>(demoCalendarSettings)
+  const [mealTemplates, setMealTemplates] = useState<MealTemplate[]>(demoMealTemplates)
   const [users, setUsers] = useState<User[]>(demoUsers)
 
   const appendAuditLog = useCallback(
@@ -184,6 +200,7 @@ function useDemoLocalState() {
           email: user.email,
           role: user.role,
           status: user.status,
+          badgeId: user.badgeId,
         },
       })
       return user
@@ -216,6 +233,7 @@ function useDemoLocalState() {
               email: previous.email,
               role: previous.role,
               phone: previous.phone,
+              badgeId: previous.badgeId,
               linkedStudentIds: previous.linkedStudentIds,
             },
             newValue: {
@@ -224,6 +242,7 @@ function useDemoLocalState() {
               email: updated.email,
               role: updated.role,
               phone: updated.phone,
+              badgeId: updated.badgeId,
               linkedStudentIds: updated.linkedStudentIds,
             },
             reason,
@@ -352,10 +371,11 @@ function useDemoLocalState() {
   }, [])
 
   const processMeal = useCallback(
-    (studentId: string, meal: string, amount: number): Transaction | null => {
+    (studentId: string, meal: string, amount: number, processedByUserId?: string): Transaction | null => {
       const student = students.find((s) => s.id === studentId && !s.disabled)
       if (!student) return null
 
+      const cashier = processedByUserId ? users.find((u) => u.id === processedByUserId) : undefined
       const balanceAfter = student.balance - amount
       const tx: Transaction = {
         id: `tx-${Date.now()}`,
@@ -365,6 +385,8 @@ function useDemoLocalState() {
         amount,
         balanceAfter,
         timestamp: new Date().toISOString(),
+        processedByUserId,
+        processedByName: cashier ? `${cashier.firstName} ${cashier.lastName}` : undefined,
       }
 
       setStudents((prev) =>
@@ -373,7 +395,7 @@ function useDemoLocalState() {
       setTransactions((prev) => [tx, ...prev])
       return tx
     },
-    [students]
+    [students, users]
   )
 
   const addFunds = useCallback(
@@ -608,6 +630,80 @@ function useDemoLocalState() {
     setCalendarEvents((prev) => prev.filter((e) => e.id !== id))
   }, [])
 
+  const addMealTemplate = useCallback(
+    (template: Omit<MealTemplate, "id" | "createdAt" | "updatedAt">): MealTemplate => {
+      const now = new Date().toISOString()
+      const newTemplate: MealTemplate = {
+        ...template,
+        id: `mt-${Date.now()}`,
+        createdAt: now,
+        updatedAt: now,
+        items: template.items.map((item, i) => ({
+          ...item,
+          id: item.id || `mti-${Date.now()}-${i}`,
+        })),
+        photos: template.photos.map((photo, i) => ({
+          ...photo,
+          id: photo.id || `mp-${Date.now()}-${i}`,
+        })),
+      }
+      setMealTemplates((prev) => [newTemplate, ...prev])
+      return newTemplate
+    },
+    []
+  )
+
+  const updateMealTemplate = useCallback((id: string, updates: Partial<MealTemplate>) => {
+    setMealTemplates((prev) =>
+      prev.map((t) =>
+        t.id === id ? { ...t, ...updates, updatedAt: new Date().toISOString() } : t
+      )
+    )
+  }, [])
+
+  const duplicateMealTemplate = useCallback((id: string): MealTemplate => {
+    const source = mealTemplates.find((t) => t.id === id)
+    if (!source) throw new Error("Meal template not found")
+    const now = new Date().toISOString()
+    const duplicate: MealTemplate = {
+      ...source,
+      id: `mt-${Date.now()}`,
+      name: `${source.name} (Copy)`,
+      isFavorite: false,
+      isPublished: false,
+      isArchived: false,
+      lastUsedAt: undefined,
+      createdAt: now,
+      updatedAt: now,
+      items: source.items.map((item, i) => ({
+        ...item,
+        id: `mti-${Date.now()}-${i}`,
+      })),
+      photos: source.photos.map((photo, i) => ({
+        ...photo,
+        id: `mp-${Date.now()}-${i}`,
+      })),
+    }
+    setMealTemplates((prev) => [duplicate, ...prev])
+    return duplicate
+  }, [mealTemplates])
+
+  const archiveMealTemplate = useCallback((id: string) => {
+    setMealTemplates((prev) =>
+      prev.map((t) =>
+        t.id === id
+          ? {
+              ...t,
+              isArchived: true,
+              category: "archived",
+              isPublished: false,
+              updatedAt: new Date().toISOString(),
+            }
+          : t
+      )
+    )
+  }, [])
+
   return {
     students,
     transactions,
@@ -620,6 +716,7 @@ function useDemoLocalState() {
     auditLogs,
     calendarEvents,
     calendarSettings,
+    mealTemplates,
     users,
     addStudent,
     updateStudent,
@@ -638,6 +735,10 @@ function useDemoLocalState() {
     addCalendarEvent,
     updateCalendarEvent,
     deleteCalendarEvent,
+    addMealTemplate,
+    updateMealTemplate,
+    duplicateMealTemplate,
+    archiveMealTemplate,
     getUserByUsername,
     createUser,
     updateUser,
@@ -702,6 +803,11 @@ export function DemoProvider({ children }: { children: ReactNode }) {
     queryFn: api.getCalendarSettings,
     enabled: dbEnabled,
   })
+  const mealTemplatesQuery = useQuery({
+    queryKey: ["meal-templates"],
+    queryFn: api.getMealTemplates,
+    enabled: dbEnabled,
+  })
   const allergySubmissionsQuery = useQuery({
     queryKey: ["allergy-submissions"],
     queryFn: api.getAllergySubmissions,
@@ -733,6 +839,7 @@ export function DemoProvider({ children }: { children: ReactNode }) {
   const calendarSettings = dbEnabled
     ? (calendarSettingsQuery.data ?? demoCalendarSettings)
     : demo.calendarSettings
+  const mealTemplates = dbEnabled ? (mealTemplatesQuery.data ?? []) : demo.mealTemplates
   const allergySubmissions = dbEnabled
     ? (allergySubmissionsQuery.data ?? [])
     : demo.allergySubmissions
@@ -790,12 +897,12 @@ export function DemoProvider({ children }: { children: ReactNode }) {
   )
 
   const processMeal = useCallback(
-    async (studentId: string, meal: string, amount: number) => {
+    async (studentId: string, meal: string, amount: number, processedByUserId?: string) => {
       if (!dbEnabled) {
-        return demo.processMeal(studentId, meal, amount)
+        return demo.processMeal(studentId, meal, amount, processedByUserId)
       }
       try {
-        const tx = await api.processMeal(studentId, meal, amount)
+        const tx = await api.processMeal(studentId, meal, amount, processedByUserId)
         invalidate("students", "transactions")
         return tx
       } catch {
@@ -940,6 +1047,54 @@ export function DemoProvider({ children }: { children: ReactNode }) {
     [dbEnabled, demo, invalidate]
   )
 
+  const addMealTemplate = useCallback(
+    async (template: Omit<MealTemplate, "id" | "createdAt" | "updatedAt">) => {
+      if (!dbEnabled) {
+        return demo.addMealTemplate(template)
+      }
+      const created = await api.createMealTemplate(template)
+      invalidate("meal-templates")
+      return created
+    },
+    [dbEnabled, demo, invalidate]
+  )
+
+  const updateMealTemplate = useCallback(
+    async (id: string, updates: Partial<MealTemplate>) => {
+      if (!dbEnabled) {
+        demo.updateMealTemplate(id, updates)
+        return
+      }
+      await api.updateMealTemplate(id, updates)
+      invalidate("meal-templates")
+    },
+    [dbEnabled, demo, invalidate]
+  )
+
+  const duplicateMealTemplate = useCallback(
+    async (id: string) => {
+      if (!dbEnabled) {
+        return demo.duplicateMealTemplate(id)
+      }
+      const duplicate = await api.duplicateMealTemplate(id)
+      invalidate("meal-templates")
+      return duplicate
+    },
+    [dbEnabled, demo, invalidate]
+  )
+
+  const archiveMealTemplate = useCallback(
+    async (id: string) => {
+      if (!dbEnabled) {
+        demo.archiveMealTemplate(id)
+        return
+      }
+      await api.archiveMealTemplate(id)
+      invalidate("meal-templates")
+    },
+    [dbEnabled, demo, invalidate]
+  )
+
   const createUser = useCallback(
     async (input: CreateUserInput, performedBy: string) => {
       if (!dbEnabled) {
@@ -1044,6 +1199,7 @@ export function DemoProvider({ children }: { children: ReactNode }) {
       auditLogs,
       calendarEvents,
       calendarSettings,
+      mealTemplates,
       users,
       addStudent,
       updateStudent,
@@ -1062,6 +1218,10 @@ export function DemoProvider({ children }: { children: ReactNode }) {
       addCalendarEvent,
       updateCalendarEvent,
       deleteCalendarEvent,
+      addMealTemplate,
+      updateMealTemplate,
+      duplicateMealTemplate,
+      archiveMealTemplate,
       getUserByUsername,
       createUser,
       updateUser,
@@ -1086,6 +1246,7 @@ export function DemoProvider({ children }: { children: ReactNode }) {
       auditLogs,
       calendarEvents,
       calendarSettings,
+      mealTemplates,
       users,
       addStudent,
       updateStudent,
@@ -1104,6 +1265,10 @@ export function DemoProvider({ children }: { children: ReactNode }) {
       addCalendarEvent,
       updateCalendarEvent,
       deleteCalendarEvent,
+      addMealTemplate,
+      updateMealTemplate,
+      duplicateMealTemplate,
+      archiveMealTemplate,
       getUserByUsername,
       createUser,
       updateUser,
