@@ -150,6 +150,7 @@ Optional future vars (not needed now): `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLE
 
 | Issue | Fix |
 |-------|-----|
+| **404 NOT_FOUND** on `*.vercel.app` (Vercel error page, `Code: NOT_FOUND`) | Project had **Framework Preset = Other** (`framework: null`). Vercel deployed only static `public/` files — all app routes 404. Fix: ensure `vercel.json` includes `"framework": "nextjs"`, redeploy with `npx vercel --prod`, confirm build logs say **Detected Next.js**. If the short domain shows `DEPLOYMENT_NOT_FOUND`, run `npx vercel alias set <deployment-url> madonna-nutrition-system.vercel.app`. |
 | Build fails locally | Remove `.next`, run `npm run build`; fix TypeScript/errors |
 | Build fails on Vercel | Reproduce with `npm run build`; redeploy with `npx vercel --prod` |
 | `vercel link` wrong project | Delete `.vercel/` and run `npx vercel link` again with `madonna-nutrition-system` |
