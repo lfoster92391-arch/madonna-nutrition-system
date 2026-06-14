@@ -9,20 +9,33 @@ import {
   useState,
   type ReactNode,
 } from "react"
+import { useDemo } from "@/components/providers/DemoProvider"
+import { formatUserName } from "@/lib/users"
+import type { UserRole } from "@/lib/types"
 
 export type PortalRole = "cashier" | "parent" | "admin" | null
 
 interface AuthUser {
+  id: string
   username: string
-  role: PortalRole
+  role: Exclude<PortalRole, null>
   displayName: string
   email: string
+}
+
+export interface LoginResult {
+  success: boolean
+  error?: string
 }
 
 interface AuthContextValue {
   user: AuthUser | null
   isLoading: boolean
-  login: (username: string, password: string, role: Exclude<PortalRole, null>) => boolean
+  login: (
+    username: string,
+    password: string,
+    role: Exclude<PortalRole, null>
+  ) => LoginResult
   logout: () => void
 }
 
@@ -30,8 +43,9 @@ const STORAGE_KEY = "mnms-demo-session"
 
 /**
  * Demo credentials (Clerk-ready structure — replace with Clerk signIn later):
- * - Any username + password works for parent or admin login
- * - Optional explicit demo: parent / demo123 or admin / demo123
+ * - Match by username or email against demo users in DemoProvider
+ * - Aliases: admin → d.garcia, parent → sarah.anderson, cashier → j.wilson
+ * - Disabled accounts are blocked at login
  */
 const AuthContext = createContext<AuthContextValue | null>(null)
 
@@ -55,44 +69,82 @@ function writeSession(user: AuthUser | null) {
   }
 }
 
-export function AuthProvider({ children }: { children: ReactNode }) {
+function portalMatchesUserRole(
+  portalRole: Exclude<PortalRole, null>,
+  userRole: UserRole
+): boolean {
+  if (portalRole === "admin") return userRole === "admin"
+  if (portalRole === "cashier") return userRole === "cashier"
+  if (portalRole === "parent") return userRole === "parent"
+  return false
+}
+
+function AuthProviderInner({ children }: { children: ReactNode }) {
+  const { getUserByUsername, recordUserLogin, users } = useDemo()
   const [user, setUser] = useState<AuthUser | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    setUser(readSession())
+    const session = readSession()
+    if (session) {
+      const live = users.find((u) => u.id === session.id)
+      if (live?.status === "disabled") {
+        writeSession(null)
+        setUser(null)
+      } else {
+        setUser(session)
+      }
+    }
     setIsLoading(false)
-  }, [])
+  }, [users])
 
   const login = useCallback(
-    (username: string, _password: string, role: Exclude<PortalRole, null>): boolean => {
+    (
+      username: string,
+      _password: string,
+      role: Exclude<PortalRole, null>
+    ): LoginResult => {
       const trimmed = username.trim()
-      if (!trimmed) return false
-
-      const displayNames: Record<Exclude<PortalRole, null>, string> = {
-        cashier: "Cashier",
-        parent: "Sarah Anderson",
-        admin: "Admin User",
+      if (!trimmed) {
+        return { success: false, error: "Please enter a username." }
       }
 
-      const emails: Record<Exclude<PortalRole, null>, string> = {
-        cashier: `${trimmed.toLowerCase().replace(/\s+/g, ".")}@madonnahs.org`,
-        parent: "sarah.anderson@email.com",
-        admin: `${trimmed.toLowerCase().replace(/\s+/g, ".")}@madonnahs.org`,
+      const demoUser = getUserByUsername(trimmed)
+      if (!demoUser) {
+        return {
+          success: false,
+          error: "No account found with that username. Try admin, parent, or j.wilson.",
+        }
+      }
+
+      if (demoUser.status === "disabled") {
+        return {
+          success: false,
+          error: "Account disabled. Contact your system administrator.",
+        }
+      }
+
+      if (!portalMatchesUserRole(role, demoUser.role)) {
+        return {
+          success: false,
+          error: `This account is registered as ${demoUser.role}. Use the correct portal to sign in.`,
+        }
       }
 
       const session: AuthUser = {
-        username: trimmed,
+        id: demoUser.id,
+        username: demoUser.username,
         role,
-        displayName: displayNames[role],
-        email: emails[role],
+        displayName: formatUserName(demoUser),
+        email: demoUser.email,
       }
 
       setUser(session)
       writeSession(session)
-      return true
+      recordUserLogin(demoUser.id)
+      return { success: true }
     },
-    []
+    [getUserByUsername, recordUserLogin]
   )
 
   const logout = useCallback(() => {
@@ -106,6 +158,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
+}
+
+export function AuthProvider({ children }: { children: ReactNode }) {
+  return <AuthProviderInner>{children}</AuthProviderInner>
 }
 
 export function useAuth() {

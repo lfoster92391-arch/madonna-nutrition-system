@@ -67,9 +67,9 @@ export default function RootLayout({
     <html lang="en" className={`${inter.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col bg-white text-primary">
         <QueryProvider>
-          <AuthProvider>
-            <DemoProvider>{children}</DemoProvider>
-          </AuthProvider>
+          <DemoProvider>
+            <AuthProvider>{children}</AuthProvider>
+          </DemoProvider>
         </QueryProvider>
       </body>
     </html>

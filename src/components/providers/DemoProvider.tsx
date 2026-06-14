@@ -11,6 +11,8 @@ import {
 import {
   demoAllergySubmissions,
   demoAuditLogs,
+  demoCalendarEvents,
+  demoCalendarSettings,
   demoImportLogs,
   demoInventory,
   demoMedicalDocuments,
@@ -18,12 +20,16 @@ import {
   demoStudentProfiles,
   demoStudents,
   demoTransactions,
+  demoUsers,
 } from "@/data/demo"
 import { addOneYear, payloadToAllergies } from "@/lib/food-safety"
+import { generateTempPassword } from "@/lib/users"
 import type {
   AllergySubmission,
   AllergySubmissionStatus,
   AuditLogEntry,
+  CalendarEvent,
+  CalendarSettings,
   FoodSafetyFormPayload,
   ImportLog,
   InventoryItem,
@@ -32,7 +38,19 @@ import type {
   Student,
   StudentProfile,
   Transaction,
+  User,
+  UserRole,
 } from "@/lib/types"
+
+interface CreateUserInput {
+  username: string
+  email: string
+  firstName: string
+  lastName: string
+  role: UserRole
+  phone?: string
+  linkedStudentIds?: string[]
+}
 
 interface DemoContextValue {
   students: Student[]
@@ -44,6 +62,9 @@ interface DemoContextValue {
   allergySubmissions: AllergySubmission[]
   medicalDocuments: MedicalDocument[]
   auditLogs: AuditLogEntry[]
+  calendarEvents: CalendarEvent[]
+  calendarSettings: CalendarSettings
+  users: User[]
   addStudent: (student: Student) => void
   updateStudent: (id: string, updates: Partial<Student>) => void
   disableStudent: (id: string) => void
@@ -73,6 +94,23 @@ interface DemoContextValue {
     contact: { name: string; email: string; phone: string }
   ) => void
   getStudentProfile: (studentId: string) => StudentProfile | undefined
+  updateCalendarSettings: (updates: Partial<CalendarSettings>) => void
+  addCalendarEvent: (event: Omit<CalendarEvent, "id">) => CalendarEvent
+  updateCalendarEvent: (id: string, updates: Partial<CalendarEvent>) => void
+  deleteCalendarEvent: (id: string) => void
+  getUserByUsername: (username: string) => User | undefined
+  createUser: (input: CreateUserInput, performedBy: string) => User
+  updateUser: (
+    id: string,
+    updates: Partial<Omit<User, "id" | "createdAt">>,
+    performedBy: string,
+    reason?: string
+  ) => User | null
+  disableUser: (id: string, performedBy: string, reason: string) => boolean
+  enableUser: (id: string, performedBy: string, reason?: string) => boolean
+  resetUserPassword: (id: string, performedBy: string) => { tempPassword: string } | null
+  deleteUser: (id: string, performedBy: string, reason: string) => boolean
+  recordUserLogin: (userId: string) => void
 }
 
 const DemoContext = createContext<DemoContextValue | null>(null)
@@ -89,6 +127,219 @@ export function DemoProvider({ children }: { children: ReactNode }) {
   const [medicalDocuments, setMedicalDocuments] =
     useState<MedicalDocument[]>(demoMedicalDocuments)
   const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>(demoAuditLogs)
+  const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>(demoCalendarEvents)
+  const [calendarSettings, setCalendarSettings] = useState<CalendarSettings>(demoCalendarSettings)
+  const [users, setUsers] = useState<User[]>(demoUsers)
+
+  const appendAuditLog = useCallback(
+    (entry: Omit<AuditLogEntry, "id" | "createdAt"> & { createdAt?: string }) => {
+      const now = entry.createdAt ?? new Date().toISOString()
+      const log: AuditLogEntry = {
+        id: `audit-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        createdAt: now,
+        performedAt: entry.performedAt ?? now,
+        ...entry,
+        entityType: entry.entityType ?? entry.entity,
+      }
+      setAuditLogs((prev) => [log, ...prev])
+      return log
+    },
+    []
+  )
+
+  const getUserByUsername = useCallback(
+    (username: string) => {
+      const normalized = username.trim().toLowerCase()
+      const aliases: Record<string, string> = {
+        parent: "sarah.anderson",
+        admin: "d.garcia",
+        cashier: "j.wilson",
+      }
+      const lookup = aliases[normalized] ?? normalized
+      return users.find(
+        (u) =>
+          u.username.toLowerCase() === lookup || u.email.toLowerCase() === lookup
+      )
+    },
+    [users]
+  )
+
+  const createUser = useCallback(
+    (input: CreateUserInput, performedBy: string): User => {
+      const now = new Date().toISOString()
+      const user: User = {
+        id: `usr-${Date.now()}`,
+        ...input,
+        status: "active",
+        createdAt: now,
+        updatedAt: now,
+      }
+      setUsers((prev) => [...prev, user])
+      appendAuditLog({
+        action: "USER_CREATED",
+        entity: "user",
+        entityType: "user",
+        entityId: user.id,
+        performedBy,
+        newValue: {
+          username: user.username,
+          email: user.email,
+          role: user.role,
+          status: user.status,
+        },
+      })
+      return user
+    },
+    [appendAuditLog]
+  )
+
+  const updateUser = useCallback(
+    (
+      id: string,
+      updates: Partial<Omit<User, "id" | "createdAt">>,
+      performedBy: string,
+      reason?: string
+    ): User | null => {
+      let updated: User | null = null
+      setUsers((prev) =>
+        prev.map((u) => {
+          if (u.id !== id) return u
+          const previous = { ...u }
+          updated = { ...u, ...updates, updatedAt: new Date().toISOString() }
+          appendAuditLog({
+            action: "USER_UPDATED",
+            entity: "user",
+            entityType: "user",
+            entityId: id,
+            performedBy,
+            previousValue: {
+              firstName: previous.firstName,
+              lastName: previous.lastName,
+              email: previous.email,
+              role: previous.role,
+              phone: previous.phone,
+              linkedStudentIds: previous.linkedStudentIds,
+            },
+            newValue: {
+              firstName: updated.firstName,
+              lastName: updated.lastName,
+              email: updated.email,
+              role: updated.role,
+              phone: updated.phone,
+              linkedStudentIds: updated.linkedStudentIds,
+            },
+            reason,
+          })
+          return updated
+        })
+      )
+      return updated
+    },
+    [appendAuditLog]
+  )
+
+  const disableUser = useCallback(
+    (id: string, performedBy: string, reason: string): boolean => {
+      const target = users.find((u) => u.id === id)
+      if (!target || target.status === "disabled") return false
+      const now = new Date().toISOString()
+      setUsers((prev) =>
+        prev.map((u) =>
+          u.id === id ? { ...u, status: "disabled", updatedAt: now } : u
+        )
+      )
+      appendAuditLog({
+        action: "USER_DISABLED",
+        entity: "user",
+        entityType: "user",
+        entityId: id,
+        performedBy,
+        previousValue: { status: "active" },
+        newValue: { status: "disabled" },
+        reason,
+      })
+      return true
+    },
+    [appendAuditLog, users]
+  )
+
+  const enableUser = useCallback(
+    (id: string, performedBy: string, reason?: string): boolean => {
+      const target = users.find((u) => u.id === id)
+      if (!target || target.status === "active") return false
+      const now = new Date().toISOString()
+      setUsers((prev) =>
+        prev.map((u) =>
+          u.id === id ? { ...u, status: "active", updatedAt: now } : u
+        )
+      )
+      appendAuditLog({
+        action: "USER_ENABLED",
+        entity: "user",
+        entityType: "user",
+        entityId: id,
+        performedBy,
+        previousValue: { status: "disabled" },
+        newValue: { status: "active" },
+        reason,
+      })
+      return true
+    },
+    [appendAuditLog, users]
+  )
+
+  const resetUserPassword = useCallback(
+    (id: string, performedBy: string): { tempPassword: string } | null => {
+      const target = users.find((u) => u.id === id)
+      if (!target) return null
+      const tempPassword = generateTempPassword()
+      appendAuditLog({
+        action: "PASSWORD_RESET",
+        entity: "user",
+        entityType: "user",
+        entityId: id,
+        performedBy,
+        metadata: {
+          method: "temp_password",
+          clerkReady: true,
+          resetSent: true,
+        },
+        newValue: { resetSent: true },
+      })
+      return { tempPassword }
+    },
+    [appendAuditLog, users]
+  )
+
+  const deleteUser = useCallback(
+    (id: string, performedBy: string, reason: string): boolean => {
+      const target = users.find((u) => u.id === id)
+      if (!target) return false
+      setUsers((prev) => prev.filter((u) => u.id !== id))
+      appendAuditLog({
+        action: "USER_DELETED",
+        entity: "user",
+        entityType: "user",
+        entityId: id,
+        performedBy,
+        previousValue: {
+          username: target.username,
+          email: target.email,
+          role: target.role,
+        },
+        reason,
+      })
+      return true
+    },
+    [appendAuditLog, users]
+  )
+
+  const recordUserLogin = useCallback((userId: string) => {
+    const now = new Date().toISOString()
+    setUsers((prev) =>
+      prev.map((u) => (u.id === userId ? { ...u, lastLoginAt: now, updatedAt: now } : u))
+    )
+  }, [])
 
   const addStudent = useCallback((student: Student) => {
     setStudents((prev) => [...prev, student])
@@ -308,6 +559,26 @@ export function DemoProvider({ children }: { children: ReactNode }) {
     []
   )
 
+  const updateCalendarSettings = useCallback((updates: Partial<CalendarSettings>) => {
+    setCalendarSettings((prev) => ({ ...prev, ...updates }))
+  }, [])
+
+  const addCalendarEvent = useCallback((event: Omit<CalendarEvent, "id">): CalendarEvent => {
+    const newEvent: CalendarEvent = { ...event, id: `cal-${Date.now()}` }
+    setCalendarEvents((prev) => [...prev, newEvent])
+    return newEvent
+  }, [])
+
+  const updateCalendarEvent = useCallback((id: string, updates: Partial<CalendarEvent>) => {
+    setCalendarEvents((prev) =>
+      prev.map((e) => (e.id === id ? { ...e, ...updates } : e))
+    )
+  }, [])
+
+  const deleteCalendarEvent = useCallback((id: string) => {
+    setCalendarEvents((prev) => prev.filter((e) => e.id !== id))
+  }, [])
+
   const value = useMemo(
     () => ({
       students,
@@ -319,6 +590,9 @@ export function DemoProvider({ children }: { children: ReactNode }) {
       allergySubmissions,
       medicalDocuments,
       auditLogs,
+      calendarEvents,
+      calendarSettings,
+      users,
       addStudent,
       updateStudent,
       disableStudent,
@@ -331,6 +605,18 @@ export function DemoProvider({ children }: { children: ReactNode }) {
       uploadMedicalDocument,
       updateParentContact,
       getStudentProfile,
+      updateCalendarSettings,
+      addCalendarEvent,
+      updateCalendarEvent,
+      deleteCalendarEvent,
+      getUserByUsername,
+      createUser,
+      updateUser,
+      disableUser,
+      enableUser,
+      resetUserPassword,
+      deleteUser,
+      recordUserLogin,
     }),
     [
       students,
@@ -342,6 +628,9 @@ export function DemoProvider({ children }: { children: ReactNode }) {
       allergySubmissions,
       medicalDocuments,
       auditLogs,
+      calendarEvents,
+      calendarSettings,
+      users,
       addStudent,
       updateStudent,
       disableStudent,
@@ -354,6 +643,18 @@ export function DemoProvider({ children }: { children: ReactNode }) {
       uploadMedicalDocument,
       updateParentContact,
       getStudentProfile,
+      updateCalendarSettings,
+      addCalendarEvent,
+      updateCalendarEvent,
+      deleteCalendarEvent,
+      getUserByUsername,
+      createUser,
+      updateUser,
+      disableUser,
+      enableUser,
+      resetUserPassword,
+      deleteUser,
+      recordUserLogin,
     ]
   )
 

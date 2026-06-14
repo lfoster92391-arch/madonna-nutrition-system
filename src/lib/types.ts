@@ -69,12 +69,56 @@ export interface MedicalDocument {
   uploadedBy: string
 }
 
+export type UserRole = "admin" | "cashier" | "parent" | "staff"
+
+export type UserStatus = "active" | "disabled"
+
+export interface User {
+  id: string
+  username: string
+  email: string
+  firstName: string
+  lastName: string
+  role: UserRole
+  status: UserStatus
+  linkedStudentIds?: string[]
+  phone?: string
+  lastLoginAt?: string
+  createdAt: string
+  updatedAt: string
+}
+
+export type UserAuditAction =
+  | "USER_CREATED"
+  | "USER_UPDATED"
+  | "USER_DISABLED"
+  | "USER_ENABLED"
+  | "PASSWORD_RESET"
+  | "USER_DELETED"
+
+export const USER_AUDIT_ACTIONS: UserAuditAction[] = [
+  "USER_CREATED",
+  "USER_UPDATED",
+  "USER_DISABLED",
+  "USER_ENABLED",
+  "PASSWORD_RESET",
+  "USER_DELETED",
+]
+
 export interface AuditLogEntry {
   id: string
   action: string
+  /** @deprecated Prefer entityType — kept for existing allergy/import logs */
   entity: string
+  entityType?: string
   entityId?: string
   metadata?: Record<string, unknown>
+  performedBy?: string
+  performedAt?: string
+  previousValue?: Record<string, unknown> | string
+  newValue?: Record<string, unknown> | string
+  reason?: string
+  ipAddress?: string
   createdAt: string
 }
 
@@ -158,6 +202,31 @@ export const MEAL_PRICES: MealPrice[] = [
   { type: "ala_carte", label: "À La Carte", price: 4.5, grades: ["9", "10", "11", "12"] },
   { type: "milk", label: "Milk Only", price: 0.75 },
 ]
+
+export type CalendarEventCategory =
+  | "menu_day"
+  | "holiday"
+  | "early_dismissal"
+  | "special_event"
+  | "no_school"
+
+export type CalendarAccentColor = "navy" | "green" | "amber"
+
+export interface CalendarEvent {
+  id: string
+  title: string
+  date: string
+  description?: string
+  category: CalendarEventCategory
+  color?: string
+}
+
+export interface CalendarSettings {
+  headerTitle: string
+  bannerMessage?: string
+  accentColor: CalendarAccentColor
+  schoolName: string
+}
 
 export type FoodProfileStatus = "verified" | "pending_review" | "action_needed"
 

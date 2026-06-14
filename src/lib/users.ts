@@ -1,0 +1,39 @@
+import type { User, UserRole } from "@/lib/types"
+
+export const ROLE_LABELS: Record<UserRole, string> = {
+  admin: "Admin",
+  cashier: "Cashier",
+  parent: "Parent",
+  staff: "Staff",
+}
+
+export function formatUserName(user: Pick<User, "firstName" | "lastName">): string {
+  return `${user.firstName} ${user.lastName}`
+}
+
+export function generateTempPassword(length = 12): string {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$"
+  let result = ""
+  for (let i = 0; i < length; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length))
+  }
+  return result
+}
+
+export function findUserByLogin(
+  users: User[],
+  username: string
+): User | undefined {
+  const normalized = username.trim().toLowerCase()
+  const aliases: Record<string, string> = {
+    parent: "sarah.anderson",
+    admin: "d.garcia",
+    cashier: "j.wilson",
+  }
+  const lookup = aliases[normalized] ?? normalized
+  return users.find(
+    (u) =>
+      u.username.toLowerCase() === lookup ||
+      u.email.toLowerCase() === lookup
+  )
+}

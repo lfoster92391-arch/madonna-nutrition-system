@@ -32,9 +32,9 @@ export function LoginForm({ role, redirectTo }: LoginFormProps) {
   function handleSignIn(e: React.FormEvent) {
     e.preventDefault()
     setError("")
-    const ok = login(username, password, role)
-    if (!ok) {
-      setError("Please enter a username.")
+    const result = login(username, password, role)
+    if (!result.success) {
+      setError(result.error ?? "Sign in failed.")
       return
     }
     router.push(redirectTo)
