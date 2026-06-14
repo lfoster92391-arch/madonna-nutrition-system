@@ -19,7 +19,7 @@ export function PortalCard({
   return (
     <Link
       href={route}
-      className="group flex h-[200px] w-full min-w-[280px] max-w-[360px] flex-col items-center justify-center rounded-[24px] px-6 py-5 text-white shadow-[0_8px_24px_rgba(0,30,98,0.18)] transition-transform duration-200 hover:-translate-y-[6px] hover:scale-[1.02] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#001E62]"
+      className="group flex h-[200px] w-full max-w-[360px] shrink-0 flex-col items-center justify-center rounded-[24px] px-6 py-5 text-white shadow-[0_8px_24px_rgba(0,30,98,0.18)] transition-transform duration-200 hover:-translate-y-[6px] hover:scale-[1.02] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#001E62] sm:w-[360px]"
       style={{ backgroundColor: color }}
     >
       <span

@@ -39,8 +39,8 @@ export function LandingPageClient() {
       />
 
       <main className="relative z-10 flex min-h-screen min-h-[100dvh] w-full flex-col items-center justify-end px-6 pb-[10vh] sm:pb-[12vh] lg:pb-[14vh]">
-        <div className="w-full max-w-5xl text-center">
-          <div className="mx-auto grid w-full grid-cols-1 place-items-center gap-6 md:grid-cols-2 lg:grid-cols-3 lg:gap-8">
+        <div className="w-full max-w-[1128px] text-center">
+          <div className="mx-auto flex w-full flex-col items-center gap-6 md:flex-row md:flex-wrap md:justify-center lg:flex-nowrap lg:justify-center">
             {PORTALS.map((portal) => (
               <PortalCard key={portal.route} {...portal} />
             ))}
