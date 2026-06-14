@@ -15,7 +15,7 @@ const appUrl =
   process.env.NEXT_PUBLIC_SITE_URL ??
   (process.env.VERCEL_URL
     ? `https://${process.env.VERCEL_URL}`
-    : "https://fuelthedons.com")
+    : "https://fuelthebluedons.com")
 
 export const metadata: Metadata = {
   metadataBase: new URL(appUrl),

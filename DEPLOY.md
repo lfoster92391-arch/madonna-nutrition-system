@@ -1,6 +1,6 @@
-﻿# Deploy to Vercel — fuelthedons.com
+﻿# Deploy to Vercel — fuelthebluedons.com
 
-Deploy the Madonna Nutrition Management System (MNMS) demo to **https://fuelthedons.com** using the Vercel CLI (primary) or Git + Dashboard.
+Deploy the Madonna Nutrition Management System (MNMS) demo to **https://fuelthebluedons.com** using the Vercel CLI (primary) or Git + Dashboard.
 
 ## Pre-flight (local)
 
@@ -8,7 +8,7 @@ Deploy the Madonna Nutrition Management System (MNMS) demo to **https://fuelthed
 |-------|--------|
 | `npm run build` | Must pass before deploying |
 | Demo mode | Works without `DATABASE_URL` (in-memory demo data) |
-| `vercel.json` | Included — redirects `www` → apex domain |
+| `vercel.json` | Next.js framework preset; www → apex redirect via Vercel Domains (not in `vercel.json`) |
 | Vercel project | **madonna-nutrition-system** (team: lfoster92391-archs-projects) |
 
 If a local build fails with a missing file under `.next/`, delete `.next` and run `npm run build` again.
@@ -61,7 +61,7 @@ Set the public app URL for production (skip if already set):
 
 ```bash
 npx vercel env ls production
-npx vercel env add NEXT_PUBLIC_APP_URL production --value "https://fuelthedons.com" --yes --no-sensitive
+npx vercel env add NEXT_PUBLIC_APP_URL production --value "https://fuelthebluedons.com" --yes --no-sensitive
 ```
 
 Redeploy after changing env vars so the build picks them up.
@@ -83,8 +83,8 @@ npx vercel
 
 In [Vercel Dashboard](https://vercel.com/dashboard) → **madonna-nutrition-system** → **Settings** → **Domains**, ensure:
 
-- `fuelthedons.com`
-- `www.fuelthedons.com` (redirect to apex; also see `vercel.json`)
+- `fuelthebluedons.com`
+- `www.fuelthebluedons.com` (set to redirect to apex in Vercel Domains)
 
 **DNS at your registrar** (if not using Vercel nameservers):
 
@@ -98,8 +98,8 @@ In [Vercel Dashboard](https://vercel.com/dashboard) → **madonna-nutrition-syst
 ### Step 6 — Verify
 
 1. Latest production deployment shows **Ready** in Vercel.
-2. Visit **https://fuelthedons.com** and **https://madonna-nutrition-system.vercel.app**.
-3. Confirm **https://www.fuelthedons.com** redirects to apex.
+2. Visit **https://fuelthebluedons.com** and **https://madonna-nutrition-system.vercel.app**.
+3. Confirm **https://www.fuelthebluedons.com** redirects to apex.
 4. Smoke-test: `/scan`, `/parent`, `/admin/allergy-review`.
 
 ---
@@ -126,7 +126,7 @@ git push -u origin main
 1. Go to [vercel.com/dashboard](https://vercel.com/dashboard).
 2. **Add New…** → **Project** → import your repo.
 3. Framework: **Next.js** (defaults: `npm run build`, `.next`, `npm install`).
-4. Environment variables: none required for demo; add `NEXT_PUBLIC_APP_URL=https://fuelthedons.com` in Production if needed.
+4. Environment variables: none required for demo; add `NEXT_PUBLIC_APP_URL=https://fuelthebluedons.com` in Production if needed.
 5. **Deploy**.
 
 ### Step 3 — Domains & DNS
@@ -156,7 +156,7 @@ Optional future vars (not needed now): `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLE
 | `vercel link` wrong project | Delete `.vercel/` and run `npx vercel link` again with `madonna-nutrition-system` |
 | Domain "Invalid Configuration" | Recheck A/CNAME or nameservers; wait for DNS propagation |
 | Prisma errors at build | `postinstall` runs `prisma generate` — ensure `prisma/schema.prisma` is in the deploy |
-| www not redirecting | Confirm `vercel.json`; re-add domain in Vercel Domains |
+| www not redirecting | In Vercel Domains, set `www` to redirect to apex; re-add domain if needed |
 
 ---
 
@@ -166,6 +166,6 @@ Optional future vars (not needed now): `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLE
 - [ ] `npx vercel login` and `npx vercel link` (CLI path)
 - [ ] `NEXT_PUBLIC_APP_URL` set for production (if using custom domain)
 - [ ] `npx vercel --prod` succeeded
-- [ ] `fuelthedons.com` + `www.fuelthedons.com` in Vercel Domains
+- [ ] `fuelthebluedons.com` + `www.fuelthebluedons.com` in Vercel Domains
 - [ ] DNS A + CNAME **or** Vercel nameservers (ns1/ns2.vercel-dns.com)
-- [ ] Site loads at https://fuelthedons.com
+- [ ] Site loads at https://fuelthebluedons.com
