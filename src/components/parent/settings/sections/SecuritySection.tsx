@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import { SettingsPanel } from "@/components/parent/settings/SettingsPanel"
 import { Button } from "@/components/ui/button"
@@ -43,7 +43,7 @@ export function SecuritySection() {
               <li key={entry.date} className="flex flex-col gap-1 py-3 text-sm sm:flex-row sm:justify-between">
                 <span className="font-medium text-primary">{entry.date}</span>
                 <span className="text-silver-foreground">
-                  {entry.device} · {entry.location}
+                  {entry.device} ┬╖ {entry.location}
                 </span>
               </li>
             ))}

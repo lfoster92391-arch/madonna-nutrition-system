@@ -22,6 +22,11 @@ model School {
   students         Student[]
   transactions     Transaction[]
   inventory        InventoryItem[]
+  storageLocations StorageLocation[]
+  inventoryMovements InventoryMovement[]
+  receivingRecords ReceivingRecord[]
+  receiptScans     ReceiptScan[]
+  productionOrders ProductionOrder[]
   notifications    Notification[]
   menus            Menu[]
   forms            Form[]
@@ -211,20 +216,108 @@ model Transaction {
   createdAt          DateTime        @default(now())
 }
 
+model StorageLocation {
+  id        String   @id @default(cuid())
+  name      String
+  zone      String
+  capacity  Int?
+  schoolId  String
+  school    School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  items     InventoryItem[]
+  movements InventoryMovement[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
 model InventoryItem {
-  id                String   @id @default(cuid())
+  id                String           @id @default(cuid())
   name              String
   qty               Int
   unit              String
-  cost              Decimal  @db.Decimal(10, 2)
+  cost              Decimal          @db.Decimal(10, 2)
   expiration        DateTime
   category          String
-  lowStockThreshold Int      @default(10)
+  lowStockThreshold Int              @default(10)
   barcode           String?
+  sku               String?
+  vendor            String?
+  storageLocationId String?
+  storageLocation   StorageLocation? @relation(fields: [storageLocationId], references: [id], onDelete: SetNull)
+  lastReceivedAt    DateTime?
   schoolId          String
-  school            School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  school            School           @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  movements         InventoryMovement[]
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+}
+
+model InventoryMovement {
+  id                String           @id @default(cuid())
+  type              String
+  quantity          Int
+  note              String?
+  inventoryItemId   String
+  inventoryItem     InventoryItem    @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
+  storageLocationId String?
+  storageLocation   StorageLocation? @relation(fields: [storageLocationId], references: [id], onDelete: SetNull)
+  receivingRecordId String?
+  receivingRecord   ReceivingRecord? @relation(fields: [receivingRecordId], references: [id], onDelete: SetNull)
+  productionOrderId String?
+  productionOrder   ProductionOrder? @relation(fields: [productionOrderId], references: [id], onDelete: SetNull)
+  schoolId          String
+  school            School           @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  createdBy         String?
+  createdAt         DateTime         @default(now())
+}
+
+model ReceivingRecord {
+  id            String              @id @default(cuid())
+  vendorName    String
+  invoiceNumber String?
+  status        String              @default("draft")
+  notes         String?
+  lines         Json
+  receivedAt    DateTime?
+  approvedAt    DateTime?
+  approvedBy    String?
+  schoolId      String
+  school        School              @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  movements     InventoryMovement[]
+  receiptScans  ReceiptScan[]
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+}
+
+model ReceiptScan {
+  id                 String           @id @default(cuid())
+  fileName           String
+  imageUrl           String?
+  vendorGuess        String?
+  ocrText            String?
+  status             String           @default("pending")
+  matchedReceivingId String?
+  matchedReceiving   ReceivingRecord? @relation(fields: [matchedReceivingId], references: [id], onDelete: SetNull)
+  schoolId           String
+  school             School           @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  createdAt          DateTime         @default(now())
+}
+
+model ProductionOrder {
+  id              String              @id @default(cuid())
+  title           String
+  status          String              @default("planned")
+  scheduledFor    DateTime
+  portionsPlanned Int
+  portionsMade    Int                 @default(0)
+  mealTemplateId  String?
+  mealTemplate    MealTemplate?       @relation(fields: [mealTemplateId], references: [id], onDelete: SetNull)
+  notes           String?
+  wasteLog        Json?
+  schoolId        String
+  school          School              @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  movements       InventoryMovement[]
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
 }
 
 model Notification {
@@ -313,6 +406,7 @@ model MealTemplate {
   items             MealTemplateItem[]
   photos            MealPhoto[]
   calendarEvents    CalendarEvent[]
+  productionOrders  ProductionOrder[]
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
 }

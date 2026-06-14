@@ -11,6 +11,7 @@ const buttonVariants = cva(
         secondary: "bg-silver/30 text-primary hover:bg-silver/50",
         outline: "border-2 border-silver bg-white text-primary hover:bg-silver/20",
         ghost: "hover:bg-silver/20 text-primary",
+        link: "text-primary underline-offset-4 hover:underline min-h-0 h-auto px-0 font-medium",
         success: "bg-success text-white hover:bg-success/90",
         danger: "bg-danger text-white hover:bg-danger/90",
         warning: "bg-warning text-white hover:bg-warning/90",

@@ -184,7 +184,7 @@ function SummaryCard({
       <div className="flex items-start justify-between gap-2">
         <p className="text-sm font-semibold text-[#64748B]">{label}</p>
         <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-[#041B52]/5">
-          <Icon className="h-4 w-4" style={{ color: PARENT_NAVY }} />
+          <Icon className="h-4 w-4 text-[#041B52]" />
         </span>
       </div>
       <p

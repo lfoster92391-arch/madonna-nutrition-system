@@ -4,22 +4,14 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useState } from "react"
 import {
-  AlertTriangle,
-  Bell,
-  CalendarDays,
   ChevronLeft,
   ChevronRight,
-  ClipboardCheck,
   CreditCard,
   HelpCircle,
-  History,
   LayoutDashboard,
   LogOut,
   Settings,
   ShieldAlert,
-  UtensilsCrossed,
-  Users,
-  Wallet,
 } from "lucide-react"
 import { useAuth } from "@/components/providers/AuthProvider"
 import { SidebarBrand } from "@/components/layout/SidebarBrand"
@@ -28,20 +20,10 @@ import { cn } from "@/lib/utils"
 
 const navLinks = [
   { label: "Dashboard", href: "/parent", icon: LayoutDashboard },
-  { label: "Calendar", href: "/parent/calendar", icon: CalendarDays },
-  { label: "Reserve Lunch", href: "/parent/reserve-lunch", icon: UtensilsCrossed },
-  { label: "Fund Account", href: "/parent/add-funds", icon: Wallet },
-  { label: "Nutrition", href: "/parent/nutrition", icon: ShieldAlert },
-  { label: "Notifications", href: "/parent/notifications", icon: Bell },
-  { label: "Agreement Status", href: "/parent/agreement", icon: ClipboardCheck },
-  { label: "My Students", href: "/parent/students", icon: Users },
   { label: "Student Profiles", href: "/parent/student-profile", icon: ShieldAlert },
-  { label: "Meal History", href: "/parent/meal-history", icon: History },
-  { label: "Transactions", href: "/parent/transactions", icon: CreditCard },
-  { label: "Low Balance Alerts", href: "/parent/alerts", icon: AlertTriangle },
+  { label: "Payments", href: "/parent/payments", icon: CreditCard },
   { label: "Settings", href: "/parent/settings", icon: Settings },
-  { label: "Payment Methods", href: "/parent/payment-methods", icon: CreditCard },
-  { label: "Help & Support", href: "/parent/help", icon: HelpCircle },
+  { label: "Support", href: "/parent/help", icon: HelpCircle },
 ]
 
 export function ParentSidebar() {
@@ -58,7 +40,7 @@ export function ParentSidebar() {
     >
       <SidebarBrand href="/parent" portalLabel="Parent Portal" compact collapsed={!expanded} />
 
-      <nav className="flex-1 space-y-1 overflow-y-auto overflow-x-hidden p-2">
+      <nav className="flex-1 space-y-1 overflow-hidden p-2">
         {navLinks.map(({ label, href, icon: Icon }) => {
           const active =
             pathname === href || (href !== "/parent" && pathname.startsWith(`${href}/`))

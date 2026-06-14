@@ -91,7 +91,7 @@ export function ParentTransactionsList() {
       </Card>
 
       <Button asChild variant="outline">
-        <Link href="/parent/add-funds">Add funds</Link>
+        <Link href="/parent/add-funds">Deposit Funds</Link>
       </Button>
     </div>
   )

@@ -203,3 +203,56 @@ export const parentContactUpdateSchema = z.object({
   email: z.string().email(),
   phone: z.string(),
 })
+
+export const receivingLineSchema = z.object({
+  inventoryItemId: z.string().optional(),
+  name: z.string().min(1),
+  quantity: z.number().positive(),
+  unit: z.string().min(1),
+  unitCost: z.number().nonnegative().optional(),
+})
+
+export const createReceivingSchema = z.object({
+  vendorName: z.string().min(1),
+  invoiceNumber: z.string().optional(),
+  lines: z.array(receivingLineSchema).min(1),
+  notes: z.string().optional(),
+  storageLocationId: z.string().optional(),
+  status: z.enum(["draft", "pending_approval"]).optional(),
+  barcode: z.string().optional(),
+})
+
+export const updateReceivingSchema = z.object({
+  id: z.string().min(1),
+  action: z.enum(["approve", "reject", "submit"]),
+  approvedBy: z.string().optional(),
+  storageLocationId: z.string().optional(),
+})
+
+export const inventoryMovementSchema = z.object({
+  inventoryItemId: z.string().min(1),
+  type: z.enum(["receive", "adjust", "transfer", "production", "waste"]),
+  quantity: z.number().positive(),
+  note: z.string().optional(),
+  createdBy: z.string().optional(),
+})
+
+export const updateProductionSchema = z.object({
+  id: z.string().min(1),
+  status: z.enum(["planned", "in_progress", "completed", "cancelled"]).optional(),
+  portionsMade: z.number().nonnegative().optional(),
+  wasteItemId: z.string().optional(),
+  wasteQuantity: z.number().positive().optional(),
+  wasteNote: z.string().optional(),
+})
+
+export const createReceiptSchema = z.object({
+  fileName: z.string().min(1),
+  imageUrl: z.string().optional(),
+})
+
+export const matchReceiptSchema = z.object({
+  id: z.string().min(1),
+  receivingId: z.string().min(1),
+  approve: z.boolean().optional(),
+})

@@ -5,11 +5,14 @@ import { usePathname } from "next/navigation"
 import {
   BarChart3,
   Brain,
+  ChefHat,
   ClipboardList,
   DollarSign,
   LayoutDashboard,
   LineChart,
   Package,
+  PackageCheck,
+  Receipt,
   ScanLine,
   ShieldAlert,
   Users,
@@ -32,6 +35,15 @@ const NAV_SECTIONS = [
       { label: "Analytics", href: "/analytics", icon: BarChart3 },
       { label: "Parent Portal", href: "/parent", icon: ClipboardList },
       { label: "Ops Center", href: "/ops", icon: LayoutDashboard },
+    ],
+  },
+  {
+    title: "Operations",
+    links: [
+      { label: "Receiving Studio", href: "/admin/receiving", icon: PackageCheck },
+      { label: "Inventory", href: "/admin/inventory", icon: Package },
+      { label: "Production Center", href: "/admin/production", icon: ChefHat },
+      { label: "Receipt Center", href: "/admin/receipts", icon: Receipt },
     ],
   },
   {

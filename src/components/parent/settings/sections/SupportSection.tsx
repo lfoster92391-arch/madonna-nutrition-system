@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import Link from "next/link"
 import { SettingsPanel } from "@/components/parent/settings/SettingsPanel"
@@ -13,7 +13,7 @@ export function SupportSection() {
       <div className="space-y-4">
         <SupportCard
           title="Contact nutrition office"
-          description="nutrition@madonnahs.org · (304) 748-4414 · Mon–Fri, 7:30 AM – 2:30 PM"
+          description="nutrition@madonnahs.org ┬╖ (304) 748-4414 ┬╖ MonΓÇôFri, 7:30 AM ΓÇô 2:30 PM"
           actionLabel="Email office"
           href="mailto:nutrition@madonnahs.org"
         />

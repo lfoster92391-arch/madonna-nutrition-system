@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import Image from "next/image"
 import Link from "next/link"
@@ -42,7 +42,7 @@ export function StudentSettingsSection() {
                       {student.firstName} {student.lastName}
                     </h3>
                     <p className="text-sm text-silver-foreground">
-                      Grade {student.grade} · {student.homeroom}
+                      Grade {student.grade} ┬╖ {student.homeroom}
                     </p>
                   </div>
 
@@ -66,7 +66,7 @@ export function StudentSettingsSection() {
                         Default funding
                       </dt>
                       <dd className="mt-1 text-primary">
-                        Alert below {formatCurrency(threshold)} · Balance{" "}
+                        Alert below {formatCurrency(threshold)} ┬╖ Balance{" "}
                         {formatCurrency(student.balance)}
                       </dd>
                     </div>

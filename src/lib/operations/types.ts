@@ -74,6 +74,7 @@ export interface ReceiptScan {
   fileName: string
   imageUrl?: string
   vendorGuess?: string
+  ocrText?: string
   status: ReceiptScanStatus
   matchedReceivingId?: string
   schoolId: string

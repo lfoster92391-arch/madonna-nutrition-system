@@ -837,3 +837,5 @@ export function getMedicalDocumentsForStudent(
 }
 
 export { demoMealTemplates } from "./meal-templates"
+
+export type { Student } from "@/lib/types"

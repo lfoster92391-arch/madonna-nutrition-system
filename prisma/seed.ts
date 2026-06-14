@@ -340,24 +340,165 @@ async function main() {
   }
 
   await prisma.inventoryItem.deleteMany({ where: { schoolId: school.id } })
+  await prisma.inventoryMovement.deleteMany({ where: { schoolId: school.id } })
+  await prisma.receivingRecord.deleteMany({ where: { schoolId: school.id } })
+  await prisma.receiptScan.deleteMany({ where: { schoolId: school.id } })
+  await prisma.productionOrder.deleteMany({ where: { schoolId: school.id } })
+  await prisma.storageLocation.deleteMany({ where: { schoolId: school.id } })
+
+  const storageLocations = await Promise.all([
+    prisma.storageLocation.create({
+      data: { name: "Dry Storage A", zone: "dry", capacity: 200, schoolId: school.id },
+    }),
+    prisma.storageLocation.create({
+      data: { name: "Walk-in Cooler", zone: "cold", capacity: 80, schoolId: school.id },
+    }),
+    prisma.storageLocation.create({
+      data: { name: "Main Freezer", zone: "freezer", capacity: 60, schoolId: school.id },
+    }),
+    prisma.storageLocation.create({
+      data: { name: "Prep Line", zone: "prep", capacity: 40, schoolId: school.id },
+    }),
+  ])
+
+  const [dryLoc, coldLoc, freezerLoc] = storageLocations
+
+  const invMilk = await prisma.inventoryItem.create({
+    data: {
+      name: "Chocolate Milk",
+      qty: 24,
+      unit: "cartons",
+      cost: 0.65,
+      expiration: new Date("2026-05-18"),
+      category: "Dairy",
+      barcode: "041000000001",
+      storageLocationId: coldLoc.id,
+      schoolId: school.id,
+    },
+  })
+
+  const invChicken = await prisma.inventoryItem.create({
+    data: {
+      name: "Chicken Patties",
+      qty: 8,
+      unit: "cases",
+      cost: 42.5,
+      expiration: new Date("2026-06-10"),
+      category: "Frozen",
+      lowStockThreshold: 12,
+      barcode: "041000000002",
+      storageLocationId: freezerLoc.id,
+      schoolId: school.id,
+    },
+  })
+
   await prisma.inventoryItem.createMany({
     data: [
       {
-        name: "Chocolate Milk",
-        qty: 24,
-        unit: "cartons",
-        cost: 0.65,
-        expiration: new Date("2026-05-18"),
-        category: "Dairy",
+        name: "Apple Slices",
+        qty: 42,
+        unit: "bags",
+        cost: 3.25,
+        expiration: new Date("2026-05-14"),
+        category: "Produce",
+        storageLocationId: coldLoc.id,
         schoolId: school.id,
       },
       {
-        name: "Chicken Patties",
-        qty: 8,
-        unit: "cases",
-        cost: 42.5,
-        expiration: new Date("2026-06-10"),
-        category: "Frozen",
+        name: "Hamburger Buns",
+        qty: 60,
+        unit: "packs",
+        cost: 2.15,
+        expiration: new Date("2026-05-13"),
+        category: "Bakery",
+        storageLocationId: dryLoc.id,
+        schoolId: school.id,
+      },
+    ],
+  })
+
+  const receivingApproved = await prisma.receivingRecord.create({
+    data: {
+      vendorName: "Local Produce Co.",
+      status: "approved",
+      lines: [
+        { inventoryItemId: invMilk.id, name: "Chocolate Milk", quantity: 24, unit: "cartons" },
+      ],
+      receivedAt: new Date("2026-06-12T09:15:00.000Z"),
+      approvedAt: new Date("2026-06-12T10:00:00.000Z"),
+      approvedBy: "Nutrition Office",
+      schoolId: school.id,
+    },
+  })
+
+  const receivingPending = await prisma.receivingRecord.create({
+    data: {
+      vendorName: "Sysco Foods",
+      invoiceNumber: "INV-88421",
+      status: "pending_approval",
+      lines: [
+        { inventoryItemId: invChicken.id, name: "Chicken Breast", quantity: 40, unit: "lb", unitCost: 2.85 },
+        { name: "Whole Wheat Buns", quantity: 120, unit: "ea", unitCost: 0.35 },
+      ],
+      receivedAt: new Date("2026-06-13T14:30:00.000Z"),
+      schoolId: school.id,
+    },
+  })
+
+  await prisma.inventoryMovement.create({
+    data: {
+      type: "receive",
+      quantity: 24,
+      note: "Local Produce delivery",
+      inventoryItemId: invMilk.id,
+      storageLocationId: coldLoc.id,
+      receivingRecordId: receivingApproved.id,
+      schoolId: school.id,
+      createdBy: "Kitchen Staff",
+    },
+  })
+
+  await prisma.receiptScan.createMany({
+    data: [
+      {
+        fileName: "sysco-june-13.pdf",
+        vendorGuess: "Sysco Foods",
+        ocrText: "SYSCO FOODS\nInvoice INV-88421\nChicken Breast 40 lb",
+        status: "matched",
+        matchedReceivingId: receivingPending.id,
+        schoolId: school.id,
+      },
+      {
+        fileName: "unknown-vendor.jpg",
+        ocrText: "Receipt unreadable — manual review required",
+        status: "unmatched",
+        schoolId: school.id,
+      },
+    ],
+  })
+
+  const firstTemplate = await prisma.mealTemplate.findFirst({ where: { schoolId: school.id } })
+  const todayProd = new Date()
+  todayProd.setHours(11, 0, 0, 0)
+
+  await prisma.productionOrder.createMany({
+    data: [
+      {
+        title: "Tuesday Hot Lunch — Chicken Wraps",
+        status: "in_progress",
+        scheduledFor: todayProd,
+        portionsPlanned: 185,
+        portionsMade: 92,
+        mealTemplateId: firstTemplate?.id,
+        notes: "185 student + 12 staff reservations",
+        schoolId: school.id,
+      },
+      {
+        title: "Wednesday Salad Bar",
+        status: "planned",
+        scheduledFor: new Date(todayProd.getTime() + 86400000),
+        portionsPlanned: 160,
+        portionsMade: 0,
         schoolId: school.id,
       },
     ],

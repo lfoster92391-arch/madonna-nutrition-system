@@ -137,7 +137,7 @@ export default function AdminAnalyticsPage() {
                           <td className="py-3 pr-4">{row.calories ?? "—"}</td>
                           <td className="py-3 pr-4">{row.allergens.join(", ") || "None"}</td>
                           <td className="py-3 pr-4">
-                            <Badge variant={row.compliant ? "default" : "destructive"}>
+                            <Badge variant={row.compliant ? "default" : "danger"}>
                               {row.compliant ? "Compliant" : "Review"}
                             </Badge>
                           </td>

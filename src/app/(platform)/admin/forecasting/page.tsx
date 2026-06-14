@@ -77,7 +77,7 @@ export default function AdminForecastingPage() {
                       <p className="font-medium text-[#041B52]">{row.itemName}</p>
                       <p className="text-xs text-[#AEB6C2]">{row.currentQty} on hand · par {row.threshold}</p>
                     </div>
-                    <Badge variant={row.daysUntilThreshold <= 3 ? "destructive" : "secondary"}>
+                    <Badge variant={row.daysUntilThreshold <= 3 ? "danger" : "outline"}>
                       {row.daysUntilThreshold}d
                     </Badge>
                   </div>

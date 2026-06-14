@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import { SettingsPanel } from "@/components/parent/settings/SettingsPanel"
 import { Button } from "@/components/ui/button"
