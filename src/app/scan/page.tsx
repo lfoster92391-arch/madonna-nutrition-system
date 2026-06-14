@@ -5,7 +5,8 @@ import Image from "next/image"
 import { AlertTriangle, ScanLine, ShoppingCart, Utensils, Users, Wine } from "lucide-react"
 import { useDemo } from "@/components/providers/DemoProvider"
 import { getAllergyBannerStyle, getHighestAllergySeverity } from "@/data/demo"
-import { Input, Label } from "@/components/ui/input"
+import { ScanKeypad } from "@/components/scan/ScanKeypad"
+import { Label } from "@/components/ui/input"
 import { MEAL_PRICES } from "@/lib/types"
 import type { Student } from "@/lib/types"
 import { checkMealCompatibility, formatDaysAgo } from "@/lib/food-safety"
@@ -103,14 +104,27 @@ export default function ScanStationPage() {
   )
 
   function handleScanChange(value: string) {
-    setScanValue(value)
+    const digitsOnly = value.replace(/\D/g, "")
+    setScanValue(digitsOnly)
     if (scanTimerRef.current) clearTimeout(scanTimerRef.current)
-    if (value.length >= 4) {
+    if (digitsOnly.length >= 4) {
       setScanStatus("scanning")
-      scanTimerRef.current = setTimeout(() => lookupStudent(value), 200)
-    } else if (value.length === 0) {
+      scanTimerRef.current = setTimeout(() => lookupStudent(digitsOnly), 200)
+    } else if (digitsOnly.length === 0) {
       setScanStatus(student ? "found" : "ready")
     }
+  }
+
+  function appendDigit(digit: string) {
+    handleScanChange(scanValue + digit)
+  }
+
+  function deleteLastDigit() {
+    handleScanChange(scanValue.slice(0, -1))
+  }
+
+  function clearScanValue() {
+    handleScanChange("")
   }
 
   function resetStation() {
@@ -226,20 +240,46 @@ export default function ScanStationPage() {
               <Label htmlFor="badge-input" className="text-xl font-bold text-[#001E62]">
                 Student Badge ID
               </Label>
-              <Input
-                ref={scanInputRef}
-                id="badge-input"
-                autoFocus
-                value={scanValue}
-                onChange={(e) => handleScanChange(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault()
-                    lookupStudent(scanValue)
-                  }
-                }}
-                placeholder="Scan or type ID (demo: 10457)"
-                className="mt-3 h-20 text-3xl font-semibold"
+              <div className="relative mt-3">
+                <input
+                  ref={scanInputRef}
+                  id="badge-input"
+                  type="text"
+                  inputMode="none"
+                  autoComplete="off"
+                  autoCorrect="off"
+                  autoCapitalize="off"
+                  spellCheck={false}
+                  autoFocus
+                  value={scanValue}
+                  onChange={(e) => handleScanChange(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault()
+                      lookupStudent(scanValue)
+                    }
+                  }}
+                  className="absolute h-px w-px opacity-0"
+                  aria-label="Student badge ID scanner input"
+                />
+                <div
+                  role="textbox"
+                  aria-readonly="true"
+                  aria-labelledby="badge-input"
+                  className="flex h-20 items-center rounded-2xl border border-[#001E62]/20 bg-[#F5F6F8] px-5 text-3xl font-semibold tracking-wide text-[#001E62]"
+                >
+                  {scanValue || (
+                    <span className="text-2xl font-normal text-[#64748B]">
+                      Scan badge or tap numbers below
+                    </span>
+                  )}
+                </div>
+              </div>
+              <ScanKeypad
+                className="mt-5"
+                onDigit={appendDigit}
+                onBackspace={deleteLastDigit}
+                onClear={clearScanValue}
               />
             </section>
 
