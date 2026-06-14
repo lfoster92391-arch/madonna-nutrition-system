@@ -1,7 +1,6 @@
 "use client"
 
 import Link from "next/link"
-import Image from "next/image"
 import { usePathname } from "next/navigation"
 import {
   AlertTriangle,
@@ -16,6 +15,7 @@ import {
   Wallet,
 } from "lucide-react"
 import { useAuth } from "@/components/providers/AuthProvider"
+import { SidebarBrand } from "@/components/layout/SidebarBrand"
 import { DEMO_SCHOOL } from "@/data/demo"
 import { cn } from "@/lib/utils"
 
@@ -37,22 +37,8 @@ export function ParentSidebar() {
   const { logout } = useAuth()
 
   return (
-    <aside className="flex w-72 shrink-0 flex-col bg-primary text-white">
-      <div className="border-b border-white/10 p-6">
-        <Link href="/parent" className="flex items-center gap-3">
-          <Image
-            src="/icon.png"
-            alt="Fuel the Dons"
-            width={48}
-            height={48}
-            className="h-12 w-12 shrink-0 rounded-lg object-contain"
-          />
-          <div>
-            <p className="text-xs font-bold uppercase tracking-wider">Madonna Nutrition</p>
-            <p className="text-[10px] uppercase tracking-wide text-white/70">Management System</p>
-          </div>
-        </Link>
-      </div>
+    <aside className="flex w-72 shrink-0 flex-col border-r border-silver bg-primary text-white">
+      <SidebarBrand href="/parent" portalLabel="Parent Portal" />
 
       <nav className="flex-1 space-y-1 p-4">
         {navLinks.map(({ label, href, icon: Icon }) => {
@@ -63,7 +49,9 @@ export function ParentSidebar() {
               href={href}
               className={cn(
                 "flex min-h-12 items-center gap-3 rounded-2xl px-4 text-sm font-medium transition",
-                active ? "bg-white/15 text-white" : "text-white/80 hover:bg-white/10 hover:text-white"
+                active
+                  ? "bg-success text-white"
+                  : "text-white/80 hover:bg-white/10 hover:text-white"
               )}
             >
               <Icon className="h-5 w-5 shrink-0" />
@@ -84,19 +72,10 @@ export function ParentSidebar() {
         </button>
       </nav>
 
-      <div className="border-t border-white/10 p-6">
-        <div className="flex items-center gap-3">
-          <Image
-            src="/icon.png"
-            alt=""
-            width={32}
-            height={32}
-            className="h-8 w-8 shrink-0 rounded-md object-contain opacity-90"
-          />
-          <div>
-            <p className="text-xs font-bold uppercase tracking-wide">{DEMO_SCHOOL.name}</p>
-            <p className="text-[10px] uppercase text-white/60">{DEMO_SCHOOL.location}</p>
-          </div>
+      <div className="border-t border-silver p-6">
+        <div className="text-center">
+          <p className="text-xs font-bold uppercase tracking-wide text-white">{DEMO_SCHOOL.name}</p>
+          <p className="text-[10px] uppercase text-silver">{DEMO_SCHOOL.location}</p>
         </div>
       </div>
     </aside>
