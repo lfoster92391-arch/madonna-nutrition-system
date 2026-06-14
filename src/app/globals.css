@@ -37,3 +37,34 @@ body {
 * {
   border-color: color-mix(in srgb, var(--silver) 60%, transparent);
 }
+
+@keyframes scan-ready-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.3;
+    transform: scale(0.88);
+  }
+}
+
+@keyframes scan-ready-ring {
+  0% {
+    transform: scale(1);
+    opacity: 0.75;
+  }
+  100% {
+    transform: scale(2.4);
+    opacity: 0;
+  }
+}
+
+.scan-ready-dot {
+  animation: scan-ready-pulse 1s ease-in-out infinite;
+}
+
+.scan-ready-ring {
+  animation: scan-ready-ring 1.4s cubic-bezier(0, 0, 0.2, 1) infinite;
+}

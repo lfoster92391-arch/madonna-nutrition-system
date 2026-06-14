@@ -2,7 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import Image from "next/image"
+import Link from "next/link"
 import { AlertTriangle, ScanLine, ShoppingCart, Utensils, Users, Wine } from "lucide-react"
+import { useAuth } from "@/components/providers/AuthProvider"
 import { useDemo } from "@/components/providers/DemoProvider"
 import { getAllergyBannerStyle, getHighestAllergySeverity } from "@/data/demo"
 import { ScanKeypad } from "@/components/scan/ScanKeypad"
@@ -12,6 +14,10 @@ import type { Student } from "@/lib/types"
 import { checkMealCompatibility, formatDaysAgo } from "@/lib/food-safety"
 import { cn, formatCurrency, formatTime } from "@/lib/utils"
 
+const MEAL_RESET_MS = 1200
+const ERROR_RESET_MS = 2000
+const FLASH_DISMISS_MS = 2000
+
 const MEAL_STYLES: Record<string, { bg: string; icon: typeof Utensils }> = {
   student_meal: { bg: "bg-[#0D7A3B] hover:bg-[#0a6632]", icon: Utensils },
   staff_meal: { bg: "bg-[#0B2D8F] hover:bg-[#092575]", icon: Users },
@@ -20,7 +26,8 @@ const MEAL_STYLES: Record<string, { bg: string; icon: typeof Utensils }> = {
 }
 
 export default function ScanStationPage() {
-  const { students, processMeal, getStudentProfile } = useDemo()
+  const { user: authUser } = useAuth()
+  const { students, users, processMeal, getStudentProfile } = useDemo()
   const [clock, setClock] = useState(formatTime())
   const [dateStr, setDateStr] = useState("")
   const [scanValue, setScanValue] = useState("")
@@ -32,6 +39,8 @@ export default function ScanStationPage() {
   const scanInputRef = useRef<HTMLInputElement>(null)
   const scanTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const resetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const errorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const flashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const profile = student ? getStudentProfile(student.id) : undefined
   const highestSeverity = student ? getHighestAllergySeverity(student.allergies) : null
@@ -42,6 +51,11 @@ export default function ScanStationPage() {
     () => student?.allergies.map((a) => a.name.toUpperCase()).join(" + ") ?? "",
     [student]
   )
+
+  const activeCashier = useMemo(() => {
+    if (!authUser || authUser.role !== "cashier") return null
+    return users.find((u) => u.id === authUser.id) ?? null
+  }, [authUser, users])
 
   useEffect(() => {
     const tick = () => {
@@ -67,24 +81,59 @@ export default function ScanStationPage() {
     scanInputRef.current?.focus()
   }, [])
 
+  const armScanner = useCallback(
+    (options?: { keepStudent?: boolean }) => {
+      const keepStudent = options?.keepStudent ?? false
+      if (!keepStudent) setStudent(null)
+      setScanStatus(keepStudent ? "found" : "ready")
+      setScanValue("")
+      window.setTimeout(focusScan, 50)
+    },
+    [focusScan]
+  )
+
   useEffect(() => {
     focusScan()
-    const interval = setInterval(focusScan, 3000)
+    const interval = setInterval(focusScan, 2000)
     return () => clearInterval(interval)
-  }, [focusScan, student])
+  }, [focusScan])
 
-  const loadStudent = useCallback((found: Student) => {
-    if (found.disabled) {
-      setScanStatus("error")
-      setFlashMessage("Student account is disabled.")
-      return
+  useEffect(() => {
+    if (!flashMessage) return
+    if (flashTimerRef.current) clearTimeout(flashTimerRef.current)
+    flashTimerRef.current = setTimeout(() => setFlashMessage(""), FLASH_DISMISS_MS)
+    return () => {
+      if (flashTimerRef.current) clearTimeout(flashTimerRef.current)
     }
-    setStudent(found)
-    setLocalBalance(found.balance)
-    setScanStatus("found")
-    setScanValue("")
-    setFlashMessage("")
-  }, [])
+  }, [flashMessage])
+
+  useEffect(() => {
+    if (scanStatus !== "error") return
+    if (errorTimerRef.current) clearTimeout(errorTimerRef.current)
+    errorTimerRef.current = setTimeout(() => armScanner(), ERROR_RESET_MS)
+    return () => {
+      if (errorTimerRef.current) clearTimeout(errorTimerRef.current)
+    }
+  }, [scanStatus, armScanner])
+
+  const loadStudent = useCallback(
+    (found: Student) => {
+      if (found.disabled) {
+        setScanStatus("error")
+        setFlashMessage("Student account is disabled.")
+        setScanValue("")
+        window.setTimeout(focusScan, 50)
+        return
+      }
+      setStudent(found)
+      setLocalBalance(found.balance)
+      setScanStatus("found")
+      setScanValue("")
+      setFlashMessage("")
+      window.setTimeout(focusScan, 50)
+    },
+    [focusScan]
+  )
 
   const lookupStudent = useCallback(
     (id: string) => {
@@ -95,7 +144,7 @@ export default function ScanStationPage() {
         setScanStatus("error")
         setFlashMessage("Student not found. Try again.")
         setScanValue("")
-        setTimeout(focusScan, 100)
+        window.setTimeout(focusScan, 50)
         return
       }
       loadStudent(found)
@@ -128,36 +177,48 @@ export default function ScanStationPage() {
   }
 
   function resetStation() {
-    setStudent(null)
-    setScanStatus("ready")
-    setScanValue("")
-    setFlashMessage("")
-    setTimeout(focusScan, 100)
+    if (resetTimerRef.current) clearTimeout(resetTimerRef.current)
+    armScanner()
   }
 
   async function handleMeal(mealLabel: string, price: number) {
     if (!student) return
     if (mealBlocked) {
       setFlashMessage("MEAL BLOCKED — Allergy conflict. Do not serve today's meal.")
+      window.setTimeout(focusScan, 50)
       return
     }
-    const tx = await processMeal(student.id, mealLabel, price)
+    const tx = await processMeal(
+      student.id,
+      mealLabel,
+      price,
+      activeCashier?.id
+    )
     if (tx) {
       setLocalBalance(tx.balanceAfter)
       setFlashMessage(`${mealLabel} recorded for ${student.firstName}!`)
       if (resetTimerRef.current) clearTimeout(resetTimerRef.current)
-      resetTimerRef.current = setTimeout(resetStation, 1500)
+      resetTimerRef.current = setTimeout(resetStation, MEAL_RESET_MS)
+      window.setTimeout(focusScan, 50)
     }
   }
 
+  const scannerArmed = scanStatus === "ready" || scanStatus === "found"
   const statusLabel =
-    scanStatus === "ready"
-      ? "READY TO SCAN"
-      : scanStatus === "scanning"
-        ? "SCANNING..."
-        : scanStatus === "found"
-          ? "STUDENT LOADED"
-          : "NOT FOUND"
+    scanStatus === "scanning"
+      ? "SCANNING..."
+      : scanStatus === "error"
+        ? "NOT FOUND"
+        : "READY TO SCAN"
+
+  const statusHint =
+    scanStatus === "scanning"
+      ? "Reading badge — hold still"
+      : scanStatus === "error"
+        ? "Badge not recognized — scanner will re-arm automatically"
+        : student
+          ? `${student.firstName} loaded — select meal or scan next badge`
+          : "Walk up, scan badge, and go"
 
   return (
     <div className="p-4 lg:p-6">
@@ -189,29 +250,90 @@ export default function ScanStationPage() {
       )}
 
       <div className="mx-auto max-w-[1600px] space-y-6">
+        <div
+          className={cn(
+            "rounded-2xl border-2 px-6 py-4",
+            activeCashier
+              ? "border-[#0D7A3B]/30 bg-green-50"
+              : "border-amber-400/50 bg-amber-50"
+          )}
+        >
+          {activeCashier ? (
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold uppercase tracking-wide text-[#0D7A3B]">
+                  Cashier on duty
+                </p>
+                <p className="text-2xl font-bold text-[#001E62]">
+                  {activeCashier.firstName} {activeCashier.lastName}
+                </p>
+              </div>
+              {activeCashier.badgeId && (
+                <div className="rounded-xl bg-white px-5 py-3 text-center">
+                  <p className="text-xs font-medium text-[#64748B]">Staff Badge</p>
+                  <p className="font-mono text-2xl font-bold text-[#001E62]">{activeCashier.badgeId}</p>
+                </div>
+              )}
+            </div>
+          ) : (
+            <p className="text-lg font-semibold text-amber-900">
+              No cashier signed in — meal scans will not be linked to a staff member.{" "}
+              <Link href="/login/cashier" className="underline">
+                Sign in at shift start
+              </Link>
+            </p>
+          )}
+        </div>
+
         <div className="grid gap-4 lg:grid-cols-[1fr_auto]">
           <div
             className={cn(
-              "flex items-center gap-4 rounded-2xl border-4 bg-white px-6 py-5",
-              scanStatus === "error" ? "border-red-500" : "border-[#0D7A3B]"
+              "flex items-center gap-5 rounded-2xl border-4 px-6 py-6",
+              scanStatus === "error"
+                ? "border-red-500 bg-red-50"
+                : scanStatus === "scanning"
+                  ? "border-[#001E62]/40 bg-white"
+                  : "border-[#001E62] bg-[#001E62] text-white"
             )}
           >
-            <ScanLine
-              className={cn(
-                "h-12 w-12 shrink-0",
-                scanStatus === "error" ? "text-red-500" : "text-[#0D7A3B]"
-              )}
-            />
+            {scannerArmed ? (
+              <span
+                className="relative flex h-8 w-8 shrink-0 items-center justify-center"
+                aria-hidden
+              >
+                <span className="scan-ready-ring absolute inline-flex h-8 w-8 rounded-full bg-red-500" />
+                <span className="scan-ready-dot relative inline-flex h-5 w-5 rounded-full bg-red-600 ring-4 ring-red-600/30" />
+              </span>
+            ) : scanStatus === "scanning" ? (
+              <ScanLine className="h-12 w-12 shrink-0 animate-pulse text-[#001E62]" />
+            ) : (
+              <ScanLine className="h-12 w-12 shrink-0 text-red-500" />
+            )}
             <div className="flex-1">
               <p
                 className={cn(
-                  "text-3xl font-black tracking-wide md:text-4xl",
-                  scanStatus === "error" ? "text-red-500" : "text-[#0D7A3B]"
+                  "text-4xl font-black tracking-wide md:text-5xl",
+                  scanStatus === "error"
+                    ? "text-red-600"
+                    : scanStatus === "scanning"
+                      ? "text-[#001E62]"
+                      : "text-white"
                 )}
               >
                 {statusLabel}
               </p>
-              <p className="text-lg text-[#64748B]">Scan or type student badge ID below</p>
+              <p
+                className={cn(
+                  "mt-1 text-xl font-semibold md:text-2xl",
+                  scanStatus === "error"
+                    ? "text-red-500"
+                    : scanStatus === "scanning"
+                      ? "text-[#64748B]"
+                      : "text-white/90"
+                )}
+              >
+                {statusHint}
+              </p>
             </div>
           </div>
 
@@ -223,8 +345,10 @@ export default function ScanStationPage() {
 
         {flashMessage && (
           <div
+            role="status"
+            aria-live="polite"
             className={cn(
-              "rounded-2xl border-2 px-6 py-4 text-2xl font-bold",
+              "rounded-2xl border-2 px-6 py-5 text-2xl font-bold md:text-3xl",
               flashMessage.includes("BLOCKED")
                 ? "border-red-500 bg-red-50 text-red-600"
                 : "border-[#0D7A3B] bg-green-50 text-[#0D7A3B]"
@@ -270,7 +394,7 @@ export default function ScanStationPage() {
                 >
                   {scanValue || (
                     <span className="text-2xl font-normal text-[#64748B]">
-                      Scan badge or tap numbers below
+                      {scannerArmed ? "Scanner armed — scan badge now" : "Scan badge or tap numbers below"}
                     </span>
                   )}
                 </div>
@@ -401,9 +525,13 @@ export default function ScanStationPage() {
               </div>
             ) : (
               <div className="flex min-h-[360px] flex-col items-center justify-center text-center text-[#64748B]">
-                <Users className="mb-4 h-16 w-16 opacity-30" />
-                <p className="text-xl">Waiting for scan...</p>
-                <p className="mt-3 text-base">Demo: 10457 — James Anderson (peanut allergy)</p>
+                <span className="relative mb-6 flex h-10 w-10 items-center justify-center" aria-hidden>
+                  <span className="scan-ready-ring absolute inline-flex h-10 w-10 rounded-full bg-red-500" />
+                  <span className="scan-ready-dot relative inline-flex h-6 w-6 rounded-full bg-red-600 ring-4 ring-red-600/30" />
+                </span>
+                <p className="text-2xl font-bold text-[#001E62]">Ready to scan</p>
+                <p className="mt-3 text-lg">Demo student: 10457 — James Anderson (peanut allergy)</p>
+                <p className="mt-2 text-base">Demo cashier badge: 90004 — j.wilson</p>
               </div>
             )}
           </aside>
