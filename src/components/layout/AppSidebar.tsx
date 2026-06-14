@@ -33,7 +33,7 @@ export function AppSidebar() {
 
   return (
     <aside className="flex w-72 shrink-0 flex-col border-r border-silver bg-primary text-white">
-      <SidebarBrand portalLabel="Operations Platform" />
+      <SidebarBrand />
 
       <nav className="flex-1 space-y-1 p-4">
         {navLinks.map(({ label, href, icon: Icon }) => {

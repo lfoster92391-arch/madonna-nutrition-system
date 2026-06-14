@@ -10,25 +10,25 @@ type SidebarBrandProps = {
 
 export function SidebarBrand({ href = "/", portalLabel }: SidebarBrandProps) {
   return (
-    <div className="border-b-2 border-[#C8CDD7] bg-[#001E62] p-3">
-      <Link href={href} className="flex flex-col items-center gap-3">
+    <div className="border-b border-silver/30 bg-primary">
+      <Link href={href} className="flex flex-col items-center px-4 py-4">
         <Image
-          src="/sidebar-logo.png"
+          src="/brand-logo.png"
           alt="Fuel the Dons"
-          width={512}
-          height={512}
+          width={960}
+          height={240}
           priority
-          className="mx-auto w-full max-w-[220px] rounded-lg border-2 border-[#C8CDD7] object-contain shadow-none"
+          className="h-auto w-full object-contain opacity-95"
         />
-        <p className="text-center text-[11px] font-medium uppercase tracking-wide text-silver">
-          Nutrition System
+        <p className="mt-3 text-center text-[10px] font-semibold uppercase tracking-[0.2em] text-silver">
+          Operations Platform
         </p>
+        {portalLabel ? (
+          <p className="mt-1 text-center text-[10px] font-medium uppercase tracking-[0.15em] text-white/70">
+            {portalLabel}
+          </p>
+        ) : null}
       </Link>
-      {portalLabel ? (
-        <p className="mt-3 text-center text-xs font-medium uppercase tracking-wider text-silver/80">
-          {portalLabel}
-        </p>
-      ) : null}
     </div>
   )
 }
