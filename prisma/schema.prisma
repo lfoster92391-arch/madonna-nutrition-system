@@ -31,6 +31,9 @@ model School {
   mealTemplates            MealTemplate[]
   teacherLunchReservations TeacherLunchReservation[]
   studentLunchSignups      StudentLunchSignup[]
+  lunchAgreements          LunchAgreement[]
+  lunchReservations        LunchReservation[]
+  onboardingPricing        OnboardingPricing?
 }
 
 model User {
@@ -99,6 +102,8 @@ model Student {
   allergySubmissions AllergySubmission[]
   medicalDocuments   MedicalDocument[]
   lunchSignups       StudentLunchSignup[]
+  lunchAgreements    LunchAgreement[]
+  lunchReservations  LunchReservation[]
 
   @@unique([schoolId, externalId])
 }
@@ -170,6 +175,7 @@ model Parent {
   updatedAt DateTime @updatedAt
 
   students ParentStudent[]
+  lunchAgreements LunchAgreement[]
 }
 
 model ParentStudent {
@@ -386,6 +392,67 @@ model StudentLunchSignup {
   signedUpAt       DateTime           @default(now())
 
   @@unique([studentId, date])
+}
+
+enum LunchAgreementStatus {
+  PENDING
+  SIGNED
+  EXPIRED
+  REVOKED
+}
+
+enum LunchReservationMealType {
+  MAIN
+  SIDE
+  ALA_CARTE
+  MILK
+}
+
+model LunchAgreement {
+  id            String               @id @default(cuid())
+  parentId      String
+  parent        Parent               @relation(fields: [parentId], references: [id], onDelete: Cascade)
+  studentId     String
+  student       Student              @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  signedAt      DateTime?
+  signatureData String?
+  status        LunchAgreementStatus @default(PENDING)
+  acceptedTerms Boolean              @default(false)
+  schoolId      String
+  school        School               @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+
+  @@unique([parentId, studentId])
+}
+
+model LunchReservation {
+  id        String                   @id @default(cuid())
+  studentId String
+  student   Student                  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  date      DateTime                 @db.Date
+  mealType  LunchReservationMealType
+  price     Decimal                  @db.Decimal(10, 2)
+  status    LunchReservationStatus   @default(RESERVED)
+  schoolId  String
+  school    School                   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  createdAt DateTime                 @default(now())
+  updatedAt DateTime                 @updatedAt
+
+  @@unique([studentId, date, mealType])
+}
+
+model OnboardingPricing {
+  id                  String   @id @default(cuid())
+  schoolId            String   @unique
+  school              School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  mainMealPrice       Decimal  @default(3.00) @db.Decimal(10, 2)
+  sideMealPrice       Decimal  @default(2.00) @db.Decimal(10, 2)
+  alaCartePrice       Decimal  @default(4.50) @db.Decimal(10, 2)
+  milkPrice           Decimal  @default(0.75) @db.Decimal(10, 2)
+  agreementText       String   @db.Text
+  emergencyPolicyText String   @db.Text
+  updatedAt           DateTime @updatedAt
 }
 
 model AuditLog {

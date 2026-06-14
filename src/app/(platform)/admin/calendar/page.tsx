@@ -1,5 +1,5 @@
-import { AdminCalendarDesigner } from "@/components/calendar/AdminCalendarDesigner"
+import { AdminCalendar } from "@/components/admin/calendar/AdminCalendar"
 
 export default function AdminCalendarPage() {
-  return <AdminCalendarDesigner />
+  return <AdminCalendar />
 }

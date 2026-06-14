@@ -521,6 +521,22 @@ async function main() {
     })
   }
 
+  await prisma.onboardingPricing.upsert({
+    where: { schoolId: school.id },
+    update: {},
+    create: {
+      schoolId: school.id,
+      mainMealPrice: 3.0,
+      sideMealPrice: 2.0,
+      alaCartePrice: 4.5,
+      milkPrice: 0.75,
+      agreementText:
+        "Madonna High School Food Services Agreement — parents maintain accurate dietary info and current cafeteria balances.",
+      emergencyPolicyText:
+        "Emergency Policy — staff follow approved allergy care plans and contact guardians immediately.",
+    },
+  })
+
   console.log("Seed completed for", school.name)
   console.log("Default portal password for all seeded users:", DEFAULT_PASSWORD)
 }
