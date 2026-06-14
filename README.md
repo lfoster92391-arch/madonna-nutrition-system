@@ -138,7 +138,7 @@ cp .env.example .env
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `NEXT_PUBLIC_APP_URL` | Production | Public site URL (e.g. `https://fuelthebluedons.com`) — used for metadata and OG tags |
+| `NEXT_PUBLIC_APP_URL` | Production | Public site URL (e.g. `https://fuelthedons.com`) — used for metadata and OG tags |
 | `DATABASE_URL` | For DB mode | PostgreSQL connection string — **not required for demo launch** |
 | `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Future | Clerk auth |
 | `CLERK_SECRET_KEY` | Future | Clerk auth |
@@ -151,7 +151,7 @@ The app runs fully in **demo mode** without a database. All portals, scan statio
 
 ## Deployment
 
-**Target domain:** [https://fuelthebluedons.com](https://fuelthebluedons.com)
+**Target domain:** [https://fuelthedons.com](https://fuelthedons.com)
 
 **Live preview (if deployed):** [https://madonna-nutrition-system.vercel.app](https://madonna-nutrition-system.vercel.app)
 
@@ -161,8 +161,8 @@ Quick summary:
 
 1. Commit all project files locally (repo has no GitHub remote yet — see DEPLOY.md)
 2. Push to GitHub, then import at [vercel.com/new](https://vercel.com/new) — framework auto-detects as **Next.js**
-3. Deploy with **no env vars** for demo (defaults to `https://fuelthebluedons.com` in metadata)
-4. Add domains `fuelthebluedons.com` and `www.fuelthebluedons.com` in Vercel → **Settings → Domains**
+3. Deploy with **no env vars** for demo (defaults to `https://fuelthedons.com` in metadata)
+4. Add domains `fuelthedons.com` and `www.fuelthedons.com` in Vercel → **Settings → Domains**
 5. At your registrar, set apex **A** `@` → `76.76.21.21` and **CNAME** `www` → `cname.vercel-dns.com`
 
 ## License
