@@ -5,9 +5,10 @@ export const ROLE_LABELS: Record<UserRole, string> = {
   cashier: "Cashier",
   parent: "Parent",
   staff: "Staff",
+  teacher: "Teacher",
 }
 
-const STAFF_BADGE_ROLES = new Set<UserRole>(["admin", "cashier", "staff"])
+const STAFF_BADGE_ROLES = new Set<UserRole>(["admin", "cashier", "staff", "teacher"])
 
 export function userRoleSupportsBadge(role: UserRole): boolean {
   return STAFF_BADGE_ROLES.has(role)
@@ -35,6 +36,7 @@ export function findUserByLogin(
     parent: "sarah.anderson",
     admin: "d.garcia",
     cashier: "j.wilson",
+    teacher: "m.anderson",
   }
   const lookup = aliases[normalized] ?? normalized
   return users.find(

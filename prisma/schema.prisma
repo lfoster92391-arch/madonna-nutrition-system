@@ -28,7 +28,9 @@ model School {
   logs             AuditLog[]
   calendarEvents   CalendarEvent[]
   calendarSettings CalendarSettings?
-  mealTemplates    MealTemplate[]
+  mealTemplates            MealTemplate[]
+  teacherLunchReservations TeacherLunchReservation[]
+  studentLunchSignups      StudentLunchSignup[]
 }
 
 model User {
@@ -44,13 +46,17 @@ model User {
   status           UserStatus @default(ACTIVE)
   passwordHash     String?
   linkedStudentIds String[]   @default([])
+  department       String?
+  accountBalance   Decimal    @default(0) @db.Decimal(10, 2)
   lastLoginAt      DateTime?
   schoolId         String
   school           School     @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   createdAt        DateTime   @default(now())
   updatedAt        DateTime   @updatedAt
 
-  processedTransactions Transaction[] @relation("ProcessedByUser")
+  processedTransactions  Transaction[]            @relation("ProcessedByUser")
+  teacherReservations  TeacherLunchReservation[]
+  assistedSignups      StudentLunchSignup[]       @relation("SignedUpByTeacher")
 
   @@unique([schoolId, badgeId])
 }
@@ -60,6 +66,7 @@ enum UserRole {
   STAFF
   CASHIER
   PARENT
+  TEACHER
   EXECUTIVE
 }
 
@@ -91,6 +98,7 @@ model Student {
   profile            StudentProfile?
   allergySubmissions AllergySubmission[]
   medicalDocuments   MedicalDocument[]
+  lunchSignups       StudentLunchSignup[]
 
   @@unique([schoolId, externalId])
 }
@@ -268,6 +276,9 @@ model CalendarEvent {
   color          String?
   mealTemplateId String?
   mealTemplate   MealTemplate? @relation(fields: [mealTemplateId], references: [id], onDelete: SetNull)
+  publishStatus  String        @default("draft")
+  publishedAt    DateTime?
+  notes          String?
   schoolId       String
   school         School        @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   createdAt      DateTime      @default(now())
@@ -325,6 +336,56 @@ model CalendarSettings {
   bannerMessage String?
   accentColor   String  @default("navy")
   schoolName    String
+}
+
+enum LunchPaymentMethod {
+  ACCOUNT
+  PREPAY_ONLINE
+  PAY_AT_KIOSK
+}
+
+enum LunchReservationStatus {
+  RESERVED
+  CANCELLED
+  PENDING
+}
+
+model TeacherLunchReservation {
+  id             String                 @id @default(cuid())
+  userId         String
+  user           User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date           DateTime               @db.Date
+  mealName       String
+  mealPrice      Decimal                @db.Decimal(10, 2)
+  mealPhotoUrl   String?
+  paymentMethod  LunchPaymentMethod
+  status         LunchReservationStatus @default(RESERVED)
+  pickupLocation String                 @default("Main Cafeteria")
+  pickupStart    String                 @default("11:15 AM")
+  pickupEnd      String                 @default("1:15 PM")
+  schoolId       String
+  school         School                 @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
+
+  @@unique([userId, date])
+}
+
+model StudentLunchSignup {
+  id               String             @id @default(cuid())
+  studentId        String
+  student          Student            @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  date             DateTime           @db.Date
+  mealName         String
+  mealPrice        Decimal            @db.Decimal(10, 2)
+  paymentMethod    LunchPaymentMethod
+  signedUpByUserId String?
+  signedUpBy       User?              @relation("SignedUpByTeacher", fields: [signedUpByUserId], references: [id], onDelete: SetNull)
+  schoolId         String
+  school           School             @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  signedUpAt       DateTime           @default(now())
+
+  @@unique([studentId, date])
 }
 
 model AuditLog {

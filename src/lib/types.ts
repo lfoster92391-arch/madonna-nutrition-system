@@ -69,7 +69,7 @@ export interface MedicalDocument {
   uploadedBy: string
 }
 
-export type UserRole = "admin" | "cashier" | "parent" | "staff"
+export type UserRole = "admin" | "cashier" | "parent" | "staff" | "teacher"
 
 export type UserStatus = "active" | "disabled"
 
@@ -84,6 +84,8 @@ export interface User {
   badgeId?: string
   linkedStudentIds?: string[]
   phone?: string
+  department?: string
+  accountBalance?: number
   lastLoginAt?: string
   createdAt: string
   updatedAt: string
@@ -216,6 +218,9 @@ export type CalendarEventCategory =
   | "early_dismissal"
   | "special_event"
   | "no_school"
+  | "teacher_meal"
+
+export type CalendarPublishStatus = "draft" | "published" | "scheduled" | "archived"
 
 export type CalendarAccentColor = "navy" | "green" | "amber"
 
@@ -228,6 +233,9 @@ export interface CalendarEvent {
   color?: string
   /** Links a calendar menu_day event to a reusable meal template */
   mealTemplateId?: string
+  publishStatus?: CalendarPublishStatus
+  publishedAt?: string
+  notes?: string
 }
 
 export type MealCategory =

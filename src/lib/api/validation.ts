@@ -55,7 +55,7 @@ export const badgeIdSchema = z
   .optional()
   .nullable()
 
-export const userRoleSchema = z.enum(["admin", "cashier", "parent", "staff"])
+export const userRoleSchema = z.enum(["admin", "cashier", "parent", "staff", "teacher"])
 
 export const createUserSchema = z.object({
   username: z.string().min(1),
@@ -90,16 +90,26 @@ export const userActionSchema = z.object({
 export const loginSchema = z.object({
   username: z.string().min(1),
   password: z.string(),
-  role: z.enum(["admin", "cashier", "parent"]),
+  role: z.enum(["admin", "cashier", "parent", "teacher"]),
 })
 
 export const calendarEventSchema = z.object({
   title: z.string().min(1),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   description: z.string().optional(),
-  category: z.enum(["menu_day", "holiday", "early_dismissal", "special_event", "no_school"]),
+  category: z.enum([
+    "menu_day",
+    "holiday",
+    "early_dismissal",
+    "special_event",
+    "no_school",
+    "teacher_meal",
+  ]),
   color: z.string().optional(),
   mealTemplateId: z.string().optional(),
+  publishStatus: z.enum(["draft", "published", "scheduled", "archived"]).optional(),
+  publishedAt: z.string().optional(),
+  notes: z.string().optional(),
 })
 
 const mealPhotoSlotSchema = z.enum(["entree", "side", "dessert", "drink", "additional"])

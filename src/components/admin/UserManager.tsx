@@ -25,7 +25,7 @@ import { formatUserName, ROLE_LABELS, userRoleSupportsBadge } from "@/lib/users"
 import type { User, UserRole } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
-const ROLES: UserRole[] = ["admin", "cashier", "parent", "staff"]
+const ROLES: UserRole[] = ["admin", "cashier", "parent", "staff", "teacher"]
 
 function UserAvatar({ user }: { user: User }) {
   const initials = `${user.firstName[0] ?? ""}${user.lastName[0] ?? ""}`.toUpperCase()
@@ -44,6 +44,8 @@ function roleBadgeVariant(role: UserRole): "default" | "success" | "warning" | "
       return "warning"
     case "parent":
       return "success"
+    case "teacher":
+      return "default"
     default:
       return "outline"
   }

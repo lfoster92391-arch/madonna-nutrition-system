@@ -1,9 +1,9 @@
 "use client"
 
-import { Calculator, Lock, Users } from "lucide-react"
+import { BookOpen, Calculator, Lock, Users } from "lucide-react"
 import { PortalCard, type PortalCardProps } from "@/components/landing/PortalCard"
 
-const NAVY = "#001E62"
+const NAVY = "#041B52"
 
 const PORTALS: PortalCardProps[] = [
   {
@@ -19,6 +19,13 @@ const PORTALS: PortalCardProps[] = [
     color: "#0B2D8F",
     route: "/login/parent",
     icon: Users,
+  },
+  {
+    portalName: "Teacher Portal",
+    description: "Assist students with lunch signup and manage your own meal.",
+    color: NAVY,
+    route: "/login/teacher",
+    icon: BookOpen,
   },
   {
     portalName: "Admin Portal",

@@ -83,6 +83,7 @@ const USER_ROLE_TO_APP: Record<PrismaUserRole, UserRole> = {
   STAFF: "staff",
   CASHIER: "cashier",
   PARENT: "parent",
+  TEACHER: "teacher",
   EXECUTIVE: "admin",
 }
 
@@ -91,6 +92,7 @@ const USER_ROLE_TO_DB: Record<UserRole, PrismaUserRole> = {
   staff: "STAFF",
   cashier: "CASHIER",
   parent: "PARENT",
+  teacher: "TEACHER",
 }
 
 const USER_STATUS_TO_APP: Record<PrismaUserStatus, UserStatus> = {
@@ -179,6 +181,8 @@ export function mapUser(user: DbUser): User {
     status: USER_STATUS_TO_APP[user.status],
     phone: user.phone ?? undefined,
     badgeId: user.badgeId ?? undefined,
+    department: user.department ?? undefined,
+    accountBalance: user.accountBalance ? Number(user.accountBalance) : undefined,
     linkedStudentIds: user.linkedStudentIds,
     lastLoginAt: user.lastLoginAt?.toISOString(),
     createdAt: user.createdAt.toISOString(),
@@ -212,6 +216,9 @@ export function mapCalendarEvent(event: DbCalendarEvent): CalendarEvent {
     category: event.category as CalendarEvent["category"],
     color: event.color ?? undefined,
     mealTemplateId: event.mealTemplateId ?? undefined,
+    publishStatus: (event.publishStatus as CalendarEvent["publishStatus"]) ?? "draft",
+    publishedAt: event.publishedAt?.toISOString(),
+    notes: event.notes ?? undefined,
   }
 }
 

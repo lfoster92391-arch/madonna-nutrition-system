@@ -8,15 +8,17 @@ import { resolveSchoolId } from "@/lib/db/school"
 import { findUserByLogin } from "@/lib/users"
 import { loginSchema } from "@/lib/api/validation"
 import { badRequest, withDatabase } from "@/lib/api/response"
+import { isAllowedTeacherEmail, TEACHER_ACCESS_DENIED_MESSAGE } from "@/config/teacher-auth"
 import type { UserRole } from "@/lib/types"
 
 function portalMatchesUserRole(
-  portalRole: "admin" | "cashier" | "parent",
+  portalRole: "admin" | "cashier" | "parent" | "teacher",
   userRole: UserRole
 ): boolean {
   if (portalRole === "admin") return userRole === "admin"
   if (portalRole === "cashier") return userRole === "cashier"
   if (portalRole === "parent") return userRole === "parent"
+  if (portalRole === "teacher") return userRole === "teacher"
   return false
 }
 
@@ -53,6 +55,13 @@ export async function POST(request: Request) {
           success: false,
           error: `This account is registered as ${user.role}. Use the correct portal to sign in.`,
         },
+        { status: 403 }
+      )
+    }
+
+    if (role === "teacher" && !isAllowedTeacherEmail(user.email)) {
+      return NextResponse.json(
+        { success: false, error: TEACHER_ACCESS_DENIED_MESSAGE },
         { status: 403 }
       )
     }

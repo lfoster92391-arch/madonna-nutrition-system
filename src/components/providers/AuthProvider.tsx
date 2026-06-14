@@ -10,10 +10,11 @@ import {
   type ReactNode,
 } from "react"
 import { useDemo } from "@/components/providers/DemoProvider"
+import { isAllowedTeacherEmail, TEACHER_ACCESS_DENIED_MESSAGE } from "@/config/teacher-auth"
 import { formatUserName } from "@/lib/users"
 import type { UserRole } from "@/lib/types"
 
-export type PortalRole = "cashier" | "parent" | "admin" | null
+export type PortalRole = "cashier" | "parent" | "admin" | "teacher" | null
 
 interface AuthUser {
   id: string
@@ -70,6 +71,7 @@ function portalMatchesUserRole(
   if (portalRole === "admin") return userRole === "admin"
   if (portalRole === "cashier") return userRole === "cashier"
   if (portalRole === "parent") return userRole === "parent"
+  if (portalRole === "teacher") return userRole === "teacher"
   return false
 }
 
@@ -170,6 +172,10 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
           success: false,
           error: `This account is registered as ${demoUser.role}. Use the correct portal to sign in.`,
         }
+      }
+
+      if (role === "teacher" && !isAllowedTeacherEmail(demoUser.email)) {
+        return { success: false, error: TEACHER_ACCESS_DENIED_MESSAGE }
       }
 
       const session: AuthUser = {

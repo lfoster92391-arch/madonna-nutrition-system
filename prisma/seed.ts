@@ -56,10 +56,14 @@ async function main() {
               ? UserRole.CASHIER
               : user.role === "parent"
                 ? UserRole.PARENT
-                : UserRole.STAFF,
+                : user.role === "teacher"
+                  ? UserRole.TEACHER
+                  : UserRole.STAFF,
         status: user.status === "disabled" ? UserStatus.DISABLED : UserStatus.ACTIVE,
         phone: user.phone,
         badgeId,
+        department: user.department,
+        accountBalance: user.accountBalance ?? 0,
         linkedStudentIds: user.linkedStudentIds ?? [],
         passwordHash,
         schoolId: school.id,
@@ -76,10 +80,14 @@ async function main() {
               ? UserRole.CASHIER
               : user.role === "parent"
                 ? UserRole.PARENT
-                : UserRole.STAFF,
+                : user.role === "teacher"
+                  ? UserRole.TEACHER
+                  : UserRole.STAFF,
         status: user.status === "disabled" ? UserStatus.DISABLED : UserStatus.ACTIVE,
         phone: user.phone,
         badgeId,
+        department: user.department,
+        accountBalance: user.accountBalance ?? 0,
         linkedStudentIds: user.linkedStudentIds ?? [],
         passwordHash,
         schoolId: school.id,
@@ -322,6 +330,10 @@ async function main() {
         description: event.description,
         category: event.category,
         color: event.color,
+        mealTemplateId: event.mealTemplateId,
+        publishStatus: event.publishStatus ?? "draft",
+        publishedAt: event.publishedAt ? new Date(event.publishedAt) : undefined,
+        notes: event.notes,
         schoolId: school.id,
       },
     })
@@ -420,6 +432,91 @@ async function main() {
             url: photo.url,
           })),
         },
+      },
+    })
+  }
+
+  const teacherPortalStudentData = [
+    {
+      externalId: "10501",
+      firstName: "Emma",
+      lastName: "Johnson",
+      grade: "10",
+      homeroom: "102",
+      balance: 3.5,
+      photo:
+        "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?q=80&w=400&auto=format&fit=crop",
+      allergies: [],
+    },
+    {
+      externalId: "10502",
+      firstName: "Mason",
+      lastName: "Brown",
+      grade: "9",
+      homeroom: "201",
+      balance: 18.0,
+      photo:
+        "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=400&auto=format&fit=crop",
+      allergies: [],
+    },
+    {
+      externalId: "10503",
+      firstName: "Sophia",
+      lastName: "Davis",
+      grade: "11",
+      homeroom: "305",
+      balance: 22.5,
+      photo:
+        "https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=400&auto=format&fit=crop",
+      allergies: [],
+    },
+    {
+      externalId: "10504",
+      firstName: "Noah",
+      lastName: "Thompson",
+      grade: "8",
+      homeroom: "108",
+      balance: 1.25,
+      photo:
+        "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?q=80&w=400&auto=format&fit=crop",
+      allergies: [],
+    },
+  ]
+
+  for (const data of teacherPortalStudentData) {
+    const { allergies, photo, ...studentFields } = data
+    const student = await prisma.student.upsert({
+      where: { schoolId_externalId: { schoolId: school.id, externalId: data.externalId } },
+      update: { balance: studentFields.balance, photo },
+      create: { ...studentFields, photo, schoolId: school.id },
+    })
+    await prisma.allergy.deleteMany({ where: { studentId: student.id } })
+    for (const allergy of allergies) {
+      await prisma.allergy.create({ data: { ...allergy, studentId: student.id } })
+    }
+  }
+
+  const teacherUser = await prisma.user.findUnique({
+    where: { email: "m.anderson@weirtonmadonna.org" },
+  })
+
+  if (teacherUser) {
+    const today = new Date()
+    today.setUTCHours(0, 0, 0, 0)
+
+    await prisma.teacherLunchReservation.upsert({
+      where: { userId_date: { userId: teacherUser.id, date: today } },
+      update: {},
+      create: {
+        userId: teacherUser.id,
+        schoolId: school.id,
+        date: today,
+        mealName: "Grilled Chicken Plate",
+        mealPrice: 5.25,
+        mealPhotoUrl:
+          "https://images.unsplash.com/photo-1604908176997-431cef8a0b38?q=80&w=400&auto=format&fit=crop",
+        paymentMethod: "ACCOUNT",
+        status: "RESERVED",
       },
     })
   }
