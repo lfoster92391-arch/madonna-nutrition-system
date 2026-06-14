@@ -8,13 +8,18 @@ export function dbUnavailableResponse() {
   )
 }
 
-export function withDatabase<T>(
+export async function withDatabase<T>(
   handler: () => Promise<T>
 ): Promise<T | NextResponse> {
   if (!isDatabaseEnabled()) {
-    return Promise.resolve(dbUnavailableResponse())
+    return dbUnavailableResponse()
   }
-  return handler()
+  try {
+    return await handler()
+  } catch (error) {
+    console.error("Database handler failed:", error)
+    return serverError("Database request failed.")
+  }
 }
 
 export function badRequest(message: string, details?: unknown) {

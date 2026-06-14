@@ -112,9 +112,24 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ username: trimmed, password, role }),
           })
-          const data = await res.json()
+          const raw = await res.text()
+          let data: { success?: boolean; error?: string; user?: AuthUser }
+          try {
+            data = raw ? (JSON.parse(raw) as typeof data) : {}
+          } catch {
+            return {
+              success: false,
+              error:
+                res.status >= 500
+                  ? "Authentication service is unavailable. Check server database configuration."
+                  : "Unable to reach authentication service.",
+            }
+          }
           if (!res.ok || !data.success) {
-            return { success: false, error: data.error ?? "Login failed." }
+            return {
+              success: false,
+              error: data.error ?? (res.status >= 500 ? "Authentication service is unavailable." : "Login failed."),
+            }
           }
 
           const session: AuthUser = {

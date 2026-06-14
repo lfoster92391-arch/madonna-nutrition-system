@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server"
 import bcrypt from "bcryptjs"
+
+export const runtime = "nodejs"
 import { prisma } from "@/lib/prisma"
 import { mapUser } from "@/lib/db/mappers"
 import { resolveSchoolId } from "@/lib/db/school"
