@@ -125,7 +125,8 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
                   : "Unable to reach authentication service.",
             }
           }
-          if (!res.ok || !data.success) {
+          const authUser = data.user
+          if (!res.ok || !data.success || !authUser) {
             return {
               success: false,
               error: data.error ?? (res.status >= 500 ? "Authentication service is unavailable." : "Login failed."),
@@ -133,16 +134,16 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
           }
 
           const session: AuthUser = {
-            id: data.user.id,
-            username: data.user.username,
-            role: data.user.role,
-            displayName: data.user.displayName,
-            email: data.user.email,
+            id: authUser.id,
+            username: authUser.username,
+            role: authUser.role,
+            displayName: authUser.displayName,
+            email: authUser.email,
           }
 
           setUser(session)
           writeSession(session)
-          await recordUserLogin(data.user.id)
+          await recordUserLogin(authUser.id)
           return { success: true }
         } catch {
           return { success: false, error: "Unable to reach authentication service." }
