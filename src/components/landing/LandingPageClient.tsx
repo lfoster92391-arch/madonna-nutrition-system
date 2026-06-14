@@ -38,8 +38,8 @@ export function LandingPageClient() {
         style={{ backgroundImage: "url('/landing-background.png')" }}
       />
 
-      <main className="relative z-10 flex min-h-screen min-h-[100dvh] w-full flex-col items-center justify-start px-6 pb-[12vh] pt-[28vh] sm:pb-[14vh] sm:pt-[30vh] lg:pb-[16vh] lg:pt-[32vh]">
-        <div className="w-full max-w-5xl text-center">
+      <main className="relative z-10 flex min-h-screen min-h-[100dvh] w-full flex-col items-center justify-end px-6 pb-[10vh] sm:pb-[12vh] lg:pb-[14vh]">
+        <div className="w-full max-w-6xl text-center">
           <div className="mx-auto inline-block rounded-2xl bg-white/80 px-6 py-4 backdrop-blur-sm">
             <h1 className="text-2xl font-bold sm:text-3xl" style={{ color: NAVY }}>
               Choose Your Portal
@@ -49,7 +49,7 @@ export function LandingPageClient() {
             </p>
           </div>
 
-          <div className="mx-auto mt-8 grid w-full grid-cols-1 place-items-center gap-6 md:grid-cols-2 lg:grid-cols-3 lg:gap-8">
+          <div className="mx-auto mt-6 grid w-full grid-cols-1 place-items-center gap-5 md:grid-cols-2 lg:grid-cols-3 lg:gap-6">
             {PORTALS.map((portal) => (
               <PortalCard key={portal.route} {...portal} />
             ))}
