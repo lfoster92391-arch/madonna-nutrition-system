@@ -7,6 +7,12 @@ export const ROLE_LABELS: Record<UserRole, string> = {
   staff: "Staff",
 }
 
+const STAFF_BADGE_ROLES = new Set<UserRole>(["admin", "cashier", "staff"])
+
+export function userRoleSupportsBadge(role: UserRole): boolean {
+  return STAFF_BADGE_ROLES.has(role)
+}
+
 export function formatUserName(user: Pick<User, "firstName" | "lastName">): string {
   return `${user.firstName} ${user.lastName}`
 }

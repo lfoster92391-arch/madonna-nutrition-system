@@ -19,6 +19,11 @@ const nextConfig: NextConfig = {
         destination: "/scan",
         permanent: true,
       },
+      {
+        source: "/login/cashier",
+        destination: "/scan",
+        permanent: false,
+      },
     ]
   },
 }

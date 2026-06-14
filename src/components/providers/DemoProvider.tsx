@@ -386,7 +386,7 @@ function useDemoLocalState() {
         balanceAfter,
         timestamp: new Date().toISOString(),
         processedByUserId,
-        processedByName: cashier ? `${cashier.firstName} ${cashier.lastName}` : undefined,
+        processedByName: cashier ? `${cashier.firstName} ${cashier.lastName}` : "Station",
       }
 
       setStudents((prev) =>

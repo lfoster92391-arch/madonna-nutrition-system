@@ -11,6 +11,7 @@ export async function GET() {
       where: { schoolId },
       include: {
         student: { select: { externalId: true, firstName: true, lastName: true } },
+        processedBy: { select: { firstName: true, lastName: true, badgeId: true } },
       },
       orderBy: { createdAt: "desc" },
       take: 500,

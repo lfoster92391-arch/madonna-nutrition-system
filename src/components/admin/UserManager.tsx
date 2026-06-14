@@ -21,7 +21,7 @@ import { Input, Label } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { AuditLogTable } from "@/components/admin/AuditLogTable"
-import { formatUserName, ROLE_LABELS } from "@/lib/users"
+import { formatUserName, ROLE_LABELS, userRoleSupportsBadge } from "@/lib/users"
 import type { User, UserRole } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
@@ -56,6 +56,7 @@ interface UserFormState {
   lastName: string
   role: UserRole
   phone: string
+  badgeId: string
   linkedStudentIds: string[]
   reason: string
 }
@@ -67,6 +68,7 @@ const emptyForm = (): UserFormState => ({
   lastName: "",
   role: "cashier",
   phone: "",
+  badgeId: "",
   linkedStudentIds: [],
   reason: "",
 })
@@ -175,7 +177,8 @@ export function UserManager() {
         u.firstName.toLowerCase().includes(q) ||
         u.lastName.toLowerCase().includes(q) ||
         u.email.toLowerCase().includes(q) ||
-        u.username.toLowerCase().includes(q)
+        u.username.toLowerCase().includes(q) ||
+        (u.badgeId?.includes(q) ?? false)
       )
     })
   }, [users, search, roleFilter])
@@ -200,6 +203,7 @@ export function UserManager() {
       lastName: user.lastName,
       role: user.role,
       phone: user.phone ?? "",
+      badgeId: user.badgeId ?? "",
       linkedStudentIds: user.linkedStudentIds ?? [],
       reason: "",
     })
@@ -238,6 +242,7 @@ export function UserManager() {
         lastName: form.lastName,
         role: form.role,
         phone: form.phone || undefined,
+        badgeId: userRoleSupportsBadge(form.role) ? form.badgeId || undefined : undefined,
         linkedStudentIds: form.role === "parent" ? form.linkedStudentIds : undefined,
       },
       performedBy
@@ -261,6 +266,7 @@ export function UserManager() {
         lastName: form.lastName,
         role: form.role,
         phone: form.phone || undefined,
+        badgeId: userRoleSupportsBadge(form.role) ? form.badgeId || undefined : undefined,
         linkedStudentIds: form.role === "parent" ? form.linkedStudentIds : undefined,
       },
       performedBy,
@@ -403,6 +409,7 @@ export function UserManager() {
                       <th className="pb-3 pr-4 text-left font-medium">Name</th>
                       <th className="pb-3 pr-4 text-left font-medium">Email</th>
                       <th className="pb-3 pr-4 text-left font-medium">Role</th>
+                      <th className="pb-3 pr-4 text-left font-medium">Badge ID</th>
                       <th className="pb-3 pr-4 text-left font-medium">Status</th>
                       <th className="pb-3 pr-4 text-left font-medium">Last Login</th>
                       <th className="pb-3 text-right font-medium">Actions</th>
@@ -427,6 +434,9 @@ export function UserManager() {
                         <td className="py-3 pr-4">{u.email}</td>
                         <td className="py-3 pr-4">
                           <Badge variant={roleBadgeVariant(u.role)}>{ROLE_LABELS[u.role]}</Badge>
+                        </td>
+                        <td className="py-3 pr-4 font-mono text-silver-foreground">
+                          {userRoleSupportsBadge(u.role) ? (u.badgeId ?? "—") : "—"}
                         </td>
                         <td className="py-3 pr-4">
                           <Badge variant={u.status === "active" ? "success" : "danger"}>
@@ -507,7 +517,14 @@ export function UserManager() {
                     <select
                       className="flex h-14 w-full rounded-2xl border-2 border-silver bg-white px-4 text-sm text-primary"
                       value={form.role}
-                      onChange={(e) => setForm({ ...form, role: e.target.value as UserRole })}
+                      onChange={(e) => {
+                        const role = e.target.value as UserRole
+                        setForm({
+                          ...form,
+                          role,
+                          badgeId: userRoleSupportsBadge(role) ? form.badgeId : "",
+                        })
+                      }}
                     >
                       {ROLES.map((r) => (
                         <option key={r} value={r}>{ROLE_LABELS[r]}</option>
@@ -515,6 +532,24 @@ export function UserManager() {
                     </select>
                   </div>
                 </div>
+
+                {userRoleSupportsBadge(form.role) && (
+                  <div>
+                    <Label>Staff Badge ID</Label>
+                    <Input
+                      inputMode="numeric"
+                      pattern="\d*"
+                      placeholder="e.g. 90004 (4–6 digits)"
+                      value={form.badgeId}
+                      onChange={(e) =>
+                        setForm({ ...form, badgeId: e.target.value.replace(/\D/g, "") })
+                      }
+                    />
+                    <p className="mt-2 text-xs text-silver-foreground">
+                      Used for cafeteria staff identification. Student badges use a separate ID range.
+                    </p>
+                  </div>
+                )}
 
                 {form.role === "parent" && (
                   <div>

@@ -23,7 +23,6 @@ import {
   Wallet,
   Wine,
 } from "lucide-react"
-import { useAuth } from "@/components/providers/AuthProvider"
 import { useDemo } from "@/components/providers/DemoProvider"
 import { getAllergyBannerStyle, getHighestAllergySeverity } from "@/data/demo"
 import { ScanKeypad } from "@/components/scan/ScanKeypad"
@@ -117,8 +116,7 @@ function RecentActivityItem({ tx }: { tx: Transaction }) {
 }
 
 export default function ScanStationPage() {
-  const { user: authUser } = useAuth()
-  const { students, users, transactions, processMeal } = useDemo()
+  const { students, transactions, processMeal } = useDemo()
   const [clock, setClock] = useState(formatKioskTime())
   const [dateStr, setDateStr] = useState("")
   const [scanValue, setScanValue] = useState("")
@@ -140,11 +138,6 @@ export default function ScanStationPage() {
   const mealCompatibility = student ? checkMealCompatibility(student) : null
   const mealBlocked = mealCompatibility === "BLOCKED"
   const primaryAllergy = student?.allergies[0]?.name.toUpperCase() ?? ""
-
-  const activeCashier = useMemo(() => {
-    if (!authUser || authUser.role !== "cashier") return null
-    return users.find((u) => u.id === authUser.id) ?? null
-  }, [authUser, users])
 
   const recentTransactions = useMemo(
     () =>
@@ -301,7 +294,7 @@ export default function ScanStationPage() {
       window.setTimeout(focusScan, 50)
       return
     }
-    const tx = await processMeal(student.id, mealLabel, price, activeCashier?.id)
+    const tx = await processMeal(student.id, mealLabel, price)
     if (tx) {
       setLocalBalance(tx.balanceAfter)
       setFlashMessage(`${mealLabel} recorded for ${student.firstName}!`)
@@ -517,14 +510,6 @@ export default function ScanStationPage() {
               <p className="mt-2 text-sm lg:text-base">
                 Demo student: 10457 — James Anderson (peanut allergy)
               </p>
-              {!activeCashier && (
-                <p className="mt-2 max-w-sm text-sm">
-                  No cashier signed in —{" "}
-                  <Link href="/login/cashier" className="font-semibold text-[#041B52] underline">
-                    Sign in at shift start
-                  </Link>
-                </p>
-              )}
             </div>
           )}
         </section>
@@ -636,14 +621,10 @@ export default function ScanStationPage() {
               <p className="text-sm text-[#64748B]">No recent transactions</p>
             )}
           </div>
-          {activeCashier && (
-            <div className="hidden items-center gap-2 text-xs text-[#64748B] lg:flex">
-              <CreditCard className="h-3.5 w-3.5" aria-hidden />
-              <span>
-                Cashier: {activeCashier.firstName} {activeCashier.lastName}
-              </span>
-            </div>
-          )}
+          <div className="hidden items-center gap-2 text-xs text-[#64748B] lg:flex">
+            <CreditCard className="h-3.5 w-3.5" aria-hidden />
+            <span>Station</span>
+          </div>
         </div>
       </footer>
     </div>

@@ -3,12 +3,20 @@ import { prisma } from "@/lib/prisma"
 import { createAuditLog } from "@/lib/db/audit"
 import { mapUser, toDbUserRole } from "@/lib/db/mappers"
 import { resolveSchoolId } from "@/lib/db/school"
+import { assertBadgeIdAvailable, userRoleSupportsBadge } from "@/lib/db/users"
 import { generateTempPassword } from "@/lib/users"
 import { updateUserSchema, userActionSchema } from "@/lib/api/validation"
 import { badRequest, notFound, serverError, withDatabase } from "@/lib/api/response"
+import type { UserRole } from "@/lib/types"
 import bcrypt from "bcryptjs"
 
 type RouteParams = { params: Promise<{ id: string }> }
+
+function normalizeBadgeId(role: UserRole, badgeId?: string | null) {
+  if (!userRoleSupportsBadge(role)) return null
+  const trimmed = badgeId?.trim()
+  return trimmed ? trimmed : null
+}
 
 async function getUserOr404(id: string) {
   const schoolId = await resolveSchoolId()
@@ -29,6 +37,17 @@ export async function PATCH(request: Request, { params }: RouteParams) {
       if (!existing) return notFound("User not found")
 
       const data = parsed.data
+      const nextRole = data.role ?? mapUser(existing).role
+      const badgeId =
+        data.badgeId !== undefined || data.role !== undefined
+          ? normalizeBadgeId(nextRole, data.badgeId ?? existing.badgeId)
+          : undefined
+      const schoolId = await resolveSchoolId()
+      if (badgeId !== undefined) {
+        const badgeConflict = await assertBadgeIdAvailable(badgeId, schoolId, id)
+        if (badgeConflict) return badRequest(badgeConflict)
+      }
+
       const updated = await prisma.user.update({
         where: { id },
         data: {
@@ -38,6 +57,7 @@ export async function PATCH(request: Request, { params }: RouteParams) {
           lastName: data.lastName,
           role: data.role ? toDbUserRole(data.role) : undefined,
           phone: data.phone,
+          badgeId,
           linkedStudentIds: data.linkedStudentIds,
         },
       })
@@ -55,6 +75,7 @@ export async function PATCH(request: Request, { params }: RouteParams) {
           email: existing.email,
           role: mapUser(existing).role,
           phone: existing.phone,
+          badgeId: existing.badgeId,
           linkedStudentIds: existing.linkedStudentIds,
         },
         newValue: {
@@ -63,6 +84,7 @@ export async function PATCH(request: Request, { params }: RouteParams) {
           email: updated.email,
           role: mapUser(updated).role,
           phone: updated.phone,
+          badgeId: updated.badgeId,
           linkedStudentIds: updated.linkedStudentIds,
         },
       })

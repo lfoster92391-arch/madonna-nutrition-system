@@ -10,7 +10,7 @@ const PORTALS: PortalCardProps[] = [
     portalName: "Lunch Cashier",
     description: "Manage transactions, meals, and student accounts.",
     color: "#0D7A3B",
-    route: "/login/cashier",
+    route: "/scan",
     icon: Calculator,
   },
   {

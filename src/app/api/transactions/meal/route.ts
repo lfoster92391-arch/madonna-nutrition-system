@@ -15,13 +15,23 @@ export async function POST(request: Request) {
         return badRequest("Invalid meal transaction", parsed.error.flatten())
       }
 
-      const { studentId, meal, amount } = parsed.data
+      const { studentId, meal, amount, processedByUserId } = parsed.data
       const student = await findStudentByExternalId(studentId)
       if (!student || student.disabled) {
         return notFound("Student not found or disabled")
       }
 
       const schoolId = await resolveSchoolId()
+
+      if (processedByUserId) {
+        const cashier = await prisma.user.findFirst({
+          where: { id: processedByUserId, schoolId, status: "ACTIVE" },
+        })
+        if (!cashier || cashier.role === "PARENT") {
+          return badRequest("Invalid cashier for this transaction")
+        }
+      }
+
       const balanceAfter = Number(student.balance) - amount
 
       const [updatedStudent, transaction] = await prisma.$transaction([
@@ -33,12 +43,14 @@ export async function POST(request: Request) {
           data: {
             studentId: student.id,
             schoolId,
+            processedByUserId: processedByUserId ?? null,
             mealType: meal,
             amount,
             balanceAfter,
           },
           include: {
             student: { select: { externalId: true, firstName: true, lastName: true } },
+            processedBy: { select: { firstName: true, lastName: true, badgeId: true } },
           },
         }),
       ])
