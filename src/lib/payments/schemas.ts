@@ -11,6 +11,8 @@ export const createCheckoutSessionSchema = z.object({
     .number()
     .min(ADD_FUNDS_MIN, `Minimum amount is $${ADD_FUNDS_MIN}`)
     .max(ADD_FUNDS_MAX, `Maximum amount is $${ADD_FUNDS_MAX}`),
+  /** When true, Stripe may save the payment method for future off-session use. Default off. */
+  savePaymentMethod: z.boolean().optional().default(false),
 })
 
 export type CreateCheckoutSessionInput = z.infer<typeof createCheckoutSessionSchema>

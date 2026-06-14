@@ -1,10 +1,6 @@
-import { ParentSectionPage } from "@/components/parent/ParentSectionPage"
+import { redirect } from "next/navigation"
 
+/** Legacy route — redirects to unified Payments Center billing tab. */
 export default function PaymentMethodsPage() {
-  return (
-    <ParentSectionPage
-      title="Payment Methods"
-      description="Manage saved cards and payment methods for cafeteria prepay."
-    />
-  )
+  redirect("/parent/payments?tab=billing")
 }

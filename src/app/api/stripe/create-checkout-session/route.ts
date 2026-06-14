@@ -28,7 +28,7 @@ export async function POST(request: Request) {
     )
   }
 
-  const { studentId, parentUserId, amountDollars } = parsed.data
+  const { studentId, parentUserId, amountDollars, savePaymentMethod } = parsed.data
 
   try {
     const { schoolId, studentName, billingStudentId } = await assertParentOwnsStudent(
@@ -43,6 +43,12 @@ export async function POST(request: Request) {
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
       payment_method_types: ["card"],
+      ...(savePaymentMethod
+        ? {
+            customer_creation: "always" as const,
+            payment_intent_data: { setup_future_usage: "off_session" as const },
+          }
+        : {}),
       line_items: [
         {
           quantity: 1,
@@ -63,8 +69,8 @@ export async function POST(request: Request) {
         parentUserId,
         amountDollars: amountDollars.toFixed(2),
       },
-      success_url: `${appUrl}/parent/add-funds?success=1&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${appUrl}/parent/add-funds?canceled=1`,
+      success_url: `${appUrl}/parent/payments?tab=funding&success=1&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${appUrl}/parent/payments?tab=funding&canceled=1`,
     })
 
     if (!session.url) {

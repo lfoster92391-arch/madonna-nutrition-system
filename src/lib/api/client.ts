@@ -182,10 +182,11 @@ export const api = {
   createCheckoutSession: (
     studentId: string,
     parentUserId: string,
-    amountDollars: number
+    amountDollars: number,
+    savePaymentMethod = false
   ) =>
     fetchJson<{ url: string; sessionId: string }>("/api/stripe/create-checkout-session", {
       method: "POST",
-      body: JSON.stringify({ studentId, parentUserId, amountDollars }),
+      body: JSON.stringify({ studentId, parentUserId, amountDollars, savePaymentMethod }),
     }),
 }

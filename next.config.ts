@@ -23,7 +23,10 @@ const nextConfig: NextConfig = {
       { source: "/auth/cashier", destination: "/kiosk", permanent: false },
       { source: "/admin/menu", destination: "/admin/menu-library", permanent: false },
       { source: "/admin/inventory", destination: "/inventory", permanent: false },
-      { source: "/admin/analytics", destination: "/analytics", permanent: false },
+      { source: "/parent/add-funds", destination: "/parent/payments?tab=funding", permanent: false },
+      { source: "/parent/transactions", destination: "/parent/payments?tab=activity", permanent: false },
+      { source: "/parent/meal-history", destination: "/parent/payments?tab=activity&category=meal", permanent: false },
+      { source: "/parent/payment-methods", destination: "/parent/payments?tab=billing", permanent: false },
     ]
   },
 }
