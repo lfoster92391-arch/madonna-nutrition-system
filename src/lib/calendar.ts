@@ -11,36 +11,51 @@ export const EVENT_CATEGORIES: Record<
   { label: string; color: string; bgClass: string; textClass: string }
 > = {
   menu_day: {
-    label: "Menu Day",
-    color: "#00A651",
+    label: "Lunch",
+    color: "#00A83E",
     bgClass: "bg-success/15",
     textClass: "text-success",
   },
   holiday: {
     label: "Holiday",
-    color: "#F59E0B",
-    bgClass: "bg-warning/15",
-    textClass: "text-warning",
+    color: "#D62828",
+    bgClass: "bg-danger/10",
+    textClass: "text-danger",
   },
   early_dismissal: {
     label: "Early Dismissal",
-    color: "#001E62",
+    color: "#041B52",
     bgClass: "bg-primary/10",
     textClass: "text-primary",
   },
   special_event: {
     label: "Special Event",
-    color: "#6366F1",
-    bgClass: "bg-indigo-100",
-    textClass: "text-indigo-700",
+    color: "#2563EB",
+    bgClass: "bg-blue-100",
+    textClass: "text-blue-700",
   },
   no_school: {
     label: "No School",
-    color: "#DC2626",
-    bgClass: "bg-danger/10",
-    textClass: "text-danger",
+    color: "#94A3B8",
+    bgClass: "bg-silver/30",
+    textClass: "text-silver-foreground",
+  },
+  teacher_meal: {
+    label: "Teacher Meal",
+    color: "#F97316",
+    bgClass: "bg-orange-100",
+    textClass: "text-orange-700",
   },
 }
+
+/** Categories shown in the admin calendar legend */
+export const ADMIN_LEGEND_CATEGORIES: CalendarEventCategory[] = [
+  "menu_day",
+  "special_event",
+  "teacher_meal",
+  "holiday",
+  "no_school",
+]
 
 export function getEventColor(event: CalendarEvent): string {
   return event.color ?? EVENT_CATEGORIES[event.category].color

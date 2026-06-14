@@ -7,9 +7,11 @@ import {
   Sparkles,
   Star,
   UtensilsCrossed,
+  UserRound,
   type LucideIcon,
 } from "lucide-react"
 import {
+  ADMIN_LEGEND_CATEGORIES,
   EVENT_CATEGORIES,
   WEEKDAYS,
   formatDateKey,
@@ -26,6 +28,7 @@ export const CATEGORY_ICONS: Record<CalendarEventCategory, LucideIcon> = {
   early_dismissal: Clock,
   special_event: Sparkles,
   no_school: Ban,
+  teacher_meal: UserRound,
 }
 
 interface CalendarMonthGridProps {
@@ -132,11 +135,18 @@ export function CalendarMonthGrid({
   )
 }
 
-export function CategoryLegend({ compact = false }: { compact?: boolean }) {
+export function CategoryLegend({
+  compact = false,
+  categories,
+}: {
+  compact?: boolean
+  categories?: CalendarEventCategory[]
+}) {
+  const entries = (categories ?? Object.keys(EVENT_CATEGORIES)) as CalendarEventCategory[]
   return (
     <div className={cn("flex flex-wrap gap-3", compact && "gap-2")}>
-      {(Object.entries(EVENT_CATEGORIES) as [CalendarEventCategory, typeof EVENT_CATEGORIES.menu_day][]).map(
-        ([key, cat]) => {
+      {entries.map((key) => {
+          const cat = EVENT_CATEGORIES[key]
           const Icon = CATEGORY_ICONS[key]
           return (
             <div key={key} className="flex items-center gap-1.5">
@@ -151,8 +161,9 @@ export function CategoryLegend({ compact = false }: { compact?: boolean }) {
               </span>
             </div>
           )
-        }
-      )}
+        })}
     </div>
   )
 }
+
+export { ADMIN_LEGEND_CATEGORIES }
