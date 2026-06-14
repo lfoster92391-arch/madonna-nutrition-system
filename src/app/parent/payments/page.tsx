@@ -1,8 +1,8 @@
 import { Suspense } from "react"
 import { Loader2 } from "lucide-react"
-import { FamilySettingsPage } from "@/components/parent/settings/FamilySettingsPage"
+import { PaymentsCenter } from "@/components/parent/payments/PaymentsCenter"
 
-export default function SettingsPage() {
+export default function PaymentsPage() {
   return (
     <Suspense
       fallback={
@@ -11,7 +11,7 @@ export default function SettingsPage() {
         </div>
       }
     >
-      <FamilySettingsPage />
+      <PaymentsCenter defaultTab="overview" />
     </Suspense>
   )
 }

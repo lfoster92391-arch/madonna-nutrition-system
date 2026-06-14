@@ -1,10 +1,5 @@
-import { ParentSectionPage } from "@/components/parent/ParentSectionPage"
+import { redirect } from "next/navigation"
 
 export default function AlertsPage() {
-  return (
-    <ParentSectionPage
-      title="Low Balance Alerts"
-      description="Configure and view low balance notifications for your students."
-    />
-  )
+  redirect("/parent/settings#notifications")
 }

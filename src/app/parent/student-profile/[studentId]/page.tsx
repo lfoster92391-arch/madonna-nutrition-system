@@ -7,12 +7,14 @@ import { useAuth } from "@/components/providers/AuthProvider"
 import { useDemo } from "@/components/providers/DemoProvider"
 import { AnnualReviewBanner } from "@/components/parent/AnnualReviewBanner"
 import { FoodSafetyCenterForm } from "@/components/parent/FoodSafetyCenterForm"
+import { StudentMealsTab } from "@/components/parent/meals/StudentMealsTab"
+import { StudentTransactionsTab } from "@/components/parent/meals/StudentTransactionsTab"
+import { StudentBalanceAlertSection } from "@/components/parent/student-profile/StudentBalanceAlertSection"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Input, Label } from "@/components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { parentLinkedStudents } from "@/data/demo"
-import { formatCurrency } from "@/lib/utils"
 
 export default function StudentProfilePage({
   params,
@@ -62,13 +64,15 @@ export default function StudentProfilePage({
           profileHref={`/parent/student-profile/${studentId}`}
         />
 
-        <Tabs defaultValue="info">
-          <TabsList>
-            <TabsTrigger value="info">Student Information</TabsTrigger>
-            <TabsTrigger value="food-safety">Food Allergy &amp; Dietary Profile</TabsTrigger>
+        <Tabs defaultValue="overview">
+          <TabsList className="flex h-auto flex-wrap gap-1">
+            <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="meals">Meals</TabsTrigger>
+            <TabsTrigger value="nutrition">Nutrition</TabsTrigger>
+            <TabsTrigger value="transactions">Transactions</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="info">
+          <TabsContent value="overview">
             <Card className="rounded-[20px] p-8 shadow-sm">
               <div className="flex flex-col items-center gap-6 md:flex-row md:items-start">
                 <Image
@@ -98,15 +102,11 @@ export default function StudentProfilePage({
                       <p className="text-sm text-silver-foreground">Homeroom</p>
                       <p className="text-lg font-semibold text-primary">{student.homeroom ?? "—"}</p>
                     </div>
-                    <div>
-                      <p className="text-sm text-silver-foreground">Meal Balance</p>
-                      <p className="text-lg font-semibold text-primary">
-                        {formatCurrency(student.balance)}
-                      </p>
-                    </div>
                   </div>
                 </div>
               </div>
+
+              <StudentBalanceAlertSection studentId={studentId} balance={student.balance} />
 
               <div className="mt-8 border-t border-silver/40 pt-8">
                 <h3 className="mb-4 text-lg font-bold text-primary">Parent Contact Information</h3>
@@ -147,10 +147,24 @@ export default function StudentProfilePage({
             </Card>
           </TabsContent>
 
-          <TabsContent value="food-safety">
+          <TabsContent value="meals">
+            <StudentMealsTab
+              studentId={studentId}
+              studentName={`${student.firstName} ${student.lastName}`}
+            />
+          </TabsContent>
+
+          <TabsContent value="nutrition">
             <FoodSafetyCenterForm
               student={student}
               submittedBy={user?.displayName ?? "Parent"}
+            />
+          </TabsContent>
+
+          <TabsContent value="transactions">
+            <StudentTransactionsTab
+              studentId={studentId}
+              studentName={`${student.firstName} ${student.lastName}`}
             />
           </TabsContent>
         </Tabs>
