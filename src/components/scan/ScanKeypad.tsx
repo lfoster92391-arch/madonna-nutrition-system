@@ -158,7 +158,7 @@ export function ScanKeypad({
           onPress={onBackspace}
           className={enterClass}
         >
-          <Delete className="h-5 w-5 sm:h-6 sm:w-6 lg:h-7 lg:w-7" strokeWidth={2.25} aria-hidden />
+          <Delete className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6" strokeWidth={2.25} aria-hidden />
         </Key>
       )}
     </div>

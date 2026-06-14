@@ -524,8 +524,8 @@ export default function ScanStationPage() {
         className={cn(
           "relative flex flex-col items-center justify-center rounded-xl border transition disabled:cursor-not-allowed disabled:opacity-40 sm:rounded-2xl",
           compact
-            ? "min-h-[44px] gap-0.5 px-2 py-2 sm:min-h-[52px] sm:gap-1 sm:px-3 sm:py-2.5 md:min-h-[56px] lg:min-h-[64px]"
-            : "min-h-[72px] flex-1 gap-1 px-2 py-3 sm:min-h-[88px] sm:gap-1.5 sm:px-3 sm:py-4 md:min-h-[100px] lg:min-h-[120px] lg:gap-2 lg:px-4 lg:py-5 xl:min-h-[140px]",
+            ? "min-h-[40px] gap-0.5 px-2 py-1.5 sm:min-h-[47px] sm:gap-1 sm:px-2.5 sm:py-2 md:min-h-[50px] lg:min-h-[58px]"
+            : "min-h-[65px] flex-1 gap-1 px-2 py-2.5 sm:min-h-[79px] sm:gap-1 sm:px-3 sm:py-3 md:min-h-[90px] lg:min-h-[108px] lg:gap-1.5 lg:px-3 lg:py-4 xl:min-h-[126px]",
           isSelected
             ? "border-[#00A83E] bg-[#00A83E] text-white"
             : meal.type === "ala_carte"
@@ -713,23 +713,23 @@ export default function ScanStationPage() {
           )}
         </section>
 
-        <section className="flex min-h-0 w-full flex-1 flex-col overflow-hidden p-2 sm:p-3 md:p-4 lg:w-[45%] lg:shrink-0 lg:p-5">
+        <section className="flex min-h-0 w-full flex-1 flex-col overflow-hidden p-1.5 sm:p-2.5 md:p-3 lg:w-[45%] lg:shrink-0 lg:p-4">
           <p className="shrink-0 text-[10px] font-semibold uppercase tracking-wider text-[#64748B] sm:text-xs">
             Select Meal
           </p>
 
-          <div className="mt-1.5 flex shrink-0 gap-1.5 sm:mt-2 sm:gap-2 md:mt-3 md:gap-3">
+          <div className="mt-1 flex shrink-0 gap-1 sm:mt-1.5 sm:gap-1.5 md:mt-2 md:gap-2">
             {primaryMeals.map((meal) => renderMealButton(meal))}
           </div>
 
           {secondaryMeals.length > 0 && (
-            <div className="mt-1.5 flex shrink-0 gap-1.5 sm:mt-2 sm:gap-2 md:mt-3 md:gap-3">
+            <div className="mt-1 flex shrink-0 gap-1 sm:mt-1.5 sm:gap-1.5 md:mt-2 md:gap-2">
               {secondaryMeals.map((meal) => renderMealButton(meal, true))}
             </div>
           )}
 
           {studentMealAvailable && scanStatus !== "complete" && (
-            <div className="mt-1.5 flex shrink-0 items-center gap-1.5 rounded-xl border border-[#00A83E]/40 bg-[#00A83E]/10 px-2.5 py-1.5 sm:mt-2 sm:gap-2 sm:rounded-2xl sm:px-3 sm:py-2 md:mt-3 md:px-4 md:py-2.5">
+            <div className="mt-1 flex shrink-0 items-center gap-1.5 rounded-xl border border-[#00A83E]/40 bg-[#00A83E]/10 px-2 py-1 sm:mt-1.5 sm:gap-2 sm:rounded-2xl sm:px-2.5 sm:py-1.5 md:mt-2 md:px-3 md:py-2">
               <BadgeCheck className="h-4 w-4 shrink-0 text-[#00A83E] sm:h-5 sm:w-5" aria-hidden />
               <p className="text-xs font-semibold text-[#00A83E] sm:text-sm">STUDENT MEAL SELECTED</p>
             </div>
@@ -740,7 +740,7 @@ export default function ScanStationPage() {
               role="status"
               aria-live="polite"
               className={cn(
-                "mt-1.5 shrink-0 rounded-xl border px-2.5 py-2 text-xs font-semibold sm:mt-2 sm:rounded-2xl sm:px-3 sm:py-2.5 sm:text-sm md:mt-3 md:px-4 md:py-3 md:text-base",
+                "mt-1 shrink-0 rounded-xl border px-2 py-1.5 text-xs font-semibold sm:mt-1.5 sm:rounded-2xl sm:px-2.5 sm:py-2 sm:text-sm md:mt-2 md:px-3 md:py-2.5 md:text-base",
                 flashMessage.includes("BLOCKED")
                   ? "border-[#D62828] bg-[#FEF2F2] text-[#D62828]"
                   : "border-[#00A83E] bg-[#00A83E]/10 text-[#00A83E]"
@@ -750,11 +750,11 @@ export default function ScanStationPage() {
             </div>
           )}
 
-          <div className="mt-auto min-h-0 shrink pt-1 sm:pt-2">
+          <div className="mt-auto min-h-0 shrink pt-0.5 sm:pt-1">
             <p className="text-[10px] font-semibold uppercase tracking-wider text-[#64748B] sm:text-xs">
               Enter Student ID
             </p>
-            <div className="relative mt-1 sm:mt-1.5 md:mt-2">
+            <div className="relative mt-0.5 sm:mt-1 md:mt-1.5">
               <input
                 ref={scanInputRef}
                 id="badge-input"
@@ -783,7 +783,7 @@ export default function ScanStationPage() {
                 role="textbox"
                 aria-readonly="true"
                 aria-labelledby="badge-input"
-                className="flex h-10 items-center rounded-xl border border-[#AEB6C2] bg-[#F5F6F8] px-3 text-lg font-bold tracking-wide text-[#111827] sm:h-11 sm:rounded-2xl sm:px-4 sm:text-xl md:h-12 md:text-2xl lg:h-14 lg:text-3xl xl:h-16"
+                className="flex h-9 items-center rounded-xl border border-[#AEB6C2] bg-[#F5F6F8] px-2.5 text-base font-bold tracking-wide text-[#111827] sm:h-10 sm:rounded-2xl sm:px-3 sm:text-lg md:h-11 md:text-xl lg:h-12 lg:text-2xl xl:h-14"
               >
                 {scanValue || (
                   <span className="text-sm font-normal text-[#64748B] sm:text-base md:text-lg lg:text-xl">
@@ -793,7 +793,7 @@ export default function ScanStationPage() {
               </div>
             </div>
             <ScanKeypad
-              className="mt-1 sm:mt-1.5 md:mt-2 lg:mt-3"
+              className="mt-0.5 sm:mt-1 md:mt-1.5 lg:mt-2"
               variant="v2"
               onDigit={appendDigit}
               onBackspace={deleteLastDigit}
