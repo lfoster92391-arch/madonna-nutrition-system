@@ -4,6 +4,9 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import {
   AlertTriangle,
+  Bell,
+  CalendarDays,
+  ClipboardCheck,
   CreditCard,
   HelpCircle,
   History,
@@ -11,6 +14,7 @@ import {
   LogOut,
   Settings,
   ShieldAlert,
+  UtensilsCrossed,
   Users,
   Wallet,
 } from "lucide-react"
@@ -21,9 +25,14 @@ import { cn } from "@/lib/utils"
 
 const navLinks = [
   { label: "Dashboard", href: "/parent", icon: LayoutDashboard },
-  { label: "Food Safety Center", href: "/parent/student-profile", icon: ShieldAlert },
+  { label: "Calendar", href: "/parent/calendar", icon: CalendarDays },
+  { label: "Reserve Lunch", href: "/parent/reserve-lunch", icon: UtensilsCrossed },
+  { label: "Fund Account", href: "/parent/add-funds", icon: Wallet },
+  { label: "Nutrition", href: "/parent/nutrition", icon: ShieldAlert },
+  { label: "Notifications", href: "/parent/notifications", icon: Bell },
+  { label: "Agreement Status", href: "/parent/agreement", icon: ClipboardCheck },
   { label: "My Students", href: "/parent/students", icon: Users },
-  { label: "Add Funds", href: "/parent/add-funds", icon: Wallet },
+  { label: "Food Safety Center", href: "/parent/student-profile", icon: ShieldAlert },
   { label: "Meal History", href: "/parent/meal-history", icon: History },
   { label: "Transactions", href: "/parent/transactions", icon: CreditCard },
   { label: "Low Balance Alerts", href: "/parent/alerts", icon: AlertTriangle },
