@@ -9,6 +9,7 @@ import {
   ADD_FUNDS_MAX,
   ADD_FUNDS_MIN,
 } from "@/lib/payments/schemas"
+import { simulateSavedMethodFromCheckout } from "@/lib/parent-billing-prefs"
 
 const LOW_BALANCE_TARGET = 25
 
@@ -97,7 +98,8 @@ export function useAddFundsPayment(initialStudentId?: string) {
         const { url } = await api.createCheckoutSession(
           selectedStudentId,
           user.id,
-          amountDollars
+          amountDollars,
+          savePaymentMethod
         )
         window.location.href = url
         return
@@ -107,6 +109,9 @@ export function useAddFundsPayment(initialStudentId?: string) {
       if (!tx) {
         setError("Unable to add funds for this student.")
         return
+      }
+      if (savePaymentMethod) {
+        simulateSavedMethodFromCheckout()
       }
       setDemoSuccess(true)
     } catch (err) {
@@ -121,6 +126,7 @@ export function useAddFundsPayment(initialStudentId?: string) {
     amountDollars,
     stripeConfigured,
     addFunds,
+    savePaymentMethod,
   ])
 
   const resetForm = useCallback(() => {
