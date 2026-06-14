@@ -225,12 +225,12 @@ export function UserManager() {
     setMode("delete")
   }
 
-  function handleSaveAdd() {
+  async function handleSaveAdd() {
     if (!form.username || !form.email || !form.firstName || !form.lastName) {
       showToast("Please fill in all required fields.")
       return
     }
-    createUser(
+    await createUser(
       {
         username: form.username,
         email: form.email,
@@ -246,13 +246,13 @@ export function UserManager() {
     showToast(`User ${form.firstName} ${form.lastName} created.`)
   }
 
-  function handleSaveEdit() {
+  async function handleSaveEdit() {
     if (!selected) return
     if (!form.reason.trim()) {
       showToast("A reason note is required for account corrections.")
       return
     }
-    updateUser(
+    await updateUser(
       selected.id,
       {
         username: form.username,
@@ -270,36 +270,36 @@ export function UserManager() {
     showToast("Account updated and logged to audit trail.")
   }
 
-  function handleConfirmEnable() {
+  async function handleConfirmEnable() {
     if (!selected) return
-    enableUser(selected.id, performedBy, form.reason || "Re-enabled by administrator")
+    await enableUser(selected.id, performedBy, form.reason || "Re-enabled by administrator")
     setMode(null)
     showToast(`${formatUserName(selected)} has been enabled.`)
   }
 
-  function handleConfirmDisable() {
+  async function handleConfirmDisable() {
     if (!selected || !form.reason.trim()) {
       showToast("Please provide a reason for disabling this account.")
       return
     }
-    disableUser(selected.id, performedBy, form.reason)
+    await disableUser(selected.id, performedBy, form.reason)
     setMode(null)
     showToast(`${formatUserName(selected)} has been disabled.`)
   }
 
-  function handleConfirmDelete() {
+  async function handleConfirmDelete() {
     if (!selected || !form.reason.trim()) {
       showToast("Please provide a reason for deleting this account.")
       return
     }
-    deleteUser(selected.id, performedBy, form.reason)
+    await deleteUser(selected.id, performedBy, form.reason)
     setMode(null)
     showToast("User deleted and recorded in audit log.")
   }
 
-  function handleResetPassword() {
+  async function handleResetPassword() {
     if (!selected) return
-    const result = resetUserPassword(selected.id, performedBy)
+    const result = await resetUserPassword(selected.id, performedBy)
     if (result) {
       setTempPassword(result.tempPassword)
       showToast("Password reset generated. Copy the temporary password below.")

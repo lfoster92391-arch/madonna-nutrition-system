@@ -58,9 +58,9 @@ export default function AdminPage() {
     return byGrade
   }, [students])
 
-  function handleSave() {
+  async function handleSave() {
     if (editing) {
-      updateStudent(editing.id, {
+      await updateStudent(editing.id, {
         firstName: form.firstName,
         lastName: form.lastName,
         grade: form.grade,
@@ -69,7 +69,7 @@ export default function AdminPage() {
       })
       setEditing(null)
     } else {
-      addStudent({
+      await addStudent({
         id: form.id,
         firstName: form.firstName,
         lastName: form.lastName,
@@ -103,7 +103,7 @@ export default function AdminPage() {
     const targetId = photoTargetId
     if (!file || !targetId) return
     const dataUrl = await readFileAsDataUrl(file)
-    updateStudent(targetId, { photo: dataUrl })
+    await updateStudent(targetId, { photo: dataUrl })
     setPhotoTargetId(null)
     e.target.value = ""
   }
@@ -202,7 +202,7 @@ export default function AdminPage() {
                             Edit
                           </Button>
                           {!s.disabled && (
-                            <Button size="sm" variant="ghost" onClick={() => disableStudent(s.id)}>
+                            <Button size="sm" variant="ghost" onClick={() => void disableStudent(s.id)}>
                               <UserX className="h-4 w-4" />
                             </Button>
                           )}

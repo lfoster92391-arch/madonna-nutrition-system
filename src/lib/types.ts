@@ -136,6 +136,8 @@ export interface Student {
   disabled?: boolean
 }
 
+export type TransactionKind = "meal" | "deposit"
+
 export interface Transaction {
   id: string
   studentId: string
@@ -144,6 +146,8 @@ export interface Transaction {
   amount: number
   balanceAfter: number
   timestamp: string
+  type?: TransactionKind
+  stripeSessionId?: string
 }
 
 export interface InventoryItem {

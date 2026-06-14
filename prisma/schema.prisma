@@ -3,8 +3,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model School {
@@ -17,33 +18,48 @@ model School {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  users         User[]
-  students      Student[]
-  transactions  Transaction[]
-  inventory     InventoryItem[]
-  notifications Notification[]
-  menus         Menu[]
-  forms         Form[]
-  logs          AuditLog[]
+  users            User[]
+  students         Student[]
+  transactions     Transaction[]
+  inventory        InventoryItem[]
+  notifications    Notification[]
+  menus            Menu[]
+  forms            Form[]
+  logs             AuditLog[]
+  calendarEvents   CalendarEvent[]
+  calendarSettings CalendarSettings?
 }
 
 model User {
-  id        String   @id @default(cuid())
-  clerkId   String?  @unique
-  email     String   @unique
-  name      String
-  role      UserRole @default(STAFF)
-  schoolId  String
-  school    School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id               String     @id @default(cuid())
+  clerkId          String?    @unique
+  username         String     @unique
+  email            String     @unique
+  firstName        String
+  lastName         String
+  phone            String?
+  role             UserRole   @default(STAFF)
+  status           UserStatus @default(ACTIVE)
+  passwordHash     String?
+  linkedStudentIds String[]   @default([])
+  lastLoginAt      DateTime?
+  schoolId         String
+  school           School     @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
 }
 
 enum UserRole {
   ADMIN
   STAFF
+  CASHIER
   PARENT
   EXECUTIVE
+}
+
+enum UserStatus {
+  ACTIVE
+  DISABLED
 }
 
 model Student {
@@ -62,13 +78,13 @@ model Student {
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 
-  allergies           Allergy[]
-  parentLinks         ParentStudent[]
-  transactions        Transaction[]
-  notifications       Notification[]
-  profile             StudentProfile?
-  allergySubmissions  AllergySubmission[]
-  medicalDocuments    MedicalDocument[]
+  allergies          Allergy[]
+  parentLinks        ParentStudent[]
+  transactions       Transaction[]
+  notifications      Notification[]
+  profile            StudentProfile?
+  allergySubmissions AllergySubmission[]
+  medicalDocuments   MedicalDocument[]
 
   @@unique([schoolId, externalId])
 }
@@ -153,16 +169,23 @@ model ParentStudent {
   @@unique([parentId, studentId])
 }
 
+enum TransactionType {
+  MEAL
+  DEPOSIT
+}
+
 model Transaction {
-  id           String   @id @default(cuid())
-  studentId    String
-  student      Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  schoolId     String
-  school       School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  mealType     String
-  amount       Decimal  @db.Decimal(10, 2)
-  balanceAfter Decimal  @db.Decimal(10, 2)
-  createdAt    DateTime @default(now())
+  id              String          @id @default(cuid())
+  studentId       String
+  student         Student         @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  schoolId        String
+  school          School          @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  type            TransactionType @default(MEAL)
+  mealType        String
+  amount          Decimal         @db.Decimal(10, 2)
+  balanceAfter    Decimal         @db.Decimal(10, 2)
+  stripeSessionId String?         @unique
+  createdAt       DateTime        @default(now())
 }
 
 model InventoryItem {
@@ -227,13 +250,42 @@ model Form {
   createdAt DateTime @default(now())
 }
 
+model CalendarEvent {
+  id          String   @id @default(cuid())
+  title       String
+  date        DateTime @db.Date
+  description String?
+  category    String
+  color       String?
+  schoolId    String
+  school      School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model CalendarSettings {
+  id            String  @id @default(cuid())
+  schoolId      String  @unique
+  school        School  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  headerTitle   String
+  bannerMessage String?
+  accentColor   String  @default("navy")
+  schoolName    String
+}
+
 model AuditLog {
-  id        String   @id @default(cuid())
-  action    String
-  entity    String
-  entityId  String?
-  metadata  Json?
-  schoolId  String
-  school    School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
+  id            String   @id @default(cuid())
+  action        String
+  entity        String
+  entityType    String?
+  entityId      String?
+  metadata      Json?
+  performedBy   String?
+  performedAt   DateTime @default(now())
+  previousValue Json?
+  newValue      Json?
+  reason        String?
+  schoolId      String
+  school        School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  createdAt     DateTime @default(now())
 }

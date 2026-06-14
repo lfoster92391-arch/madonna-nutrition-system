@@ -42,22 +42,44 @@ Open [http://localhost:3000](http://localhost:3000)
 
 ## Database Setup (Production)
 
-1. Create a PostgreSQL database
-2. Copy environment variables:
+When `DATABASE_URL` is set, the app persists students, scan transactions, users, audit logs, calendar data, and allergy workflows to PostgreSQL. Without it, the app runs in **demo mode** (in-memory only).
+
+### Production Database Setup (Neon — free tier)
+
+1. Create a project at [neon.tech](https://neon.tech) (PostgreSQL 16+).
+2. Copy the **pooled** connection string (add `?sslmode=require` if not present).
+3. Local `.env`:
 
 ```bash
 cp .env.example .env
 ```
 
-3. Set `DATABASE_URL` in `.env`:
-
 ```
-DATABASE_URL="postgresql://user:password@localhost:5432/mnms?schema=public"
+DATABASE_URL="postgresql://user:password@ep-xxx.us-east-2.aws.neon.tech/neondb?sslmode=require"
+NEXT_PUBLIC_APP_URL=https://fuelthedons.com
 ```
 
-4. Run migrations and seed:
+4. Push schema and seed Madonna High School production data:
 
 ```bash
+npm run db:push
+npm run db:seed
+```
+
+5. **Vercel:** Project → Settings → Environment Variables → add `DATABASE_URL` for Production (and Preview if desired). Redeploy.
+
+6. Optional: copy `SCHOOL_ID` from seed output if you run multiple schools.
+
+**Seeded portal login (production DB):** username `d.garcia`, `j.wilson`, or `sarah.anderson` — password `FuelTheDons2026!` (change after first login).
+
+### Local development without a database
+
+Omit `DATABASE_URL` — demo mode works unchanged for local UI development.
+
+### Legacy local Postgres
+
+```bash
+DATABASE_URL="postgresql://user:password@localhost:5432/mnms?schema=public"
 npx prisma migrate dev --name init
 npm run db:seed
 ```
@@ -139,7 +161,8 @@ cp .env.example .env
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `NEXT_PUBLIC_APP_URL` | Production | Public site URL (e.g. `https://fuelthedons.com`) — used for metadata and OG tags |
-| `DATABASE_URL` | For DB mode | PostgreSQL connection string — **not required for demo launch** |
+| `DATABASE_URL` | Production | PostgreSQL connection string — enables DB persistence |
+| `SCHOOL_ID` | Optional | Tenant school ID when multiple schools exist |
 | `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Future | Clerk auth |
 | `CLERK_SECRET_KEY` | Future | Clerk auth |
 | `STRIPE_SECRET_KEY` | Future | Payment processing |

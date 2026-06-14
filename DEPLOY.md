@@ -139,10 +139,160 @@ Same as **Option B, Step 5**.
 
 | Mode | Env vars | Notes |
 |------|----------|-------|
-| **Demo (default)** | None (optional `NEXT_PUBLIC_APP_URL`) | In-memory data via `DemoProvider` |
-| **Production DB** | `DATABASE_URL` | Vercel → Settings → Environment Variables |
+| **Demo (dev only)** | None (optional `NEXT_PUBLIC_APP_URL`) | In-memory data when `DATABASE_URL` is unset |
+| **Production DB** | `DATABASE_URL` (+ optional `SCHOOL_ID` or `SCHOOL_SLUG`) | Neon, Supabase, or Vercel Postgres — see below |
+| **Live payments** | `STRIPE_SECRET_KEY`, `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`, `STRIPE_WEBHOOK_SECRET` | Parent prepay via Stripe Checkout — see below |
 
-Optional future vars (not needed now): `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`, `STRIPE_SECRET_KEY`.
+Optional future vars: `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`.
+
+---
+
+## Stripe setup (parent prepay)
+
+Parents add cafeteria funds at **`/parent/add-funds`** via Stripe Checkout. Without Stripe keys, the app shows a clearly labeled **demo deposit** for local development.
+
+### Environment variables (Vercel Production)
+
+| Variable | Where to get it |
+|----------|-----------------|
+| `STRIPE_SECRET_KEY` | [Stripe Dashboard](https://dashboard.stripe.com/apikeys) → Secret key |
+| `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | Stripe Dashboard → Publishable key |
+| `STRIPE_WEBHOOK_SECRET` | Stripe Dashboard → Webhooks (see below) |
+| `SCHOOL_SLUG` | `madonna-high-school` (single school at launch) |
+
+Add all four in [Vercel](https://vercel.com/dashboard) → **madonna-nutrition-system** → **Settings** → **Environment Variables** → **Production**, then redeploy.
+
+Or via CLI:
+
+```bash
+npx vercel env add STRIPE_SECRET_KEY production
+npx vercel env add NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY production --no-sensitive
+npx vercel env add STRIPE_WEBHOOK_SECRET production
+npx vercel env add SCHOOL_SLUG production --value "madonna-high-school" --yes --no-sensitive
+```
+
+### Stripe Dashboard — webhook
+
+1. Open [Stripe Dashboard → Webhooks](https://dashboard.stripe.com/webhooks) → **Add endpoint**.
+2. **Endpoint URL:** `https://www.fuelthedons.com/api/stripe/webhook`
+3. **Events:** `checkout.session.completed`
+4. Copy the **Signing secret** → set as `STRIPE_WEBHOOK_SECRET` in Vercel.
+5. Redeploy production after saving env vars.
+
+For local webhook testing, use the [Stripe CLI](https://stripe.com/docs/stripe-cli):
+
+```bash
+stripe listen --forward-to localhost:3000/api/stripe/webhook
+```
+
+Use the CLI signing secret as `STRIPE_WEBHOOK_SECRET` in `.env.local`.
+
+### Test flow
+
+1. Log in to the parent portal (`parent` / any password in demo auth).
+2. Go to **Add Funds** → select an Anderson student → choose $10 / $25 / $50 or custom ($5–$500).
+3. Click **Pay with Card** → complete Stripe Checkout (test card `4242 4242 4242 4242`).
+4. Return URL shows success; webhook credits `students.balance`, creates a `deposit` transaction, and writes an audit log entry.
+5. Confirm on **Transactions** and the parent dashboard balance.
+
+Stripe test mode keys work end-to-end before switching to live keys.
+
+---
+
+## Neon Postgres (recommended — free tier)
+
+1. Create a project at [neon.tech](https://neon.tech).
+2. Copy the **pooled** connection string (append `?sslmode=require` if missing).
+3. Vercel → **madonna-nutrition-system** → **Settings** → **Environment Variables** → add `DATABASE_URL` for Production.
+4. From your machine (with `DATABASE_URL` in `.env`):
+
+```bash
+npm run db:push
+npm run db:seed
+```
+
+5. Redeploy: `npx vercel --prod --yes`
+
+Seed prints `SCHOOL_ID` — optionally add to Vercel. Seeded portal password: `FuelTheDons2026!`
+
+---
+
+## Supabase + Vercel Setup
+
+Use Supabase for PostgreSQL and Vercel for hosting. Prisma connects through Supabase's connection pooler on Vercel (serverless) and uses a direct/session connection for migrations.
+
+### Connection strings (what to copy from Supabase)
+
+In [Supabase Dashboard](https://supabase.com/dashboard) → your project → **Project Settings** → **Database** → **Connection string**:
+
+| Variable | Supabase mode | Port | Used for |
+|----------|---------------|------|----------|
+| `DATABASE_URL` | **Transaction** pooler | **6543** | App runtime on Vercel (add `?pgbouncer=true` if not present) |
+| `DIRECT_URL` | **Session** pooler (or Direct) | **5432** | `prisma migrate deploy`, `prisma db push`, `npm run db:seed` |
+
+Example values (replace `[ref]`, `[password]`, `[region]` with your project values):
+
+```env
+DATABASE_URL="postgresql://postgres.[ref]:[password]@aws-0-[region].pooler.supabase.com:6543/postgres?pgbouncer=true"
+DIRECT_URL="postgresql://postgres.[ref]:[password]@aws-0-[region].pooler.supabase.com:5432/postgres"
+```
+
+Copy `.env.example` to `.env.local` for local development and fill in both URLs.
+
+### Step 1 — Supabase connection strings
+
+1. Open **Project Settings** → **Database** → **Connection string**.
+2. Choose **URI** format.
+3. Copy the **Transaction** pooler URI → this becomes `DATABASE_URL` (port **6543**, include `?pgbouncer=true`).
+4. Copy the **Session** pooler URI (or Direct connection) → this becomes `DIRECT_URL` (port **5432**).
+5. Replace `[YOUR-PASSWORD]` with your database password (reset under **Database password** if needed).
+
+### Step 2 — Vercel environment variables
+
+1. [Vercel Dashboard](https://vercel.com/dashboard) → **madonna-nutrition-system** → **Settings** → **Environment Variables**.
+2. Add **`DATABASE_URL`** — paste the Transaction pooler URI (6543, `?pgbouncer=true`).
+3. Add **`DIRECT_URL`** — paste the Session/Direct URI (5432).
+4. Scope both to **Production** (and **Preview** / **Development** if you use preview DBs).
+
+Or via CLI:
+
+```bash
+npx vercel env add DATABASE_URL production
+npx vercel env add DIRECT_URL production
+```
+
+### Step 3 — Apply schema and seed (run locally or in CI)
+
+From the project root with `.env.local` (or exported env vars) pointing at Supabase:
+
+```bash
+npm install
+npx prisma generate
+npx prisma migrate deploy   # preferred when migrations exist
+# — or, for initial schema without migration history —
+npx prisma db push
+npm run db:seed
+```
+
+`migrate deploy` uses `DIRECT_URL` from `schema.prisma` for DDL; the app at runtime uses `DATABASE_URL` through the transaction pooler.
+
+### Step 4 — Redeploy Vercel
+
+After env vars and schema are in place:
+
+```bash
+npx vercel --prod --yes
+```
+
+Or push to `main` if Git integration is enabled. Vercel runs `postinstall` → `prisma generate` on each build.
+
+### Verify
+
+- [ ] `DATABASE_URL` and `DIRECT_URL` set in Vercel Production
+- [ ] `npx prisma migrate deploy` or `db push` succeeded against Supabase
+- [ ] `npm run db:seed` completed
+- [ ] Production redeploy shows **Ready**
+- [ ] App routes that use Prisma return data (not demo fallback)
 
 ---
 

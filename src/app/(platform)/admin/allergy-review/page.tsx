@@ -42,12 +42,12 @@ export default function AllergyReviewPage() {
     })
   }, [queue, students])
 
-  function handleAction(
+  async function handleAction(
     submission: AllergySubmission,
     action: "approve" | "reject" | "clarification"
   ) {
     const note = reviewNotes[submission.id]
-    reviewAllergySubmission(submission.id, action, "Nutrition Office", note)
+    await reviewAllergySubmission(submission.id, action, "Nutrition Office", note)
 
     const messages = {
       approve: "Profile approved. Student allergies updated and staff notified.",

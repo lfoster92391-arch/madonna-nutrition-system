@@ -35,18 +35,12 @@ interface AuthContextValue {
     username: string,
     password: string,
     role: Exclude<PortalRole, null>
-  ) => LoginResult
+  ) => LoginResult | Promise<LoginResult>
   logout: () => void
 }
 
 const STORAGE_KEY = "mnms-demo-session"
 
-/**
- * Demo credentials (Clerk-ready structure — replace with Clerk signIn later):
- * - Match by username or email against demo users in DemoProvider
- * - Aliases: admin → d.garcia, parent → sarah.anderson, cashier → j.wilson
- * - Disabled accounts are blocked at login
- */
 const AuthContext = createContext<AuthContextValue | null>(null)
 
 function readSession(): AuthUser | null {
@@ -80,11 +74,13 @@ function portalMatchesUserRole(
 }
 
 function AuthProviderInner({ children }: { children: ReactNode }) {
-  const { getUserByUsername, recordUserLogin, users } = useDemo()
+  const { databaseEnabled, getUserByUsername, recordUserLogin, users, isLoading: dataLoading } =
+    useDemo()
   const [user, setUser] = useState<AuthUser | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
+    if (dataLoading) return
     const session = readSession()
     if (session) {
       const live = users.find((u) => u.id === session.id)
@@ -96,17 +92,46 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
       }
     }
     setIsLoading(false)
-  }, [users])
+  }, [users, dataLoading])
 
   const login = useCallback(
-    (
+    async (
       username: string,
-      _password: string,
+      password: string,
       role: Exclude<PortalRole, null>
-    ): LoginResult => {
+    ): Promise<LoginResult> => {
       const trimmed = username.trim()
       if (!trimmed) {
         return { success: false, error: "Please enter a username." }
+      }
+
+      if (databaseEnabled) {
+        try {
+          const res = await fetch("/api/auth/login", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ username: trimmed, password, role }),
+          })
+          const data = await res.json()
+          if (!res.ok || !data.success) {
+            return { success: false, error: data.error ?? "Login failed." }
+          }
+
+          const session: AuthUser = {
+            id: data.user.id,
+            username: data.user.username,
+            role: data.user.role,
+            displayName: data.user.displayName,
+            email: data.user.email,
+          }
+
+          setUser(session)
+          writeSession(session)
+          await recordUserLogin(data.user.id)
+          return { success: true }
+        } catch {
+          return { success: false, error: "Unable to reach authentication service." }
+        }
       }
 
       const demoUser = getUserByUsername(trimmed)
@@ -141,10 +166,10 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
 
       setUser(session)
       writeSession(session)
-      recordUserLogin(demoUser.id)
+      await recordUserLogin(demoUser.id)
       return { success: true }
     },
-    [getUserByUsername, recordUserLogin]
+    [databaseEnabled, getUserByUsername, recordUserLogin]
   )
 
   const logout = useCallback(() => {
@@ -153,8 +178,8 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
   }, [])
 
   const value = useMemo(
-    () => ({ user, isLoading, login, logout }),
-    [user, isLoading, login, logout]
+    () => ({ user, isLoading: isLoading || dataLoading, login, logout }),
+    [user, isLoading, dataLoading, login, logout]
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

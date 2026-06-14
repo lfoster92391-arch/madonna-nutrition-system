@@ -130,7 +130,7 @@ export function AdminCalendarDesigner() {
     setShowEventForm(true)
   }
 
-  function handleSaveEvent() {
+  async function handleSaveEvent() {
     if (!eventForm.title.trim() || !eventForm.date) return
     const payload = {
       title: eventForm.title.trim(),
@@ -140,24 +140,24 @@ export function AdminCalendarDesigner() {
       color: eventForm.color.trim() || undefined,
     }
     if (editingEvent) {
-      updateCalendarEvent(editingEvent.id, payload)
+      await updateCalendarEvent(editingEvent.id, payload)
     } else {
-      addCalendarEvent(payload)
+      await addCalendarEvent(payload)
     }
     setShowEventForm(false)
     setEditingEvent(null)
     flashSaved()
   }
 
-  function handleDeleteEvent(id: string) {
-    deleteCalendarEvent(id)
+  async function handleDeleteEvent(id: string) {
+    await deleteCalendarEvent(id)
     setShowEventForm(false)
     setEditingEvent(null)
     flashSaved()
   }
 
-  function handleSettingsChange(updates: Partial<typeof calendarSettings>) {
-    updateCalendarSettings(updates)
+  async function handleSettingsChange(updates: Partial<typeof calendarSettings>) {
+    await updateCalendarSettings(updates)
     flashSaved()
   }
 

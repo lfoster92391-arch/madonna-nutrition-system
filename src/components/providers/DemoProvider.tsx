@@ -4,10 +4,12 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useState,
   type ReactNode,
 } from "react"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import {
   demoAllergySubmissions,
   demoAuditLogs,
@@ -22,8 +24,9 @@ import {
   demoTransactions,
   demoUsers,
 } from "@/data/demo"
+import { api } from "@/lib/api/client"
 import { addOneYear, payloadToAllergies } from "@/lib/food-safety"
-import { generateTempPassword } from "@/lib/users"
+import { generateTempPassword, findUserByLogin } from "@/lib/users"
 import type {
   AllergySubmission,
   AllergySubmissionStatus,
@@ -53,6 +56,8 @@ interface CreateUserInput {
 }
 
 interface DemoContextValue {
+  databaseEnabled: boolean
+  isLoading: boolean
   students: Student[]
   transactions: Transaction[]
   inventory: InventoryItem[]
@@ -65,57 +70,62 @@ interface DemoContextValue {
   calendarEvents: CalendarEvent[]
   calendarSettings: CalendarSettings
   users: User[]
-  addStudent: (student: Student) => void
-  updateStudent: (id: string, updates: Partial<Student>) => void
-  disableStudent: (id: string) => void
-  processMeal: (studentId: string, meal: string, amount: number) => Transaction | null
+  addStudent: (student: Student) => void | Promise<void>
+  updateStudent: (id: string, updates: Partial<Student>) => void | Promise<void>
+  disableStudent: (id: string) => void | Promise<void>
+  processMeal: (studentId: string, meal: string, amount: number) => Transaction | null | Promise<Transaction | null>
+  addFunds: (
+    studentId: string,
+    amount: number,
+    performedBy?: string
+  ) => Transaction | null | Promise<Transaction | null>
   addImportLog: (log: ImportLog) => void
   rollbackImport: (logId: string) => void
-  bulkImportStudents: (newStudents: Student[]) => void
+  bulkImportStudents: (newStudents: Student[]) => void | Promise<void>
   submitAllergyForm: (
     studentId: string,
     submittedBy: string,
     payload: FoodSafetyFormPayload
-  ) => AllergySubmission
+  ) => AllergySubmission | Promise<AllergySubmission>
   reviewAllergySubmission: (
     submissionId: string,
     action: "approve" | "reject" | "clarification",
     reviewedBy: string,
     reviewNote?: string
-  ) => void
+  ) => void | Promise<void>
   uploadMedicalDocument: (
     studentId: string,
     fileName: string,
     documentUrl: string,
     uploadedBy: string
-  ) => MedicalDocument
+  ) => MedicalDocument | Promise<MedicalDocument>
   updateParentContact: (
     studentId: string,
     contact: { name: string; email: string; phone: string }
-  ) => void
+  ) => void | Promise<void>
   getStudentProfile: (studentId: string) => StudentProfile | undefined
-  updateCalendarSettings: (updates: Partial<CalendarSettings>) => void
-  addCalendarEvent: (event: Omit<CalendarEvent, "id">) => CalendarEvent
-  updateCalendarEvent: (id: string, updates: Partial<CalendarEvent>) => void
-  deleteCalendarEvent: (id: string) => void
+  updateCalendarSettings: (updates: Partial<CalendarSettings>) => void | Promise<void>
+  addCalendarEvent: (event: Omit<CalendarEvent, "id">) => CalendarEvent | Promise<CalendarEvent>
+  updateCalendarEvent: (id: string, updates: Partial<CalendarEvent>) => void | Promise<void>
+  deleteCalendarEvent: (id: string) => void | Promise<void>
   getUserByUsername: (username: string) => User | undefined
-  createUser: (input: CreateUserInput, performedBy: string) => User
+  createUser: (input: CreateUserInput, performedBy: string) => User | Promise<User>
   updateUser: (
     id: string,
     updates: Partial<Omit<User, "id" | "createdAt">>,
     performedBy: string,
     reason?: string
-  ) => User | null
-  disableUser: (id: string, performedBy: string, reason: string) => boolean
-  enableUser: (id: string, performedBy: string, reason?: string) => boolean
-  resetUserPassword: (id: string, performedBy: string) => { tempPassword: string } | null
-  deleteUser: (id: string, performedBy: string, reason: string) => boolean
-  recordUserLogin: (userId: string) => void
+  ) => User | null | Promise<User | null>
+  disableUser: (id: string, performedBy: string, reason: string) => boolean | Promise<boolean>
+  enableUser: (id: string, performedBy: string, reason?: string) => boolean | Promise<boolean>
+  resetUserPassword: (id: string, performedBy: string) => { tempPassword: string } | null | Promise<{ tempPassword: string } | null>
+  deleteUser: (id: string, performedBy: string, reason: string) => boolean | Promise<boolean>
+  recordUserLogin: (userId: string) => void | Promise<void>
 }
 
 const DemoContext = createContext<DemoContextValue | null>(null)
 
-export function DemoProvider({ children }: { children: ReactNode }) {
+function useDemoLocalState() {
   const [students, setStudents] = useState<Student[]>(demoStudents)
   const [transactions, setTransactions] = useState<Transaction[]>(demoTransactions)
   const [inventory] = useState<InventoryItem[]>(demoInventory)
@@ -148,19 +158,7 @@ export function DemoProvider({ children }: { children: ReactNode }) {
   )
 
   const getUserByUsername = useCallback(
-    (username: string) => {
-      const normalized = username.trim().toLowerCase()
-      const aliases: Record<string, string> = {
-        parent: "sarah.anderson",
-        admin: "d.garcia",
-        cashier: "j.wilson",
-      }
-      const lookup = aliases[normalized] ?? normalized
-      return users.find(
-        (u) =>
-          u.username.toLowerCase() === lookup || u.email.toLowerCase() === lookup
-      )
-    },
+    (username: string) => findUserByLogin(users, username),
     [users]
   )
 
@@ -299,11 +297,7 @@ export function DemoProvider({ children }: { children: ReactNode }) {
         entityType: "user",
         entityId: id,
         performedBy,
-        metadata: {
-          method: "temp_password",
-          clerkReady: true,
-          resetSent: true,
-        },
+        metadata: { method: "temp_password", clerkReady: true, resetSent: true },
         newValue: { resetSent: true },
       })
       return { tempPassword }
@@ -382,6 +376,41 @@ export function DemoProvider({ children }: { children: ReactNode }) {
     [students]
   )
 
+  const addFunds = useCallback(
+    (studentId: string, amount: number, performedBy?: string): Transaction | null => {
+      const student = students.find((s) => s.id === studentId && !s.disabled)
+      if (!student) return null
+
+      const balanceAfter = student.balance + amount
+      const tx: Transaction = {
+        id: `tx-${Date.now()}`,
+        studentId,
+        studentName: `${student.firstName} ${student.lastName}`,
+        meal: "Card Deposit (Demo)",
+        amount,
+        balanceAfter,
+        timestamp: new Date().toISOString(),
+        type: "deposit",
+      }
+
+      setStudents((prev) =>
+        prev.map((s) => (s.id === studentId ? { ...s, balance: balanceAfter } : s))
+      )
+      setTransactions((prev) => [tx, ...prev])
+      appendAuditLog({
+        action: "FUNDS_ADDED",
+        entity: "student_balance",
+        entityType: "student",
+        entityId: studentId,
+        performedBy: performedBy ?? "parent_demo",
+        metadata: { amount, source: "demo_deposit" },
+        newValue: { balance: balanceAfter },
+      })
+      return tx
+    },
+    [students, appendAuditLog]
+  )
+
   const addImportLog = useCallback((log: ImportLog) => {
     setImportLogs((prev) => [log, ...prev])
   }, [])
@@ -444,7 +473,7 @@ export function DemoProvider({ children }: { children: ReactNode }) {
       reviewNote?: string
     ) => {
       const now = new Date().toISOString()
-      let status: AllergySubmissionStatus =
+      const status: AllergySubmissionStatus =
         action === "approve"
           ? "approved"
           : action === "reject"
@@ -579,13 +608,436 @@ export function DemoProvider({ children }: { children: ReactNode }) {
     setCalendarEvents((prev) => prev.filter((e) => e.id !== id))
   }, [])
 
+  return {
+    students,
+    transactions,
+    inventory,
+    notifications,
+    importLogs,
+    studentProfiles,
+    allergySubmissions,
+    medicalDocuments,
+    auditLogs,
+    calendarEvents,
+    calendarSettings,
+    users,
+    addStudent,
+    updateStudent,
+    disableStudent,
+    processMeal,
+    addFunds,
+    addImportLog,
+    rollbackImport,
+    bulkImportStudents,
+    submitAllergyForm,
+    reviewAllergySubmission,
+    uploadMedicalDocument,
+    updateParentContact,
+    getStudentProfile,
+    updateCalendarSettings,
+    addCalendarEvent,
+    updateCalendarEvent,
+    deleteCalendarEvent,
+    getUserByUsername,
+    createUser,
+    updateUser,
+    disableUser,
+    enableUser,
+    resetUserPassword,
+    deleteUser,
+    recordUserLogin,
+  }
+}
+
+export function DemoProvider({ children }: { children: ReactNode }) {
+  const demo = useDemoLocalState()
+  const queryClient = useQueryClient()
+  const [dbEnabled, setDbEnabled] = useState(false)
+  const [configLoaded, setConfigLoaded] = useState(false)
+
+  useEffect(() => {
+    api
+      .getConfig()
+      .then((config) => setDbEnabled(config.databaseEnabled))
+      .catch(() => setDbEnabled(false))
+      .finally(() => setConfigLoaded(true))
+  }, [])
+
+  const invalidate = useCallback(
+    (...keys: string[]) => {
+      keys.forEach((key) => {
+        void queryClient.invalidateQueries({ queryKey: [key] })
+      })
+    },
+    [queryClient]
+  )
+
+  const studentsQuery = useQuery({
+    queryKey: ["students"],
+    queryFn: api.getStudents,
+    enabled: dbEnabled,
+  })
+  const transactionsQuery = useQuery({
+    queryKey: ["transactions"],
+    queryFn: api.getTransactions,
+    enabled: dbEnabled,
+  })
+  const usersQuery = useQuery({
+    queryKey: ["users"],
+    queryFn: api.getUsers,
+    enabled: dbEnabled,
+  })
+  const auditLogsQuery = useQuery({
+    queryKey: ["audit-logs"],
+    queryFn: api.getAuditLogs,
+    enabled: dbEnabled,
+  })
+  const calendarEventsQuery = useQuery({
+    queryKey: ["calendar-events"],
+    queryFn: api.getCalendarEvents,
+    enabled: dbEnabled,
+  })
+  const calendarSettingsQuery = useQuery({
+    queryKey: ["calendar-settings"],
+    queryFn: api.getCalendarSettings,
+    enabled: dbEnabled,
+  })
+  const allergySubmissionsQuery = useQuery({
+    queryKey: ["allergy-submissions"],
+    queryFn: api.getAllergySubmissions,
+    enabled: dbEnabled,
+  })
+  const studentProfilesQuery = useQuery({
+    queryKey: ["student-profiles"],
+    queryFn: api.getStudentProfiles,
+    enabled: dbEnabled,
+  })
+  const medicalDocumentsQuery = useQuery({
+    queryKey: ["medical-documents"],
+    queryFn: api.getMedicalDocuments,
+    enabled: dbEnabled,
+  })
+
+  const dbLoading =
+    dbEnabled &&
+    (studentsQuery.isLoading ||
+      transactionsQuery.isLoading ||
+      usersQuery.isLoading ||
+      auditLogsQuery.isLoading)
+
+  const students = dbEnabled ? (studentsQuery.data ?? []) : demo.students
+  const transactions = dbEnabled ? (transactionsQuery.data ?? []) : demo.transactions
+  const users = dbEnabled ? (usersQuery.data ?? []) : demo.users
+  const auditLogs = dbEnabled ? (auditLogsQuery.data ?? []) : demo.auditLogs
+  const calendarEvents = dbEnabled ? (calendarEventsQuery.data ?? []) : demo.calendarEvents
+  const calendarSettings = dbEnabled
+    ? (calendarSettingsQuery.data ?? demoCalendarSettings)
+    : demo.calendarSettings
+  const allergySubmissions = dbEnabled
+    ? (allergySubmissionsQuery.data ?? [])
+    : demo.allergySubmissions
+  const studentProfiles = dbEnabled
+    ? (studentProfilesQuery.data ?? [])
+    : demo.studentProfiles
+  const medicalDocuments = dbEnabled
+    ? (medicalDocumentsQuery.data ?? [])
+    : demo.medicalDocuments
+
+  const getUserByUsername = useCallback(
+    (username: string) => findUserByLogin(users, username),
+    [users]
+  )
+
+  const getStudentProfile = useCallback(
+    (studentId: string) => studentProfiles.find((p) => p.studentId === studentId),
+    [studentProfiles]
+  )
+
+  const addStudent = useCallback(
+    async (student: Student) => {
+      if (!dbEnabled) {
+        demo.addStudent(student)
+        return
+      }
+      await api.createStudent(student)
+      invalidate("students")
+    },
+    [dbEnabled, demo, invalidate]
+  )
+
+  const updateStudent = useCallback(
+    async (id: string, updates: Partial<Student>) => {
+      if (!dbEnabled) {
+        demo.updateStudent(id, updates)
+        return
+      }
+      await api.updateStudent(id, updates)
+      invalidate("students")
+    },
+    [dbEnabled, demo, invalidate]
+  )
+
+  const disableStudent = useCallback(
+    async (id: string) => {
+      if (!dbEnabled) {
+        demo.disableStudent(id)
+        return
+      }
+      await api.disableStudent(id)
+      invalidate("students")
+    },
+    [dbEnabled, demo, invalidate]
+  )
+
+  const processMeal = useCallback(
+    async (studentId: string, meal: string, amount: number) => {
+      if (!dbEnabled) {
+        return demo.processMeal(studentId, meal, amount)
+      }
+      try {
+        const tx = await api.processMeal(studentId, meal, amount)
+        invalidate("students", "transactions")
+        return tx
+      } catch {
+        return null
+      }
+    },
+    [dbEnabled, demo, invalidate]
+  )
+
+  const addFunds = useCallback(
+    async (studentId: string, amount: number, performedBy?: string) => {
+      if (!dbEnabled) {
+        return demo.addFunds(studentId, amount, performedBy)
+      }
+      return null
+    },
+    [dbEnabled, demo]
+  )
+
+  const bulkImportStudents = useCallback(
+    async (newStudents: Student[]) => {
+      if (!dbEnabled) {
+        demo.bulkImportStudents(newStudents)
+        return
+      }
+      for (const student of newStudents) {
+        await api.createStudent(student)
+      }
+      invalidate("students")
+    },
+    [dbEnabled, demo, invalidate]
+  )
+
+  const submitAllergyForm = useCallback(
+    async (studentId: string, submittedBy: string, payload: FoodSafetyFormPayload) => {
+      if (!dbEnabled) {
+        return demo.submitAllergyForm(studentId, submittedBy, payload)
+      }
+      const submission = await api.submitAllergyForm(studentId, submittedBy, payload)
+      invalidate("allergy-submissions")
+      return submission
+    },
+    [dbEnabled, demo, invalidate]
+  )
+
+  const reviewAllergySubmission = useCallback(
+    async (
+      submissionId: string,
+      action: "approve" | "reject" | "clarification",
+      reviewedBy: string,
+      reviewNote?: string
+    ) => {
+      if (!dbEnabled) {
+        demo.reviewAllergySubmission(submissionId, action, reviewedBy, reviewNote)
+        return
+      }
+      await api.reviewAllergySubmission(submissionId, action, reviewedBy, reviewNote)
+      invalidate(
+        "allergy-submissions",
+        "student-profiles",
+        "students",
+        "audit-logs"
+      )
+    },
+    [dbEnabled, demo, invalidate]
+  )
+
+  const uploadMedicalDocument = useCallback(
+    async (
+      studentId: string,
+      fileName: string,
+      documentUrl: string,
+      uploadedBy: string
+    ) => {
+      if (!dbEnabled) {
+        return demo.uploadMedicalDocument(studentId, fileName, documentUrl, uploadedBy)
+      }
+      const doc = await api.uploadMedicalDocument(studentId, fileName, documentUrl, uploadedBy)
+      invalidate("medical-documents")
+      return doc
+    },
+    [dbEnabled, demo, invalidate]
+  )
+
+  const updateParentContact = useCallback(
+    async (studentId: string, contact: { name: string; email: string; phone: string }) => {
+      if (!dbEnabled) {
+        demo.updateParentContact(studentId, contact)
+        return
+      }
+      await api.updateParentContact(studentId, contact)
+      invalidate("students")
+    },
+    [dbEnabled, demo, invalidate]
+  )
+
+  const updateCalendarSettings = useCallback(
+    async (updates: Partial<CalendarSettings>) => {
+      if (!dbEnabled) {
+        demo.updateCalendarSettings(updates)
+        return
+      }
+      await api.updateCalendarSettings(updates)
+      invalidate("calendar-settings")
+    },
+    [dbEnabled, demo, invalidate]
+  )
+
+  const addCalendarEvent = useCallback(
+    async (event: Omit<CalendarEvent, "id">) => {
+      if (!dbEnabled) {
+        return demo.addCalendarEvent(event)
+      }
+      const created = await api.createCalendarEvent(event)
+      invalidate("calendar-events")
+      return created
+    },
+    [dbEnabled, demo, invalidate]
+  )
+
+  const updateCalendarEvent = useCallback(
+    async (id: string, updates: Partial<CalendarEvent>) => {
+      if (!dbEnabled) {
+        demo.updateCalendarEvent(id, updates)
+        return
+      }
+      await api.updateCalendarEvent(id, updates)
+      invalidate("calendar-events")
+    },
+    [dbEnabled, demo, invalidate]
+  )
+
+  const deleteCalendarEvent = useCallback(
+    async (id: string) => {
+      if (!dbEnabled) {
+        demo.deleteCalendarEvent(id)
+        return
+      }
+      await api.deleteCalendarEvent(id)
+      invalidate("calendar-events")
+    },
+    [dbEnabled, demo, invalidate]
+  )
+
+  const createUser = useCallback(
+    async (input: CreateUserInput, performedBy: string) => {
+      if (!dbEnabled) {
+        return demo.createUser(input, performedBy)
+      }
+      const user = await api.createUser({ ...input, performedBy })
+      invalidate("users", "audit-logs")
+      return user
+    },
+    [dbEnabled, demo, invalidate]
+  )
+
+  const updateUser = useCallback(
+    async (
+      id: string,
+      updates: Partial<Omit<User, "id" | "createdAt">>,
+      performedBy: string,
+      reason?: string
+    ) => {
+      if (!dbEnabled) {
+        return demo.updateUser(id, updates, performedBy, reason)
+      }
+      const user = await api.updateUser(id, { ...updates, performedBy, reason })
+      invalidate("users", "audit-logs")
+      return user
+    },
+    [dbEnabled, demo, invalidate]
+  )
+
+  const disableUser = useCallback(
+    async (id: string, performedBy: string, reason: string) => {
+      if (!dbEnabled) {
+        return demo.disableUser(id, performedBy, reason)
+      }
+      await api.disableUser(id, performedBy, reason)
+      invalidate("users", "audit-logs")
+      return true
+    },
+    [dbEnabled, demo, invalidate]
+  )
+
+  const enableUser = useCallback(
+    async (id: string, performedBy: string, reason?: string) => {
+      if (!dbEnabled) {
+        return demo.enableUser(id, performedBy, reason)
+      }
+      await api.enableUser(id, performedBy, reason)
+      invalidate("users", "audit-logs")
+      return true
+    },
+    [dbEnabled, demo, invalidate]
+  )
+
+  const resetUserPassword = useCallback(
+    async (id: string, performedBy: string) => {
+      if (!dbEnabled) {
+        return demo.resetUserPassword(id, performedBy)
+      }
+      const result = await api.resetUserPassword(id, performedBy)
+      invalidate("audit-logs")
+      return result
+    },
+    [dbEnabled, demo, invalidate]
+  )
+
+  const deleteUser = useCallback(
+    async (id: string, performedBy: string, reason: string) => {
+      if (!dbEnabled) {
+        return demo.deleteUser(id, performedBy, reason)
+      }
+      await api.deleteUser(id, performedBy, reason)
+      invalidate("users", "audit-logs")
+      return true
+    },
+    [dbEnabled, demo, invalidate]
+  )
+
+  const recordUserLogin = useCallback(
+    async (userId: string) => {
+      if (!dbEnabled) {
+        demo.recordUserLogin(userId)
+        return
+      }
+      await api.recordUserLogin(userId)
+      invalidate("users")
+    },
+    [dbEnabled, demo, invalidate]
+  )
+
   const value = useMemo(
     () => ({
+      databaseEnabled: dbEnabled,
+      isLoading: !configLoaded || dbLoading,
       students,
       transactions,
-      inventory,
-      notifications,
-      importLogs,
+      inventory: demo.inventory,
+      notifications: demo.notifications,
+      importLogs: demo.importLogs,
       studentProfiles,
       allergySubmissions,
       medicalDocuments,
@@ -597,8 +1049,9 @@ export function DemoProvider({ children }: { children: ReactNode }) {
       updateStudent,
       disableStudent,
       processMeal,
-      addImportLog,
-      rollbackImport,
+      addFunds,
+      addImportLog: demo.addImportLog,
+      rollbackImport: demo.rollbackImport,
       bulkImportStudents,
       submitAllergyForm,
       reviewAllergySubmission,
@@ -619,11 +1072,14 @@ export function DemoProvider({ children }: { children: ReactNode }) {
       recordUserLogin,
     }),
     [
+      dbEnabled,
+      configLoaded,
+      dbLoading,
       students,
       transactions,
-      inventory,
-      notifications,
-      importLogs,
+      demo.inventory,
+      demo.notifications,
+      demo.importLogs,
       studentProfiles,
       allergySubmissions,
       medicalDocuments,
@@ -635,8 +1091,9 @@ export function DemoProvider({ children }: { children: ReactNode }) {
       updateStudent,
       disableStudent,
       processMeal,
-      addImportLog,
-      rollbackImport,
+      addFunds,
+      demo.addImportLog,
+      demo.rollbackImport,
       bulkImportStudents,
       submitAllergyForm,
       reviewAllergySubmission,
@@ -666,3 +1123,6 @@ export function useDemo() {
   if (!ctx) throw new Error("useDemo must be used within DemoProvider")
   return ctx
 }
+
+/** Alias for Phase 1 data layer */
+export const useData = useDemo

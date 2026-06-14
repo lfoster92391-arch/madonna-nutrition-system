@@ -29,10 +29,10 @@ export function LoginForm({ role, redirectTo }: LoginFormProps) {
     }
   }, [user, role, redirectTo, router])
 
-  function handleSignIn(e: React.FormEvent) {
+  async function handleSignIn(e: React.FormEvent) {
     e.preventDefault()
     setError("")
-    const result = login(username, password, role)
+    const result = await login(username, password, role)
     if (!result.success) {
       setError(result.error ?? "Sign in failed.")
       return

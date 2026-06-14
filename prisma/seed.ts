@@ -1,39 +1,89 @@
+import bcrypt from "bcryptjs"
 import {
   PrismaClient,
   AllergySeverity,
   AllergySubmissionStatus,
   NotificationType,
   UserRole,
+  UserStatus,
 } from "@prisma/client"
+import {
+  demoCalendarEvents,
+  demoCalendarSettings,
+  demoUsers,
+} from "../src/data/demo"
 
 const prisma = new PrismaClient()
 
+/** Default password for all seeded portal accounts (change after first login). */
+const DEFAULT_PASSWORD = "FuelTheDons2026!"
+
 async function main() {
+  const passwordHash = await bcrypt.hash(DEFAULT_PASSWORD, 10)
+
   const school = await prisma.school.upsert({
-    where: { slug: "madonna-academy" },
-    update: {},
+    where: { slug: "madonna-high-school" },
+    update: {
+      name: "Madonna High School",
+      primaryColor: "#001E62",
+      secondaryColor: "#C8CDD7",
+    },
     create: {
-      name: "Madonna Academy",
-      slug: "madonna-academy",
+      name: "Madonna High School",
+      slug: "madonna-high-school",
       primaryColor: "#001E62",
       secondaryColor: "#C8CDD7",
     },
   })
 
-  await prisma.user.upsert({
-    where: { email: "admin@madonna.academy.edu" },
-    update: {},
-    create: {
-      email: "admin@madonna.academy.edu",
-      name: "System Admin",
-      role: UserRole.ADMIN,
-      schoolId: school.id,
-    },
-  })
+  console.log("School ID (set SCHOOL_ID on Vercel):", school.id)
+
+  for (const user of demoUsers) {
+    await prisma.user.upsert({
+      where: { email: user.email },
+      update: {
+        username: user.username.toLowerCase(),
+        firstName: user.firstName,
+        lastName: user.lastName,
+        role:
+          user.role === "admin"
+            ? UserRole.ADMIN
+            : user.role === "cashier"
+              ? UserRole.CASHIER
+              : user.role === "parent"
+                ? UserRole.PARENT
+                : UserRole.STAFF,
+        status: user.status === "disabled" ? UserStatus.DISABLED : UserStatus.ACTIVE,
+        phone: user.phone,
+        linkedStudentIds: user.linkedStudentIds ?? [],
+        passwordHash,
+        schoolId: school.id,
+      },
+      create: {
+        username: user.username.toLowerCase(),
+        email: user.email.toLowerCase(),
+        firstName: user.firstName,
+        lastName: user.lastName,
+        role:
+          user.role === "admin"
+            ? UserRole.ADMIN
+            : user.role === "cashier"
+              ? UserRole.CASHIER
+              : user.role === "parent"
+                ? UserRole.PARENT
+                : UserRole.STAFF,
+        status: user.status === "disabled" ? UserStatus.DISABLED : UserStatus.ACTIVE,
+        phone: user.phone,
+        linkedStudentIds: user.linkedStudentIds ?? [],
+        passwordHash,
+        schoolId: school.id,
+      },
+    })
+  }
 
   const parent = await prisma.parent.upsert({
     where: { email: "sarah.anderson@email.com" },
-    update: {},
+    update: { name: "Sarah Anderson", phone: "555-0201" },
     create: {
       email: "sarah.anderson@email.com",
       name: "Sarah Anderson",
@@ -49,6 +99,8 @@ async function main() {
       grade: "10",
       homeroom: "10B",
       balance: 12.45,
+      photo:
+        "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=400&auto=format&fit=crop",
       allergies: [
         { name: "Peanut", severity: AllergySeverity.SEVERE },
         { name: "Tree Nut", severity: AllergySeverity.SEVERE },
@@ -67,6 +119,8 @@ async function main() {
       grade: "8",
       homeroom: "8A",
       balance: 36.3,
+      photo:
+        "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?q=80&w=400&auto=format&fit=crop",
       allergies: [{ name: "Dairy", severity: AllergySeverity.MODERATE }],
       dietaryRestrictions: ["Vegetarian"],
       profile: {
@@ -74,6 +128,23 @@ async function main() {
         allergyVerified: true,
         allergyReviewedAt: new Date(Date.now() - 120 * 24 * 60 * 60 * 1000),
         allergyExpiresAt: new Date(Date.now() + 245 * 24 * 60 * 60 * 1000),
+      },
+    },
+    {
+      externalId: "10459",
+      firstName: "Michael",
+      lastName: "Anderson",
+      grade: "5",
+      homeroom: "5C",
+      balance: 0,
+      photo:
+        "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?q=80&w=400&auto=format&fit=crop",
+      allergies: [{ name: "Egg", severity: AllergySeverity.INFORMATIONAL }],
+      profile: {
+        dietaryRestrictions: [],
+        allergyVerified: true,
+        allergyReviewedAt: new Date(Date.now() - 370 * 24 * 60 * 60 * 1000),
+        allergyExpiresAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
       },
     },
     {
@@ -106,8 +177,9 @@ async function main() {
   ]
 
   for (const data of studentData) {
-    const { allergies, profile, dietaryRestrictions, ...studentFields } = data as typeof data & {
+    const { allergies, profile, dietaryRestrictions, photo, ...studentFields } = data as typeof data & {
       dietaryRestrictions?: string[]
+      photo?: string
       profile?: {
         dietaryRestrictions: string[]
         allergyVerified: boolean
@@ -118,9 +190,10 @@ async function main() {
 
     const student = await prisma.student.upsert({
       where: { schoolId_externalId: { schoolId: school.id, externalId: data.externalId } },
-      update: { balance: studentFields.balance },
+      update: { balance: studentFields.balance, photo },
       create: {
         ...studentFields,
+        photo,
         dietaryRestrictions: dietaryRestrictions ?? [],
         schoolId: school.id,
       },
@@ -166,7 +239,11 @@ async function main() {
         changePayload: {
           allergies: ["Dairy", "Soy"],
           severity: "moderate",
-          crossContact: { avoidSharedEquipment: true, traceAmountsTrigger: false, ingredientOnly: false },
+          crossContact: {
+            avoidSharedEquipment: true,
+            traceAmountsTrigger: false,
+            ingredientOnly: false,
+          },
           dietaryRestrictions: ["Vegetarian", "Dairy Free"],
           consentConfirmed: true,
           electronicSignature: "Sarah Anderson",
@@ -175,6 +252,7 @@ async function main() {
       },
     })
 
+    await prisma.medicalDocument.deleteMany({ where: { studentId: emma.id } })
     await prisma.medicalDocument.create({
       data: {
         studentId: emma.id,
@@ -191,6 +269,7 @@ async function main() {
   })
 
   if (james) {
+    await prisma.medicalDocument.deleteMany({ where: { studentId: james.id } })
     await prisma.medicalDocument.createMany({
       data: [
         {
@@ -208,39 +287,96 @@ async function main() {
           uploadedBy: "Sarah Anderson",
         },
       ],
-      skipDuplicates: true,
     })
   }
 
-  const inventoryItems = [
-    { name: "Chocolate Milk", qty: 24, unit: "cartons", cost: 0.65, expiration: new Date("2026-05-18"), category: "Dairy" },
-    { name: "Chicken Patties", qty: 8, unit: "cases", cost: 42.5, expiration: new Date("2026-06-10"), category: "Frozen" },
-  ]
+  await prisma.calendarSettings.upsert({
+    where: { schoolId: school.id },
+    update: {
+      headerTitle: demoCalendarSettings.headerTitle,
+      bannerMessage: demoCalendarSettings.bannerMessage,
+      accentColor: demoCalendarSettings.accentColor,
+      schoolName: demoCalendarSettings.schoolName,
+    },
+    create: {
+      schoolId: school.id,
+      headerTitle: demoCalendarSettings.headerTitle,
+      bannerMessage: demoCalendarSettings.bannerMessage,
+      accentColor: demoCalendarSettings.accentColor,
+      schoolName: demoCalendarSettings.schoolName,
+    },
+  })
 
-  for (const item of inventoryItems) {
-    await prisma.inventoryItem.create({ data: { ...item, schoolId: school.id } })
+  await prisma.calendarEvent.deleteMany({ where: { schoolId: school.id } })
+  for (const event of demoCalendarEvents) {
+    await prisma.calendarEvent.create({
+      data: {
+        title: event.title,
+        date: new Date(`${event.date}T12:00:00.000Z`),
+        description: event.description,
+        category: event.category,
+        color: event.color,
+        schoolId: school.id,
+      },
+    })
   }
 
-  await prisma.notification.create({
-    data: {
-      type: NotificationType.LOW_BALANCE,
-      message: "Balance below $10 — consider adding funds.",
-      schoolId: school.id,
-      studentId: (await prisma.student.findFirst({ where: { externalId: "1002" } }))!.id,
-    },
+  await prisma.inventoryItem.deleteMany({ where: { schoolId: school.id } })
+  await prisma.inventoryItem.createMany({
+    data: [
+      {
+        name: "Chocolate Milk",
+        qty: 24,
+        unit: "cartons",
+        cost: 0.65,
+        expiration: new Date("2026-05-18"),
+        category: "Dairy",
+        schoolId: school.id,
+      },
+      {
+        name: "Chicken Patties",
+        qty: 8,
+        unit: "cases",
+        cost: 42.5,
+        expiration: new Date("2026-06-10"),
+        category: "Frozen",
+        schoolId: school.id,
+      },
+    ],
   })
 
-  await prisma.auditLog.create({
-    data: {
-      action: "ALLERGY_PROFILE_APPROVED",
-      entity: "student_profile",
-      entityId: james?.id,
-      metadata: { reviewedBy: "Nutrition Office", allergies: ["Peanut", "Tree Nut"] },
-      schoolId: school.id,
-    },
+  const ethan = await prisma.student.findFirst({
+    where: { externalId: "1002", schoolId: school.id },
   })
+
+  if (ethan) {
+    await prisma.notification.deleteMany({ where: { schoolId: school.id } })
+    await prisma.notification.create({
+      data: {
+        type: NotificationType.LOW_BALANCE,
+        message: "Balance below $10 — consider adding funds.",
+        schoolId: school.id,
+        studentId: ethan.id,
+      },
+    })
+  }
+
+  if (james) {
+    await prisma.auditLog.create({
+      data: {
+        action: "ALLERGY_PROFILE_APPROVED",
+        entity: "student_profile",
+        entityType: "student_profile",
+        entityId: james.externalId,
+        performedBy: "Nutrition Office",
+        metadata: { reviewedBy: "Nutrition Office", allergies: ["Peanut", "Tree Nut"] },
+        schoolId: school.id,
+      },
+    })
+  }
 
   console.log("Seed completed for", school.name)
+  console.log("Default portal password for all seeded users:", DEFAULT_PASSWORD)
 }
 
 main()

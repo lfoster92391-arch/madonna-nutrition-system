@@ -177,8 +177,8 @@ export function CsvImportWizard() {
     setStep(errors.length > 0 && parsed.length === 0 ? "validation" : "preview")
   }
 
-  function executeImport() {
-    bulkImportStudents(validRows)
+  async function executeImport() {
+    await bulkImportStudents(validRows)
     const log: ImportLog = {
       id: `imp-${Date.now()}`,
       filename,

@@ -105,14 +105,14 @@ export function FoodSafetyCenterForm({
     setUploading(true)
     try {
       const dataUrl = await readFileAsDataUrl(file)
-      uploadMedicalDocument(student.id, file.name, dataUrl, submittedBy)
+      await uploadMedicalDocument(student.id, file.name, dataUrl, submittedBy)
     } finally {
       setUploading(false)
       e.target.value = ""
     }
   }
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     const payload = { ...form, consentConfirmed: form.consentConfirmed || false }
     const result = foodSafetyFormSchema.safeParse(payload)
@@ -126,7 +126,7 @@ export function FoodSafetyCenterForm({
       return
     }
     setErrors({})
-    submitAllergyForm(student.id, submittedBy, result.data)
+    await submitAllergyForm(student.id, submittedBy, result.data)
     setSubmitSuccess(true)
     onSubmitted?.()
   }

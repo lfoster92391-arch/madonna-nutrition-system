@@ -121,13 +121,13 @@ export default function ScanStationPage() {
     setTimeout(focusScan, 100)
   }
 
-  function handleMeal(mealLabel: string, price: number) {
+  async function handleMeal(mealLabel: string, price: number) {
     if (!student) return
     if (mealBlocked) {
       setFlashMessage("MEAL BLOCKED — Allergy conflict. Do not serve today's meal.")
       return
     }
-    const tx = processMeal(student.id, mealLabel, price)
+    const tx = await processMeal(student.id, mealLabel, price)
     if (tx) {
       setLocalBalance(tx.balanceAfter)
       setFlashMessage(`${mealLabel} recorded for ${student.firstName}!`)

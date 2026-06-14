@@ -1,10 +1,5 @@
-import { ParentSectionPage } from "@/components/parent/ParentSectionPage"
+import { ParentTransactionsList } from "@/components/parent/ParentTransactionsList"
 
 export default function TransactionsPage() {
-  return (
-    <ParentSectionPage
-      title="Transactions"
-      description="Full transaction history for your family account."
-    />
-  )
+  return <ParentTransactionsList />
 }
