@@ -42,6 +42,7 @@ import {
   createQueuedTransaction,
   isBrowserOnline,
   refreshStudentCache,
+  refreshStudentCacheFromServer,
   syncPendingTransactions,
 } from "@/lib/offline/sync-manager"
 import { cn, formatCurrency } from "@/lib/utils"
@@ -233,6 +234,39 @@ export default function ScanStationPage() {
     return () => clearInterval(interval)
   }, [focusScan])
 
+  const finishSync = useCallback(
+    async (result: Awaited<ReturnType<typeof syncPendingTransactions>>) => {
+      if (!result.ok) {
+        setIsOffline(true)
+        return
+      }
+      setSyncMessage(result.message)
+      setPendingCount(0)
+      setOfflineRecent([])
+      setIsOffline(false)
+      if (result.balances) {
+        if (student) {
+          const trueBalance = result.balances[student.id]
+          if (trueBalance !== undefined) {
+            setLocalBalance(trueBalance)
+            setStudent((prev) => (prev ? { ...prev, balance: trueBalance } : prev))
+          }
+        }
+      }
+      try {
+        await refreshStudentCacheFromServer()
+      } catch {
+        if (students.length > 0) {
+          await refreshStudentCache(students).catch(() => undefined)
+        }
+      }
+      void queryClient.invalidateQueries({ queryKey: ["students"] })
+      void queryClient.invalidateQueries({ queryKey: ["transactions"] })
+      window.setTimeout(() => setSyncMessage(""), 4000)
+    },
+    [student, students, queryClient]
+  )
+
   useEffect(() => {
     setIsOffline(!isBrowserOnline())
     void getPendingTransactions().then(async (txs) => {
@@ -243,16 +277,10 @@ export default function ScanStationPage() {
           demoReplay: async (tx) => processMeal(tx.studentId, tx.mealType, tx.amount),
         })
         setIsSyncing(false)
-        if (result.ok) {
-          setSyncMessage(result.message)
-          setPendingCount(0)
-          void queryClient.invalidateQueries({ queryKey: ["students"] })
-          void queryClient.invalidateQueries({ queryKey: ["transactions"] })
-          window.setTimeout(() => setSyncMessage(""), 4000)
-        }
+        await finishSync(result)
       }
     })
-  }, [processMeal, queryClient])
+  }, [processMeal, finishSync])
 
   useEffect(() => {
     if (isOffline || students.length === 0) return
@@ -269,20 +297,7 @@ export default function ScanStationPage() {
         demoReplay: async (tx) => processMeal(tx.studentId, tx.mealType, tx.amount),
       })
       setIsSyncing(false)
-      if (result.ok) {
-        setSyncMessage(result.message)
-        setPendingCount(0)
-        setOfflineRecent([])
-        setIsOffline(false)
-        if (students.length > 0) {
-          await refreshStudentCache(students).catch(() => undefined)
-        }
-        void queryClient.invalidateQueries({ queryKey: ["students"] })
-        void queryClient.invalidateQueries({ queryKey: ["transactions"] })
-        window.setTimeout(() => setSyncMessage(""), 4000)
-      } else {
-        setIsOffline(true)
-      }
+      await finishSync(result)
     }
 
     window.addEventListener("online", handleOnline)
@@ -291,7 +306,7 @@ export default function ScanStationPage() {
       window.removeEventListener("online", handleOnline)
       window.removeEventListener("offline", handleOffline)
     }
-  }, [students, processMeal, queryClient])
+  }, [finishSync])
 
   useEffect(() => {
     if (!flashMessage) return
@@ -673,6 +688,7 @@ export default function ScanStationPage() {
                     localBalance <= 0 ? "text-[#D62828]" : "text-[#00A83E]"
                   )}
                 >
+                  {isOffline ? "~" : ""}
                   {formatCurrency(localBalance)}
                 </p>
                 <Link

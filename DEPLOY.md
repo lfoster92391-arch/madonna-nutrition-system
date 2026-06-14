@@ -296,6 +296,39 @@ Or push to `main` if Git integration is enabled. Vercel runs `postinstall` → `
 
 ---
 
+## Cafeteria scan kiosk — offline mode
+
+The **`/scan`** station keeps serving meals when WiFi drops. No login is required.
+
+| Behavior | Detail |
+|----------|--------|
+| **Detection** | `navigator.onLine` plus failed meal API calls switch the kiosk to offline mode |
+| **Local storage** | IndexedDB caches the student roster and queues pending meal transactions |
+| **Offline scan** | Lookup by badge ID from cache, record meal locally, show amber **OFFLINE MODE** banner |
+| **Reconnect** | Queued items POST to **`/api/transactions/sync-batch`** (client UUID per tx for idempotency), then cache refreshes |
+| **Admin** | Synced rows appear in **`/transactions`** like online meals (`processedByName`: Station) |
+
+### Balance reconciliation (how sync fixes stale balances)
+
+While the kiosk is offline, the line keeps moving — meals are queued locally. Parents may add funds online (Stripe) during that time; the kiosk cannot see those deposits until it reconnects.
+
+When WiFi returns:
+
+1. **Server is source of truth** — The sync endpoint loads each student's **current database balance** (including any deposits added while offline).
+2. **Queued meals apply in order** — Pending transactions are sorted by timestamp and applied one at a time. Each meal deducts from the balance **at apply time**, not from the stale offline display.
+3. **Idempotent replay** — Each queued item carries a `clientTxId` (UUID). The server stores this in `Transaction.clientTransactionId` so duplicate syncs are skipped safely.
+4. **Correct final balance** — Example: student had $2 offline → parent adds $20 online → two $3 meals queued → after sync: $2 + $20 − $3 − $3 = **$16** (not the offline estimate).
+5. **Client refresh** — Sync response returns updated balances per student; IndexedDB cache and the on-screen balance update to match the server.
+6. **Offline overdraft** — If queued meals exceed funds even after deposits, the server still records the meals (line kept moving) and may set a negative balance. An **`offline_overdraft`** audit log entry is created for admin review.
+
+**Offline UI:** Balances show a **~** prefix and a warning: *"Balances may update when online."* Do not treat offline figures as exact.
+
+**Limitations:** Allergy data is only as current as the last online cache. Requires at least one online session to populate the student cache.
+
+**Smoke test:** Open `/scan` while online, toggle DevTools → Network → Offline, scan demo ID `10457`, tap a meal, restore network — confirm sync banner, reconciled balance, and transaction in admin log.
+
+---
+
 ## Troubleshooting
 
 | Issue | Fix |

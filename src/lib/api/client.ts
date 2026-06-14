@@ -37,6 +37,29 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ studentId, meal, amount, processedByUserId }),
     }),
+  syncBatch: (
+    transactions: Array<{
+      clientTxId: string
+      studentId: string
+      mealType: string
+      amount: number
+      timestamp: string
+      processedByName: string
+      deviceId?: string
+    }>
+  ) =>
+    fetchJson<{
+      synced: number
+      skipped: number
+      failedIds?: string[]
+      balances?: Record<string, number>
+    }>(
+      "/api/transactions/sync-batch",
+      {
+        method: "POST",
+        body: JSON.stringify({ transactions }),
+      }
+    ),
   getUsers: () => fetchJson<import("@/lib/types").User[]>("/api/users"),
   createUser: (input: Record<string, unknown>) =>
     fetchJson<import("@/lib/types").User>("/api/users", {

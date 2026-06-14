@@ -35,6 +35,20 @@ export const mealTransactionSchema = z.object({
   processedByUserId: z.string().min(1).optional(),
 })
 
+export const queuedTransactionSchema = z.object({
+  clientTxId: z.string().uuid(),
+  studentId: z.string().min(1),
+  mealType: z.string().min(1),
+  amount: z.number().nonnegative(),
+  timestamp: z.string().datetime(),
+  processedByName: z.string().min(1),
+  deviceId: z.string().optional(),
+})
+
+export const syncBatchSchema = z.object({
+  transactions: z.array(queuedTransactionSchema).min(1).max(500),
+})
+
 export const badgeIdSchema = z
   .string()
   .regex(/^\d{4,6}$/, "Badge ID must be 4–6 digits")

@@ -162,7 +162,9 @@ export function mapTransaction(tx: TransactionWithStudent): Transaction {
     processedByUserId: tx.processedByUserId ?? undefined,
     processedByName: tx.processedBy
       ? `${tx.processedBy.firstName} ${tx.processedBy.lastName}`
-      : undefined,
+      : isDeposit
+        ? undefined
+        : "Station",
   }
 }
 

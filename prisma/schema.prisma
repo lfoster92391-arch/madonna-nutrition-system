@@ -193,6 +193,7 @@ model Transaction {
   amount             Decimal         @db.Decimal(10, 2)
   balanceAfter       Decimal         @db.Decimal(10, 2)
   stripeSessionId    String?         @unique
+  clientTransactionId String?        @unique
   createdAt          DateTime        @default(now())
 }
 
