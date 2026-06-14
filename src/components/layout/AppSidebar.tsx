@@ -33,7 +33,14 @@ export function AppSidebar() {
     <aside className="flex w-72 shrink-0 flex-col border-r border-silver/60 bg-white">
       <div className="border-b border-silver/60 p-6">
         <Link href="/" className="flex items-center gap-3">
-          <Image src="/icon.png" alt="Madonna Dons" width={48} height={48} priority className="shrink-0 rounded-lg" />
+          <Image
+            src="/icon.png"
+            alt="Fuel the Dons"
+            width={48}
+            height={48}
+            priority
+            className="h-12 w-12 shrink-0 rounded-lg object-contain"
+          />
           <div>
             <p className="text-sm font-bold italic text-primary">Fuel the Dons</p>
             <p className="text-[10px] font-medium uppercase tracking-wide text-silver-foreground">

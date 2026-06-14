@@ -40,7 +40,13 @@ export function ParentSidebar() {
     <aside className="flex w-72 shrink-0 flex-col bg-primary text-white">
       <div className="border-b border-white/10 p-6">
         <Link href="/parent" className="flex items-center gap-3">
-          <Image src="/icon.png" alt="Dons" width={48} height={48} className="rounded-lg" />
+          <Image
+            src="/icon.png"
+            alt="Fuel the Dons"
+            width={48}
+            height={48}
+            className="h-12 w-12 shrink-0 rounded-lg object-contain"
+          />
           <div>
             <p className="text-xs font-bold uppercase tracking-wider">Madonna Nutrition</p>
             <p className="text-[10px] uppercase tracking-wide text-white/70">Management System</p>
@@ -80,7 +86,13 @@ export function ParentSidebar() {
 
       <div className="border-t border-white/10 p-6">
         <div className="flex items-center gap-3">
-          <Image src="/icon.png" alt="" width={32} height={32} className="rounded-md opacity-90" />
+          <Image
+            src="/icon.png"
+            alt=""
+            width={32}
+            height={32}
+            className="h-8 w-8 shrink-0 rounded-md object-contain opacity-90"
+          />
           <div>
             <p className="text-xs font-bold uppercase tracking-wide">{DEMO_SCHOOL.name}</p>
             <p className="text-[10px] uppercase text-white/60">{DEMO_SCHOOL.location}</p>
