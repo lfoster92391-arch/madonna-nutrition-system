@@ -11,7 +11,6 @@ import { DEMO_SCHOOL } from "@/data/demo"
 import {
   PARENT_NAVY,
   PARENT_PAGE_PAD,
-  PARENT_SECTION_GAP,
 } from "@/components/parent/parent-dashboard-styles"
 
 export type PaymentsTab = "overview" | "activity" | "funding" | "billing"
@@ -51,32 +50,29 @@ export function PaymentsCenter({ defaultTab = "overview" }: PaymentsCenterProps)
   )
 
   return (
-    <div className={`w-full max-w-none ${PARENT_PAGE_PAD} ${PARENT_SECTION_GAP}`}>
-      <header>
+    <div className={`mx-auto w-full max-w-6xl ${PARENT_PAGE_PAD} space-y-6`}>
+      <header className="space-y-2">
         <p
           className="text-xs font-bold uppercase tracking-[0.2em]"
           style={{ color: PARENT_NAVY }}
         >
           {DEMO_SCHOOL.name} · {DEMO_SCHOOL.location}
         </p>
-        <h1
-          className="mt-2 text-2xl font-bold md:text-3xl"
-          style={{ color: PARENT_NAVY }}
-        >
+        <h1 className="text-2xl font-bold md:text-3xl" style={{ color: PARENT_NAVY }}>
           Payments Center
         </h1>
-        <p className="mt-2 max-w-3xl text-sm text-[#64748B] md:text-base">
+        <p className="max-w-2xl text-sm text-[#64748B] md:text-base">
           Manage family balances, view activity, add funds, and billing preferences in one place.
         </p>
       </header>
 
       <Tabs value={activeTab} onValueChange={(v) => setTab(v as PaymentsTab)}>
-        <TabsList className="h-auto flex-wrap gap-1 rounded-[14px] border-[#C8CDD7] bg-[#041B52]/5 p-1">
+        <TabsList className="h-auto flex-wrap rounded-[14px] border border-[#C8CDD7] bg-white p-1">
           {VALID_TABS.map((tab) => (
             <TabsTrigger
               key={tab}
               value={tab}
-              className="min-h-10 flex-none rounded-[10px] px-4 text-sm data-[state=active]:border data-[state=active]:border-[#C8CDD7]"
+              className="min-h-10 flex-none rounded-[10px] px-4 text-sm font-semibold data-[state=active]:border data-[state=active]:border-[#C8CDD7]"
             >
               {TAB_LABELS[tab]}
             </TabsTrigger>
