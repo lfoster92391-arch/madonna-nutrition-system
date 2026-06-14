@@ -15,7 +15,7 @@ export default function SettingsPage() {
         </p>
         <div className="mt-4 flex flex-wrap gap-3">
           <Button asChild variant="outline">
-            <Link href="/parent/payments?tab=methods">Payment methods</Link>
+            <Link href="/parent/payments?tab=billing">Payment methods</Link>
           </Button>
           <Button asChild variant="outline">
             <Link href="/parent/add-funds">Deposit Funds</Link>

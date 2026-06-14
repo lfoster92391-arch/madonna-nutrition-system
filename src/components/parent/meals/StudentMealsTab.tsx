@@ -84,7 +84,7 @@ export function StudentMealsTab({ studentId, studentName }: StudentMealsTabProps
             Show Less
           </Button>
         )}
-        <Button asChild variant="link">
+        <Button asChild variant="ghost" className="h-auto min-h-0 px-0 text-primary underline-offset-4 hover:underline">
           <Link href="/parent/payments?tab=activity&category=meal">View in Payments</Link>
         </Button>
       </div>
