@@ -514,7 +514,7 @@ export default function ScanStationPage() {
           )}
         </section>
 
-        <section className="flex w-[45%] min-w-0 flex-col p-4 lg:p-6">
+        <section className="flex w-[45%] min-w-0 flex-col p-3 lg:p-5">
           <p className="text-xs font-semibold uppercase tracking-wider text-[#64748B]">Select Meal</p>
 
           <div className="mt-3 flex gap-3">
