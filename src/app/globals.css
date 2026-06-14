@@ -68,3 +68,45 @@ body {
 .scan-ready-ring {
   animation: scan-ready-ring 1.4s cubic-bezier(0, 0, 0.2, 1) infinite;
 }
+
+.scan-ready-dot--green {
+  background-color: #00a83e;
+  box-shadow: 0 0 0 4px rgb(0 168 62 / 30%);
+}
+
+.scan-ready-ring--green {
+  background-color: #00a83e;
+}
+
+.scan-ready-dot--amber {
+  background-color: #f59e0b;
+  box-shadow: 0 0 0 4px rgb(245 158 11 / 30%);
+  animation: scan-ready-pulse 0.8s ease-in-out infinite;
+}
+
+.scan-ready-dot--red {
+  background-color: #d62828;
+  box-shadow: 0 0 0 4px rgb(214 40 40 / 30%);
+}
+
+@keyframes scan-allergy-pulse {
+  0%,
+  100% {
+    border-color: #d62828;
+  }
+  50% {
+    border-color: rgb(214 40 40 / 55%);
+  }
+}
+
+.scan-allergy-alert {
+  animation: scan-allergy-pulse 2.5s ease-in-out infinite;
+}
+
+.scan-station-v2 {
+  --scan-navy: #041b52;
+  --scan-green: #00a83e;
+  --scan-red: #d62828;
+  --scan-silver: #aeb6c2;
+  --scan-text: #111827;
+}

@@ -3,38 +3,131 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import Image from "next/image"
 import Link from "next/link"
-import { AlertTriangle, ScanLine, ShoppingCart, Utensils, Users, Wine } from "lucide-react"
+import {
+  AlertTriangle,
+  BadgeCheck,
+  Check,
+  CheckCircle2,
+  Clock,
+  CreditCard,
+  CupSoda,
+  GraduationCap,
+  IdCard,
+  Menu,
+  Plus,
+  ScanLine,
+  Settings,
+  ShoppingBag,
+  Utensils,
+  Users,
+  Wallet,
+  Wine,
+} from "lucide-react"
 import { useAuth } from "@/components/providers/AuthProvider"
 import { useDemo } from "@/components/providers/DemoProvider"
 import { getAllergyBannerStyle, getHighestAllergySeverity } from "@/data/demo"
 import { ScanKeypad } from "@/components/scan/ScanKeypad"
-import { Label } from "@/components/ui/input"
 import { MEAL_PRICES } from "@/lib/types"
-import type { Student } from "@/lib/types"
-import { checkMealCompatibility, formatDaysAgo } from "@/lib/food-safety"
-import { cn, formatCurrency, formatTime } from "@/lib/utils"
+import type { Student, Transaction } from "@/lib/types"
+import { checkMealCompatibility } from "@/lib/food-safety"
+import { cn, formatCurrency } from "@/lib/utils"
 
 const MEAL_RESET_MS = 1200
 const ERROR_RESET_MS = 2000
 const FLASH_DISMISS_MS = 2000
 
-const MEAL_STYLES: Record<string, { bg: string; icon: typeof Utensils }> = {
-  student_meal: { bg: "bg-[#0D7A3B] hover:bg-[#0a6632]", icon: Utensils },
-  staff_meal: { bg: "bg-[#0B2D8F] hover:bg-[#092575]", icon: Users },
-  ala_carte: { bg: "bg-[#A85609] hover:bg-[#924a08]", icon: ShoppingCart },
-  milk: { bg: "bg-[#64748B] hover:bg-[#556275]", icon: Wine },
+const MEAL_ICONS: Record<string, typeof Utensils> = {
+  student_meal: Utensils,
+  staff_meal: Users,
+  ala_carte: ShoppingBag,
+  milk: Wine,
+}
+
+type ScanPhase = "ready" | "scanning" | "found" | "complete" | "error"
+
+function formatKioskTime(date: Date = new Date()) {
+  return date.toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+  })
+}
+
+function formatKioskDate(date: Date = new Date()) {
+  return date.toLocaleDateString("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+  })
+}
+
+function formatTxTime(timestamp: string) {
+  return new Date(timestamp).toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+  })
+}
+
+function StatusDot({ phase }: { phase: ScanPhase }) {
+  if (phase === "scanning") {
+    return (
+      <span className="relative flex h-4 w-4 shrink-0 items-center justify-center" aria-hidden>
+        <span className="scan-ready-dot scan-ready-dot--amber relative inline-flex h-3 w-3 rounded-full" />
+      </span>
+    )
+  }
+  if (phase === "error") {
+    return (
+      <span className="relative flex h-4 w-4 shrink-0 items-center justify-center" aria-hidden>
+        <span className="scan-ready-dot scan-ready-dot--red relative inline-flex h-3 w-3 rounded-full" />
+      </span>
+    )
+  }
+  return (
+    <span className="relative flex h-4 w-4 shrink-0 items-center justify-center" aria-hidden>
+      <span className="scan-ready-ring scan-ready-ring--green absolute inline-flex h-4 w-4 rounded-full" />
+      <span className="scan-ready-dot scan-ready-dot--green relative inline-flex h-3 w-3 rounded-full" />
+    </span>
+  )
+}
+
+function RecentActivityItem({ tx }: { tx: Transaction }) {
+  const isDeposit = tx.type === "deposit" || tx.meal.toLowerCase().includes("fund")
+  const label = isDeposit ? "Added Funds" : tx.meal
+
+  return (
+    <div className="flex min-w-0 items-center gap-2 text-sm text-[#64748B]">
+      <span className="shrink-0 tabular-nums">{formatTxTime(tx.timestamp)}</span>
+      <span className="shrink-0 text-[#AEB6C2]">|</span>
+      {isDeposit ? (
+        <Plus className="h-3.5 w-3.5 shrink-0 text-[#041B52]" aria-hidden />
+      ) : (
+        <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-[#00A83E]" aria-hidden />
+      )}
+      <span className="truncate">{label}</span>
+      <span
+        className={cn(
+          "shrink-0 font-semibold tabular-nums",
+          isDeposit ? "text-[#00A83E]" : "text-[#D62828]"
+        )}
+      >
+        {isDeposit ? `+${formatCurrency(tx.amount)}` : `-${formatCurrency(tx.amount)}`}
+      </span>
+    </div>
+  )
 }
 
 export default function ScanStationPage() {
   const { user: authUser } = useAuth()
-  const { students, users, processMeal, getStudentProfile } = useDemo()
-  const [clock, setClock] = useState(formatTime())
+  const { students, users, transactions, processMeal } = useDemo()
+  const [clock, setClock] = useState(formatKioskTime())
   const [dateStr, setDateStr] = useState("")
   const [scanValue, setScanValue] = useState("")
   const [student, setStudent] = useState<Student | null>(null)
   const [localBalance, setLocalBalance] = useState(0)
-  const [scanStatus, setScanStatus] = useState<"ready" | "scanning" | "found" | "error">("ready")
+  const [scanStatus, setScanStatus] = useState<ScanPhase>("ready")
   const [flashMessage, setFlashMessage] = useState("")
+  const [countdownEnd, setCountdownEnd] = useState<number | null>(null)
+  const [tick, setTick] = useState(0)
 
   const scanInputRef = useRef<HTMLInputElement>(null)
   const scanTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -42,31 +135,50 @@ export default function ScanStationPage() {
   const errorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const flashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const profile = student ? getStudentProfile(student.id) : undefined
   const highestSeverity = student ? getHighestAllergySeverity(student.allergies) : null
   const bannerStyle = highestSeverity ? getAllergyBannerStyle(highestSeverity) : null
   const mealCompatibility = student ? checkMealCompatibility(student) : null
   const mealBlocked = mealCompatibility === "BLOCKED"
-  const allergyNames = useMemo(
-    () => student?.allergies.map((a) => a.name.toUpperCase()).join(" + ") ?? "",
-    [student]
-  )
+  const primaryAllergy = student?.allergies[0]?.name.toUpperCase() ?? ""
 
   const activeCashier = useMemo(() => {
     if (!authUser || authUser.role !== "cashier") return null
     return users.find((u) => u.id === authUser.id) ?? null
   }, [authUser, users])
 
+  const recentTransactions = useMemo(
+    () =>
+      [...transactions]
+        .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+        .slice(0, 3),
+    [transactions]
+  )
+
+  const nextScanSeconds = useMemo(() => {
+    if (countdownEnd === null) return null
+    void tick
+    return Math.max(0, (countdownEnd - Date.now()) / 1000)
+  }, [countdownEnd, tick])
+
+  const primaryMeals = MEAL_PRICES.filter((m) => m.type === "student_meal" || m.type === "ala_carte")
+  const secondaryMeals = MEAL_PRICES.filter((m) => m.type === "staff_meal" || m.type === "milk")
+
   useEffect(() => {
-    const tick = () => {
+    const updateClock = () => {
       const now = new Date()
-      setClock(formatTime(now))
-      setDateStr(now.toLocaleDateString("en-US"))
+      setClock(formatKioskTime(now))
+      setDateStr(formatKioskDate(now))
     }
-    tick()
-    const timer = setInterval(tick, 1000)
+    updateClock()
+    const timer = setInterval(updateClock, 1000)
     return () => clearInterval(timer)
   }, [])
+
+  useEffect(() => {
+    if (countdownEnd === null) return
+    const timer = setInterval(() => setTick((t) => t + 1), 100)
+    return () => clearInterval(timer)
+  }, [countdownEnd])
 
   useEffect(() => {
     if (!student) return
@@ -87,6 +199,7 @@ export default function ScanStationPage() {
       if (!keepStudent) setStudent(null)
       setScanStatus(keepStudent ? "found" : "ready")
       setScanValue("")
+      setCountdownEnd(null)
       window.setTimeout(focusScan, 50)
     },
     [focusScan]
@@ -188,355 +301,351 @@ export default function ScanStationPage() {
       window.setTimeout(focusScan, 50)
       return
     }
-    const tx = await processMeal(
-      student.id,
-      mealLabel,
-      price,
-      activeCashier?.id
-    )
+    const tx = await processMeal(student.id, mealLabel, price, activeCashier?.id)
     if (tx) {
       setLocalBalance(tx.balanceAfter)
       setFlashMessage(`${mealLabel} recorded for ${student.firstName}!`)
+      setScanStatus("complete")
+      setCountdownEnd(Date.now() + MEAL_RESET_MS)
       if (resetTimerRef.current) clearTimeout(resetTimerRef.current)
       resetTimerRef.current = setTimeout(resetStation, MEAL_RESET_MS)
       window.setTimeout(focusScan, 50)
     }
   }
 
-  const scannerArmed = scanStatus === "ready" || scanStatus === "found"
   const statusLabel =
     scanStatus === "scanning"
-      ? "SCANNING..."
-      : scanStatus === "error"
-        ? "NOT FOUND"
-        : "READY TO SCAN"
+      ? "PROCESSING"
+      : scanStatus === "complete"
+        ? "COMPLETE"
+        : scanStatus === "error"
+          ? "NOT FOUND"
+          : "READY TO SCAN"
 
-  const statusHint =
+  const statusColor =
+    scanStatus === "scanning"
+      ? "text-amber-400"
+      : scanStatus === "error"
+        ? "text-[#D62828]"
+        : "text-[#00A83E]"
+
+  const statusSubtitle =
     scanStatus === "scanning"
       ? "Reading badge — hold still"
       : scanStatus === "error"
         ? "Badge not recognized — scanner will re-arm automatically"
-        : student
-          ? `${student.firstName} loaded — select meal or scan next badge`
-          : "Walk up, scan badge, and go"
+        : scanStatus === "complete"
+          ? flashMessage || "Transaction recorded"
+          : "Scan badge or enter ID"
+
+  const studentMealAvailable =
+    student && !mealBlocked && primaryMeals.find((m) => m.type === "student_meal")
+
+  function renderMealButton(meal: (typeof MEAL_PRICES)[number], compact = false) {
+    const Icon = MEAL_ICONS[meal.type] ?? Utensils
+    const gradeRestricted = meal.grades && student && !meal.grades.includes(student.grade)
+    const blocked = mealBlocked
+    const disabled = !student || !!gradeRestricted || blocked
+    const isStudentMeal = meal.type === "student_meal"
+    const isSelected = !!student && isStudentMeal && !disabled && scanStatus !== "complete"
+
+    if (gradeRestricted && meal.type === "ala_carte") return null
+
+    return (
+      <button
+        key={meal.type}
+        type="button"
+        disabled={disabled}
+        onClick={() => handleMeal(meal.label, meal.price)}
+        className={cn(
+          "relative flex flex-col items-center justify-center rounded-2xl border transition disabled:cursor-not-allowed disabled:opacity-40",
+          compact ? "min-h-[64px] gap-1 px-3 py-3" : "min-h-[120px] flex-1 gap-2 px-4 py-5 lg:min-h-[140px]",
+          isSelected
+            ? "border-[#00A83E] bg-[#00A83E] text-white"
+            : meal.type === "ala_carte"
+              ? "border-[#AEB6C2] bg-white text-[#041B52]"
+              : blocked
+                ? "border-[#D62828] bg-[#D62828] text-white"
+                : "border-[#AEB6C2] bg-white text-[#111827]"
+        )}
+      >
+        {isSelected && (
+          <span className="absolute left-3 top-3 flex h-6 w-6 items-center justify-center rounded-full bg-white/20">
+            <Check className="h-4 w-4 text-white" strokeWidth={3} aria-hidden />
+          </span>
+        )}
+        <div className="flex items-center gap-2">
+          <Icon
+            className={cn(compact ? "h-6 w-6" : "h-8 w-8", isSelected ? "text-white" : "text-[#041B52]")}
+            aria-hidden
+          />
+          {meal.type === "student_meal" && !compact && (
+            <CupSoda
+              className={cn("h-7 w-7", isSelected ? "text-white" : "text-[#041B52]")}
+              aria-hidden
+            />
+          )}
+          {meal.type === "ala_carte" && !compact && (
+            <Wine className="h-7 w-7 text-[#041B52]" aria-hidden />
+          )}
+        </div>
+        <span className={cn("font-bold", compact ? "text-sm" : "text-lg lg:text-xl")}>
+          {blocked && isStudentMeal ? "BLOCKED" : meal.label.toUpperCase()}
+        </span>
+        {meal.type === "ala_carte" && !compact && (
+          <span className="text-xs font-medium text-[#64748B]">Available Grades 9–12</span>
+        )}
+      </button>
+    )
+  }
 
   return (
-    <div className="p-4 lg:p-6">
-      {student && student.allergies.length > 0 && bannerStyle && (
-        <div
-          className={cn(
-            "-mx-4 mb-6 border-y-4 px-6 py-8 text-center lg:-mx-6",
-            highestSeverity === "severe" && "border-red-600 bg-red-600 text-white animate-pulse",
-            highestSeverity === "moderate" && "border-yellow-500 bg-yellow-500 text-white",
-            highestSeverity === "informational" && "border-blue-600 bg-blue-600 text-white"
-          )}
-        >
-          <p className="text-4xl font-black tracking-wider md:text-5xl lg:text-6xl">
-            {bannerStyle.label}
-          </p>
-          <p className="mt-4 text-3xl font-bold md:text-4xl">{allergyNames}</p>
-          <p className="mt-3 text-xl font-semibold opacity-90">
-            Last Verified: {formatDaysAgo(profile?.allergyReviewedAt)}
-          </p>
-          <p
-            className={cn(
-              "mt-4 inline-block rounded-xl px-6 py-3 text-2xl font-black md:text-3xl",
-              mealCompatibility === "BLOCKED" ? "bg-white text-red-600" : "bg-white/20"
-            )}
-          >
-            Meal Compatibility: {mealCompatibility}
-          </p>
-        </div>
-      )}
-
-      <div className="mx-auto max-w-[1600px] space-y-6">
-        <div
-          className={cn(
-            "rounded-2xl border-2 px-6 py-4",
-            activeCashier
-              ? "border-[#0D7A3B]/30 bg-green-50"
-              : "border-amber-400/50 bg-amber-50"
-          )}
-        >
-          {activeCashier ? (
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <p className="text-sm font-semibold uppercase tracking-wide text-[#0D7A3B]">
-                  Cashier on duty
-                </p>
-                <p className="text-2xl font-bold text-[#001E62]">
-                  {activeCashier.firstName} {activeCashier.lastName}
-                </p>
-              </div>
-              {activeCashier.badgeId && (
-                <div className="rounded-xl bg-white px-5 py-3 text-center">
-                  <p className="text-xs font-medium text-[#64748B]">Staff Badge</p>
-                  <p className="font-mono text-2xl font-bold text-[#001E62]">{activeCashier.badgeId}</p>
-                </div>
-              )}
-            </div>
-          ) : (
-            <p className="text-lg font-semibold text-amber-900">
-              No cashier signed in — meal scans will not be linked to a staff member.{" "}
-              <Link href="/login/cashier" className="underline">
-                Sign in at shift start
-              </Link>
-            </p>
-          )}
-        </div>
-
-        <div className="grid gap-4 lg:grid-cols-[1fr_auto]">
-          <div
-            className={cn(
-              "flex items-center gap-5 rounded-2xl border-4 px-6 py-6",
-              scanStatus === "error"
-                ? "border-red-500 bg-red-50"
-                : scanStatus === "scanning"
-                  ? "border-[#001E62]/40 bg-white"
-                  : "border-[#001E62] bg-[#001E62] text-white"
-            )}
-          >
-            {scannerArmed ? (
-              <span
-                className="relative flex h-8 w-8 shrink-0 items-center justify-center"
-                aria-hidden
-              >
-                <span className="scan-ready-ring absolute inline-flex h-8 w-8 rounded-full bg-red-500" />
-                <span className="scan-ready-dot relative inline-flex h-5 w-5 rounded-full bg-red-600 ring-4 ring-red-600/30" />
-              </span>
-            ) : scanStatus === "scanning" ? (
-              <ScanLine className="h-12 w-12 shrink-0 animate-pulse text-[#001E62]" />
-            ) : (
-              <ScanLine className="h-12 w-12 shrink-0 text-red-500" />
-            )}
-            <div className="flex-1">
-              <p
-                className={cn(
-                  "text-4xl font-black tracking-wide md:text-5xl",
-                  scanStatus === "error"
-                    ? "text-red-600"
-                    : scanStatus === "scanning"
-                      ? "text-[#001E62]"
-                      : "text-white"
-                )}
-              >
+    <div className="scan-station-v2 flex h-full flex-col overflow-hidden bg-white text-[#111827]">
+      <header className="flex h-[90px] shrink-0 items-center justify-between border-[1.5px] border-[#AEB6C2] border-b-[#AEB6C2]/60 bg-[#041B52] px-5 lg:px-8">
+        <div className="flex min-w-0 items-center gap-4">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-white/20 bg-white/10">
+            <ScanLine className="h-6 w-6 text-white" aria-hidden />
+          </div>
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-3">
+              <StatusDot phase={scanStatus} />
+              <p className={cn("text-xl font-bold tracking-wide lg:text-2xl", statusColor)}>
                 {statusLabel}
               </p>
-              <p
-                className={cn(
-                  "mt-1 text-xl font-semibold md:text-2xl",
-                  scanStatus === "error"
-                    ? "text-red-500"
-                    : scanStatus === "scanning"
-                      ? "text-[#64748B]"
-                      : "text-white/90"
-                )}
-              >
-                {statusHint}
-              </p>
-            </div>
-          </div>
-
-          <div className="rounded-2xl border-2 border-[#001E62]/20 bg-white px-8 py-4 text-center">
-            <p className="text-lg text-[#64748B]">{dateStr}</p>
-            <p className="text-4xl font-bold tabular-nums text-[#001E62] md:text-5xl">{clock}</p>
-          </div>
-        </div>
-
-        {flashMessage && (
-          <div
-            role="status"
-            aria-live="polite"
-            className={cn(
-              "rounded-2xl border-2 px-6 py-5 text-2xl font-bold md:text-3xl",
-              flashMessage.includes("BLOCKED")
-                ? "border-red-500 bg-red-50 text-red-600"
-                : "border-[#0D7A3B] bg-green-50 text-[#0D7A3B]"
-            )}
-          >
-            {flashMessage}
-          </div>
-        )}
-
-        <div className="grid gap-6 lg:grid-cols-[1fr_380px] xl:grid-cols-[1fr_420px]">
-          <div className="space-y-6">
-            <section className="rounded-2xl border-2 border-[#001E62]/15 bg-white p-6">
-              <Label htmlFor="badge-input" className="text-xl font-bold text-[#001E62]">
-                Student Badge ID
-              </Label>
-              <div className="relative mt-3">
-                <input
-                  ref={scanInputRef}
-                  id="badge-input"
-                  type="text"
-                  inputMode="none"
-                  autoComplete="off"
-                  autoCorrect="off"
-                  autoCapitalize="off"
-                  spellCheck={false}
-                  autoFocus
-                  value={scanValue}
-                  onChange={(e) => handleScanChange(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault()
-                      lookupStudent(scanValue)
-                    }
-                  }}
-                  className="absolute h-px w-px opacity-0"
-                  aria-label="Student badge ID scanner input"
-                />
-                <div
-                  role="textbox"
-                  aria-readonly="true"
-                  aria-labelledby="badge-input"
-                  className="flex h-20 items-center rounded-2xl border border-[#001E62]/20 bg-[#F5F6F8] px-5 text-3xl font-semibold tracking-wide text-[#001E62]"
-                >
-                  {scanValue || (
-                    <span className="text-2xl font-normal text-[#64748B]">
-                      {scannerArmed ? "Scanner armed — scan badge now" : "Scan badge or tap numbers below"}
-                    </span>
-                  )}
-                </div>
-              </div>
-              <ScanKeypad
-                className="mt-5"
-                onDigit={appendDigit}
-                onBackspace={deleteLastDigit}
-                onClear={clearScanValue}
-              />
-            </section>
-
-            <section className="rounded-2xl border-2 border-[#001E62]/15 bg-white p-6">
-              <h2 className="mb-5 text-2xl font-bold text-[#001E62]">Select Meal</h2>
-              <div className="grid gap-4 sm:grid-cols-2">
-                {MEAL_PRICES.map((meal) => {
-                  const style = MEAL_STYLES[meal.type] ?? MEAL_STYLES.student_meal
-                  const Icon = style.icon
-                  const gradeRestricted =
-                    meal.grades && student && !meal.grades.includes(student.grade)
-                  const blocked = mealBlocked
-                  const disabled = !student || !!gradeRestricted || blocked
-
-                  return (
-                    <button
-                      key={meal.type}
-                      type="button"
-                      disabled={disabled}
-                      onClick={() => handleMeal(meal.label, meal.price)}
-                      className={cn(
-                        "flex min-h-[100px] flex-col items-center justify-center gap-2 rounded-2xl px-4 py-6 text-2xl font-bold text-white transition disabled:cursor-not-allowed disabled:opacity-40",
-                        blocked ? "bg-red-600" : style.bg
-                      )}
-                    >
-                      <Icon className="h-10 w-10" />
-                      {blocked ? "BLOCKED" : meal.label}
-                      {gradeRestricted && (
-                        <span className="text-base font-normal opacity-90">Grades 9–12 only</span>
-                      )}
-                    </button>
-                  )
-                })}
-              </div>
-              {!student && (
-                <p className="mt-5 text-center text-xl text-[#64748B]">
-                  Scan a student badge to enable meal buttons.
+              {nextScanSeconds !== null && nextScanSeconds > 0 && (
+                <p className="text-sm font-semibold text-[#00A83E] lg:text-base">
+                  Next Scan: {nextScanSeconds.toFixed(1)}s
                 </p>
               )}
-            </section>
+            </div>
+            <p className="truncate text-sm text-white/70 lg:text-base">{statusSubtitle}</p>
+          </div>
+        </div>
+
+        <div className="flex shrink-0 items-center gap-4 lg:gap-6">
+          <div className="hidden text-right text-white sm:block">
+            <p className="text-2xl font-bold tabular-nums lg:text-3xl">{clock}</p>
+            <p className="text-sm text-white/70">{dateStr}</p>
+          </div>
+          <Link
+            href="/"
+            className="flex items-center gap-2 rounded-2xl border border-white/30 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-white/10"
+          >
+            <Settings className="h-4 w-4" aria-hidden />
+            <span className="hidden sm:inline">MENU</span>
+            <Menu className="h-4 w-4 sm:hidden" aria-hidden />
+          </Link>
+        </div>
+      </header>
+
+      <main className="flex min-h-0 flex-1">
+        <section className="flex w-[55%] min-w-0 flex-col border-r border-[#AEB6C2]/60 p-4 lg:p-6">
+          {student ? (
+            <div className="flex min-h-0 flex-1 flex-col gap-4">
+              <div className="flex gap-4">
+                <Image
+                  src={student.photo}
+                  alt={`${student.firstName} ${student.lastName}`}
+                  width={120}
+                  height={120}
+                  className="h-[100px] w-[100px] shrink-0 rounded-2xl border border-[#AEB6C2] object-cover lg:h-[120px] lg:w-[120px]"
+                />
+                <div className="min-w-0 flex-1">
+                  <h2 className="truncate text-2xl font-bold uppercase tracking-tight lg:text-3xl">
+                    {student.firstName} {student.lastName}
+                  </h2>
+                  <p className="mt-1 flex items-center gap-2 text-base text-[#64748B] lg:text-lg">
+                    <GraduationCap className="h-5 w-5 shrink-0" aria-hidden />
+                    Grade {student.grade}
+                  </p>
+                  <p className="mt-1 flex items-center gap-2 text-base text-[#64748B] lg:text-lg">
+                    <IdCard className="h-5 w-5 shrink-0" aria-hidden />
+                    ID: {student.id}
+                  </p>
+                </div>
+              </div>
+
+              {student.allergies.length > 0 && bannerStyle && (
+                <div className="scan-allergy-alert rounded-2xl border-2 border-[#D62828] bg-[#FEF2F2] px-4 py-3">
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle className="h-5 w-5 shrink-0 text-[#D62828]" aria-hidden />
+                    <p className="text-sm font-bold uppercase tracking-wide text-[#D62828]">
+                      Allergy Alert
+                    </p>
+                  </div>
+                  <p className="mt-2 text-lg font-bold text-[#D62828] lg:text-xl">
+                    {primaryAllergy || bannerStyle.label}
+                  </p>
+                  {mealBlocked && (
+                    <p className="mt-1 text-sm font-semibold text-[#D62828]">
+                      Meal Compatibility: BLOCKED
+                    </p>
+                  )}
+                </div>
+              )}
+
+              <div className="mt-auto rounded-2xl border border-[#AEB6C2] bg-white p-4 lg:p-5">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#00A83E]/10">
+                    <Wallet className="h-5 w-5 text-[#00A83E]" aria-hidden />
+                  </div>
+                  <p className="text-xs font-semibold uppercase tracking-wider text-[#64748B]">
+                    Account Balance
+                  </p>
+                </div>
+                <p
+                  className={cn(
+                    "mt-2 text-4xl font-bold tabular-nums lg:text-5xl",
+                    localBalance <= 0 ? "text-[#D62828]" : "text-[#00A83E]"
+                  )}
+                >
+                  {formatCurrency(localBalance)}
+                </p>
+                <Link
+                  href="/parent/add-funds"
+                  className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-[#00A83E] py-3 text-base font-bold text-[#00A83E] transition hover:bg-[#00A83E]/5"
+                >
+                  <Plus className="h-5 w-5" aria-hidden />
+                  ADD FUNDS
+                </Link>
+              </div>
+            </div>
+          ) : (
+            <div className="flex flex-1 flex-col items-center justify-center text-center text-[#64748B]">
+              <StatusDot phase={scanStatus} />
+              <p className="mt-4 text-xl font-bold text-[#041B52]">Ready to scan</p>
+              <p className="mt-2 text-sm lg:text-base">
+                Demo student: 10457 — James Anderson (peanut allergy)
+              </p>
+              {!activeCashier && (
+                <p className="mt-2 max-w-sm text-sm">
+                  No cashier signed in —{" "}
+                  <Link href="/login/cashier" className="font-semibold text-[#041B52] underline">
+                    Sign in at shift start
+                  </Link>
+                </p>
+              )}
+            </div>
+          )}
+        </section>
+
+        <section className="flex w-[45%] min-w-0 flex-col p-4 lg:p-6">
+          <p className="text-xs font-semibold uppercase tracking-wider text-[#64748B]">Select Meal</p>
+
+          <div className="mt-3 flex gap-3">
+            {primaryMeals.map((meal) => renderMealButton(meal))}
           </div>
 
-          <aside className="rounded-2xl border-2 border-[#001E62]/15 bg-white p-6">
-            <h2 className="mb-5 text-xl font-bold text-[#001E62]">Student Profile</h2>
+          {secondaryMeals.length > 0 && (
+            <div className="mt-3 flex gap-3">
+              {secondaryMeals.map((meal) => renderMealButton(meal, true))}
+            </div>
+          )}
 
-            {student ? (
-              <div className="space-y-5">
-                <div className="flex flex-col items-center text-center">
-                  <Image
-                    src={student.photo}
-                    alt={`${student.firstName} ${student.lastName}`}
-                    width={140}
-                    height={140}
-                    className="rounded-2xl border-2 border-[#001E62]/20 object-cover"
-                  />
-                  <h3 className="mt-4 text-2xl font-bold text-[#001E62]">
-                    {student.firstName} {student.lastName}
-                  </h3>
-                  <p className="text-lg text-[#64748B]">
-                    Grade {student.grade}
-                    {student.homeroom ? ` · ${student.homeroom}` : ""}
-                  </p>
-                </div>
+          {studentMealAvailable && scanStatus !== "complete" && (
+            <div className="mt-3 flex items-center gap-2 rounded-2xl border border-[#00A83E]/40 bg-[#00A83E]/10 px-4 py-2.5">
+              <BadgeCheck className="h-5 w-5 shrink-0 text-[#00A83E]" aria-hidden />
+              <p className="text-sm font-semibold text-[#00A83E]">STUDENT MEAL SELECTED</p>
+            </div>
+          )}
 
-                {student.allergies.length > 0 && bannerStyle && (
-                  <div
-                    className={cn(
-                      "rounded-xl border-2 p-4",
-                      highestSeverity === "severe" && "border-red-500 bg-red-50",
-                      highestSeverity === "moderate" && "border-yellow-500 bg-yellow-50",
-                      highestSeverity === "informational" && "border-blue-500 bg-blue-50"
-                    )}
-                  >
-                    <div className="flex items-start gap-3">
-                      <AlertTriangle
-                        className={cn(
-                          "h-8 w-8 shrink-0",
-                          highestSeverity === "severe" && "text-red-600",
-                          highestSeverity === "moderate" && "text-yellow-600",
-                          highestSeverity === "informational" && "text-blue-600"
-                        )}
-                      />
-                      <div>
-                        <p className="text-lg font-bold uppercase">{bannerStyle.label}</p>
-                        {student.allergies.map((a) => (
-                          <p key={a.name} className="text-base font-semibold">
-                            {a.name}
-                          </p>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
+          {flashMessage && (
+            <div
+              role="status"
+              aria-live="polite"
+              className={cn(
+                "mt-3 rounded-2xl border px-4 py-3 text-sm font-semibold lg:text-base",
+                flashMessage.includes("BLOCKED")
+                  ? "border-[#D62828] bg-[#FEF2F2] text-[#D62828]"
+                  : "border-[#00A83E] bg-[#00A83E]/10 text-[#00A83E]"
+              )}
+            >
+              {flashMessage}
+            </div>
+          )}
+
+          <div className="mt-auto">
+            <p className="text-xs font-semibold uppercase tracking-wider text-[#64748B]">
+              Enter Student ID
+            </p>
+            <div className="relative mt-2">
+              <input
+                ref={scanInputRef}
+                id="badge-input"
+                type="text"
+                inputMode="none"
+                autoComplete="off"
+                autoCorrect="off"
+                autoCapitalize="off"
+                spellCheck={false}
+                autoFocus
+                value={scanValue}
+                onChange={(e) => handleScanChange(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault()
+                    lookupStudent(scanValue)
+                  }
+                  if (e.key === "Backspace") {
+                    deleteLastDigit()
+                  }
+                }}
+                className="absolute h-px w-px opacity-0"
+                aria-label="Student badge ID scanner input"
+              />
+              <div
+                role="textbox"
+                aria-readonly="true"
+                aria-labelledby="badge-input"
+                className="flex h-14 items-center rounded-2xl border border-[#AEB6C2] bg-[#F5F6F8] px-4 text-2xl font-bold tracking-wide text-[#111827] lg:h-16 lg:text-3xl"
+              >
+                {scanValue || (
+                  <span className="text-lg font-normal text-[#64748B] lg:text-xl">
+                    {scanValue === "" && student ? student.id : "Enter ID"}
+                  </span>
                 )}
-
-                <div className="rounded-xl bg-[#F5F6F8] px-4 py-3 text-center">
-                  <p className="text-sm text-[#64748B]">Student ID</p>
-                  <p className="text-2xl font-bold text-[#001E62]">{student.id}</p>
-                </div>
-
-                <div className="rounded-xl border-2 border-[#0D7A3B]/30 bg-green-50 p-5 text-center">
-                  <p className="text-sm font-medium text-[#64748B]">Balance</p>
-                  <p
-                    className={cn(
-                      "text-4xl font-bold tabular-nums",
-                      localBalance <= 0 ? "text-red-600" : "text-[#0D7A3B]"
-                    )}
-                  >
-                    {formatCurrency(localBalance)}
-                  </p>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={resetStation}
-                  className="w-full rounded-xl border-2 border-[#001E62]/30 py-4 text-lg font-bold text-[#001E62] hover:bg-[#F5F6F8]"
-                >
-                  Clear &amp; Scan Next
-                </button>
               </div>
+            </div>
+            <ScanKeypad
+              className="mt-3"
+              variant="v2"
+              onDigit={appendDigit}
+              onBackspace={deleteLastDigit}
+              onClear={clearScanValue}
+              onEnter={() => lookupStudent(scanValue)}
+            />
+          </div>
+        </section>
+      </main>
+
+      <footer className="shrink-0 border-t border-[#AEB6C2] bg-white px-5 py-3 lg:px-8">
+        <div className="flex flex-wrap items-center gap-4 lg:gap-8">
+          <div className="flex items-center gap-2">
+            <Clock className="h-4 w-4 text-[#64748B]" aria-hidden />
+            <p className="text-sm font-bold uppercase tracking-wide text-[#64748B]">Recent Activity</p>
+          </div>
+          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-6 gap-y-2">
+            {recentTransactions.length > 0 ? (
+              recentTransactions.map((tx, i) => (
+                <div key={tx.id} className="flex items-center gap-6">
+                  {i > 0 && <span className="hidden h-4 w-px bg-[#AEB6C2] sm:block" aria-hidden />}
+                  <RecentActivityItem tx={tx} />
+                </div>
+              ))
             ) : (
-              <div className="flex min-h-[360px] flex-col items-center justify-center text-center text-[#64748B]">
-                <span className="relative mb-6 flex h-10 w-10 items-center justify-center" aria-hidden>
-                  <span className="scan-ready-ring absolute inline-flex h-10 w-10 rounded-full bg-red-500" />
-                  <span className="scan-ready-dot relative inline-flex h-6 w-6 rounded-full bg-red-600 ring-4 ring-red-600/30" />
-                </span>
-                <p className="text-2xl font-bold text-[#001E62]">Ready to scan</p>
-                <p className="mt-3 text-lg">Demo student: 10457 — James Anderson (peanut allergy)</p>
-                <p className="mt-2 text-base">Demo cashier badge: 90004 — j.wilson</p>
-              </div>
+              <p className="text-sm text-[#64748B]">No recent transactions</p>
             )}
-          </aside>
+          </div>
+          {activeCashier && (
+            <div className="hidden items-center gap-2 text-xs text-[#64748B] lg:flex">
+              <CreditCard className="h-3.5 w-3.5" aria-hidden />
+              <span>
+                Cashier: {activeCashier.firstName} {activeCashier.lastName}
+              </span>
+            </div>
+          )}
         </div>
-      </div>
+      </footer>
     </div>
   )
 }

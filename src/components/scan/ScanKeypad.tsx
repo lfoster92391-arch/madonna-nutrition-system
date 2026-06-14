@@ -14,8 +14,10 @@ type ScanKeypadProps = {
   onDigit: (digit: string) => void
   onBackspace: () => void
   onClear?: () => void
+  onEnter?: () => void
   disabled?: boolean
   className?: string
+  variant?: "default" | "v2"
 }
 
 const DIGITS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"] as const
@@ -82,50 +84,83 @@ function Key({
       onPointerUp={handlePointerUp}
       onPointerCancel={handlePointerCancel}
       onPointerLeave={handlePointerCancel}
-      className={cn(
-        "flex min-h-[88px] select-none items-center justify-center rounded-2xl border-2 border-[#001E62]/20 bg-white text-3xl font-bold text-[#001E62] transition active:scale-[0.98] active:bg-[#F5F6F8] disabled:cursor-not-allowed disabled:opacity-40 touch-manipulation",
-        className
-      )}
+      className={className}
     >
       {children ?? label}
     </button>
   )
 }
 
-export function ScanKeypad({ onDigit, onBackspace, onClear, disabled, className }: ScanKeypadProps) {
+export function ScanKeypad({
+  onDigit,
+  onBackspace,
+  onClear,
+  onEnter,
+  disabled,
+  className,
+  variant = "default",
+}: ScanKeypadProps) {
+  const isV2 = variant === "v2"
+
+  const digitClass = isV2
+    ? "flex min-h-[72px] select-none items-center justify-center rounded-2xl border border-[#AEB6C2] bg-white text-2xl font-bold text-[#111827] transition active:scale-[0.98] active:bg-[#F5F6F8] disabled:cursor-not-allowed disabled:opacity-40 touch-manipulation lg:min-h-[80px] lg:text-3xl"
+    : "flex min-h-[88px] select-none items-center justify-center rounded-2xl border-2 border-[#001E62]/20 bg-white text-3xl font-bold text-[#001E62] transition active:scale-[0.98] active:bg-[#F5F6F8] disabled:cursor-not-allowed disabled:opacity-40 touch-manipulation"
+
+  const clearClass = isV2
+    ? cn(
+        digitClass,
+        "border-[#AEB6C2] bg-[#E8EBF0] text-lg font-semibold text-[#64748B] lg:text-xl"
+      )
+    : cn(digitClass, "text-xl")
+
+  const enterClass = isV2
+    ? "flex min-h-[72px] select-none items-center justify-center rounded-2xl border border-[#00A83E] bg-[#00A83E] text-xl font-bold text-white transition active:scale-[0.98] active:bg-[#009234] disabled:cursor-not-allowed disabled:opacity-40 touch-manipulation lg:min-h-[80px] lg:text-2xl"
+    : cn(digitClass, "border-[#001E62]/30 bg-[#F5F6F8]")
+
   return (
-    <div className={cn("grid grid-cols-3 gap-3", className)}>
+    <div className={cn("grid grid-cols-3 gap-2 lg:gap-3", className)}>
       {DIGITS.slice(0, 9).map((digit) => (
         <Key
           key={digit}
           label={digit}
           disabled={disabled}
           onPress={() => onDigit(digit)}
+          className={digitClass}
         />
       ))}
 
       {onClear ? (
         <Key
-          label="Clear"
+          label="CLEAR"
           ariaLabel="Clear all"
           disabled={disabled}
           onPress={onClear}
-          className="text-xl"
+          className={clearClass}
         />
       ) : (
-        <div aria-hidden className="min-h-[88px]" />
+        <div aria-hidden className="min-h-[72px] lg:min-h-[80px]" />
       )}
 
-      <Key label="0" disabled={disabled} onPress={() => onDigit("0")} />
+      <Key label="0" disabled={disabled} onPress={() => onDigit("0")} className={digitClass} />
 
-      <Key
-        ariaLabel="Delete one character"
-        disabled={disabled}
-        onPress={onBackspace}
-        className="border-[#001E62]/30 bg-[#F5F6F8]"
-      >
-        <Delete className="h-10 w-10" strokeWidth={2.25} aria-hidden />
-      </Key>
+      {onEnter ? (
+        <Key
+          label="ENTER"
+          ariaLabel="Enter student ID"
+          disabled={disabled}
+          onPress={onEnter}
+          className={enterClass}
+        />
+      ) : (
+        <Key
+          ariaLabel="Delete one character"
+          disabled={disabled}
+          onPress={onBackspace}
+          className={enterClass}
+        >
+          <Delete className="h-10 w-10" strokeWidth={2.25} aria-hidden />
+        </Key>
+      )}
     </div>
   )
 }
