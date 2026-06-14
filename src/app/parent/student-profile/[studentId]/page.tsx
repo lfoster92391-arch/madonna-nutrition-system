@@ -1,0 +1,160 @@
+"use client"
+
+import { use, useMemo, useState } from "react"
+import Image from "next/image"
+import { notFound } from "next/navigation"
+import { useAuth } from "@/components/providers/AuthProvider"
+import { useDemo } from "@/components/providers/DemoProvider"
+import { AnnualReviewBanner } from "@/components/parent/AnnualReviewBanner"
+import { FoodSafetyCenterForm } from "@/components/parent/FoodSafetyCenterForm"
+import { Button } from "@/components/ui/button"
+import { Card } from "@/components/ui/card"
+import { Input, Label } from "@/components/ui/input"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { parentLinkedStudents } from "@/data/demo"
+import { formatCurrency } from "@/lib/utils"
+
+export default function StudentProfilePage({
+  params,
+}: {
+  params: Promise<{ studentId: string }>
+}) {
+  const { studentId } = use(params)
+  const { user } = useAuth()
+  const { students, studentProfiles, updateParentContact } = useDemo()
+
+  const linkedIds = new Set(parentLinkedStudents.map((s) => s.id))
+  const student = useMemo(
+    () => students.find((s) => s.id === studentId && linkedIds.has(s.id)),
+    [students, studentId, linkedIds]
+  )
+
+  const profile = studentProfiles.find((p) => p.studentId === studentId)
+
+  const [contact, setContact] = useState({
+    name: student?.parentContacts[0]?.name ?? user?.displayName ?? "",
+    email: student?.parentContacts[0]?.email ?? user?.email ?? "",
+    phone: student?.parentContacts[0]?.phone ?? "",
+  })
+  const [contactSaved, setContactSaved] = useState(false)
+
+  if (!student) notFound()
+
+  function saveContact() {
+    updateParentContact(studentId, contact)
+    setContactSaved(true)
+    setTimeout(() => setContactSaved(false), 3000)
+  }
+
+  return (
+    <div className="min-h-screen bg-[#f8f9fb]">
+      <header className="border-b border-silver/40 bg-white px-8 py-6">
+        <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary">Student Profile</p>
+        <h1 className="mt-1 text-2xl font-bold text-primary">
+          {student.firstName} {student.lastName}
+        </h1>
+      </header>
+
+      <div className="mx-auto max-w-4xl space-y-6 p-8">
+        <AnnualReviewBanner
+          profiles={profile ? [profile] : []}
+          studentName={`${student.firstName} ${student.lastName}`}
+          profileHref={`/parent/student-profile/${studentId}`}
+        />
+
+        <Tabs defaultValue="info">
+          <TabsList>
+            <TabsTrigger value="info">Student Information</TabsTrigger>
+            <TabsTrigger value="food-safety">Food Allergy &amp; Dietary Profile</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="info">
+            <Card className="rounded-[20px] p-8 shadow-sm">
+              <div className="flex flex-col items-center gap-6 md:flex-row md:items-start">
+                <Image
+                  src={student.photo}
+                  alt={student.firstName}
+                  width={140}
+                  height={140}
+                  className="rounded-[20px] border-2 border-silver/60 object-cover"
+                />
+                <div className="flex-1 space-y-4">
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div>
+                      <p className="text-sm text-silver-foreground">Full Name</p>
+                      <p className="text-lg font-semibold text-primary">
+                        {student.firstName} {student.lastName}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-silver-foreground">Student ID</p>
+                      <p className="text-lg font-semibold text-primary">{student.id}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-silver-foreground">Grade</p>
+                      <p className="text-lg font-semibold text-primary">{student.grade}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-silver-foreground">Homeroom</p>
+                      <p className="text-lg font-semibold text-primary">{student.homeroom ?? "—"}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-silver-foreground">Meal Balance</p>
+                      <p className="text-lg font-semibold text-primary">
+                        {formatCurrency(student.balance)}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-8 border-t border-silver/40 pt-8">
+                <h3 className="mb-4 text-lg font-bold text-primary">Parent Contact Information</h3>
+                <p className="mb-4 text-sm text-silver-foreground">Editable fields only.</p>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div>
+                    <Label>Contact Name</Label>
+                    <Input
+                      value={contact.name}
+                      onChange={(e) => setContact((c) => ({ ...c, name: e.target.value }))}
+                    />
+                  </div>
+                  <div>
+                    <Label>Email</Label>
+                    <Input
+                      type="email"
+                      value={contact.email}
+                      onChange={(e) => setContact((c) => ({ ...c, email: e.target.value }))}
+                    />
+                  </div>
+                  <div>
+                    <Label>Phone</Label>
+                    <Input
+                      value={contact.phone}
+                      onChange={(e) => setContact((c) => ({ ...c, phone: e.target.value }))}
+                    />
+                  </div>
+                </div>
+                <div className="mt-4 flex items-center gap-4">
+                  <Button onClick={saveContact} className="min-h-12">
+                    Save Contact Info
+                  </Button>
+                  {contactSaved && (
+                    <span className="text-sm font-medium text-success">Saved successfully</span>
+                  )}
+                </div>
+              </div>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="food-safety">
+            <FoodSafetyCenterForm
+              student={student}
+              submittedBy={user?.displayName ?? "Parent"}
+            />
+          </TabsContent>
+        </Tabs>
+      </div>
+    </div>
+  )
+}

@@ -1,36 +1,170 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Madonna Nutrition Management System (MNMS)
 
-## Getting Started
+Enterprise cafeteria operations platform for school nutrition services — scan station, admin portal, parent portal, analytics, and operations command center.
 
-First, run the development server:
+## Stack
+
+- **Next.js 16** (App Router)
+- **TypeScript** + **Tailwind CSS v4**
+- **Prisma** + **PostgreSQL** (multi-tenant ready)
+- **React Query**, **Zod**, **Chart.js**, **PapaParse**
+- Stripe-ready, Clerk-ready, Vercel-ready
+
+## Quick Start (Demo Mode)
+
+Demo mode works **without a database** using seeded in-memory data. Parent submissions, admin approvals, and scan station alerts share a single demo state.
+
+### Demo Workflow (Food Safety)
+
+1. Log in to **Parent Portal** (`/parent`) as Sarah Anderson
+2. Open **Food Safety Center** → select Emma Anderson
+3. Submit allergy/dietary changes (or review pending submission on dashboard)
+4. Go to **Admin → Allergy Review Queue** (`/admin/allergy-review`) and **Approve**
+5. Scan James (ID `10457`) at `/scan` to see severe allergy banner and meal compatibility
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000)
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- **Landing:** `/`
+- **Scan Station:** `/scan` (primary demo entry — no login required)
+- **Admin Portal:** `/admin`
+- **Transactions:** `/transactions`
+- **Inventory:** `/inventory`
+- **Analytics:** `/analytics`
+- **Parent Portal:** `/parent`
+- **Food Safety Center:** `/parent/student-profile` (per-student: `/parent/student-profile/[studentId]`)
+- **Allergy Review Queue:** `/admin/allergy-review`
+- **Ops Center:** `/ops`
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Database Setup (Production)
 
-## Learn More
+1. Create a PostgreSQL database
+2. Copy environment variables:
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+cp .env.example .env
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+3. Set `DATABASE_URL` in `.env`:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```
+DATABASE_URL="postgresql://user:password@localhost:5432/mnms?schema=public"
+```
 
-## Deploy on Vercel
+4. Run migrations and seed:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```bash
+npx prisma migrate dev --name init
+npm run db:seed
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Scripts
+
+| Command | Description |
+|---------|-------------|
+| `npm run dev` | Start development server |
+| `npm run build` | Production build |
+| `npm run start` | Start production server |
+| `npm run lint` | Run ESLint |
+| `npm run db:generate` | Generate Prisma client |
+| `npm run db:push` | Push schema to database |
+| `npm run db:seed` | Seed demo data |
+| `npm run db:studio` | Open Prisma Studio |
+
+## Design System
+
+| Token | Value |
+|-------|-------|
+| Background | `#FFFFFF` |
+| Primary Navy | `#001E62` |
+| Secondary Silver | `#C8CDD7` |
+| Success Green | `#00A651` |
+| Warning Amber | `#F59E0B` |
+| Danger Red | `#DC2626` |
+| Font | Inter |
+| Border Radius | 16–20px |
+
+## Architecture
+
+```
+src/
+├── app/
+│   ├── page.tsx              # Landing page
+│   └── (platform)/           # Operational routes (shared sidebar)
+│       ├── scan/             # Hero scan station
+│       ├── admin/            # Student manager + CSV import
+│       ├── transactions/
+│       ├── inventory/
+│       ├── analytics/
+│       ├── parent/
+│       └── ops/
+├── components/
+│   ├── ui/                   # Design system components
+│   ├── layout/               # AppSidebar
+│   ├── admin/                # CSV import wizard
+│   └── providers/            # Demo + React Query providers
+├── data/demo/                # Seeded demo data
+└── lib/
+    ├── types.ts              # Shared TypeScript types
+    ├── prisma.ts             # Prisma client singleton
+    └── utils.ts              # Utilities
+
+prisma/
+├── schema.prisma             # Multi-tenant schema
+└── seed.ts                   # Database seed script
+```
+
+## Multi-Tenant & White-Label
+
+The Prisma schema includes `School` with branding fields (`logoUrl`, `primaryColor`, `secondaryColor`) for future multi-school tenant isolation. All operational tables reference `schoolId`.
+
+## Logo Assets
+
+Place brand assets in `public/`:
+- `logo.svg` / `logo.png` — header logo
+- `icon.svg` / `icon.png` — favicon / app icon
+
+## Environment Variables
+
+Copy the example file and adjust for your environment:
+
+```bash
+cp .env.example .env
+```
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `NEXT_PUBLIC_APP_URL` | Production | Public site URL (e.g. `https://fuelthedons.com`) — used for metadata and OG tags |
+| `DATABASE_URL` | For DB mode | PostgreSQL connection string — **not required for demo launch** |
+| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Future | Clerk auth |
+| `CLERK_SECRET_KEY` | Future | Clerk auth |
+| `STRIPE_SECRET_KEY` | Future | Payment processing |
+| `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | Future | Payment processing |
+
+### Demo mode on production
+
+The app runs fully in **demo mode** without a database. All portals, scan station, food safety workflow, and admin review queue use in-memory demo data via `DemoProvider`. You can deploy to Vercel immediately and add `DATABASE_URL` later when moving off demo data.
+
+## Deployment
+
+**Target domain:** [https://fuelthedons.com](https://fuelthedons.com)
+
+**Live preview (if deployed):** [https://madonna-nutrition-system.vercel.app](https://madonna-nutrition-system.vercel.app)
+
+See **[DEPLOY.md](./DEPLOY.md)** for the full step-by-step checklist: GitHub push, Vercel import, custom domain DNS, SSL, and demo-mode launch without `DATABASE_URL`.
+
+Quick summary:
+
+1. Commit all project files locally (repo has no GitHub remote yet — see DEPLOY.md)
+2. Push to GitHub, then import at [vercel.com/new](https://vercel.com/new) — framework auto-detects as **Next.js**
+3. Deploy with **no env vars** for demo (defaults to `https://fuelthedons.com` in metadata)
+4. Add domains `fuelthedons.com` and `www.fuelthedons.com` in Vercel → **Settings → Domains**
+5. At your registrar, set apex **A** `@` → `76.76.21.21` and **CNAME** `www` → `cname.vercel-dns.com`
+
+## License
+
+Proprietary — Madonna Nutrition Management System

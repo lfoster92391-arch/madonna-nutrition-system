@@ -1,0 +1,239 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model School {
+  id             String   @id @default(cuid())
+  name           String
+  slug           String   @unique
+  logoUrl        String?
+  primaryColor   String   @default("#001E62")
+  secondaryColor String   @default("#C8CDD7")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  users         User[]
+  students      Student[]
+  transactions  Transaction[]
+  inventory     InventoryItem[]
+  notifications Notification[]
+  menus         Menu[]
+  forms         Form[]
+  logs          AuditLog[]
+}
+
+model User {
+  id        String   @id @default(cuid())
+  clerkId   String?  @unique
+  email     String   @unique
+  name      String
+  role      UserRole @default(STAFF)
+  schoolId  String
+  school    School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum UserRole {
+  ADMIN
+  STAFF
+  PARENT
+  EXECUTIVE
+}
+
+model Student {
+  id                  String   @id @default(cuid())
+  externalId          String
+  firstName           String
+  lastName            String
+  photo               String?
+  grade               String
+  homeroom            String?
+  balance             Decimal  @default(0) @db.Decimal(10, 2)
+  dietaryRestrictions String[] @default([])
+  disabled            Boolean  @default(false)
+  schoolId            String
+  school              School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  allergies           Allergy[]
+  parentLinks         ParentStudent[]
+  transactions        Transaction[]
+  notifications       Notification[]
+  profile             StudentProfile?
+  allergySubmissions  AllergySubmission[]
+  medicalDocuments    MedicalDocument[]
+
+  @@unique([schoolId, externalId])
+}
+
+model Allergy {
+  id        String          @id @default(cuid())
+  name      String
+  severity  AllergySeverity @default(MODERATE)
+  studentId String
+  student   Student         @relation(fields: [studentId], references: [id], onDelete: Cascade)
+}
+
+enum AllergySeverity {
+  SEVERE
+  MODERATE
+  INFORMATIONAL
+}
+
+model StudentProfile {
+  id                  String    @id @default(cuid())
+  studentId           String    @unique
+  student             Student   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  dietaryRestrictions Json      @default("[]")
+  allergyVerified     Boolean   @default(false)
+  allergyReviewedAt   DateTime?
+  allergyExpiresAt    DateTime?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+}
+
+enum AllergySubmissionStatus {
+  PENDING_REVIEW
+  APPROVED
+  REJECTED
+  CLARIFICATION_REQUESTED
+}
+
+model AllergySubmission {
+  id            String                  @id @default(cuid())
+  studentId     String
+  student       Student                 @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  submittedBy   String
+  changePayload Json
+  status        AllergySubmissionStatus @default(PENDING_REVIEW)
+  reviewedBy    String?
+  reviewedAt    DateTime?
+  reviewNote    String?
+  createdAt     DateTime                @default(now())
+}
+
+model MedicalDocument {
+  id          String    @id @default(cuid())
+  studentId   String
+  student     Student   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  documentUrl String
+  fileName    String
+  version     Int
+  uploadedAt  DateTime  @default(now())
+  expiresAt   DateTime?
+  uploadedBy  String
+}
+
+model Parent {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String
+  phone     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  students ParentStudent[]
+}
+
+model ParentStudent {
+  id           String @id @default(cuid())
+  parentId     String
+  studentId    String
+  relationship String @default("Guardian")
+  parent       Parent @relation(fields: [parentId], references: [id], onDelete: Cascade)
+  student      Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([parentId, studentId])
+}
+
+model Transaction {
+  id           String   @id @default(cuid())
+  studentId    String
+  student      Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  schoolId     String
+  school       School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  mealType     String
+  amount       Decimal  @db.Decimal(10, 2)
+  balanceAfter Decimal  @db.Decimal(10, 2)
+  createdAt    DateTime @default(now())
+}
+
+model InventoryItem {
+  id                String   @id @default(cuid())
+  name              String
+  qty               Int
+  unit              String
+  cost              Decimal  @db.Decimal(10, 2)
+  expiration        DateTime
+  category          String
+  lowStockThreshold Int      @default(10)
+  barcode           String?
+  schoolId          String
+  school            School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  type      NotificationType
+  message   String
+  channel   NotifyChannel    @default(EMAIL)
+  read      Boolean          @default(false)
+  studentId String
+  student   Student          @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  schoolId  String
+  school    School           @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  createdAt DateTime         @default(now())
+}
+
+enum NotificationType {
+  LOW_BALANCE
+  NEGATIVE_BALANCE
+  REPEATED_CHARGES
+  MISSED_MEALS
+}
+
+enum NotifyChannel {
+  EMAIL
+  SMS
+}
+
+model Menu {
+  id        String   @id @default(cuid())
+  name      String
+  mealType  String
+  allergens String[] @default([])
+  calories  Int?
+  date      DateTime
+  schoolId  String
+  school    School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+}
+
+model Form {
+  id        String   @id @default(cuid())
+  title     String
+  type      String
+  content   Json
+  schoolId  String
+  school    School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  action    String
+  entity    String
+  entityId  String?
+  metadata  Json?
+  schoolId  String
+  school    School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+}

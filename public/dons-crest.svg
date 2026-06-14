@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 140" fill="none">
+  <path d="M60 8 L95 28 L95 70 Q95 110 60 132 Q25 110 25 70 L25 28 Z" fill="#001E62" stroke="#C8CDD7" stroke-width="2"/>
+  <path d="M60 22 L78 32 L78 68 Q78 98 60 112 Q42 98 42 68 L42 32 Z" fill="#FFFFFF"/>
+  <text x="60" y="78" text-anchor="middle" font-family="Georgia, serif" font-size="36" font-weight="700" fill="#001E62">M</text>
+  <path d="M35 118 Q60 128 85 118" stroke="#C8CDD7" stroke-width="3" fill="none"/>
+  <text x="60" y="135" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="11" font-weight="700" fill="#001E62" letter-spacing="2">DONS</text>
+</svg>
