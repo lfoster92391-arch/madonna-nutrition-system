@@ -322,7 +322,59 @@ async function main() {
   })
 
   await prisma.calendarEvent.deleteMany({ where: { schoolId: school.id } })
+  await prisma.productionOrder.deleteMany({ where: { schoolId: school.id } })
+  await prisma.mealPhoto.deleteMany({
+    where: { mealTemplate: { schoolId: school.id } },
+  })
+  await prisma.mealTemplateItem.deleteMany({
+    where: { mealTemplate: { schoolId: school.id } },
+  })
+  await prisma.mealTemplate.deleteMany({ where: { schoolId: school.id } })
+
+  const seededMealTemplateIds = new Set<string>()
+  for (const template of demoMealTemplates) {
+    const created = await prisma.mealTemplate.create({
+      data: {
+        id: template.id,
+        name: template.name,
+        description: template.description,
+        category: template.category,
+        mealType: template.mealType,
+        allergens: template.allergens,
+        nutritionNotes: template.nutritionNotes,
+        portionNotes: template.portionNotes,
+        gradeAvailability: template.gradeAvailability,
+        isFavorite: template.isFavorite,
+        isPublished: template.isPublished,
+        isArchived: template.isArchived,
+        lastUsedAt: template.lastUsedAt ? new Date(template.lastUsedAt) : null,
+        studentMealPrice: template.studentMealPrice,
+        alaCartePrice: template.alaCartePrice,
+        staffMealPrice: template.staffMealPrice,
+        schoolId: school.id,
+        items: {
+          create: template.items.map((item) => ({
+            name: item.name,
+            sortOrder: item.sortOrder,
+          })),
+        },
+        photos: {
+          create: template.photos.map((photo) => ({
+            slot: photo.slot,
+            url: photo.url,
+          })),
+        },
+      },
+    })
+    seededMealTemplateIds.add(created.id)
+  }
+
   for (const event of demoCalendarEvents) {
+    const mealTemplateId =
+      event.mealTemplateId && seededMealTemplateIds.has(event.mealTemplateId)
+        ? event.mealTemplateId
+        : null
+
     await prisma.calendarEvent.create({
       data: {
         title: event.title,
@@ -330,7 +382,7 @@ async function main() {
         description: event.description,
         category: event.category,
         color: event.color,
-        mealTemplateId: event.mealTemplateId,
+        mealTemplateId,
         publishStatus: event.publishStatus ?? "draft",
         publishedAt: event.publishedAt ? new Date(event.publishedAt) : undefined,
         notes: event.notes,
@@ -343,7 +395,6 @@ async function main() {
   await prisma.inventoryMovement.deleteMany({ where: { schoolId: school.id } })
   await prisma.receivingRecord.deleteMany({ where: { schoolId: school.id } })
   await prisma.receiptScan.deleteMany({ where: { schoolId: school.id } })
-  await prisma.productionOrder.deleteMany({ where: { schoolId: school.id } })
   await prisma.storageLocation.deleteMany({ where: { schoolId: school.id } })
 
   const storageLocations = await Promise.all([
@@ -477,7 +528,7 @@ async function main() {
     ],
   })
 
-  const firstTemplate = await prisma.mealTemplate.findFirst({ where: { schoolId: school.id } })
+  const firstTemplateId = seededMealTemplateIds.values().next().value as string | undefined
   const todayProd = new Date()
   todayProd.setHours(11, 0, 0, 0)
 
@@ -489,7 +540,7 @@ async function main() {
         scheduledFor: todayProd,
         portionsPlanned: 185,
         portionsMade: 92,
-        mealTemplateId: firstTemplate?.id,
+        mealTemplateId: firstTemplateId,
         notes: "185 student + 12 staff reservations",
         schoolId: school.id,
       },
@@ -530,49 +581,6 @@ async function main() {
         performedBy: "Nutrition Office",
         metadata: { reviewedBy: "Nutrition Office", allergies: ["Peanut", "Tree Nut"] },
         schoolId: school.id,
-      },
-    })
-  }
-
-  await prisma.mealPhoto.deleteMany({
-    where: { mealTemplate: { schoolId: school.id } },
-  })
-  await prisma.mealTemplateItem.deleteMany({
-    where: { mealTemplate: { schoolId: school.id } },
-  })
-  await prisma.mealTemplate.deleteMany({ where: { schoolId: school.id } })
-
-  for (const template of demoMealTemplates) {
-    await prisma.mealTemplate.create({
-      data: {
-        name: template.name,
-        description: template.description,
-        category: template.category,
-        mealType: template.mealType,
-        allergens: template.allergens,
-        nutritionNotes: template.nutritionNotes,
-        portionNotes: template.portionNotes,
-        gradeAvailability: template.gradeAvailability,
-        isFavorite: template.isFavorite,
-        isPublished: template.isPublished,
-        isArchived: template.isArchived,
-        lastUsedAt: template.lastUsedAt ? new Date(template.lastUsedAt) : null,
-        studentMealPrice: template.studentMealPrice,
-        alaCartePrice: template.alaCartePrice,
-        staffMealPrice: template.staffMealPrice,
-        schoolId: school.id,
-        items: {
-          create: template.items.map((item) => ({
-            name: item.name,
-            sortOrder: item.sortOrder,
-          })),
-        },
-        photos: {
-          create: template.photos.map((photo) => ({
-            slot: photo.slot,
-            url: photo.url,
-          })),
-        },
       },
     })
   }
