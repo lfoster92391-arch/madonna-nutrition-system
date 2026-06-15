@@ -42,7 +42,7 @@ export function SidebarBrand({
     <div className="border-b border-silver/30 bg-primary">
       <Link
         href={href}
-        className={cn("flex flex-col items-center", compact ? "px-3 py-3" : "px-4 py-4")}
+        className={cn("flex flex-col items-center", compact ? "px-3 py-2" : "px-4 py-4")}
       >
         <Image
           src="/brand-logo.png"
@@ -50,13 +50,26 @@ export function SidebarBrand({
           width={960}
           height={240}
           priority
-          className="h-auto w-full max-w-full object-contain"
+          className={cn(
+            "h-auto w-full max-w-full object-contain",
+            compact && "max-h-[48px]"
+          )}
         />
-        <p className="mt-3 text-center text-[10px] font-semibold uppercase tracking-[0.2em] text-silver">
+        <p
+          className={cn(
+            "text-center text-[10px] font-semibold uppercase tracking-[0.2em] text-silver",
+            compact ? "mt-1.5" : "mt-3"
+          )}
+        >
           Operations Platform
         </p>
         {portalLabel ? (
-          <p className="mt-1 text-center text-[10px] font-medium uppercase tracking-[0.15em] text-white/70">
+          <p
+            className={cn(
+              "text-center text-[10px] font-medium uppercase tracking-[0.15em] text-white/70",
+              compact ? "mt-0.5" : "mt-1"
+            )}
+          >
             {portalLabel}
           </p>
         ) : null}
