@@ -26,12 +26,12 @@ export function SidebarBrand({
           title={portalLabel}
         >
           <Image
-            src="/dons-crest.svg"
+            src="/icon.png"
             alt="Fuel the Dons"
             width={40}
             height={40}
             priority
-            className="h-10 w-10 object-contain opacity-95"
+            className="max-h-10 w-auto object-contain"
           />
         </Link>
       </div>
@@ -50,7 +50,7 @@ export function SidebarBrand({
           width={960}
           height={240}
           priority
-          className="h-auto w-full object-contain opacity-95"
+          className="h-auto w-full max-w-full object-contain"
         />
         <p className="mt-3 text-center text-[10px] font-semibold uppercase tracking-[0.2em] text-silver">
           Operations Platform

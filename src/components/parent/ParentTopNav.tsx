@@ -14,11 +14,12 @@ export function ParentTopNav({ alertCount = 0 }: { alertCount?: number }) {
       <div className="flex w-full items-center justify-between gap-4">
         <Link href="/parent" className="flex shrink-0 items-center">
           <Image
-            src="/dons-crest.svg"
+            src="/brand-logo.png"
             alt="Fuel The Dons"
-            width={36}
-            height={36}
-            className="h-9 w-9 object-contain"
+            width={240}
+            height={60}
+            priority
+            className="h-10 w-auto max-w-[180px] object-contain sm:max-w-[220px]"
           />
         </Link>
 
