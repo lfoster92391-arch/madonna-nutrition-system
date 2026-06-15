@@ -3,10 +3,12 @@
 import Link from "next/link"
 import { getTimeGreeting, PARENT_CARD, PARENT_NAVY } from "@/components/parent/parent-dashboard-styles"
 import { Button } from "@/components/ui/button"
+import { formatCurrency } from "@/lib/utils"
 
 type ParentHeroProps = {
   parentName: string
   studentsActive: number
+  accountBalance: number
   actionsRequired: number
   reviewHref: string
 }
@@ -14,6 +16,7 @@ type ParentHeroProps = {
 export function ParentHero({
   parentName,
   studentsActive,
+  accountBalance,
   actionsRequired,
   reviewHref,
 }: ParentHeroProps) {
@@ -28,6 +31,10 @@ export function ParentHero({
           </h2>
           <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm md:text-base">
             <Stat label="Students Active" value={String(studentsActive)} />
+            <span className="hidden text-[#C8CDD7] sm:inline" aria-hidden>
+              |
+            </span>
+            <Stat label="Account Balance" value={formatCurrency(accountBalance)} />
             <span className="hidden text-[#C8CDD7] sm:inline" aria-hidden>
               |
             </span>
@@ -46,6 +53,14 @@ export function ParentHero({
             style={{ backgroundColor: PARENT_NAVY }}
           >
             <Link href={reviewHref}>Review Nutrition Update</Link>
+          </Button>
+          <Button
+            asChild
+            variant="outline"
+            className="h-11 rounded-[10px] border-[#C8CDD7] px-6 text-sm font-semibold"
+            style={{ color: PARENT_NAVY }}
+          >
+            <Link href="/parent/add-funds">Add Funds</Link>
           </Button>
         </div>
       </div>

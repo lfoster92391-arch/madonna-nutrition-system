@@ -33,6 +33,11 @@
   --silver: #aeb6c2;
 }
 
+.parent-portal {
+  --primary: #041b52;
+  --silver: #c8cdd7;
+}
+
 .admin-calendar {
   --primary: #041b52;
   --silver: #aeb6c2;

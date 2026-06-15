@@ -4,7 +4,6 @@ import { useAuth } from "@/components/providers/AuthProvider"
 import { useDemo } from "@/components/providers/DemoProvider"
 import { parentAnnouncements, parentLinkedStudents } from "@/data/demo"
 import { AlertCenter, buildAlertItems, countAttentionItems } from "@/components/parent/AlertCenter"
-import { FamilyBalanceCard } from "@/components/parent/funding/FamilyBalanceCard"
 import { InsightsRow } from "@/components/parent/InsightsRow"
 import { ParentHero } from "@/components/parent/ParentHero"
 import { ParentTopNav } from "@/components/parent/ParentTopNav"
@@ -46,18 +45,13 @@ export function ParentCommandCenter() {
       <ParentTopNav alertCount={navAlertCount} />
 
       <div className={`mx-auto w-full max-w-6xl ${PARENT_PAGE_PAD} ${PARENT_SECTION_GAP}`}>
-        <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
-          <ParentHero
-            parentName={firstName}
-            studentsActive={parentLinkedStudents.length}
-            actionsRequired={navAlertCount}
-            reviewHref={reviewHref}
-          />
-          <FamilyBalanceCard
-            totalBalance={totalBalance}
-            lowBalanceStudents={lowBalanceStudents}
-          />
-        </div>
+        <ParentHero
+          parentName={firstName}
+          studentsActive={parentLinkedStudents.length}
+          accountBalance={totalBalance}
+          actionsRequired={navAlertCount}
+          reviewHref={reviewHref}
+        />
         <StudentCardRow />
         <QuickActionsStrip />
         <AlertCenter items={alertItems} />

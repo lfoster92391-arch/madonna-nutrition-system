@@ -1,129 +1,129 @@
 "use client"
 
+import { useState } from "react"
+import Image from "next/image"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { useState } from "react"
 import {
-  AlertTriangle,
-  Bell,
-  CalendarDays,
-  ChevronLeft,
-  ChevronRight,
-  ClipboardCheck,
   CreditCard,
   HelpCircle,
   History,
   LayoutDashboard,
   LogOut,
+  Menu,
   Settings,
-  ShieldAlert,
-  UtensilsCrossed,
   Users,
-  Wallet,
 } from "lucide-react"
 import { useAuth } from "@/components/providers/AuthProvider"
-import { SidebarBrand } from "@/components/layout/SidebarBrand"
-import { DEMO_SCHOOL } from "@/data/demo"
+import { PARENT_NAVY } from "@/components/parent/parent-dashboard-styles"
 import { cn } from "@/lib/utils"
 
 const navLinks = [
-  { label: "Dashboard", href: "/parent", icon: LayoutDashboard },
-  { label: "Calendar", href: "/parent/calendar", icon: CalendarDays },
-  { label: "Reserve Lunch", href: "/parent/reserve-lunch", icon: UtensilsCrossed },
-  { label: "Fund Account", href: "/parent/add-funds", icon: Wallet },
-  { label: "Nutrition", href: "/parent/nutrition", icon: ShieldAlert },
-  { label: "Notifications", href: "/parent/notifications", icon: Bell },
-  { label: "Agreement Status", href: "/parent/agreement", icon: ClipboardCheck },
-  { label: "My Students", href: "/parent/students", icon: Users },
-  { label: "Student Profiles", href: "/parent/student-profile", icon: ShieldAlert },
-  { label: "Meal History", href: "/parent/meal-history", icon: History },
-  { label: "Transactions", href: "/parent/transactions", icon: CreditCard },
-  { label: "Low Balance Alerts", href: "/parent/alerts", icon: AlertTriangle },
+  { label: "Dashboard", href: "/parent", icon: LayoutDashboard, exact: true },
+  { label: "Students", href: "/parent/students", icon: Users },
+  { label: "Payments", href: "/parent/payment-methods", icon: CreditCard },
+  { label: "History", href: "/parent/meal-history", icon: History },
   { label: "Settings", href: "/parent/settings", icon: Settings },
-  { label: "Payment Methods", href: "/parent/payment-methods", icon: CreditCard },
-  { label: "Help & Support", href: "/parent/help", icon: HelpCircle },
+  { label: "Support", href: "/parent/help", icon: HelpCircle },
 ]
 
 export function ParentSidebar() {
   const pathname = usePathname()
   const { logout } = useAuth()
-  const [expanded, setExpanded] = useState(false)
+  const [pinned, setPinned] = useState(false)
+  const [hovered, setHovered] = useState(false)
+
+  const expanded = pinned || hovered
 
   return (
-    <aside
-      className={cn(
-        "flex shrink-0 flex-col border-r border-silver bg-primary text-white transition-[width] duration-200",
-        expanded ? "w-60" : "w-[72px]"
+    <>
+      {expanded && pinned && (
+        <button
+          type="button"
+          className="fixed inset-0 z-30 bg-black/20 md:hidden"
+          aria-label="Close navigation"
+          onClick={() => setPinned(false)}
+        />
       )}
-    >
-      <SidebarBrand href="/parent" portalLabel="Parent Portal" compact collapsed={!expanded} />
 
-      <nav className="flex-1 space-y-1 overflow-y-auto overflow-x-hidden p-2">
-        {navLinks.map(({ label, href, icon: Icon }) => {
-          const active =
-            pathname === href || (href !== "/parent" && pathname.startsWith(`${href}/`))
-          return (
-            <Link
-              key={href}
-              href={href}
-              title={!expanded ? label : undefined}
-              className={cn(
-                "flex min-h-11 items-center gap-3 rounded-[14px] text-sm font-medium transition",
-                expanded ? "px-3" : "justify-center px-0",
-                active
-                  ? "bg-success text-white"
-                  : "text-white/80 hover:bg-white/10 hover:text-white"
-              )}
-            >
-              <Icon className="h-5 w-5 shrink-0" />
-              {expanded && <span className="truncate">{label}</span>}
-            </Link>
-          )
-        })}
-        <button
-          type="button"
-          onClick={() => {
-            logout()
-            window.location.href = "/"
-          }}
-          title={!expanded ? "Logout" : undefined}
-          className={cn(
-            "flex min-h-11 w-full items-center gap-3 rounded-[14px] text-sm font-medium text-white/80 transition hover:bg-white/10 hover:text-white",
-            expanded ? "px-3" : "justify-center px-0"
-          )}
-        >
-          <LogOut className="h-5 w-5 shrink-0" />
-          {expanded && <span>Logout</span>}
-        </button>
-      </nav>
-
-      <div className="space-y-2 border-t border-silver p-2">
-        <button
-          type="button"
-          onClick={() => setExpanded((e) => !e)}
-          className={cn(
-            "flex min-h-9 w-full items-center gap-2 rounded-[14px] text-xs font-medium text-white/70 transition hover:bg-white/10 hover:text-white",
-            expanded ? "px-3" : "justify-center"
-          )}
-          aria-label={expanded ? "Collapse sidebar" : "Expand sidebar"}
-        >
-          {expanded ? (
-            <>
-              <ChevronLeft className="h-4 w-4 shrink-0" />
-              <span>Collapse</span>
-            </>
-          ) : (
-            <ChevronRight className="h-4 w-4 shrink-0" />
-          )}
-        </button>
-
-        {expanded && (
-          <div className="px-3 pb-2 text-center">
-            <p className="text-xs font-bold uppercase tracking-wide text-white">{DEMO_SCHOOL.name}</p>
-            <p className="text-[10px] uppercase text-silver">{DEMO_SCHOOL.location}</p>
-          </div>
+      <aside
+        className={cn(
+          "relative z-40 flex shrink-0 flex-col border-r border-[#C8CDD7] bg-white transition-[width] duration-200 ease-out",
+          expanded ? "w-60" : "w-[72px]"
         )}
-      </div>
-    </aside>
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
+      >
+        <div className="flex h-[60px] items-center border-b border-[#C8CDD7] px-3 sm:h-[68px]">
+          <Link href="/parent" className="flex min-w-0 flex-1 items-center gap-3 overflow-hidden">
+            <Image
+              src="/dons-crest.svg"
+              alt="Fuel The Dons"
+              width={40}
+              height={40}
+              className="h-10 w-10 shrink-0 object-contain"
+            />
+            {expanded && (
+              <span className="truncate text-sm font-bold" style={{ color: PARENT_NAVY }}>
+                Fuel The Dons
+              </span>
+            )}
+          </Link>
+          <button
+            type="button"
+            onClick={() => setPinned((p) => !p)}
+            className="ml-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-[8px] transition hover:bg-[#041B52]/5"
+            aria-label={pinned ? "Unpin sidebar" : "Pin sidebar open"}
+            aria-expanded={expanded}
+          >
+            <Menu className="h-5 w-5" style={{ color: PARENT_NAVY }} />
+          </button>
+        </div>
+
+        <nav className="flex-1 space-y-1 p-2">
+          {navLinks.map(({ label, href, icon: Icon, exact }) => {
+            const active = exact
+              ? pathname === href
+              : pathname === href || pathname.startsWith(`${href}/`)
+
+            return (
+              <Link
+                key={href}
+                href={href}
+                title={!expanded ? label : undefined}
+                className={cn(
+                  "flex h-11 items-center gap-3 rounded-[10px] text-sm font-medium transition",
+                  expanded ? "px-3" : "justify-center px-0",
+                  active
+                    ? "bg-[#041B52] text-white"
+                    : "text-[#64748B] hover:bg-[#041B52]/5 hover:text-[#041B52]"
+                )}
+              >
+                <Icon className="h-5 w-5 shrink-0" />
+                {expanded && <span className="truncate">{label}</span>}
+              </Link>
+            )
+          })}
+        </nav>
+
+        <div className="border-t border-[#C8CDD7] p-2">
+          <button
+            type="button"
+            onClick={() => {
+              logout()
+              window.location.href = "/"
+            }}
+            title={!expanded ? "Logout" : undefined}
+            className={cn(
+              "flex h-11 w-full items-center gap-3 rounded-[10px] text-sm font-medium text-[#64748B] transition hover:bg-[#041B52]/5 hover:text-[#041B52]",
+              expanded ? "px-3" : "justify-center px-0"
+            )}
+          >
+            <LogOut className="h-5 w-5 shrink-0" />
+            {expanded && <span className="truncate">Logout</span>}
+          </button>
+        </div>
+      </aside>
+    </>
   )
 }
