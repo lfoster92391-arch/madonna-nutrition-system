@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import {
   ChevronLeft,
   ChevronRight,
@@ -18,6 +18,8 @@ import { SidebarBrand } from "@/components/layout/SidebarBrand"
 import { DEMO_SCHOOL } from "@/data/demo"
 import { cn } from "@/lib/utils"
 
+const SIDEBAR_STORAGE_KEY = "parent-sidebar-expanded"
+
 const navLinks = [
   { label: "Dashboard", href: "/parent", icon: LayoutDashboard },
   { label: "Student Profiles", href: "/parent/student-profile", icon: ShieldAlert },
@@ -29,7 +31,22 @@ const navLinks = [
 export function ParentSidebar() {
   const pathname = usePathname()
   const { logout } = useAuth()
-  const [expanded, setExpanded] = useState(false)
+  const [expanded, setExpanded] = useState(true)
+
+  useEffect(() => {
+    const stored = localStorage.getItem(SIDEBAR_STORAGE_KEY)
+    if (stored !== null) {
+      setExpanded(stored === "true")
+    }
+  }, [])
+
+  const toggleExpanded = () => {
+    setExpanded((prev) => {
+      const next = !prev
+      localStorage.setItem(SIDEBAR_STORAGE_KEY, String(next))
+      return next
+    })
+  }
 
   return (
     <aside
@@ -82,7 +99,7 @@ export function ParentSidebar() {
       <div className="space-y-2 border-t border-silver p-2">
         <button
           type="button"
-          onClick={() => setExpanded((e) => !e)}
+          onClick={toggleExpanded}
           className={cn(
             "flex min-h-9 w-full items-center gap-2 rounded-[14px] text-xs font-medium text-white/70 transition hover:bg-white/10 hover:text-white",
             expanded ? "px-3" : "justify-center"
