@@ -24,7 +24,7 @@ const navLinks = [
   { label: "Dashboard", href: "/parent", icon: LayoutDashboard },
   { label: "Student Profiles", href: "/parent/student-profile", icon: ShieldAlert },
   { label: "Payments", href: "/parent/payments", icon: CreditCard },
-  { label: "Settings", href: "/parent/settings", icon: Settings },
+  { label: "Family Settings", href: "/parent/settings", icon: Settings },
   { label: "Support", href: "/parent/help", icon: HelpCircle },
 ]
 
