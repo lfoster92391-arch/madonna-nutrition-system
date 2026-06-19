@@ -13,6 +13,7 @@ import {
   demoUsers,
 } from "../src/data/demo"
 import { demoMealTemplates } from "../src/data/demo/meal-templates"
+import { DEFAULT_AGREEMENT_CONTENT } from "../src/config/agreement-defaults"
 
 const prisma = new PrismaClient()
 
@@ -683,6 +684,25 @@ async function main() {
         "Madonna High School Food Services Agreement — parents maintain accurate dietary info and current cafeteria balances.",
       emergencyPolicyText:
         "Emergency Policy — staff follow approved allergy care plans and contact guardians immediately.",
+    },
+  })
+
+  await prisma.agreementVersion.upsert({
+    where: { schoolId_versionNumber: { schoolId: school.id, versionNumber: 1 } },
+    update: {
+      status: "PUBLISHED",
+      content: DEFAULT_AGREEMENT_CONTENT,
+    },
+    create: {
+      schoolId: school.id,
+      versionLabel: "V1",
+      versionNumber: 1,
+      status: "PUBLISHED",
+      effectiveDate: new Date("2025-08-01"),
+      expiresAt: new Date("2026-07-31"),
+      content: DEFAULT_AGREEMENT_CONTENT,
+      publishedAt: new Date(),
+      publishedBy: "seed",
     },
   })
 

@@ -1,0 +1,10 @@
+export const ADMIN_NAVY = "#0A1E3F"
+export const ADMIN_SILVER = "#C7CCD6"
+export const ADMIN_WHITE = "#FFFFFF"
+export const ADMIN_BG = "#F7F8FB"
+export const ADMIN_SUCCESS = "#39A96B"
+export const ADMIN_WARNING = "#F6B93B"
+export const ADMIN_DANGER = "#E74C3C"
+
+export const ADMIN_SIDEBAR_STORAGE_KEY = "admin-sidebar-expanded"
+export const ADMIN_RAIL_STORAGE_KEY = "admin-rail-expanded"

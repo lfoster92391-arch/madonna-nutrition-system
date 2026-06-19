@@ -30,8 +30,8 @@ export function AdminModulePage({
   readOnly = false,
 }: AdminModulePageProps) {
   return (
-    <div className="min-h-screen bg-white p-8">
-      <div className="mx-auto max-w-7xl space-y-8">
+    <div className="w-full px-6 py-8 md:px-8">
+      <div className="mx-auto max-w-full space-y-8">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary">{section}</p>

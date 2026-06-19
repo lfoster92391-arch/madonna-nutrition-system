@@ -29,8 +29,13 @@
 }
 
 .teacher-portal {
-  --primary: #041b52;
-  --silver: #aeb6c2;
+  --primary: #0a1e3f;
+  --background: #f7f8fb;
+  --silver: #c7ccd6;
+  --silver-foreground: #6b7280;
+  --success: #39a96b;
+  --warning: #f6b93b;
+  --danger: #e74c3c;
 }
 
 .parent-portal {
@@ -43,6 +48,17 @@
   --silver: #aeb6c2;
   --success: #00a83e;
   --danger: #d62828;
+}
+
+.admin-portal {
+  --primary: #0a1e3f;
+  --background: #f7f8fb;
+  --silver: #c7ccd6;
+  --silver-foreground: #6b7280;
+  --success: #39a96b;
+  --warning: #f6b93b;
+  --danger: #e74c3c;
+  --foreground: #0a1e3f;
 }
 
 body {

@@ -39,6 +39,9 @@ model School {
   lunchAgreements          LunchAgreement[]
   lunchReservations        LunchReservation[]
   onboardingPricing        OnboardingPricing?
+  agreementVersions        AgreementVersion[]
+  agreementSignatures      AgreementSignature[]
+  agreementAuditLogs       AgreementAuditLog[]
 }
 
 model User {
@@ -181,6 +184,7 @@ model Parent {
 
   students ParentStudent[]
   lunchAgreements LunchAgreement[]
+  agreementSignatures AgreementSignature[]
 }
 
 model ParentStudent {
@@ -503,21 +507,105 @@ enum LunchReservationMealType {
 }
 
 model LunchAgreement {
-  id            String               @id @default(cuid())
-  parentId      String
-  parent        Parent               @relation(fields: [parentId], references: [id], onDelete: Cascade)
-  studentId     String
-  student       Student              @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  signedAt      DateTime?
-  signatureData String?
-  status        LunchAgreementStatus @default(PENDING)
-  acceptedTerms Boolean              @default(false)
-  schoolId      String
-  school        School               @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  createdAt     DateTime             @default(now())
-  updatedAt     DateTime             @updatedAt
+  id                   String               @id @default(cuid())
+  parentId             String
+  parent               Parent               @relation(fields: [parentId], references: [id], onDelete: Cascade)
+  studentId            String
+  student              Student              @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  agreementVersionId   String?
+  agreementVersion     AgreementVersion?    @relation(fields: [agreementVersionId], references: [id], onDelete: SetNull)
+  agreementSignatureId String?
+  agreementSignature   AgreementSignature?  @relation(fields: [agreementSignatureId], references: [id], onDelete: SetNull)
+  signedAt             DateTime?
+  signatureData        String?
+  status               LunchAgreementStatus @default(PENDING)
+  acceptedTerms        Boolean              @default(false)
+  schoolId             String
+  school               School               @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
 
   @@unique([parentId, studentId])
+}
+
+enum AgreementVersionStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum AgreementSignatureStatus {
+  PENDING
+  SIGNED
+  EXPIRED
+  REVOKED
+}
+
+model AgreementVersion {
+  id            String                 @id @default(cuid())
+  versionLabel  String
+  versionNumber Int
+  status        AgreementVersionStatus   @default(DRAFT)
+  effectiveDate DateTime
+  expiresAt     DateTime?
+  content       Json
+  publishedAt   DateTime?
+  publishedBy   String?
+  schoolId      String
+  school        School                 @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  createdAt     DateTime               @default(now())
+  updatedAt     DateTime               @updatedAt
+
+  signatures    AgreementSignature[]
+  auditLogs     AgreementAuditLog[]
+  lunchAgreements LunchAgreement[]
+
+  @@unique([schoolId, versionNumber])
+}
+
+model AgreementSignature {
+  id                 String                   @id @default(cuid())
+  agreementVersionId String
+  agreementVersion   AgreementVersion         @relation(fields: [agreementVersionId], references: [id], onDelete: Cascade)
+  parentId           String
+  parent             Parent                   @relation(fields: [parentId], references: [id], onDelete: Cascade)
+  parentUserId       String?
+  parentName         String
+  relationship       String
+  typedSignature     String
+  studentIds         String[]
+  signedAt           DateTime?
+  ipAddress          String?
+  status             AgreementSignatureStatus @default(PENDING)
+  schoolId           String
+  school             School                   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  createdAt          DateTime                 @default(now())
+  updatedAt          DateTime                 @updatedAt
+
+  auditLogs       AgreementAuditLog[]
+  lunchAgreements LunchAgreement[]
+
+  @@index([parentId, agreementVersionId])
+  @@index([schoolId, status])
+}
+
+model AgreementAuditLog {
+  id                 String              @id @default(cuid())
+  action             String
+  agreementVersionId String?
+  agreementVersion   AgreementVersion?   @relation(fields: [agreementVersionId], references: [id], onDelete: SetNull)
+  signatureId        String?
+  signature          AgreementSignature? @relation(fields: [signatureId], references: [id], onDelete: SetNull)
+  parentId           String?
+  parentName         String?
+  ipAddress          String?
+  metadata           Json?
+  performedBy        String?
+  schoolId           String
+  school             School              @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  createdAt          DateTime            @default(now())
+
+  @@index([schoolId, createdAt])
 }
 
 model LunchReservation {
