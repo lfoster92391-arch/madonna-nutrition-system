@@ -23,7 +23,7 @@ interface AgreementStatusState {
 
 export function useAgreementStatus() {
   const { user, isLoading: authLoading } = useAuth()
-  const { databaseEnabled, isLoading: demoLoading } = useDemo()
+  const { databaseEnabled, demoPreviewActive, isLoading: demoLoading } = useDemo()
   const [state, setState] = useState<AgreementStatusState>({
     requiresSignature: true,
     currentVersion: null,
@@ -48,7 +48,7 @@ export function useAgreementStatus() {
       return
     }
 
-    if (!databaseEnabled) {
+    if (demoPreviewActive) {
       ensureDemoPublishedVersion()
       const demo = getDemoParentStatus(user.id)
       setState({
@@ -82,7 +82,7 @@ export function useAgreementStatus() {
         loading: false,
       })
     }
-  }, [user?.id, databaseEnabled, demoLoading, authLoading])
+  }, [user?.id, databaseEnabled, demoPreviewActive, demoLoading, authLoading])
 
   useEffect(() => {
     void refresh()

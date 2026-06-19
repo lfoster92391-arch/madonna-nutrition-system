@@ -19,7 +19,7 @@ import { Label } from "@/components/ui/label"
 export function ParentAgreementSigningPage() {
   const router = useRouter()
   const { user } = useAuth()
-  const { databaseEnabled } = useDemo()
+  const { databaseEnabled, demoPreviewActive } = useDemo()
   const [version, setVersion] = useState<AgreementVersionDto | null>(null)
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
@@ -34,7 +34,7 @@ export function ParentAgreementSigningPage() {
 
   useEffect(() => {
     async function load() {
-      if (!databaseEnabled) {
+      if (demoPreviewActive) {
         setVersion(DEFAULT_PUBLISHED_VERSION as AgreementVersionDto)
         setLoading(false)
         return
@@ -50,7 +50,7 @@ export function ParentAgreementSigningPage() {
       }
     }
     void load()
-  }, [databaseEnabled])
+  }, [demoPreviewActive])
 
   const content: AgreementContent = useMemo(
     () => version?.content ?? DEFAULT_AGREEMENT_CONTENT,
@@ -68,7 +68,7 @@ export function ParentAgreementSigningPage() {
     setError(null)
 
     try {
-      if (!databaseEnabled) {
+      if (demoPreviewActive) {
         const result = signDemoAgreement({
           parentUserId: user.id,
           parentName: parentName.trim(),

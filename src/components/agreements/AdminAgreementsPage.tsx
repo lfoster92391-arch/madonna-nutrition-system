@@ -37,7 +37,7 @@ interface AdminNotification {
 
 export function AdminAgreementsPage() {
   const { user } = useAuth()
-  const { databaseEnabled } = useDemo()
+  const { databaseEnabled, demoPreviewActive } = useDemo()
   const [versions, setVersions] = useState<AgreementVersionDto[]>([])
   const [rows, setRows] = useState<AgreementDashboardRow[]>([])
   const [notifications, setNotifications] = useState<AdminNotification[]>([])
@@ -60,7 +60,7 @@ export function AdminAgreementsPage() {
   )
 
   const load = useCallback(async () => {
-    if (!databaseEnabled) {
+    if (demoPreviewActive) {
       ensureDemoPublishedVersion()
       const demoVersions = listDemoVersions()
       setVersions(demoVersions.length ? demoVersions : [DEFAULT_PUBLISHED_VERSION as AgreementVersionDto])
@@ -83,7 +83,7 @@ export function AdminAgreementsPage() {
       setRows(data.rows ?? [])
       setNotifications(data.notifications ?? [])
     }
-  }, [databaseEnabled, parentQuery, studentQuery, selectedVersionId])
+  }, [demoPreviewActive, parentQuery, studentQuery, selectedVersionId])
 
   useEffect(() => {
     void load()
@@ -99,7 +99,7 @@ export function AdminAgreementsPage() {
   }, [selectedVersion])
 
   async function saveDraft() {
-    if (!databaseEnabled) {
+    if (demoPreviewActive) {
       const saved = saveDemoDraftVersion({
         id: selectedVersion?.status === "DRAFT" ? selectedVersion.id : undefined,
         versionLabel: draftLabel,
@@ -145,7 +145,7 @@ export function AdminAgreementsPage() {
       setToast("Select a draft version to publish")
       return
     }
-    if (!databaseEnabled) {
+    if (demoPreviewActive) {
       publishDemoVersion(selectedVersion.status === "DRAFT" ? selectedVersion.id : selectedVersion.id)
       setToast("Agreement published")
       void load()
@@ -162,7 +162,7 @@ export function AdminAgreementsPage() {
 
   async function archiveVersion() {
     if (!selectedVersion) return
-    if (!databaseEnabled) {
+    if (demoPreviewActive) {
       archiveDemoVersion(selectedVersion.id)
       setToast("Version archived")
       void load()

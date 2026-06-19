@@ -76,7 +76,7 @@ function readRememberRecent(): boolean {
 
 export function TeacherDataProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth()
-  const { databaseEnabled, users } = useDemo()
+  const { databaseEnabled, demoPreviewActive, users } = useDemo()
   const [profile, setProfile] = useState<TeacherProfile | null>(null)
   const [reservation, setReservation] = useState<TeacherLunchReservation | null>(
     demoTeacherLunchReservation
@@ -157,12 +157,25 @@ export function TeacherDataProvider({ children }: { children: ReactNode }) {
       setIsLoading(false)
       return
     }
-    if (databaseEnabled) {
+    if (databaseEnabled && !demoPreviewActive) {
       void loadFromApi()
-    } else {
+    } else if (demoPreviewActive) {
       loadDemoData()
+    } else {
+      setProfile(null)
+      setReservation(null)
+      setSignups([])
+      setStats({
+        studentsSignedUp: 0,
+        payAtKiosk: 0,
+        usingAccount: 0,
+        usingAccountLowFunds: 0,
+        prepaidOnline: 0,
+      })
+      setAnnouncements([])
+      setIsLoading(false)
     }
-  }, [user, databaseEnabled, loadDemoData, loadFromApi])
+  }, [user, databaseEnabled, demoPreviewActive, loadDemoData, loadFromApi])
 
   const setRememberRecent = useCallback((value: boolean) => {
     setRememberRecentState(value)
@@ -189,7 +202,7 @@ export function TeacherDataProvider({ children }: { children: ReactNode }) {
         return
       }
 
-      if (databaseEnabled && user) {
+      if (databaseEnabled && !demoPreviewActive && user) {
         const res = await fetch(
           `/api/teacher/students?teacherId=${user.id}&q=${encodeURIComponent(trimmed)}`
         )
@@ -211,12 +224,12 @@ export function TeacherDataProvider({ children }: { children: ReactNode }) {
         .map(mapStudentForTeacher)
       setSearchResults(matches)
     },
-    [databaseEnabled, user]
+    [databaseEnabled, demoPreviewActive, user]
   )
 
   const selectStudent = useCallback(
     async (studentId: string) => {
-      if (databaseEnabled && user) {
+      if (databaseEnabled && !demoPreviewActive && user) {
         const res = await fetch(`/api/teacher/students/${studentId}?teacherId=${user.id}`)
         if (res.ok) {
           const data = await res.json()
@@ -232,7 +245,7 @@ export function TeacherDataProvider({ children }: { children: ReactNode }) {
         addRecentStudent(studentId)
       }
     },
-    [databaseEnabled, user, addRecentStudent]
+    [databaseEnabled, demoPreviewActive, user, addRecentStudent]
   )
 
   const clearRecentStudents = useCallback(() => {
@@ -242,7 +255,7 @@ export function TeacherDataProvider({ children }: { children: ReactNode }) {
 
   const confirmStudentLunch = useCallback(
     async (studentId: string, paymentMethod: TeacherPaymentMethod) => {
-      if (databaseEnabled && user) {
+      if (databaseEnabled && !demoPreviewActive && user) {
         await fetch("/api/teacher/lunch/signup", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -286,12 +299,12 @@ export function TeacherDataProvider({ children }: { children: ReactNode }) {
       }))
       addRecentStudent(studentId)
     },
-    [databaseEnabled, user, signups, loadFromApi, addRecentStudent]
+    [databaseEnabled, demoPreviewActive, user, signups, loadFromApi, addRecentStudent]
   )
 
   const updateTeacherReservation = useCallback(
     async (paymentMethod: TeacherPaymentMethod, action: "reserve" | "cancel" | "change" = "reserve") => {
-      if (databaseEnabled && user) {
+      if (databaseEnabled && !demoPreviewActive && user) {
         await fetch("/api/teacher/lunch/reservation", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -312,14 +325,14 @@ export function TeacherDataProvider({ children }: { children: ReactNode }) {
         status: "reserved",
       })
     },
-    [databaseEnabled, user, loadFromApi]
+    [databaseEnabled, demoPreviewActive, user, loadFromApi]
   )
 
   const refreshSignups = useCallback(async () => {
-    if (databaseEnabled && user) {
+    if (databaseEnabled && !demoPreviewActive && user) {
       await loadFromApi()
     }
-  }, [databaseEnabled, user, loadFromApi])
+  }, [databaseEnabled, demoPreviewActive, user, loadFromApi])
 
   const value = useMemo(
     () => ({

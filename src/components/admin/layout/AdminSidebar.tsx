@@ -18,6 +18,7 @@ import {
   Wallet,
   Wrench,
 } from "lucide-react"
+import { DemoLauncher } from "@/components/admin/demo/DemoLauncher"
 import { useAuth } from "@/components/providers/AuthProvider"
 import { DEMO_SCHOOL } from "@/data/demo"
 import { cn } from "@/lib/utils"
@@ -144,6 +145,8 @@ export function AdminSidebar() {
               </div>
             </div>
 
+            <DemoLauncher expanded onCloseMobile={closeMobile} />
+
             <button
               type="button"
               onClick={toggle}
@@ -156,15 +159,18 @@ export function AdminSidebar() {
           </div>
 
           {expanded ? null : (
-            <button
-              type="button"
-              onClick={toggle}
-              className="mx-auto hidden h-11 w-11 items-center justify-center rounded-lg bg-white/10 transition hover:bg-white/15 md:flex"
-              aria-label="Expand menu"
-              title="Expand menu"
-            >
-              <ChevronLeft className="h-4 w-4 rotate-180 text-white" />
-            </button>
+            <div className="hidden space-y-2 md:block">
+              <DemoLauncher expanded={false} onCloseMobile={closeMobile} />
+              <button
+                type="button"
+                onClick={toggle}
+                className="mx-auto flex h-11 w-11 items-center justify-center rounded-lg bg-white/10 transition hover:bg-white/15"
+                aria-label="Expand menu"
+                title="Expand menu"
+              >
+                <ChevronLeft className="h-4 w-4 rotate-180 text-white" />
+              </button>
+            </div>
           )}
         </div>
       </aside>
