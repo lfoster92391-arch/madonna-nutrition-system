@@ -1,0 +1,10 @@
+export const TEACHER_NAVY = "#0A1E3F"
+export const TEACHER_SILVER = "#C7CCD6"
+export const TEACHER_WHITE = "#FFFFFF"
+export const TEACHER_BG = "#F7F8FB"
+export const TEACHER_SUCCESS = "#39A96B"
+export const TEACHER_WARNING = "#F6B93B"
+export const TEACHER_DANGER = "#E74C3C"
+
+export const TEACHER_SIDEBAR_STORAGE_KEY = "teacher-sidebar-expanded"
+export const TEACHER_RAIL_STORAGE_KEY = "teacher-rail-expanded"

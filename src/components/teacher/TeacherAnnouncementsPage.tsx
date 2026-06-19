@@ -1,15 +1,20 @@
 "use client"
 
 import { TeacherAnnouncements } from "@/components/teacher/TeacherAnnouncements"
-import { TeacherDashboardHeader } from "@/components/teacher/TeacherDashboardHeader"
+import { TEACHER_BG, TEACHER_NAVY } from "@/components/teacher/layout/teacher-theme"
 
 export function TeacherAnnouncementsPage() {
   return (
-    <div className="min-h-screen bg-[#f8f9fb]">
-      <TeacherDashboardHeader subtitle="Announcements" />
-      <div className="p-8">
-        <TeacherAnnouncements />
+    <div className="space-y-6 p-6" style={{ backgroundColor: TEACHER_BG }}>
+      <div>
+        <h1 className="text-2xl font-bold" style={{ color: TEACHER_NAVY }}>
+          Announcements
+        </h1>
+        <p className="mt-1 text-sm text-silver-foreground">
+          Lunch communication — menu changes, special meals, and schedule updates
+        </p>
       </div>
+      <TeacherAnnouncements />
     </div>
   )
 }
