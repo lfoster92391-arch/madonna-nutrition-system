@@ -22,16 +22,17 @@ const ACTIONS = [
 
 export function AdminQuickActionBar() {
   return (
-    <div
-      className="fixed bottom-0 left-0 right-0 z-30 border-t shadow-[0_-4px_24px_rgba(0,0,0,0.2)]"
+    <nav
+      aria-label="Quick actions"
+      className="shrink-0 border-b shadow-sm"
       style={{ borderColor: "rgba(255,255,255,0.1)", backgroundColor: ADMIN_NAVY }}
     >
-      <div className="mx-auto flex max-w-full items-center justify-center gap-2 overflow-x-auto px-4 py-3 md:gap-3 lg:px-8">
+      <div className="flex items-center gap-2 overflow-x-auto px-3 py-2.5 sm:px-4 md:gap-3 md:px-6 lg:px-8">
         {ACTIONS.map(({ label, href, icon: Icon, prefix }) => (
           <Link
             key={label}
             href={href}
-            className="flex shrink-0 items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-medium text-white transition hover:bg-white/10"
+            className="flex min-h-10 shrink-0 items-center gap-2 rounded-xl border px-3 py-2 text-sm font-medium text-white transition hover:bg-white/10 md:px-4 md:py-2.5"
             style={{ borderColor: "rgba(255,255,255,0.2)" }}
           >
             <Icon className="h-4 w-4" />
@@ -42,6 +43,6 @@ export function AdminQuickActionBar() {
         ))}
       </div>
       <div className="h-0.5" style={{ backgroundColor: ADMIN_SILVER, opacity: 0.15 }} />
-    </div>
+    </nav>
   )
 }

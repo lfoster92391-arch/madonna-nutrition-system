@@ -5,11 +5,14 @@ import Image from "next/image"
 import {
   Bell,
   ChevronDown,
+  Menu,
   MessageSquare,
+  PanelRight,
   User,
 } from "lucide-react"
 import { useAuth } from "@/components/providers/AuthProvider"
 import { DEMO_SCHOOL } from "@/data/demo"
+import { useAdminLayout } from "@/components/admin/layout/admin-layout-context"
 import {
   ADMIN_DANGER,
   ADMIN_NAVY,
@@ -33,13 +36,24 @@ export function AdminTopBar() {
   const { user } = useAuth()
   const adminName = user?.displayName ?? "Admin User"
   const today = useMemo(() => formatToday(), [])
+  const { setMobileSidebarOpen, setMobileRailOpen } = useAdminLayout()
 
   return (
     <header
-      className="flex h-[72px] shrink-0 items-center gap-4 border-b px-4 md:px-6"
+      className="flex h-[72px] shrink-0 items-center gap-2 border-b px-3 sm:gap-4 sm:px-4 md:px-6"
       style={{ borderColor: ADMIN_SILVER, backgroundColor: "#FFFFFF" }}
     >
-      <div className="flex min-w-0 items-center gap-3">
+      <button
+        type="button"
+        className="flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-xl border shadow-sm transition hover:bg-[#0A1E3F]/5 md:hidden"
+        style={{ borderColor: ADMIN_SILVER, color: ADMIN_NAVY }}
+        aria-label="Open menu"
+        onClick={() => setMobileSidebarOpen(true)}
+      >
+        <Menu className="h-5 w-5" />
+      </button>
+
+      <div className="flex min-w-0 items-center gap-2 sm:gap-3">
         <Image
           src="/brand-logo.png"
           alt="Fuel The Dons"
@@ -75,12 +89,21 @@ export function AdminTopBar() {
         </span>
       </div>
 
-      <div className="ml-auto flex items-center gap-2 md:gap-3">
+      <div className="ml-auto flex items-center gap-1.5 sm:gap-2 md:gap-3">
+        <button
+          type="button"
+          className="flex min-h-11 min-w-11 items-center justify-center rounded-xl border shadow-sm transition hover:bg-[#0A1E3F]/5 lg:hidden"
+          style={{ borderColor: ADMIN_SILVER, color: ADMIN_NAVY }}
+          aria-label="Activity and alerts"
+          onClick={() => setMobileRailOpen(true)}
+        >
+          <PanelRight className="h-4 w-4" />
+        </button>
         <TopBarIconButton icon={Bell} label="Notifications" badge={7} />
         <TopBarIconButton icon={MessageSquare} label="Messages" badge={3} />
         <button
           type="button"
-          className="flex items-center gap-2.5 rounded-xl border px-2 py-1.5 text-left shadow-sm md:px-3 md:py-2"
+          className="flex min-h-11 items-center gap-2.5 rounded-xl border px-2 text-left shadow-sm sm:px-3"
           style={{ borderColor: ADMIN_SILVER, color: ADMIN_NAVY }}
           aria-label="Profile"
         >
@@ -114,7 +137,7 @@ function TopBarIconButton({
   return (
     <button
       type="button"
-      className="relative flex h-10 w-10 items-center justify-center rounded-xl border shadow-sm transition hover:bg-[#0A1E3F]/5"
+      className="relative flex min-h-11 min-w-11 items-center justify-center rounded-xl border shadow-sm transition hover:bg-[#0A1E3F]/5"
       style={{ borderColor: ADMIN_SILVER, color: ADMIN_NAVY }}
       aria-label={label}
     >
