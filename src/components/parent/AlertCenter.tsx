@@ -125,7 +125,7 @@ export function AlertCenter({ items }: { items: AlertItem[] }) {
   )
 }
 
-/** Build prioritized alert list from dashboard data (max 3 shown in AlertCenter) */
+/** Build prioritized alert list from dashboard data */
 export function buildAlertItems(input: {
   lowBalanceStudents: { id: string; firstName: string; lastName: string; balance: number }[]
   reviewDueCount: number
@@ -170,9 +170,7 @@ export function buildAlertItems(input: {
     })
   }
 
-  if (items.length === 0) return items
-
-  return items.slice(0, 3)
+  return items
 }
 
 export function countAttentionItems(items: AlertItem[]): number {

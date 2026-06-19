@@ -1,5 +1,10 @@
-import { redirectToParentHub } from "@/lib/parent-v3-redirect"
+import { Suspense } from "react"
+import { ParentAlertsPage } from "@/components/parent/ParentAlertsPage"
 
 export default function AlertsPage() {
-  redirectToParentHub("alerts")
+  return (
+    <Suspense fallback={<div className="min-h-[40vh] bg-white" />}>
+      <ParentAlertsPage />
+    </Suspense>
+  )
 }

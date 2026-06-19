@@ -49,7 +49,7 @@ export function StudentCardRow() {
                     alt={`${student.firstName} ${student.lastName}`}
                     width={72}
                     height={72}
-                    className="h-[72px] w-[72px] shrink-0 rounded-[12px] object-cover"
+                    className="h-[72px] w-[72px] shrink-0 rounded-full object-cover"
                   />
                   <div className="min-w-0 flex-1">
                     <h3 className="truncate text-base font-bold md:text-lg" style={{ color: PARENT_NAVY }}>

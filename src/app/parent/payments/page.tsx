@@ -1,5 +1,10 @@
-import { redirectToParentHub } from "@/lib/parent-v3-redirect"
+import { Suspense } from "react"
+import { PaymentsCenter } from "@/components/parent/payments/PaymentsCenter"
 
 export default function PaymentsPage() {
-  redirectToParentHub("add-funds")
+  return (
+    <Suspense fallback={<div className="min-h-[40vh] bg-white" />}>
+      <PaymentsCenter />
+    </Suspense>
+  )
 }

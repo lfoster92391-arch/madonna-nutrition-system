@@ -23,9 +23,9 @@ const SIDEBAR_STORAGE_KEY = "parent-sidebar-expanded"
 const navLinks = [
   { label: "Dashboard", href: "/parent", icon: LayoutDashboard, exact: true },
   { label: "Students", href: "/parent/students", icon: Users },
-  { label: "Payments", href: "/parent/payment-methods", icon: CreditCard },
+  { label: "Payments", href: "/parent/payments", icon: CreditCard },
   { label: "History", href: "/parent/meal-history", icon: History },
-  { label: "Family Settings", href: "/parent/settings", icon: Settings },
+  { label: "Settings", href: "/parent/settings", icon: Settings },
   { label: "Support", href: "/parent/help", icon: HelpCircle },
 ]
 
@@ -67,19 +67,18 @@ export function ParentSidebar() {
         )}
       >
         <div className="flex h-[60px] items-center border-b border-[#C8CDD7] px-3 sm:h-[68px]">
-          <Link href="/parent" className="flex min-w-0 flex-1 items-center gap-3 overflow-hidden">
+          <Link href="/parent" className="flex min-w-0 flex-1 items-center overflow-hidden">
             <Image
-              src="/dons-crest.svg"
+              src="/brand-logo.png"
               alt="Fuel The Dons"
-              width={40}
+              width={expanded ? 160 : 40}
               height={40}
-              className="h-10 w-10 shrink-0 object-contain"
+              priority
+              className={cn(
+                "shrink-0 object-contain",
+                expanded ? "h-10 w-auto max-w-[140px]" : "h-9 w-9"
+              )}
             />
-            {expanded && (
-              <span className="truncate text-sm font-bold" style={{ color: PARENT_NAVY }}>
-                Fuel The Dons
-              </span>
-            )}
           </Link>
           <button
             type="button"

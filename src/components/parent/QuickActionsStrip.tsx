@@ -33,10 +33,10 @@ export function QuickActionsStrip() {
               className="flex flex-col items-center justify-center gap-2 rounded-[12px] px-3 py-4 transition hover:bg-[#041B52]/5"
             >
               <span
-                className="flex h-11 w-11 items-center justify-center rounded-[10px] bg-[#041B52]/5"
+                className="flex h-14 w-14 items-center justify-center rounded-full bg-[#041B52]/5"
                 aria-hidden
               >
-                <Icon className="h-5 w-5" style={{ color: PARENT_NAVY }} />
+                <Icon className="h-6 w-6" style={{ color: PARENT_NAVY }} />
               </span>
               <span className="text-center text-xs font-semibold sm:text-sm" style={{ color: PARENT_NAVY }}>
                 {label}

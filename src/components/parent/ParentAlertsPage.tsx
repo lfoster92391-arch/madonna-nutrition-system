@@ -1,53 +1,48 @@
 "use client"
 
-import { useAuth } from "@/components/providers/AuthProvider"
+import { Suspense } from "react"
 import { useDemo } from "@/components/providers/DemoProvider"
 import { parentAnnouncements, parentLinkedStudents } from "@/data/demo"
-import { buildAlertItems, countAttentionItems } from "@/components/parent/AlertCenter"
-import { ParentHero } from "@/components/parent/ParentHero"
-import { QuickActionsStrip } from "@/components/parent/QuickActionsStrip"
-import { StudentCardRow } from "@/components/parent/StudentCardRow"
+import { AlertCenter, buildAlertItems } from "@/components/parent/AlertCenter"
 import { PARENT_PAGE_PAD, PARENT_SECTION_GAP } from "@/components/parent/parent-dashboard-styles"
 import { isReviewDue } from "@/lib/food-safety"
 
-export function ParentCommandCenter() {
-  const { user } = useAuth()
+function ParentAlertsContent() {
   const { studentProfiles } = useDemo()
-
-  const firstName = user?.displayName.split(" ")[0] ?? "Parent"
-  const totalBalance = parentLinkedStudents.reduce((sum, s) => sum + s.balance, 0)
   const lowBalanceStudents = parentLinkedStudents.filter((s) => s.balance < 5)
-
   const linkedProfiles = studentProfiles.filter((p) =>
     parentLinkedStudents.some((s) => s.id === p.studentId)
   )
   const reviewDueProfiles = linkedProfiles.filter((p) => isReviewDue(p.allergyExpiresAt))
-
   const reviewHref =
     reviewDueProfiles.length === 1
       ? `/parent/student-profile/${reviewDueProfiles[0].studentId}`
       : "/parent/student-profile"
 
-  const alertItems = buildAlertItems({
+  const items = buildAlertItems({
     lowBalanceStudents,
     reviewDueCount: reviewDueProfiles.length,
     reviewHref,
     announcements: parentAnnouncements,
   })
 
-  const navAlertCount = countAttentionItems(alertItems)
-
   return (
     <div className={`mx-auto w-full max-w-6xl ${PARENT_PAGE_PAD} ${PARENT_SECTION_GAP}`}>
-      <ParentHero
-        parentName={firstName}
-        studentsActive={parentLinkedStudents.length}
-        accountBalance={totalBalance}
-        actionsRequired={navAlertCount}
-        reviewHref={reviewHref}
-      />
-      <StudentCardRow />
-      <QuickActionsStrip />
+      <header>
+        <h1 className="text-2xl font-bold md:text-3xl text-[#041B52]">Alerts</h1>
+        <p className="mt-2 text-sm text-[#64748B]">
+          Items that need your attention across your family account.
+        </p>
+      </header>
+      <AlertCenter items={items} />
     </div>
+  )
+}
+
+export function ParentAlertsPage() {
+  return (
+    <Suspense fallback={<div className="min-h-[40vh] bg-white" />}>
+      <ParentAlertsContent />
+    </Suspense>
   )
 }

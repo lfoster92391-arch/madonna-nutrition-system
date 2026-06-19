@@ -1,5 +1,5 @@
-import { redirectToParentHub } from "@/lib/parent-v3-redirect"
+import { redirect } from "next/navigation"
 
 export default function PaymentMethodsPage() {
-  redirectToParentHub()
+  redirect("/parent/payments?tab=methods")
 }
