@@ -21,3 +21,7 @@ function walk(dir, out = []) {
 
 const bad = walk(path.join(process.cwd(), "src"))
 console.log(JSON.stringify(bad, null, 2))
+if (bad.length > 0) {
+  console.error(`Found ${bad.length} file(s) with UTF-16/null-byte corruption.`)
+  process.exit(1)
+}
