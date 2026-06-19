@@ -30,6 +30,7 @@ import {
   X,
 } from "lucide-react"
 import { MealPreviewModal } from "@/components/admin/MealPreviewModal"
+import { ImportExportMenu } from "@/components/admin/import-export/ImportExportMenu"
 import { useDemo } from "@/components/providers/DemoProvider"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -323,7 +324,8 @@ export function MenuLibraryManager() {
             </h1>
             <p className="text-silver-foreground">Create meals once. Reuse anytime.</p>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex flex-wrap items-center gap-4">
+            <ImportExportMenu type="menu" importDisabled />
             <Button
               onClick={handleCreate}
               className="rounded-2xl px-6 font-bold uppercase tracking-wide"

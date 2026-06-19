@@ -6,19 +6,22 @@ import { z } from "zod"
 import {
   AlertCircle,
   CheckCircle2,
+  Download,
   FileUp,
   RotateCcw,
   Upload,
 } from "lucide-react"
 import { useDemo } from "@/components/providers/DemoProvider"
 import { Badge } from "@/components/ui/badge"
+import { downloadImportTemplate } from "@/lib/import-export"
 import { Button } from "@/components/ui/button"
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label, Select } from "@/components/ui/input"
 import type { ImportLog, ParentContact, Student } from "@/lib/types"
 
 const studentSchema = z.object({
-  id: z.string().min(1),
+  id: z.string().min(1).optional(),
+  mdId: z.string().min(1).optional(),
   firstName: z.string().min(1),
   lastName: z.string().min(1),
   grade: z.string().min(1),
@@ -27,25 +30,29 @@ const studentSchema = z.object({
   parentEmail: z.union([z.string().email(), z.literal("")]).optional(),
   parentPhone: z.string().optional(),
   photo: z.string().optional(),
+  photoUrl: z.string().optional(),
   allergies: z.string().optional(),
   dietaryRestrictions: z.string().optional(),
-})
+}).refine((d) => Boolean(d.id || d.mdId), { message: "mdId or id is required" })
 
 type ImportStep = "upload" | "mapping" | "validation" | "preview" | "complete"
-type FieldKey = keyof z.infer<typeof studentSchema>
+type FieldKey = "id" | "mdId" | "firstName" | "lastName" | "grade" | "homeroom" | "balance" | "parentEmail" | "parentPhone" | "photo" | "photoUrl" | "allergies" | "dietaryRestrictions"
 
-const REQUIRED_FIELDS: FieldKey[] = ["id", "firstName", "lastName", "grade", "balance"]
+const REQUIRED_FIELDS: FieldKey[] = ["mdId", "firstName", "lastName", "grade", "balance"]
 const OPTIONAL_FIELDS: FieldKey[] = [
+  "id",
   "homeroom",
   "parentEmail",
   "parentPhone",
   "photo",
+  "photoUrl",
   "allergies",
   "dietaryRestrictions",
 ]
 
 const AUTO_MAP_ALIASES: Record<FieldKey, string[]> = {
   id: ["id", "studentid", "student_id", "externalid"],
+  mdId: ["mdid", "md_id", "madonnaid", "badgenumber", "badge_number", "studentnumber"],
   firstName: ["firstname", "first_name", "first"],
   lastName: ["lastname", "last_name", "last"],
   grade: ["grade", "gradelevel"],
@@ -53,7 +60,8 @@ const AUTO_MAP_ALIASES: Record<FieldKey, string[]> = {
   balance: ["balance", "accountbalance"],
   parentEmail: ["parentemail", "parent_email", "email"],
   parentPhone: ["parentphone", "parent_phone", "phone"],
-  photo: ["photo", "photourl", "photo_url"],
+  photo: ["photo", "photofilename", "photo_filename"],
+  photoUrl: ["photourl", "photo_url", "imageurl", "image_url"],
   allergies: ["allergies", "allergy"],
   dietaryRestrictions: ["dietaryrestrictions", "dietary", "diet"],
 }
@@ -137,7 +145,8 @@ export function CsvImportWizard() {
         return
       }
 
-      if (existingIds.has(result.data.id)) {
+      const studentId = result.data.id || result.data.mdId!
+      if (existingIds.has(studentId)) {
         duplicates.push(index + 2)
         errors.push({ row: index + 2, errors: ["Duplicate student ID"] })
         return
@@ -154,13 +163,14 @@ export function CsvImportWizard() {
       }
 
       parsed.push({
-        id: result.data.id,
+        id: studentId,
         firstName: result.data.firstName,
         lastName: result.data.lastName,
         grade: result.data.grade,
         homeroom: result.data.homeroom,
         balance: result.data.balance,
         photo:
+          result.data.photoUrl ||
           result.data.photo ||
           "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=400&auto=format&fit=crop",
         allergies: parseAllergies(result.data.allergies),
@@ -208,13 +218,21 @@ export function CsvImportWizard() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <FileUp className="h-5 w-5" />
-          SIS CSV Import
-        </CardTitle>
-        <CardDescription>
-          Upload → Field Mapping → Validation → Preview → Import → Rollback → Sync Logs
-        </CardDescription>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <FileUp className="h-5 w-5" />
+              SIS CSV Import
+            </CardTitle>
+            <CardDescription>
+              Upload → Field Mapping → Validation → Preview → Import → Rollback → Sync Logs
+            </CardDescription>
+          </div>
+          <Button variant="outline" size="sm" onClick={() => downloadImportTemplate("students")}>
+            <Download className="h-4 w-4" />
+            Download Template
+          </Button>
+        </div>
       </CardHeader>
 
       <div className="mb-6 flex gap-2">
@@ -238,7 +256,7 @@ export function CsvImportWizard() {
           <Upload className="h-10 w-10 text-silver-foreground" />
           <p className="mt-4 font-medium text-primary">Drag & drop SIS export CSV here</p>
           <p className="mt-1 text-sm text-silver-foreground">
-            Supports: id, firstName, lastName, grade, homeroom, balance, parentEmail, parentPhone, allergies
+            Supports: mdId, firstName, lastName, grade, homeroom, balance, photoUrl, parentEmail, parentPhone, allergies
           </p>
           <input
             type="file"

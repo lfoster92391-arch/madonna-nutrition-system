@@ -10,12 +10,14 @@ import { DietaryFormStatusCard } from "@/components/parent/DietaryFormStatusCard
 import { FoodSafetyCenterForm } from "@/components/parent/FoodSafetyCenterForm"
 import { StudentMealsTab } from "@/components/parent/meals/StudentMealsTab"
 import { StudentTransactionsTab } from "@/components/parent/meals/StudentTransactionsTab"
+import { ParentBackLink } from "@/components/parent/ParentBackLink"
 import { StudentBalanceAlertSection } from "@/components/parent/student-profile/StudentBalanceAlertSection"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Input, Label } from "@/components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { getPendingSubmission, parentLinkedStudents } from "@/data/demo"
+import { getPendingSubmission } from "@/data/demo"
+import { useParentLinkedStudents } from "@/hooks/useParentLinkedStudents"
 
 export default function StudentProfilePage({
   params,
@@ -25,10 +27,11 @@ export default function StudentProfilePage({
   const { studentId } = use(params)
   const { user } = useAuth()
   const { students, studentProfiles, allergySubmissions, updateParentContact } = useDemo()
+  const { students: linkedStudents } = useParentLinkedStudents()
   const searchParams = useSearchParams()
   const defaultTab = searchParams.get("tab") === "dietary" ? "dietary" : "overview"
 
-  const linkedIds = new Set(parentLinkedStudents.map((s) => s.id))
+  const linkedIds = new Set(linkedStudents.map((s) => s.id))
   const student = useMemo(
     () => students.find((s) => s.id === studentId && linkedIds.has(s.id)),
     [students, studentId, linkedIds]
@@ -54,7 +57,10 @@ export default function StudentProfilePage({
 
   return (
     <div className="min-h-screen bg-[#f8f9fb]">
-      <header className="border-b border-silver/40 bg-white px-8 py-6">
+      <div className="border-b border-silver/40 bg-white px-4 py-3 sm:px-8">
+        <ParentBackLink />
+      </div>
+      <header className="border-b border-silver/40 bg-white px-4 py-6 sm:px-8">
         <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary">Student Profile</p>
         <h1 className="mt-1 text-2xl font-bold text-primary">
           {student.firstName} {student.lastName}

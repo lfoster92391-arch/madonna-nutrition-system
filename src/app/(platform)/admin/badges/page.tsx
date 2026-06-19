@@ -1,6 +1,7 @@
 import Link from "next/link"
 import { IdCard, ScanLine } from "lucide-react"
 import { AdminModulePage } from "@/components/admin/AdminModulePage"
+import { ImportExportMenu } from "@/components/admin/import-export/ImportExportMenu"
 import { Button } from "@/components/ui/button"
 
 export default function AdminBadgesPage() {
@@ -10,10 +11,12 @@ export default function AdminBadgesPage() {
       title="Badge Setup"
       description="Configure student scan badges and ID photos for cafeteria stations."
       icon={IdCard}
+      headerActions={<ImportExportMenu type="badges" importDisabled />}
     >
       <div className="rounded-2xl border border-silver/60 bg-white p-8 shadow-sm">
         <p className="text-silver-foreground">
           Manage badge enrollment, photo capture, and scan station readiness from the cashier portal.
+          Use Import / Export to download badge enrollment templates or bulk-update records.
         </p>
         <Button asChild className="mt-6">
           <Link href="/scan">

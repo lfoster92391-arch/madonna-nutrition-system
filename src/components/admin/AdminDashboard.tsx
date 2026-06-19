@@ -33,6 +33,8 @@ import {
   ADMIN_WARNING,
   ADMIN_WHITE,
 } from "@/components/admin/layout/admin-theme"
+import { ImportExportMenu } from "@/components/admin/import-export/ImportExportMenu"
+import type { ImportExportType } from "@/lib/import-export"
 
 interface LauncherCard {
   title: string
@@ -42,6 +44,7 @@ interface LauncherCard {
   statusLabel?: string
   statusColor?: "success" | "warning" | "danger" | "neutral"
   openTasks?: number
+  importExportType?: ImportExportType
 }
 
 interface LauncherSection {
@@ -70,12 +73,14 @@ const SECTIONS: LauncherSection[] = [
         icon: Upload,
         statusLabel: "2 pending",
         statusColor: "warning",
+        importExportType: "students",
       },
       {
         title: "Badge Setup",
         description: "Configure scan badges and student ID photos.",
         href: "/admin/badges",
         icon: IdCard,
+        importExportType: "badges",
       },
       {
         title: "Pricing Setup",
@@ -105,6 +110,7 @@ const SECTIONS: LauncherSection[] = [
         icon: UtensilsCrossed,
         statusLabel: "12 templates",
         statusColor: "neutral",
+        importExportType: "menu",
       },
       {
         title: "Calendar",
@@ -142,6 +148,7 @@ const SECTIONS: LauncherSection[] = [
         href: "/admin/inventory",
         icon: Package,
         openTasks: 3,
+        importExportType: "inventory",
       },
       {
         title: "Production Center",
@@ -170,6 +177,7 @@ const SECTIONS: LauncherSection[] = [
         href: "/admin/vendors",
         icon: Truck,
         openTasks: 1,
+        importExportType: "vendors",
       },
     ],
   },
@@ -310,47 +318,58 @@ function LauncherCardItem({ card }: { card: LauncherCard }) {
   const statusStyle = card.statusColor ? STATUS_COLORS[card.statusColor] : null
 
   return (
-    <Link
-      href={card.href}
+    <div
       className="group flex flex-col rounded-2xl border p-6 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
       style={{ borderColor: ADMIN_SILVER, backgroundColor: ADMIN_WHITE }}
     >
-      <div
-        className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full"
-        style={{ backgroundColor: ADMIN_BG }}
-      >
-        <Icon className="h-5 w-5" style={{ color: ADMIN_NAVY }} />
-      </div>
-
-      <h3 className="mt-4 text-lg font-semibold" style={{ color: ADMIN_NAVY }}>
-        {card.title}
-      </h3>
-      <p className="mt-2 flex-1 text-sm leading-relaxed" style={{ color: ADMIN_SILVER }}>
-        {card.description}
-      </p>
-
-      {card.openTasks !== undefined && (
-        <p className="mt-3 text-sm font-semibold" style={{ color: ADMIN_WARNING }}>
-          {card.openTasks} Open Task{card.openTasks !== 1 ? "s" : ""}
-        </p>
-      )}
-
-      {card.statusLabel && statusStyle && (
-        <p
-          className="mt-3 inline-flex w-fit rounded-full px-2.5 py-1 text-xs font-semibold"
-          style={{ backgroundColor: statusStyle.bg, color: statusStyle.text }}
+      <Link href={card.href} className="flex flex-1 flex-col">
+        <div
+          className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full"
+          style={{ backgroundColor: ADMIN_BG }}
         >
-          {card.statusLabel}
-        </p>
-      )}
+          <Icon className="h-5 w-5" style={{ color: ADMIN_NAVY }} />
+        </div>
 
-      <div
-        className="mt-5 flex items-center gap-1 text-sm font-semibold transition group-hover:gap-2"
-        style={{ color: ADMIN_NAVY }}
-      >
-        Open
-        <ArrowRight className="h-4 w-4" />
-      </div>
-    </Link>
+        <h3 className="mt-4 text-lg font-semibold" style={{ color: ADMIN_NAVY }}>
+          {card.title}
+        </h3>
+        <p className="mt-2 flex-1 text-sm leading-relaxed" style={{ color: ADMIN_SILVER }}>
+          {card.description}
+        </p>
+
+        {card.openTasks !== undefined && (
+          <p className="mt-3 text-sm font-semibold" style={{ color: ADMIN_WARNING }}>
+            {card.openTasks} Open Task{card.openTasks !== 1 ? "s" : ""}
+          </p>
+        )}
+
+        {card.statusLabel && statusStyle && (
+          <p
+            className="mt-3 inline-flex w-fit rounded-full px-2.5 py-1 text-xs font-semibold"
+            style={{ backgroundColor: statusStyle.bg, color: statusStyle.text }}
+          >
+            {card.statusLabel}
+          </p>
+        )}
+
+        <div
+          className="mt-5 flex items-center gap-1 text-sm font-semibold transition group-hover:gap-2"
+          style={{ color: ADMIN_NAVY }}
+        >
+          Open
+          <ArrowRight className="h-4 w-4" />
+        </div>
+      </Link>
+
+      {card.importExportType && (
+        <ImportExportMenu
+          type={card.importExportType}
+          variant="compact"
+          onImport={() => {
+            window.location.href = card.href
+          }}
+        />
+      )}
+    </div>
   )
 }

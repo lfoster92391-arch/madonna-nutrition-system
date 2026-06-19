@@ -18,6 +18,7 @@ interface AdminModulePageProps {
   stats?: AdminModuleStat[]
   children?: React.ReactNode
   readOnly?: boolean
+  headerActions?: React.ReactNode
 }
 
 export function AdminModulePage({
@@ -28,6 +29,7 @@ export function AdminModulePage({
   stats = [],
   children,
   readOnly = false,
+  headerActions,
 }: AdminModulePageProps) {
   return (
     <div className="w-full px-6 py-8 md:px-8">
@@ -41,11 +43,14 @@ export function AdminModulePage({
             </div>
             <p className="mt-2 text-silver-foreground">{description}</p>
           </div>
-          {readOnly && (
-            <Badge variant="outline" className="text-sm">
-              Read-only
-            </Badge>
-          )}
+          <div className="flex flex-wrap items-center gap-3">
+            {headerActions}
+            {readOnly && (
+              <Badge variant="outline" className="text-sm">
+                Read-only
+              </Badge>
+            )}
+          </div>
         </div>
 
         {stats.length > 0 && (

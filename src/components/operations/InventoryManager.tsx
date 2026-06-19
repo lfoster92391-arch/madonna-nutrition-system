@@ -4,6 +4,7 @@ import { useMemo, useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { AlertTriangle, Clock, Package, Trash2 } from "lucide-react"
 import { AdminModulePage } from "@/components/admin/AdminModulePage"
+import { ImportExportMenu } from "@/components/admin/import-export/ImportExportMenu"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardHeader, CardTitle } from "@/components/ui/card"
@@ -103,6 +104,7 @@ export function InventoryManager() {
       title="Inventory"
       description="Stock levels, expiration alerts, storage locations, and movement history."
       icon={Package}
+      headerActions={<ImportExportMenu type="inventory" importDisabled />}
       stats={[
         { label: "SKUs", value: String(items.length) },
         { label: "Low Stock", value: String(lowStock.length), variant: lowStock.length ? "warning" : "success" },

@@ -5,6 +5,7 @@ import Image from "next/image"
 import Link from "next/link"
 import { Camera, Plus, Search, UserX } from "lucide-react"
 import { CsvImportWizard } from "@/components/admin/CsvImportWizard"
+import { ImportExportMenu } from "@/components/admin/import-export/ImportExportMenu"
 import { useDemo } from "@/components/providers/DemoProvider"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -36,6 +37,7 @@ export function AdminStudentManager() {
     balance: "0",
   })
   const photoInputRef = useRef<HTMLInputElement>(null)
+  const importWizardRef = useRef<HTMLDivElement>(null)
   const [photoTargetId, setPhotoTargetId] = useState<string | null>(null)
 
   const filtered = useMemo(() => {
@@ -49,6 +51,29 @@ export function AdminStudentManager() {
     )
   }, [students, search])
 
+  function scrollToImport() {
+    importWizardRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
+  }
+
+  const exportRows = useMemo(
+    () =>
+      students
+        .filter((s) => !s.disabled)
+        .map((s) => ({
+          mdId: s.id,
+          firstName: s.firstName,
+          lastName: s.lastName,
+          grade: s.grade,
+          homeroom: s.homeroom ?? "",
+          balance: s.balance.toFixed(2),
+          photoUrl: s.photo,
+          parentEmail: s.parentContacts[0]?.email ?? "",
+          parentPhone: s.parentContacts[0]?.phone ?? "",
+          allergies: s.allergies.map((a) => a.name).join(", "),
+          dietaryRestrictions: s.dietaryRestrictions.join(", "),
+        })),
+    [students]
+  )
   const signupTotals = useMemo(() => {
     const byGrade: Record<string, number> = {}
     students.filter((s) => !s.disabled).forEach((s) => {
@@ -133,7 +158,12 @@ export function AdminStudentManager() {
               Student management, SIS import, and photo upload
             </p>
           </div>
-          <div className="flex gap-3">
+          <div className="flex flex-wrap gap-3">
+            <ImportExportMenu
+              type="students"
+              onImport={scrollToImport}
+              exportRows={exportRows}
+            />
             <Button variant="outline" asChild>
               <Link href="/admin/allergy-review">Allergy Review Queue</Link>
             </Button>
@@ -163,7 +193,7 @@ export function AdminStudentManager() {
                 <thead>
                   <tr className="border-b border-silver/60 text-silver-foreground">
                     <th className="pb-3 pr-4 text-left font-medium">Photo</th>
-                    <th className="pb-3 pr-4 text-left font-medium">ID</th>
+                    <th className="pb-3 pr-4 text-left font-medium">MD ID</th>
                     <th className="pb-3 pr-4 text-left font-medium">Name</th>
                     <th className="pb-3 pr-4 text-left font-medium">Grade</th>
                     <th className="pb-3 pr-4 text-right font-medium">Balance</th>
@@ -193,7 +223,9 @@ export function AdminStudentManager() {
                           </span>
                         </button>
                       </td>
-                      <td className="py-3 pr-4">{s.id}</td>
+                      <td className="py-3 pr-4">
+                        <span className="font-mono text-xs text-silver-foreground">{s.id}</span>
+                      </td>
                       <td className="py-3 pr-4 font-medium text-primary">
                         {s.firstName} {s.lastName}
                         {s.disabled && <Badge variant="danger" className="ml-2">Disabled</Badge>}
@@ -282,7 +314,9 @@ export function AdminStudentManager() {
           </Card>
         )}
 
-        <CsvImportWizard />
+        <div ref={importWizardRef}>
+          <CsvImportWizard />
+        </div>
       </div>
     </div>
   )
