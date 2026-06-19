@@ -19,6 +19,7 @@ function actionBadgeVariant(action: string): "default" | "success" | "warning" |
   if (action === "USER_CREATED" || action === "USER_ENABLED") return "success"
   if (action === "USER_DISABLED" || action === "USER_DELETED") return "danger"
   if (action === "PASSWORD_RESET") return "warning"
+  if (action === "ROLE_CHANGED") return "warning"
   return "default"
 }
 

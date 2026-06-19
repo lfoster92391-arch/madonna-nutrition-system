@@ -26,8 +26,14 @@ import {
   demoUsers,
 } from "@/data/demo"
 import { api } from "@/lib/api/client"
+import {
+  readDemoPreview,
+  subscribeDemoPreview,
+  writeDemoPreview,
+} from "@/lib/demo/session"
+import { resetDemoOperationsStore } from "@/lib/operations/demo-store"
 import { addOneYear, payloadToAllergies } from "@/lib/food-safety"
-import { generateTempPassword, findUserByLogin } from "@/lib/users"
+import { generateTempPassword, findUserByLogin, assertCanChangeUserRole, formatRoleChangeReason, userRoleSupportsBadge } from "@/lib/users"
 import type {
   AllergySubmission,
   AllergySubmissionStatus,
@@ -56,10 +62,28 @@ interface CreateUserInput {
   phone?: string
   badgeId?: string
   linkedStudentIds?: string[]
+  password?: string
+  generateTempPassword?: boolean
+  forcePasswordChange?: boolean
+  adminUserId?: string
 }
+
+interface ResetPasswordInput {
+  password?: string
+  generateTempPassword?: boolean
+  forcePasswordChange?: boolean
+  reason?: string
+  adminUserId?: string
+}
+
+type CreateUserResult = User & { tempPassword?: string }
+type ResetPasswordResult = { tempPassword?: string; forcePasswordChange?: boolean } | null
 
 interface DemoContextValue {
   databaseEnabled: boolean
+  demoPreviewActive: boolean
+  activateDemoPreview: () => void
+  deactivateDemoPreview: () => void
   isLoading: boolean
   students: Student[]
   transactions: Transaction[]
@@ -124,16 +148,26 @@ interface DemoContextValue {
   duplicateMealTemplate: (id: string) => MealTemplate | Promise<MealTemplate>
   archiveMealTemplate: (id: string) => void | Promise<void>
   getUserByUsername: (username: string) => User | undefined
-  createUser: (input: CreateUserInput, performedBy: string) => User | Promise<User>
+  createUser: (input: CreateUserInput, performedBy: string) => CreateUserResult | Promise<CreateUserResult>
   updateUser: (
     id: string,
     updates: Partial<Omit<User, "id" | "createdAt">>,
     performedBy: string,
     reason?: string
   ) => User | null | Promise<User | null>
+  updateUserRole: (
+    id: string,
+    role: UserRole,
+    performedBy: string,
+    adminUserId: string
+  ) => User | Promise<User>
   disableUser: (id: string, performedBy: string, reason: string) => boolean | Promise<boolean>
   enableUser: (id: string, performedBy: string, reason?: string) => boolean | Promise<boolean>
-  resetUserPassword: (id: string, performedBy: string) => { tempPassword: string } | null | Promise<{ tempPassword: string } | null>
+  resetUserPassword: (
+    id: string,
+    performedBy: string,
+    options?: ResetPasswordInput
+  ) => ResetPasswordResult | Promise<ResetPasswordResult>
   deleteUser: (id: string, performedBy: string, reason: string) => boolean | Promise<boolean>
   recordUserLogin: (userId: string) => void | Promise<void>
 }
@@ -179,12 +213,23 @@ function useDemoLocalState() {
   )
 
   const createUser = useCallback(
-    (input: CreateUserInput, performedBy: string): User => {
+    (input: CreateUserInput, performedBy: string): CreateUserResult => {
       const now = new Date().toISOString()
+      const useGenerated = input.generateTempPassword ?? !input.password
+      const password = input.password ?? (useGenerated ? generateTempPassword() : undefined)
+      const forcePasswordChange = input.forcePasswordChange ?? useGenerated
       const user: User = {
         id: `usr-${Date.now()}`,
-        ...input,
+        username: input.username,
+        email: input.email,
+        firstName: input.firstName,
+        lastName: input.lastName,
+        role: input.role,
+        phone: input.phone,
+        badgeId: input.badgeId,
+        linkedStudentIds: input.linkedStudentIds,
         status: "active",
+        mustChangePassword: forcePasswordChange,
         createdAt: now,
         updatedAt: now,
       }
@@ -201,9 +246,11 @@ function useDemoLocalState() {
           role: user.role,
           status: user.status,
           badgeId: user.badgeId,
+          passwordSet: Boolean(password),
+          forcePasswordChange,
         },
       })
-      return user
+      return { ...user, tempPassword: useGenerated ? password : undefined }
     },
     [appendAuditLog]
   )
@@ -253,6 +300,49 @@ function useDemoLocalState() {
       return updated
     },
     [appendAuditLog]
+  )
+
+  const updateUserRole = useCallback(
+    (id: string, role: UserRole, performedBy: string, _adminUserId: string): User => {
+      const target = users.find((u) => u.id === id)
+      if (!target) throw new Error("User not found")
+
+      const conflict = assertCanChangeUserRole(users, target.role, role)
+      if (conflict) throw new Error(conflict)
+      if (target.role === role) return target
+
+      const previousRole = target.role
+      const reason = formatRoleChangeReason(previousRole, role)
+      let updated: User = target
+
+      setUsers((prev) =>
+        prev.map((u) => {
+          if (u.id !== id) return u
+          updated = {
+            ...u,
+            role,
+            badgeId: userRoleSupportsBadge(role) ? u.badgeId : undefined,
+            linkedStudentIds: role === "parent" ? u.linkedStudentIds : [],
+            updatedAt: new Date().toISOString(),
+          }
+          return updated
+        })
+      )
+
+      appendAuditLog({
+        action: "ROLE_CHANGED",
+        entity: "user",
+        entityType: "user",
+        entityId: id,
+        performedBy,
+        reason,
+        previousValue: { role: previousRole },
+        newValue: { role },
+      })
+
+      return updated
+    },
+    [appendAuditLog, users]
   )
 
   const disableUser = useCallback(
@@ -306,20 +396,38 @@ function useDemoLocalState() {
   )
 
   const resetUserPassword = useCallback(
-    (id: string, performedBy: string): { tempPassword: string } | null => {
+    (id: string, performedBy: string, options?: ResetPasswordInput): ResetPasswordResult => {
       const target = users.find((u) => u.id === id)
       if (!target) return null
-      const tempPassword = generateTempPassword()
+      const useGenerated = options?.generateTempPassword ?? !options?.password
+      const password = options?.password ?? (useGenerated ? generateTempPassword() : undefined)
+      const forcePasswordChange = options?.forcePasswordChange ?? useGenerated
+      if (forcePasswordChange) {
+        setUsers((prev) =>
+          prev.map((u) =>
+            u.id === id ? { ...u, mustChangePassword: true, updatedAt: new Date().toISOString() } : u
+          )
+        )
+      }
       appendAuditLog({
         action: "PASSWORD_RESET",
         entity: "user",
         entityType: "user",
         entityId: id,
         performedBy,
-        metadata: { method: "temp_password", clerkReady: true, resetSent: true },
-        newValue: { resetSent: true },
+        reason: options?.reason,
+        metadata: {
+          method: useGenerated ? "generated" : "custom",
+          forcePasswordChange,
+          targetUsername: target.username,
+          targetRole: target.role,
+        },
+        newValue: { resetSent: true, forcePasswordChange },
       })
-      return { tempPassword }
+      return {
+        tempPassword: useGenerated ? password : undefined,
+        forcePasswordChange,
+      }
     },
     [appendAuditLog, users]
   )
@@ -749,6 +857,7 @@ function useDemoLocalState() {
     getUserByUsername,
     createUser,
     updateUser,
+    updateUserRole,
     disableUser,
     enableUser,
     resetUserPassword,
@@ -757,11 +866,30 @@ function useDemoLocalState() {
   }
 }
 
+const EMPTY_IMPORT_LOGS: ImportLog[] = []
+
 export function DemoProvider({ children }: { children: ReactNode }) {
   const demo = useDemoLocalState()
   const queryClient = useQueryClient()
   const [dbEnabled, setDbEnabled] = useState(false)
   const [configLoaded, setConfigLoaded] = useState(false)
+  const [demoPreviewActive, setDemoPreviewActive] = useState(false)
+
+  useEffect(() => {
+    setDemoPreviewActive(readDemoPreview())
+    return subscribeDemoPreview(setDemoPreviewActive)
+  }, [])
+
+  const activateDemoPreview = useCallback(() => {
+    writeDemoPreview(true)
+    setDemoPreviewActive(true)
+    resetDemoOperationsStore()
+  }, [])
+
+  const deactivateDemoPreview = useCallback(() => {
+    writeDemoPreview(false)
+    setDemoPreviewActive(false)
+  }, [])
 
   useEffect(() => {
     api
@@ -770,6 +898,8 @@ export function DemoProvider({ children }: { children: ReactNode }) {
       .catch(() => setDbEnabled(false))
       .finally(() => setConfigLoaded(true))
   }, [])
+
+  const useLiveData = dbEnabled && !demoPreviewActive
 
   const invalidate = useCallback(
     (...keys: string[]) => {
@@ -783,79 +913,102 @@ export function DemoProvider({ children }: { children: ReactNode }) {
   const studentsQuery = useQuery({
     queryKey: ["students"],
     queryFn: api.getStudents,
-    enabled: dbEnabled,
+    enabled: useLiveData,
   })
   const transactionsQuery = useQuery({
     queryKey: ["transactions"],
     queryFn: api.getTransactions,
-    enabled: dbEnabled,
+    enabled: useLiveData,
   })
   const usersQuery = useQuery({
     queryKey: ["users"],
     queryFn: api.getUsers,
-    enabled: dbEnabled,
+    enabled: useLiveData,
   })
   const auditLogsQuery = useQuery({
     queryKey: ["audit-logs"],
     queryFn: api.getAuditLogs,
-    enabled: dbEnabled,
+    enabled: useLiveData,
   })
   const calendarEventsQuery = useQuery({
     queryKey: ["calendar-events"],
     queryFn: api.getCalendarEvents,
-    enabled: dbEnabled,
+    enabled: useLiveData,
   })
   const calendarSettingsQuery = useQuery({
     queryKey: ["calendar-settings"],
     queryFn: api.getCalendarSettings,
-    enabled: dbEnabled,
+    enabled: useLiveData,
   })
   const mealTemplatesQuery = useQuery({
     queryKey: ["meal-templates"],
     queryFn: api.getMealTemplates,
-    enabled: dbEnabled,
+    enabled: useLiveData,
   })
   const allergySubmissionsQuery = useQuery({
     queryKey: ["allergy-submissions"],
     queryFn: api.getAllergySubmissions,
-    enabled: dbEnabled,
+    enabled: useLiveData,
   })
   const studentProfilesQuery = useQuery({
     queryKey: ["student-profiles"],
     queryFn: api.getStudentProfiles,
-    enabled: dbEnabled,
+    enabled: useLiveData,
   })
   const medicalDocumentsQuery = useQuery({
     queryKey: ["medical-documents"],
     queryFn: api.getMedicalDocuments,
-    enabled: dbEnabled,
+    enabled: useLiveData,
   })
 
   const dbLoading =
-    dbEnabled &&
+    useLiveData &&
     (studentsQuery.isLoading ||
       transactionsQuery.isLoading ||
       usersQuery.isLoading ||
       auditLogsQuery.isLoading)
 
-  const students = dbEnabled ? (studentsQuery.data ?? []) : demo.students
-  const transactions = dbEnabled ? (transactionsQuery.data ?? []) : demo.transactions
-  const users = dbEnabled ? (usersQuery.data ?? []) : demo.users
-  const auditLogs = dbEnabled ? (auditLogsQuery.data ?? []) : demo.auditLogs
-  const calendarEvents = dbEnabled ? (calendarEventsQuery.data ?? []) : demo.calendarEvents
-  const calendarSettings = dbEnabled
+  const students = useLiveData ? (studentsQuery.data ?? []) : demoPreviewActive ? demo.students : []
+  const transactions = useLiveData
+    ? (transactionsQuery.data ?? [])
+    : demoPreviewActive
+      ? demo.transactions
+      : []
+  const users = useLiveData ? (usersQuery.data ?? []) : demoPreviewActive ? demo.users : []
+  const auditLogs = useLiveData ? (auditLogsQuery.data ?? []) : demoPreviewActive ? demo.auditLogs : []
+  const calendarEvents = useLiveData
+    ? (calendarEventsQuery.data ?? [])
+    : demoPreviewActive
+      ? demo.calendarEvents
+      : []
+  const calendarSettings = useLiveData
     ? (calendarSettingsQuery.data ?? demoCalendarSettings)
-    : demo.calendarSettings
-  const mealTemplates = dbEnabled ? (mealTemplatesQuery.data ?? []) : demo.mealTemplates
-  const allergySubmissions = dbEnabled
+    : demoPreviewActive
+      ? demo.calendarSettings
+      : demoCalendarSettings
+  const mealTemplates = useLiveData
+    ? (mealTemplatesQuery.data ?? [])
+    : demoPreviewActive
+      ? demo.mealTemplates
+      : []
+  const allergySubmissions = useLiveData
     ? (allergySubmissionsQuery.data ?? [])
-    : demo.allergySubmissions
-  const studentProfiles = dbEnabled
+    : demoPreviewActive
+      ? demo.allergySubmissions
+      : []
+  const studentProfiles = useLiveData
     ? (studentProfilesQuery.data ?? [])
-    : demo.studentProfiles
-  const medicalDocuments = dbEnabled
+    : demoPreviewActive
+      ? demo.studentProfiles
+      : []
+  const medicalDocuments = useLiveData
     ? (medicalDocumentsQuery.data ?? [])
-    : demo.medicalDocuments
+    : demoPreviewActive
+      ? demo.medicalDocuments
+      : []
+  const inventory = demoPreviewActive ? demo.inventory : []
+  const notifications = demoPreviewActive ? demo.notifications : []
+  const importLogs = demoPreviewActive ? demo.importLogs : EMPTY_IMPORT_LOGS
 
   const getUserByUsername = useCallback(
     (username: string) => findUserByLogin(users, username),
@@ -869,43 +1022,43 @@ export function DemoProvider({ children }: { children: ReactNode }) {
 
   const addStudent = useCallback(
     async (student: Student) => {
-      if (!dbEnabled) {
+      if (!useLiveData) {
         demo.addStudent(student)
         return
       }
       await api.createStudent(student)
       invalidate("students")
     },
-    [dbEnabled, demo, invalidate]
+    [useLiveData, demo, invalidate]
   )
 
   const updateStudent = useCallback(
     async (id: string, updates: Partial<Student>) => {
-      if (!dbEnabled) {
+      if (!useLiveData) {
         demo.updateStudent(id, updates)
         return
       }
       await api.updateStudent(id, updates)
       invalidate("students")
     },
-    [dbEnabled, demo, invalidate]
+    [useLiveData, demo, invalidate]
   )
 
   const disableStudent = useCallback(
     async (id: string) => {
-      if (!dbEnabled) {
+      if (!useLiveData) {
         demo.disableStudent(id)
         return
       }
       await api.disableStudent(id)
       invalidate("students")
     },
-    [dbEnabled, demo, invalidate]
+    [useLiveData, demo, invalidate]
   )
 
   const processMeal = useCallback(
     async (studentId: string, meal: string, amount: number, processedByUserId?: string) => {
-      if (!dbEnabled) {
+      if (!useLiveData) {
         return demo.processMeal(studentId, meal, amount, processedByUserId)
       }
       try {
@@ -916,22 +1069,22 @@ export function DemoProvider({ children }: { children: ReactNode }) {
         return null
       }
     },
-    [dbEnabled, demo, invalidate]
+    [useLiveData, demo, invalidate]
   )
 
   const addFunds = useCallback(
     async (studentId: string, amount: number, performedBy?: string) => {
-      if (!dbEnabled) {
+      if (!useLiveData) {
         return demo.addFunds(studentId, amount, performedBy)
       }
       return null
     },
-    [dbEnabled, demo]
+    [useLiveData, demo]
   )
 
   const bulkImportStudents = useCallback(
     async (newStudents: Student[]) => {
-      if (!dbEnabled) {
+      if (!useLiveData) {
         demo.bulkImportStudents(newStudents)
         return
       }
@@ -940,19 +1093,19 @@ export function DemoProvider({ children }: { children: ReactNode }) {
       }
       invalidate("students")
     },
-    [dbEnabled, demo, invalidate]
+    [useLiveData, demo, invalidate]
   )
 
   const submitAllergyForm = useCallback(
     async (studentId: string, submittedBy: string, payload: FoodSafetyFormPayload) => {
-      if (!dbEnabled) {
+      if (!useLiveData) {
         return demo.submitAllergyForm(studentId, submittedBy, payload)
       }
       const submission = await api.submitAllergyForm(studentId, submittedBy, payload)
       invalidate("allergy-submissions")
       return submission
     },
-    [dbEnabled, demo, invalidate]
+    [useLiveData, demo, invalidate]
   )
 
   const reviewAllergySubmission = useCallback(
@@ -962,7 +1115,7 @@ export function DemoProvider({ children }: { children: ReactNode }) {
       reviewedBy: string,
       reviewNote?: string
     ) => {
-      if (!dbEnabled) {
+      if (!useLiveData) {
         demo.reviewAllergySubmission(submissionId, action, reviewedBy, reviewNote)
         return
       }
@@ -974,7 +1127,7 @@ export function DemoProvider({ children }: { children: ReactNode }) {
         "audit-logs"
       )
     },
-    [dbEnabled, demo, invalidate]
+    [useLiveData, demo, invalidate]
   )
 
   const uploadMedicalDocument = useCallback(
@@ -984,134 +1137,134 @@ export function DemoProvider({ children }: { children: ReactNode }) {
       documentUrl: string,
       uploadedBy: string
     ) => {
-      if (!dbEnabled) {
+      if (!useLiveData) {
         return demo.uploadMedicalDocument(studentId, fileName, documentUrl, uploadedBy)
       }
       const doc = await api.uploadMedicalDocument(studentId, fileName, documentUrl, uploadedBy)
       invalidate("medical-documents")
       return doc
     },
-    [dbEnabled, demo, invalidate]
+    [useLiveData, demo, invalidate]
   )
 
   const updateParentContact = useCallback(
     async (studentId: string, contact: { name: string; email: string; phone: string }) => {
-      if (!dbEnabled) {
+      if (!useLiveData) {
         demo.updateParentContact(studentId, contact)
         return
       }
       await api.updateParentContact(studentId, contact)
       invalidate("students")
     },
-    [dbEnabled, demo, invalidate]
+    [useLiveData, demo, invalidate]
   )
 
   const updateCalendarSettings = useCallback(
     async (updates: Partial<CalendarSettings>) => {
-      if (!dbEnabled) {
+      if (!useLiveData) {
         demo.updateCalendarSettings(updates)
         return
       }
       await api.updateCalendarSettings(updates)
       invalidate("calendar-settings")
     },
-    [dbEnabled, demo, invalidate]
+    [useLiveData, demo, invalidate]
   )
 
   const addCalendarEvent = useCallback(
     async (event: Omit<CalendarEvent, "id">) => {
-      if (!dbEnabled) {
+      if (!useLiveData) {
         return demo.addCalendarEvent(event)
       }
       const created = await api.createCalendarEvent(event)
       invalidate("calendar-events")
       return created
     },
-    [dbEnabled, demo, invalidate]
+    [useLiveData, demo, invalidate]
   )
 
   const updateCalendarEvent = useCallback(
     async (id: string, updates: Partial<CalendarEvent>) => {
-      if (!dbEnabled) {
+      if (!useLiveData) {
         demo.updateCalendarEvent(id, updates)
         return
       }
       await api.updateCalendarEvent(id, updates)
       invalidate("calendar-events")
     },
-    [dbEnabled, demo, invalidate]
+    [useLiveData, demo, invalidate]
   )
 
   const deleteCalendarEvent = useCallback(
     async (id: string) => {
-      if (!dbEnabled) {
+      if (!useLiveData) {
         demo.deleteCalendarEvent(id)
         return
       }
       await api.deleteCalendarEvent(id)
       invalidate("calendar-events")
     },
-    [dbEnabled, demo, invalidate]
+    [useLiveData, demo, invalidate]
   )
 
   const addMealTemplate = useCallback(
     async (template: Omit<MealTemplate, "id" | "createdAt" | "updatedAt">) => {
-      if (!dbEnabled) {
+      if (!useLiveData) {
         return demo.addMealTemplate(template)
       }
       const created = await api.createMealTemplate(template)
       invalidate("meal-templates")
       return created
     },
-    [dbEnabled, demo, invalidate]
+    [useLiveData, demo, invalidate]
   )
 
   const updateMealTemplate = useCallback(
     async (id: string, updates: Partial<MealTemplate>) => {
-      if (!dbEnabled) {
+      if (!useLiveData) {
         demo.updateMealTemplate(id, updates)
         return
       }
       await api.updateMealTemplate(id, updates)
       invalidate("meal-templates")
     },
-    [dbEnabled, demo, invalidate]
+    [useLiveData, demo, invalidate]
   )
 
   const duplicateMealTemplate = useCallback(
     async (id: string) => {
-      if (!dbEnabled) {
+      if (!useLiveData) {
         return demo.duplicateMealTemplate(id)
       }
       const duplicate = await api.duplicateMealTemplate(id)
       invalidate("meal-templates")
       return duplicate
     },
-    [dbEnabled, demo, invalidate]
+    [useLiveData, demo, invalidate]
   )
 
   const archiveMealTemplate = useCallback(
     async (id: string) => {
-      if (!dbEnabled) {
+      if (!useLiveData) {
         demo.archiveMealTemplate(id)
         return
       }
       await api.archiveMealTemplate(id)
       invalidate("meal-templates")
     },
-    [dbEnabled, demo, invalidate]
+    [useLiveData, demo, invalidate]
   )
 
   const createUser = useCallback(
     async (input: CreateUserInput, performedBy: string) => {
-      if (!dbEnabled) {
+      if (!useLiveData) {
         return demo.createUser(input, performedBy)
       }
-      const user = await api.createUser({ ...input, performedBy })
+      const result = await api.adminCreateUser({ ...input, performedBy })
       invalidate("users", "audit-logs")
-      return user
+      return { ...result.user, tempPassword: result.tempPassword }
     },
-    [dbEnabled, demo, invalidate]
+    [useLiveData, demo, invalidate]
   )
 
   const updateUser = useCallback(
@@ -1121,85 +1274,107 @@ export function DemoProvider({ children }: { children: ReactNode }) {
       performedBy: string,
       reason?: string
     ) => {
-      if (!dbEnabled) {
+      if (!useLiveData) {
         return demo.updateUser(id, updates, performedBy, reason)
       }
       const user = await api.updateUser(id, { ...updates, performedBy, reason })
       invalidate("users", "audit-logs")
       return user
     },
-    [dbEnabled, demo, invalidate]
+    [useLiveData, demo, invalidate]
+  )
+
+  const updateUserRole = useCallback(
+    async (id: string, role: UserRole, performedBy: string, adminUserId: string) => {
+      if (!useLiveData) {
+        return demo.updateUserRole(id, role, performedBy, adminUserId)
+      }
+      const user = await api.updateUserRole(id, { role, adminUserId, performedBy })
+      invalidate("users", "audit-logs")
+      return user
+    },
+    [useLiveData, demo, invalidate]
   )
 
   const disableUser = useCallback(
     async (id: string, performedBy: string, reason: string) => {
-      if (!dbEnabled) {
+      if (!useLiveData) {
         return demo.disableUser(id, performedBy, reason)
       }
       await api.disableUser(id, performedBy, reason)
       invalidate("users", "audit-logs")
       return true
     },
-    [dbEnabled, demo, invalidate]
+    [useLiveData, demo, invalidate]
   )
 
   const enableUser = useCallback(
     async (id: string, performedBy: string, reason?: string) => {
-      if (!dbEnabled) {
+      if (!useLiveData) {
         return demo.enableUser(id, performedBy, reason)
       }
       await api.enableUser(id, performedBy, reason)
       invalidate("users", "audit-logs")
       return true
     },
-    [dbEnabled, demo, invalidate]
+    [useLiveData, demo, invalidate]
   )
 
   const resetUserPassword = useCallback(
-    async (id: string, performedBy: string) => {
-      if (!dbEnabled) {
-        return demo.resetUserPassword(id, performedBy)
+    async (id: string, performedBy: string, options?: ResetPasswordInput) => {
+      if (!useLiveData) {
+        return demo.resetUserPassword(id, performedBy, options)
       }
-      const result = await api.resetUserPassword(id, performedBy)
-      invalidate("audit-logs")
+      const result = await api.adminResetUserPassword(id, {
+        adminUserId: options?.adminUserId ?? "",
+        performedBy,
+        password: options?.password,
+        generateTempPassword: options?.generateTempPassword,
+        forcePasswordChange: options?.forcePasswordChange,
+        reason: options?.reason,
+      })
+      invalidate("audit-logs", "users")
       return result
     },
-    [dbEnabled, demo, invalidate]
+    [useLiveData, demo, invalidate]
   )
 
   const deleteUser = useCallback(
     async (id: string, performedBy: string, reason: string) => {
-      if (!dbEnabled) {
+      if (!useLiveData) {
         return demo.deleteUser(id, performedBy, reason)
       }
       await api.deleteUser(id, performedBy, reason)
       invalidate("users", "audit-logs")
       return true
     },
-    [dbEnabled, demo, invalidate]
+    [useLiveData, demo, invalidate]
   )
 
   const recordUserLogin = useCallback(
     async (userId: string) => {
-      if (!dbEnabled) {
+      if (!useLiveData) {
         demo.recordUserLogin(userId)
         return
       }
       await api.recordUserLogin(userId)
       invalidate("users")
     },
-    [dbEnabled, demo, invalidate]
+    [useLiveData, demo, invalidate]
   )
 
   const value = useMemo(
     () => ({
       databaseEnabled: dbEnabled,
+      demoPreviewActive,
+      activateDemoPreview,
+      deactivateDemoPreview,
       isLoading: !configLoaded || dbLoading,
       students,
       transactions,
-      inventory: demo.inventory,
-      notifications: demo.notifications,
-      importLogs: demo.importLogs,
+      inventory,
+      notifications,
+      importLogs,
       studentProfiles,
       allergySubmissions,
       medicalDocuments,
@@ -1232,6 +1407,7 @@ export function DemoProvider({ children }: { children: ReactNode }) {
       getUserByUsername,
       createUser,
       updateUser,
+      updateUserRole,
       disableUser,
       enableUser,
       resetUserPassword,
@@ -1240,13 +1416,16 @@ export function DemoProvider({ children }: { children: ReactNode }) {
     }),
     [
       dbEnabled,
+      demoPreviewActive,
+      activateDemoPreview,
+      deactivateDemoPreview,
       configLoaded,
       dbLoading,
       students,
       transactions,
-      demo.inventory,
-      demo.notifications,
-      demo.importLogs,
+      inventory,
+      notifications,
+      importLogs,
       studentProfiles,
       allergySubmissions,
       medicalDocuments,
@@ -1279,6 +1458,7 @@ export function DemoProvider({ children }: { children: ReactNode }) {
       getUserByUsername,
       createUser,
       updateUser,
+      updateUserRole,
       disableUser,
       enableUser,
       resetUserPassword,

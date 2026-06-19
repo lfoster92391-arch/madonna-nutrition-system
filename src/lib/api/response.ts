@@ -33,3 +33,7 @@ export function notFound(message = "Not found") {
 export function serverError(message = "Internal server error") {
   return NextResponse.json({ error: message }, { status: 500 })
 }
+
+export function forbidden(message = "Forbidden") {
+  return NextResponse.json({ error: message }, { status: 403 })
+}

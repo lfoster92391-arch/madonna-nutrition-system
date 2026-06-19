@@ -69,6 +69,34 @@ export const createUserSchema = z.object({
   performedBy: z.string().optional(),
 })
 
+export const adminUserBaseSchema = z.object({
+  adminUserId: z.string().min(1),
+  performedBy: z.string().min(1),
+})
+
+export const adminCreateUserSchema = createUserSchema.extend({
+  adminUserId: z.string().min(1),
+  performedBy: z.string().min(1),
+  password: z.string().min(8).optional(),
+  generateTempPassword: z.boolean().optional(),
+  forcePasswordChange: z.boolean().optional(),
+})
+
+export const adminResetPasswordSchema = z.object({
+  adminUserId: z.string().min(1),
+  performedBy: z.string().min(1),
+  password: z.string().min(8).optional(),
+  generateTempPassword: z.boolean().optional(),
+  forcePasswordChange: z.boolean().optional(),
+  reason: z.string().optional(),
+})
+
+export const changePasswordSchema = z.object({
+  userId: z.string().min(1),
+  currentPassword: z.string().min(1),
+  newPassword: z.string().min(8),
+})
+
 export const updateUserSchema = z.object({
   username: z.string().min(1).optional(),
   email: z.string().email().optional(),
@@ -84,6 +112,13 @@ export const updateUserSchema = z.object({
 
 export const userActionSchema = z.object({
   performedBy: z.string().min(1),
+  reason: z.string().optional(),
+})
+
+export const updateUserRoleSchema = z.object({
+  role: userRoleSchema,
+  adminUserId: z.string().min(1),
+  performedBy: z.string().optional(),
   reason: z.string().optional(),
 })
 

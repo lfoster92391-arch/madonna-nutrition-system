@@ -36,21 +36,6 @@ function UserAvatar({ user }: { user: User }) {
   )
 }
 
-function roleBadgeVariant(role: UserRole): "default" | "success" | "warning" | "outline" {
-  switch (role) {
-    case "admin":
-      return "default"
-    case "cashier":
-      return "warning"
-    case "parent":
-      return "success"
-    case "teacher":
-      return "default"
-    default:
-      return "outline"
-  }
-}
-
 interface UserFormState {
   username: string
   email: string
@@ -61,6 +46,9 @@ interface UserFormState {
   badgeId: string
   linkedStudentIds: string[]
   reason: string
+  passwordMode: "generate" | "custom"
+  password: string
+  forcePasswordChange: boolean
 }
 
 const emptyForm = (): UserFormState => ({
@@ -73,18 +61,23 @@ const emptyForm = (): UserFormState => ({
   badgeId: "",
   linkedStudentIds: [],
   reason: "",
+  passwordMode: "generate",
+  password: "",
+  forcePasswordChange: true,
 })
 
 function ActionsMenu({
   user,
   onEdit,
   onReset,
+  onChangeRole,
   onToggleStatus,
   onDelete,
 }: {
   user: User
   onEdit: () => void
   onReset: () => void
+  onChangeRole: () => void
   onToggleStatus: () => void
   onDelete: () => void
 }) {
@@ -122,6 +115,13 @@ function ActionsMenu({
           <button
             type="button"
             className="block w-full px-4 py-2 text-left text-sm hover:bg-silver/20"
+            onClick={() => { setOpen(false); onChangeRole() }}
+          >
+            Change role
+          </button>
+          <button
+            type="button"
+            className="block w-full px-4 py-2 text-left text-sm hover:bg-silver/20"
             onClick={() => { setOpen(false); onReset() }}
           >
             Reset password
@@ -153,6 +153,7 @@ export function UserManager() {
     students,
     createUser,
     updateUser,
+    updateUserRole,
     disableUser,
     enableUser,
     resetUserPassword,
@@ -161,14 +162,40 @@ export function UserManager() {
 
   const [search, setSearch] = useState("")
   const [roleFilter, setRoleFilter] = useState<UserRole | "all">("all")
-  const [mode, setMode] = useState<"add" | "edit" | "disable" | "enable" | "delete" | "reset" | null>(null)
+  const [mode, setMode] = useState<
+    "add" | "edit" | "disable" | "enable" | "delete" | "reset" | "change-role" | null
+  >(null)
   const [selected, setSelected] = useState<User | null>(null)
+  const [pendingRole, setPendingRole] = useState<UserRole | null>(null)
+  const [roleChangeAfterEdit, setRoleChangeAfterEdit] = useState(false)
   const [form, setForm] = useState<UserFormState>(emptyForm())
+  const [resetForm, setResetForm] = useState({
+    passwordMode: "generate" as "generate" | "custom",
+    password: "",
+    forcePasswordChange: true,
+    reason: "",
+  })
   const [tempPassword, setTempPassword] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
 
   const performedBy = authUser?.displayName ?? "System Admin"
+  const adminUserId = authUser?.id ?? ""
+
+  if (authUser && authUser.role !== "admin") {
+    return (
+      <div className="p-8">
+        <Card>
+          <CardHeader>
+            <CardTitle>Access Denied</CardTitle>
+          </CardHeader>
+          <p className="px-6 pb-6 text-sm text-silver-foreground">
+            User management is restricted to administrators.
+          </p>
+        </Card>
+      </div>
+    )
+  }
 
   const filtered = useMemo(() => {
     return users.filter((u) => {
@@ -208,6 +235,9 @@ export function UserManager() {
       badgeId: user.badgeId ?? "",
       linkedStudentIds: user.linkedStudentIds ?? [],
       reason: "",
+      passwordMode: "generate",
+      password: "",
+      forcePasswordChange: true,
     })
     setMode("edit")
   }
@@ -222,6 +252,12 @@ export function UserManager() {
     setSelected(user)
     setTempPassword(null)
     setCopied(false)
+    setResetForm({
+      passwordMode: "generate",
+      password: "",
+      forcePasswordChange: true,
+      reason: "",
+    })
     setMode("reset")
   }
 
@@ -231,12 +267,90 @@ export function UserManager() {
     setMode("delete")
   }
 
+  function promptRoleChange(user: User, role: UserRole, afterEdit = false) {
+    if (role === user.role) return
+    setSelected(user)
+    setPendingRole(role)
+    setRoleChangeAfterEdit(afterEdit)
+    setMode("change-role")
+  }
+
+  function openChangeRole(user: User) {
+    setSelected(user)
+    setPendingRole(user.role)
+    setRoleChangeAfterEdit(false)
+    setMode("change-role")
+  }
+
+  async function saveEditFields() {
+    if (!selected) return
+    await updateUser(
+      selected.id,
+      {
+        username: form.username,
+        email: form.email,
+        firstName: form.firstName,
+        lastName: form.lastName,
+        phone: form.phone || undefined,
+        badgeId: userRoleSupportsBadge(form.role) ? form.badgeId || undefined : undefined,
+        linkedStudentIds: form.role === "parent" ? form.linkedStudentIds : undefined,
+      },
+      performedBy,
+      form.reason
+    )
+  }
+
+  async function handleConfirmRoleChange() {
+    if (!selected || !pendingRole) return
+    if (!adminUserId) {
+      showToast("Admin session required to change roles.")
+      return
+    }
+    if (pendingRole === selected.role) {
+      setMode(roleChangeAfterEdit ? "edit" : null)
+      setPendingRole(null)
+      setRoleChangeAfterEdit(false)
+      return
+    }
+    try {
+      await updateUserRole(selected.id, pendingRole, performedBy, adminUserId)
+      if (roleChangeAfterEdit) {
+        await saveEditFields()
+        setMode(null)
+        showToast("Account updated and role change logged to audit trail.")
+      } else {
+        setMode(null)
+        showToast(`Role changed to ${ROLE_LABELS[pendingRole]}.`)
+      }
+      setPendingRole(null)
+      setRoleChangeAfterEdit(false)
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Role change failed.")
+      if (roleChangeAfterEdit) {
+        setMode("edit")
+      }
+      setPendingRole(null)
+      setRoleChangeAfterEdit(false)
+    }
+  }
+
+  function cancelRoleChange() {
+    const returnToEdit = roleChangeAfterEdit
+    setPendingRole(null)
+    setRoleChangeAfterEdit(false)
+    setMode(returnToEdit ? "edit" : null)
+  }
+
   async function handleSaveAdd() {
     if (!form.username || !form.email || !form.firstName || !form.lastName) {
       showToast("Please fill in all required fields.")
       return
     }
-    await createUser(
+    if (form.passwordMode === "custom" && form.password.length < 8) {
+      showToast("Custom password must be at least 8 characters.")
+      return
+    }
+    const result = await createUser(
       {
         username: form.username,
         email: form.email,
@@ -246,9 +360,20 @@ export function UserManager() {
         phone: form.phone || undefined,
         badgeId: userRoleSupportsBadge(form.role) ? form.badgeId || undefined : undefined,
         linkedStudentIds: form.role === "parent" ? form.linkedStudentIds : undefined,
+        password: form.passwordMode === "custom" ? form.password : undefined,
+        generateTempPassword: form.passwordMode === "generate",
+        forcePasswordChange: form.forcePasswordChange,
+        adminUserId,
       },
       performedBy
     )
+    if (result.tempPassword) {
+      setSelected(result)
+      setTempPassword(result.tempPassword)
+      setMode("reset")
+      showToast(`User ${form.firstName} ${form.lastName} created. Copy the temporary password below.`)
+      return
+    }
     setMode(null)
     showToast(`User ${form.firstName} ${form.lastName} created.`)
   }
@@ -259,21 +384,11 @@ export function UserManager() {
       showToast("A reason note is required for account corrections.")
       return
     }
-    await updateUser(
-      selected.id,
-      {
-        username: form.username,
-        email: form.email,
-        firstName: form.firstName,
-        lastName: form.lastName,
-        role: form.role,
-        phone: form.phone || undefined,
-        badgeId: userRoleSupportsBadge(form.role) ? form.badgeId || undefined : undefined,
-        linkedStudentIds: form.role === "parent" ? form.linkedStudentIds : undefined,
-      },
-      performedBy,
-      form.reason
-    )
+    if (form.role !== selected.role) {
+      promptRoleChange(selected, form.role, true)
+      return
+    }
+    await saveEditFields()
     setMode(null)
     showToast("Account updated and logged to audit trail.")
   }
@@ -307,10 +422,26 @@ export function UserManager() {
 
   async function handleResetPassword() {
     if (!selected) return
-    const result = await resetUserPassword(selected.id, performedBy)
+    if (resetForm.passwordMode === "custom" && resetForm.password.length < 8) {
+      showToast("Custom password must be at least 8 characters.")
+      return
+    }
+    const result = await resetUserPassword(selected.id, performedBy, {
+      adminUserId,
+      password: resetForm.passwordMode === "custom" ? resetForm.password : undefined,
+      generateTempPassword: resetForm.passwordMode === "generate",
+      forcePasswordChange: resetForm.forcePasswordChange,
+      reason: resetForm.reason || undefined,
+    })
     if (result) {
-      setTempPassword(result.tempPassword)
-      showToast("Password reset generated. Copy the temporary password below.")
+      if (result.tempPassword) {
+        setTempPassword(result.tempPassword)
+      }
+      showToast(
+        result.tempPassword
+          ? "Password reset generated. Copy the temporary password below."
+          : "Password updated successfully."
+      )
     }
   }
 
@@ -435,7 +566,21 @@ export function UserManager() {
                         </td>
                         <td className="py-3 pr-4">{u.email}</td>
                         <td className="py-3 pr-4">
-                          <Badge variant={roleBadgeVariant(u.role)}>{ROLE_LABELS[u.role]}</Badge>
+                          <select
+                            className="h-10 min-w-[120px] rounded-xl border border-silver/60 bg-white px-3 text-sm text-primary"
+                            value={u.role}
+                            aria-label={`Role for ${formatUserName(u)}`}
+                            onChange={(e) => {
+                              const role = e.target.value as UserRole
+                              if (role !== u.role) promptRoleChange(u, role)
+                            }}
+                          >
+                            {ROLES.map((role) => (
+                              <option key={role} value={role}>
+                                {ROLE_LABELS[role]}
+                              </option>
+                            ))}
+                          </select>
                         </td>
                         <td className="py-3 pr-4 font-mono text-silver-foreground">
                           {userRoleSupportsBadge(u.role) ? (u.badgeId ?? "—") : "—"}
@@ -453,6 +598,7 @@ export function UserManager() {
                             user={u}
                             onEdit={() => openEdit(u)}
                             onReset={() => openReset(u)}
+                            onChangeRole={() => openChangeRole(u)}
                             onToggleStatus={() => openToggleStatus(u)}
                             onDelete={() => openDelete(u)}
                           />
@@ -569,6 +715,52 @@ export function UserManager() {
                         </label>
                       ))}
                     </div>
+                  </div>
+                )}
+
+                {mode === "add" && (
+                  <div className="space-y-4 rounded-2xl border border-silver/60 p-4">
+                    <p className="text-sm font-semibold text-primary">Initial Password</p>
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={form.passwordMode === "generate" ? "default" : "outline"}
+                        onClick={() => setForm({ ...form, passwordMode: "generate", password: "" })}
+                      >
+                        Generate temporary
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={form.passwordMode === "custom" ? "default" : "outline"}
+                        onClick={() => setForm({ ...form, passwordMode: "custom" })}
+                      >
+                        Set custom password
+                      </Button>
+                    </div>
+                    {form.passwordMode === "custom" && (
+                      <div>
+                        <Label>Password</Label>
+                        <Input
+                          type="password"
+                          value={form.password}
+                          onChange={(e) => setForm({ ...form, password: e.target.value })}
+                          placeholder="Minimum 8 characters"
+                        />
+                      </div>
+                    )}
+                    <label className="flex cursor-pointer items-center gap-3">
+                      <Checkbox
+                        checked={form.forcePasswordChange}
+                        onCheckedChange={(checked) =>
+                          setForm({ ...form, forcePasswordChange: checked === true })
+                        }
+                      />
+                      <span className="text-sm text-silver-foreground">
+                        Require password change on next login
+                      </span>
+                    </label>
                   </div>
                 )}
 
@@ -692,9 +884,9 @@ export function UserManager() {
               </CardHeader>
               <div className="space-y-4 px-6 pb-6">
                 <p className="text-sm text-silver-foreground">
-                  Generate a temporary password for{" "}
+                  Reset password for{" "}
                   <strong className="text-primary">{formatUserName(selected)}</strong>.
-                  In production, this triggers Clerk password reset email.
+                  All resets are recorded in the audit log.
                 </p>
                 {tempPassword ? (
                   <div className="rounded-2xl border border-warning/40 bg-warning/10 p-4">
@@ -708,15 +900,118 @@ export function UserManager() {
                       </Button>
                     </div>
                     <p className="mt-2 text-xs text-silver-foreground">
-                      Reset marked as sent — logged to audit trail.
+                      Share this password securely with the user.
                     </p>
                   </div>
                 ) : (
-                  <Button onClick={handleResetPassword}>Generate Temporary Password</Button>
+                  <>
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={resetForm.passwordMode === "generate" ? "default" : "outline"}
+                        onClick={() =>
+                          setResetForm({ ...resetForm, passwordMode: "generate", password: "" })
+                        }
+                      >
+                        Generate temporary
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={resetForm.passwordMode === "custom" ? "default" : "outline"}
+                        onClick={() => setResetForm({ ...resetForm, passwordMode: "custom" })}
+                      >
+                        Set custom password
+                      </Button>
+                    </div>
+                    {resetForm.passwordMode === "custom" && (
+                      <div>
+                        <Label>New Password</Label>
+                        <Input
+                          type="password"
+                          value={resetForm.password}
+                          onChange={(e) => setResetForm({ ...resetForm, password: e.target.value })}
+                          placeholder="Minimum 8 characters"
+                        />
+                      </div>
+                    )}
+                    <label className="flex cursor-pointer items-center gap-3">
+                      <Checkbox
+                        checked={resetForm.forcePasswordChange}
+                        onCheckedChange={(checked) =>
+                          setResetForm({ ...resetForm, forcePasswordChange: checked === true })
+                        }
+                      />
+                      <span className="text-sm text-silver-foreground">
+                        Require password change on next login
+                      </span>
+                    </label>
+                    <div>
+                      <Label>Reason (optional)</Label>
+                      <Textarea
+                        value={resetForm.reason}
+                        onChange={(e) => setResetForm({ ...resetForm, reason: e.target.value })}
+                        placeholder="e.g. User forgot password..."
+                        rows={2}
+                      />
+                    </div>
+                    <Button onClick={handleResetPassword}>
+                      {resetForm.passwordMode === "generate" ? "Generate Password" : "Set Password"}
+                    </Button>
+                  </>
                 )}
                 <Button variant="outline" className="w-full" onClick={() => setMode(null)}>
                   Close
                 </Button>
+              </div>
+            </Card>
+          </div>
+        )}
+
+        {mode === "change-role" && selected && pendingRole && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-primary/20 p-4">
+            <Card className="w-full max-w-md">
+              <CardHeader>
+                <CardTitle>Confirm Role Change</CardTitle>
+              </CardHeader>
+              <div className="space-y-4 px-6 pb-6">
+                <p className="text-sm text-silver-foreground">
+                  Change role for{" "}
+                  <strong className="text-primary">{formatUserName(selected)}</strong> from{" "}
+                  <strong className="text-primary">{ROLE_LABELS[selected.role]}</strong> to{" "}
+                  <strong className="text-primary">{ROLE_LABELS[pendingRole]}</strong>?
+                </p>
+                {!roleChangeAfterEdit && (
+                  <div>
+                    <Label>New Role</Label>
+                    <select
+                      className="flex h-14 w-full rounded-2xl border-2 border-silver bg-white px-4 text-sm text-primary"
+                      value={pendingRole}
+                      onChange={(e) => setPendingRole(e.target.value as UserRole)}
+                    >
+                      {ROLES.map((role) => (
+                        <option key={role} value={role}>
+                          {ROLE_LABELS[role]}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+                <p className="text-xs text-silver-foreground">
+                  This action is audit logged. The last active administrator cannot be demoted.
+                </p>
+                <div className="flex gap-3">
+                  <Button
+                    onClick={handleConfirmRoleChange}
+                    disabled={pendingRole === selected.role}
+                  >
+                    Confirm Role Change
+                  </Button>
+                  <Button variant="outline" onClick={cancelRoleChange}>
+                    Cancel
+                  </Button>
+                </div>
               </div>
             </Card>
           </div>

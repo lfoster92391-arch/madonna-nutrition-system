@@ -188,6 +188,7 @@ export function mapUser(user: DbUser): User {
     department: user.department ?? undefined,
     accountBalance: user.accountBalance ? Number(user.accountBalance) : undefined,
     linkedStudentIds: user.linkedStudentIds,
+    mustChangePassword: user.mustChangePassword,
     lastLoginAt: user.lastLoginAt?.toISOString(),
     createdAt: user.createdAt.toISOString(),
     updatedAt: user.updatedAt.toISOString(),

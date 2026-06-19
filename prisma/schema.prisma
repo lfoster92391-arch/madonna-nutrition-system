@@ -55,7 +55,8 @@ model User {
   badgeId          String?
   role             UserRole   @default(STAFF)
   status           UserStatus @default(ACTIVE)
-  passwordHash     String?
+  passwordHash        String?
+  mustChangePassword  Boolean    @default(false)
   linkedStudentIds String[]   @default([])
   department       String?
   accountBalance   Decimal    @default(0) @db.Decimal(10, 2)

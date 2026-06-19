@@ -93,6 +93,7 @@ export interface User {
   phone?: string
   department?: string
   accountBalance?: number
+  mustChangePassword?: boolean
   lastLoginAt?: string
   createdAt: string
   updatedAt: string
@@ -104,6 +105,7 @@ export type UserAuditAction =
   | "USER_DISABLED"
   | "USER_ENABLED"
   | "PASSWORD_RESET"
+  | "ROLE_CHANGED"
   | "USER_DELETED"
 
 export const USER_AUDIT_ACTIONS: UserAuditAction[] = [
@@ -112,6 +114,7 @@ export const USER_AUDIT_ACTIONS: UserAuditAction[] = [
   "USER_DISABLED",
   "USER_ENABLED",
   "PASSWORD_RESET",
+  "ROLE_CHANGED",
   "USER_DELETED",
 ]
 

@@ -10,8 +10,10 @@ import {
   type ReactNode,
 } from "react"
 import { useDemo } from "@/components/providers/DemoProvider"
+import { demoUsers } from "@/data/demo"
 import { isAllowedTeacherEmail, TEACHER_ACCESS_DENIED_MESSAGE } from "@/config/teacher-auth"
-import { formatUserName } from "@/lib/users"
+import { isDemoPreviewActive, writeDemoPreview } from "@/lib/demo/session"
+import { formatUserName, findUserByLogin } from "@/lib/users"
 import type { UserRole } from "@/lib/types"
 
 export type PortalRole = "cashier" | "parent" | "admin" | "teacher" | null
@@ -22,6 +24,7 @@ interface AuthUser {
   role: Exclude<PortalRole, null>
   displayName: string
   email: string
+  mustChangePassword?: boolean
 }
 
 export interface LoginResult {
@@ -32,6 +35,8 @@ export interface LoginResult {
 interface AuthContextValue {
   user: AuthUser | null
   isLoading: boolean
+  mustChangePassword: boolean
+  clearMustChangePassword: () => void
   login: (
     username: string,
     password: string,
@@ -78,18 +83,20 @@ function portalMatchesUserRole(
 function AuthProviderInner({ children }: { children: ReactNode }) {
   const { databaseEnabled, getUserByUsername, recordUserLogin, users, isLoading: dataLoading } =
     useDemo()
+  const authUsers = databaseEnabled ? users : demoUsers
   const [user, setUser] = useState<AuthUser | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [mustChangePassword, setMustChangePassword] = useState(false)
 
   useEffect(() => {
     if (dataLoading) return
     const session = readSession()
     if (session) {
-      let live = users.find((u) => u.id === session.id)
+      let live = authUsers.find((u) => u.id === session.id)
       if (!live) {
         const username = session.username.toLowerCase()
         const email = session.email.toLowerCase()
-        live = users.find(
+        live = authUsers.find(
           (u) => u.username.toLowerCase() === username || u.email.toLowerCase() === email
         )
       }
@@ -104,8 +111,10 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
           role: session.role,
           displayName: formatUserName(live),
           email: live.email,
+          mustChangePassword: live.mustChangePassword ?? session.mustChangePassword,
         }
         setUser(reconciled)
+        setMustChangePassword(Boolean(reconciled.mustChangePassword))
         if (reconciled.id !== session.id) {
           writeSession(reconciled)
         }
@@ -114,7 +123,7 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
       }
     }
     setIsLoading(false)
-  }, [users, dataLoading])
+  }, [authUsers, dataLoading])
 
   const login = useCallback(
     async (
@@ -127,7 +136,7 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
         return { success: false, error: "Please enter a username." }
       }
 
-      if (databaseEnabled) {
+      if (databaseEnabled && !isDemoPreviewActive()) {
         try {
           const res = await fetch("/api/auth/login", {
             method: "POST",
@@ -135,7 +144,12 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
             body: JSON.stringify({ username: trimmed, password, role }),
           })
           const raw = await res.text()
-          let data: { success?: boolean; error?: string; user?: AuthUser }
+          let data: {
+            success?: boolean
+            error?: string
+            mustChangePassword?: boolean
+            user?: AuthUser
+          }
           try {
             data = raw ? (JSON.parse(raw) as typeof data) : {}
           } catch {
@@ -161,9 +175,11 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
             role: authUser.role,
             displayName: authUser.displayName,
             email: authUser.email,
+            mustChangePassword: data.mustChangePassword,
           }
 
           setUser(session)
+          setMustChangePassword(Boolean(data.mustChangePassword))
           writeSession(session)
           await recordUserLogin(authUser.id)
           return { success: true }
@@ -172,7 +188,7 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
         }
       }
 
-      const demoUser = getUserByUsername(trimmed)
+      const demoUser = findUserByLogin(demoUsers, trimmed)
       if (!demoUser) {
         return {
           success: false,
@@ -216,12 +232,31 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
 
   const logout = useCallback(() => {
     setUser(null)
+    setMustChangePassword(false)
     writeSession(null)
+    writeDemoPreview(false)
+  }, [])
+
+  const clearMustChangePassword = useCallback(() => {
+    setMustChangePassword(false)
+    setUser((current) => {
+      if (!current) return current
+      const next = { ...current, mustChangePassword: false }
+      writeSession(next)
+      return next
+    })
   }, [])
 
   const value = useMemo(
-    () => ({ user, isLoading: isLoading || dataLoading, login, logout }),
-    [user, isLoading, dataLoading, login, logout]
+    () => ({
+      user,
+      isLoading: isLoading || dataLoading,
+      mustChangePassword,
+      clearMustChangePassword,
+      login,
+      logout,
+    }),
+    [user, isLoading, dataLoading, mustChangePassword, clearMustChangePassword, login, logout]
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

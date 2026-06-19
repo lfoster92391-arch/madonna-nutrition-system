@@ -61,8 +61,17 @@ export const api = {
       }
     ),
   getUsers: () => fetchJson<import("@/lib/types").User[]>("/api/users"),
+  adminGetUsers: (adminUserId: string) =>
+    fetchJson<import("@/lib/types").User[]>("/api/admin/users", {
+      headers: { "X-Admin-User-Id": adminUserId },
+    }),
   createUser: (input: Record<string, unknown>) =>
     fetchJson<import("@/lib/types").User>("/api/users", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  adminCreateUser: (input: Record<string, unknown>) =>
+    fetchJson<{ user: import("@/lib/types").User; tempPassword?: string }>("/api/admin/users", {
       method: "POST",
       body: JSON.stringify(input),
     }),
@@ -70,6 +79,14 @@ export const api = {
     fetchJson<import("@/lib/types").User>(`/api/users/${id}`, {
       method: "PATCH",
       body: JSON.stringify(updates),
+    }),
+  updateUserRole: (
+    id: string,
+    payload: { role: import("@/lib/types").UserRole; adminUserId: string; performedBy?: string }
+  ) =>
+    fetchJson<import("@/lib/types").User>(`/api/admin/users/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(payload),
     }),
   disableUser: (id: string, performedBy: string, reason: string) =>
     fetchJson<{ success: boolean }>(`/api/users/${id}`, {
@@ -85,6 +102,29 @@ export const api = {
     fetchJson<{ tempPassword: string }>(`/api/users/${id}`, {
       method: "POST",
       body: JSON.stringify({ action: "reset-password", performedBy }),
+    }),
+  adminResetUserPassword: (
+    id: string,
+    input: {
+      adminUserId: string
+      performedBy: string
+      password?: string
+      generateTempPassword?: boolean
+      forcePasswordChange?: boolean
+      reason?: string
+    }
+  ) =>
+    fetchJson<{ success: boolean; tempPassword?: string; forcePasswordChange?: boolean }>(
+      `/api/admin/users/${id}/reset-password`,
+      {
+        method: "POST",
+        body: JSON.stringify(input),
+      }
+    ),
+  changePassword: (userId: string, currentPassword: string, newPassword: string) =>
+    fetchJson<{ success: boolean }>("/api/auth/change-password", {
+      method: "POST",
+      body: JSON.stringify({ userId, currentPassword, newPassword }),
     }),
   deleteUser: (id: string, performedBy: string, reason: string) =>
     fetchJson<{ success: boolean }>(`/api/users/${id}`, {
