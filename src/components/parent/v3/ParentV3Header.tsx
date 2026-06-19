@@ -1,6 +1,7 @@
 "use client"
 
 import Image from "next/image"
+import Link from "next/link"
 import { LogOut } from "lucide-react"
 import { useAuth } from "@/components/providers/AuthProvider"
 import { V3_NAVY, V3_SILVER } from "@/components/parent/v3/parent-v3-theme"
@@ -14,19 +15,16 @@ export function ParentV3Header() {
       style={{ borderColor: V3_SILVER }}
     >
       <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4">
-        <div className="flex min-w-0 items-center gap-2.5">
+        <Link href="/parent" className="flex shrink-0 items-center">
           <Image
-            src="/dons-crest.svg"
-            alt=""
-            width={32}
-            height={32}
-            className="h-8 w-8 shrink-0 object-contain"
-            aria-hidden
+            src="/brand-logo.png"
+            alt="Fuel The Dons"
+            width={240}
+            height={60}
+            priority
+            className="h-10 w-auto max-w-[200px] object-contain sm:h-12 sm:max-w-[240px]"
           />
-          <span className="truncate text-sm font-bold" style={{ color: V3_NAVY }}>
-            Fuel The Dons
-          </span>
-        </div>
+        </Link>
 
         <button
           type="button"
