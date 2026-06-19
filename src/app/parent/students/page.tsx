@@ -1,5 +1,5 @@
-import { StudentCenterPage } from "@/components/parent/student-center"
+import { redirectToParentHub } from "@/lib/parent-v3-redirect"
 
-export default function MyStudentsPage() {
-  return <StudentCenterPage />
+export default function StudentsPage() {
+  redirectToParentHub()
 }

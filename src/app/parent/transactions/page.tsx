@@ -1,5 +1,5 @@
-import { ParentTransactionsList } from "@/components/parent/ParentTransactionsList"
+import { redirectToParentHub } from "@/lib/parent-v3-redirect"
 
 export default function TransactionsPage() {
-  return <ParentTransactionsList />
+  redirectToParentHub("meal-activity")
 }

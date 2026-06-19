@@ -1,12 +1,10 @@
 "use client"
 
 import { useEffect } from "react"
-import Link from "next/link"
 import { CheckCircle2, CreditCard, Loader2 } from "lucide-react"
 import { QuickAmountPicker } from "@/components/parent/funding/QuickAmountPicker"
 import { useAddFundsPayment } from "@/components/parent/funding/useAddFundsPayment"
 import { Button } from "@/components/ui/button"
-import { CheckboxField } from "@/components/ui/checkbox"
 import {
   Dialog,
   DialogContent,
@@ -42,8 +40,6 @@ export function AddFundsModal({
     submitting,
     error,
     demoSuccess,
-    savePaymentMethod,
-    setSavePaymentMethod,
     handlePay,
     resetForm,
   } = useAddFundsPayment(studentId)
@@ -99,22 +95,7 @@ export function AddFundsModal({
                 ? "Pay with card via Stripe - we never store your full card number."
                 : "Demo mode - no card required"}
             </p>
-            <Link
-              href="/parent/payments?tab=billing"
-              className="mt-2 inline-block text-xs font-semibold text-primary hover:underline"
-            >
-              Billing & payment preferences
-            </Link>
           </div>
-
-          <CheckboxField
-            id="save-payment-method-modal"
-            label="Save payment method for faster checkout"
-            description="Optional. Only masked details (e.g. Visa **** 4242) are shown if you opt in."
-            checked={savePaymentMethod}
-            onCheckedChange={setSavePaymentMethod}
-            className="min-h-0 rounded-[14px]"
-          />
 
           {depositHistory.length > 0 && (
             <div>

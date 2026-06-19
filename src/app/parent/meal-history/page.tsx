@@ -1,10 +1,5 @@
-import { ParentSectionPage } from "@/components/parent/ParentSectionPage"
+import { redirectToParentHub } from "@/lib/parent-v3-redirect"
 
 export default function MealHistoryPage() {
-  return (
-    <ParentSectionPage
-      title="Meal History"
-      description="View past meal purchases for all linked students."
-    />
-  )
+  redirectToParentHub("meal-activity")
 }

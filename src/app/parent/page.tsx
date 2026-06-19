@@ -1,5 +1,5 @@
-import { ParentCommandCenter } from "@/components/parent/ParentCommandCenter"
+import { ParentFamilyHub } from "@/components/parent/v3/ParentFamilyHub"
 
 export default function ParentDashboardPage() {
-  return <ParentCommandCenter />
+  return <ParentFamilyHub />
 }

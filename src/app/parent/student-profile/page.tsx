@@ -1,5 +1,5 @@
-import { StudentHubPage } from "@/components/parent/student-hub/StudentHubPage"
+import { redirectToParentHub } from "@/lib/parent-v3-redirect"
 
 export default function StudentProfileIndexPage() {
-  return <StudentHubPage />
+  redirectToParentHub()
 }

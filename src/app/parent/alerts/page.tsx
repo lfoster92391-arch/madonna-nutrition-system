@@ -1,5 +1,5 @@
-import { redirect } from "next/navigation"
+import { redirectToParentHub } from "@/lib/parent-v3-redirect"
 
 export default function AlertsPage() {
-  redirect("/parent/settings?section=notifications")
+  redirectToParentHub("alerts")
 }
