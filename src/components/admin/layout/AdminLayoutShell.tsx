@@ -1,5 +1,6 @@
 "use client"
 
+import { AdminFooter } from "@/components/admin/layout/AdminFooter"
 import { AdminQuickActionBar } from "@/components/admin/layout/AdminQuickActionBar"
 import { AdminSidebar } from "@/components/admin/layout/AdminSidebar"
 import { AdminTopBar } from "@/components/admin/layout/AdminTopBar"
@@ -14,9 +15,10 @@ export function AdminLayoutShell({ children }: { children: React.ReactNode }) {
         <div className="flex min-w-0 flex-1 flex-col">
           <AdminTopBar />
           <div className="flex min-h-0 flex-1">
-            <main className="min-w-0 flex-1 overflow-y-auto pb-24">{children}</main>
+            <main className="min-w-0 flex-1 overflow-y-auto pb-28">{children}</main>
             <AdminUtilityRail />
           </div>
+          <AdminFooter />
         </div>
       </div>
       <AdminQuickActionBar />

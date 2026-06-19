@@ -1,4 +1,6 @@
 export const ADMIN_NAVY = "#0A1E3F"
+export const ADMIN_SIDEBAR_DARK = "#001f3f"
+export const ADMIN_INFO = "#3498DB"
 export const ADMIN_SILVER = "#C7CCD6"
 export const ADMIN_WHITE = "#FFFFFF"
 export const ADMIN_BG = "#F7F8FB"

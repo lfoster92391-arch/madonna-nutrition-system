@@ -1,8 +1,8 @@
 "use client"
 
 import { useMemo } from "react"
+import Image from "next/image"
 import {
-  Activity,
   Bell,
   ChevronDown,
   MessageSquare,
@@ -11,78 +11,92 @@ import {
 import { useAuth } from "@/components/providers/AuthProvider"
 import { DEMO_SCHOOL } from "@/data/demo"
 import {
-  ADMIN_BG,
   ADMIN_DANGER,
   ADMIN_NAVY,
   ADMIN_SILVER,
-  ADMIN_SUCCESS,
 } from "@/components/admin/layout/admin-theme"
 
 function formatToday() {
   return new Intl.DateTimeFormat("en-US", {
-    weekday: "long",
     month: "long",
     day: "numeric",
     year: "numeric",
   }).format(new Date())
 }
 
+function formatRoleLabel(role: string) {
+  if (role === "admin") return "System Administrator"
+  return role.charAt(0).toUpperCase() + role.slice(1)
+}
+
 export function AdminTopBar() {
   const { user } = useAuth()
-  const adminName = user?.displayName ?? "Administrator"
+  const adminName = user?.displayName ?? "Admin User"
   const today = useMemo(() => formatToday(), [])
 
   return (
     <header
-      className="flex h-[68px] shrink-0 items-center gap-4 border-b px-6"
+      className="flex h-[72px] shrink-0 items-center gap-4 border-b px-4 md:px-6"
       style={{ borderColor: ADMIN_SILVER, backgroundColor: "#FFFFFF" }}
     >
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-base font-semibold" style={{ color: ADMIN_NAVY }}>
-          Welcome back, {adminName}
-        </p>
-        <p className="truncate text-sm" style={{ color: ADMIN_SILVER }}>
-          Select a department to begin.
-        </p>
+      <div className="flex min-w-0 items-center gap-3">
+        <Image
+          src="/brand-logo.png"
+          alt="Fuel The Dons"
+          width={140}
+          height={36}
+          priority
+          className="hidden h-9 w-auto max-w-[120px] shrink-0 object-contain sm:block md:max-w-[140px]"
+        />
+        <div className="min-w-0">
+          <p className="truncate text-sm font-bold uppercase tracking-wide" style={{ color: ADMIN_NAVY }}>
+            Fuel The Dons
+          </p>
+          <p className="hidden truncate text-[11px] font-medium sm:block" style={{ color: ADMIN_SILVER }}>
+            Madonna Nutrition Management System
+          </p>
+        </div>
       </div>
 
-      <div className="hidden items-center gap-3 md:flex">
+      <div className="hidden flex-1 items-center justify-center gap-3 lg:flex">
         <button
           type="button"
-          className="flex items-center gap-2 rounded-2xl border px-4 py-2 text-sm font-medium shadow-sm"
+          className="flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-medium shadow-sm"
           style={{ borderColor: ADMIN_SILVER, color: ADMIN_NAVY }}
         >
           {DEMO_SCHOOL.name}
           <ChevronDown className="h-4 w-4" style={{ color: ADMIN_SILVER }} />
         </button>
         <span
-          className="rounded-2xl px-4 py-2 text-sm font-medium"
-          style={{ backgroundColor: ADMIN_BG, color: ADMIN_NAVY }}
+          className="rounded-xl border px-4 py-2 text-sm font-medium"
+          style={{ borderColor: ADMIN_SILVER, color: ADMIN_NAVY }}
         >
           {today}
         </span>
       </div>
 
-      <div className="flex items-center gap-2">
-        <TopBarIconButton icon={Bell} label="Notifications" badge={3} />
-        <TopBarIconButton icon={MessageSquare} label="Messages" badge={1} />
+      <div className="ml-auto flex items-center gap-2 md:gap-3">
+        <TopBarIconButton icon={Bell} label="Notifications" badge={7} />
+        <TopBarIconButton icon={MessageSquare} label="Messages" badge={3} />
         <button
           type="button"
-          className="flex items-center gap-2 rounded-2xl border px-3 py-2 text-sm font-medium shadow-sm"
+          className="flex items-center gap-2.5 rounded-xl border px-2 py-1.5 text-left shadow-sm md:px-3 md:py-2"
           style={{ borderColor: ADMIN_SILVER, color: ADMIN_NAVY }}
           aria-label="Profile"
         >
-          <User className="h-4 w-4" />
-          <span className="hidden sm:inline">{adminName.split(" ")[0]}</span>
+          <span
+            className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full"
+            style={{ backgroundColor: `${ADMIN_NAVY}15` }}
+          >
+            <User className="h-4 w-4" style={{ color: ADMIN_NAVY }} />
+          </span>
+          <span className="hidden min-w-0 md:block">
+            <span className="block truncate text-sm font-semibold">{adminName}</span>
+            <span className="block truncate text-[11px]" style={{ color: ADMIN_SILVER }}>
+              {formatRoleLabel(user?.role ?? "admin")}
+            </span>
+          </span>
         </button>
-        <div
-          className="hidden items-center gap-1.5 rounded-2xl px-3 py-2 text-xs font-medium lg:flex"
-          style={{ backgroundColor: ADMIN_BG, color: ADMIN_NAVY }}
-          title="System Health"
-        >
-          <Activity className="h-3.5 w-3.5" style={{ color: ADMIN_SUCCESS }} />
-          All systems operational
-        </div>
       </div>
     </header>
   )
@@ -100,7 +114,7 @@ function TopBarIconButton({
   return (
     <button
       type="button"
-      className="relative flex h-10 w-10 items-center justify-center rounded-2xl border shadow-sm transition hover:bg-[#0A1E3F]/5"
+      className="relative flex h-10 w-10 items-center justify-center rounded-xl border shadow-sm transition hover:bg-[#0A1E3F]/5"
       style={{ borderColor: ADMIN_SILVER, color: ADMIN_NAVY }}
       aria-label={label}
     >
