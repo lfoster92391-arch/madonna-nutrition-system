@@ -48,7 +48,7 @@ By signing this agreement, I confirm that I have read, understand, and agree to:
 ☐ Accept responsibility for meal charges incurred while this agreement is in effect`,
 }
 
-export const AGREEMENT_DEMO_STORAGE_KEY = "madonna-agreement-signatures-v1"
+export const AGREEMENT_DEMO_STORAGE_KEY = "madonna-agreement-signatures-v2"
 export const AGREEMENT_DEMO_VERSIONS_KEY = "madonna-agreement-versions-v1"
 
 export const DEFAULT_PUBLISHED_VERSION = {

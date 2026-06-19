@@ -40,6 +40,25 @@ function writeSignatures(records: DemoSignatureRecord[]) {
   localStorage.setItem(AGREEMENT_DEMO_STORAGE_KEY, JSON.stringify(records))
 }
 
+/** Drop cached demo signatures tied to a retired agreement version. */
+function purgeStaleDemoSignatures(currentVersionId: string) {
+  const signatures = readSignatures()
+  const current = signatures.filter((s) => s.agreementVersionId === currentVersionId)
+  if (current.length !== signatures.length) {
+    writeSignatures(current)
+  }
+}
+
+/** Remove demo cache for a parent when the authoritative source says unsigned. */
+export function clearDemoAgreementCacheForParent(parentUserId: string) {
+  if (typeof window === "undefined") return
+  const currentVersionId = getDemoCurrentVersion().id
+  const next = readSignatures().filter(
+    (s) => !(s.parentUserId === parentUserId && s.agreementVersionId === currentVersionId)
+  )
+  writeSignatures(next)
+}
+
 function readVersions(): AgreementVersionDto[] {
   if (typeof window === "undefined") return [DEFAULT_PUBLISHED_VERSION as AgreementVersionDto]
   try {
@@ -69,6 +88,7 @@ export function getDemoParentStatus(parentUserId: string): {
   students: StudentAgreementStatusDto[]
 } {
   const currentVersion = getDemoCurrentVersion()
+  purgeStaleDemoSignatures(currentVersion.id)
   const signature = readSignatures().find(
     (s) => s.parentUserId === parentUserId && s.agreementVersionId === currentVersion.id
   )
@@ -231,4 +251,5 @@ export function ensureDemoPublishedVersion() {
   if (!versions.some((v) => v.status === "PUBLISHED")) {
     writeVersions([DEFAULT_PUBLISHED_VERSION as AgreementVersionDto, ...versions])
   }
+  purgeStaleDemoSignatures(getDemoCurrentVersion().id)
 }
