@@ -1,7 +1,8 @@
 "use client"
 
-import { useMemo } from "react"
+import { useCallback, useMemo } from "react"
 import Image from "next/image"
+import Link from "next/link"
 import {
   Bell,
   ChevronDown,
@@ -12,6 +13,7 @@ import {
 } from "lucide-react"
 import { useAuth } from "@/components/providers/AuthProvider"
 import { DEMO_SCHOOL } from "@/data/demo"
+import { mockNotifications } from "@/data/mockNotifications"
 import { useAdminLayout } from "@/components/admin/layout/admin-layout-context"
 import {
   ADMIN_DANGER,
@@ -36,7 +38,23 @@ export function AdminTopBar() {
   const { user } = useAuth()
   const adminName = user?.displayName ?? "Admin User"
   const today = useMemo(() => formatToday(), [])
-  const { setMobileSidebarOpen, setMobileRailOpen } = useAdminLayout()
+  const {
+    setMobileSidebarOpen,
+    setMobileRailOpen,
+    utilityRailExpanded,
+    setUtilityRailExpanded,
+  } = useAdminLayout()
+  const notificationCount = mockNotifications.length
+
+  const openAlertsRail = useCallback(() => {
+    if (window.matchMedia("(min-width: 1024px)").matches) {
+      if (!utilityRailExpanded) {
+        setUtilityRailExpanded(true)
+      }
+    } else {
+      setMobileRailOpen(true)
+    }
+  }, [setMobileRailOpen, setUtilityRailExpanded, utilityRailExpanded])
 
   return (
     <header
@@ -99,8 +117,15 @@ export function AdminTopBar() {
         >
           <PanelRight className="h-4 w-4" />
         </button>
-        <TopBarIconButton icon={Bell} label="Notifications" badge={7} />
-        <TopBarIconButton icon={MessageSquare} label="Messages" badge={3} />
+        <TopBarIconButton
+          icon={Bell}
+          label="Notifications"
+          badge={notificationCount}
+          onClick={openAlertsRail}
+        />
+        <Link href="/admin/communication">
+          <TopBarIconButton icon={MessageSquare} label="Messages" />
+        </Link>
         <button
           type="button"
           className="flex min-h-11 items-center gap-2.5 rounded-xl border px-2 text-left shadow-sm sm:px-3"
@@ -129,10 +154,12 @@ function TopBarIconButton({
   icon: Icon,
   label,
   badge,
+  onClick,
 }: {
   icon: typeof Bell
   label: string
   badge?: number
+  onClick?: () => void
 }) {
   return (
     <button
@@ -140,14 +167,15 @@ function TopBarIconButton({
       className="relative flex min-h-11 min-w-11 items-center justify-center rounded-xl border shadow-sm transition hover:bg-[#0A1E3F]/5"
       style={{ borderColor: ADMIN_SILVER, color: ADMIN_NAVY }}
       aria-label={label}
+      onClick={onClick}
     >
       <Icon className="h-4 w-4" />
-      {badge ? (
+      {badge && badge > 0 ? (
         <span
           className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-bold text-white"
           style={{ backgroundColor: ADMIN_DANGER }}
         >
-          {badge}
+          {badge > 9 ? "9+" : badge}
         </span>
       ) : null}
     </button>

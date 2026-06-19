@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useCallback } from "react"
 import {
   AlertTriangle,
   Bell,
@@ -28,7 +28,6 @@ import {
   ADMIN_DANGER,
   ADMIN_INFO,
   ADMIN_NAVY,
-  ADMIN_RAIL_STORAGE_KEY,
   ADMIN_SILVER,
   ADMIN_WARNING,
 } from "@/components/admin/layout/admin-theme"
@@ -54,33 +53,22 @@ const PRIORITY_STYLES = {
 }
 
 export function AdminUtilityRail() {
-  const [expanded, setExpanded] = useState(true)
-  const { mobileRailOpen, setMobileRailOpen } = useAdminLayout()
+  const { mobileRailOpen, setMobileRailOpen, utilityRailExpanded, toggleUtilityRail } =
+    useAdminLayout()
 
-  useEffect(() => {
-    const stored = localStorage.getItem(ADMIN_RAIL_STORAGE_KEY)
-    if (stored !== null) setExpanded(stored === "true")
-  }, [])
-
-  const toggle = () => {
-    setExpanded((prev) => {
-      const next = !prev
-      localStorage.setItem(ADMIN_RAIL_STORAGE_KEY, String(next))
-      return next
-    })
-  }
+  const collapse = useCallback(() => toggleUtilityRail(), [toggleUtilityRail])
 
   return (
     <>
       <div className="hidden shrink-0 lg:flex">
-        {!expanded ? (
+        {!utilityRailExpanded ? (
           <div
             className="flex w-10 flex-col items-center border-l py-4"
             style={{ borderColor: ADMIN_SILVER, backgroundColor: "#FFFFFF" }}
           >
             <button
               type="button"
-              onClick={toggle}
+              onClick={toggleUtilityRail}
               className="flex min-h-11 min-w-11 items-center justify-center rounded-xl transition hover:bg-[#0A1E3F]/5"
               aria-label="Expand utility rail"
             >
@@ -92,7 +80,7 @@ export function AdminUtilityRail() {
             className="flex w-80 flex-col border-l"
             style={{ borderColor: ADMIN_SILVER, backgroundColor: "#FFFFFF" }}
           >
-            <AdminUtilityRailHeader onCollapse={toggle} />
+            <AdminUtilityRailHeader onCollapse={collapse} />
             <AdminUtilityRailBody />
           </aside>
         )}
