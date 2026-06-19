@@ -52,7 +52,7 @@ export function ParentHero({
             className="h-11 rounded-[10px] px-6 text-sm font-semibold"
             style={{ backgroundColor: PARENT_NAVY }}
           >
-            <Link href={reviewHref}>Review Nutrition Update</Link>
+            <Link href={reviewHref}>Update Dietary Forms</Link>
           </Button>
           <Button
             asChild

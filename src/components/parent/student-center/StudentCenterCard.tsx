@@ -16,7 +16,7 @@ import {
 import { useDemo } from "@/components/providers/DemoProvider"
 import { PARENT_CARD, PARENT_NAVY } from "@/components/parent/parent-dashboard-styles"
 import { Button } from "@/components/ui/button"
-import { getFoodProfileStatus } from "@/lib/types"
+import { getFoodProfileDisplayLabel, getFoodProfileStatus, isDietaryFormBlocking } from "@/lib/types"
 import { formatCurrency } from "@/lib/utils"
 import { cn } from "@/lib/utils"
 
@@ -41,8 +41,14 @@ export function StudentCenterCard({ student }: StudentCenterCardProps) {
   const badges: { label: string; className: string }[] = [
     { label: "✓ Active", className: "bg-success/10 text-success" },
   ]
-  if (nutritionStatus === "pending_review" || nutritionStatus === "action_needed") {
-    badges.push({ label: "⚠ Nutrition Review", className: "bg-warning/10 text-warning" })
+  if (isDietaryFormBlocking(profile, pending)) {
+    badges.push({
+      label: `⚠ ${getFoodProfileDisplayLabel(nutritionStatus)}`,
+      className:
+        nutritionStatus === "needs_review"
+          ? "bg-warning/10 text-warning"
+          : "bg-danger/10 text-danger",
+    })
   }
   if (isLowBalance) {
     badges.push({ label: "💳 Low Balance", className: "bg-danger/10 text-danger" })

@@ -128,19 +128,19 @@ export function AlertCenter({ items }: { items: AlertItem[] }) {
 /** Build prioritized alert list from dashboard data */
 export function buildAlertItems(input: {
   lowBalanceStudents: { id: string; firstName: string; lastName: string; balance: number }[]
-  reviewDueCount: number
+  dietaryFormIssueCount: number
   reviewHref: string
   announcements: { id: string; title: string; body: string }[]
 }): AlertItem[] {
   const items: AlertItem[] = []
 
-  if (input.reviewDueCount > 0) {
+  if (input.dietaryFormIssueCount > 0) {
     items.push({
-      id: "nutrition-review",
+      id: "dietary-form",
       icon: ClipboardCheck,
-      headline: "Annual Nutrition Review Required",
-      description: `${input.reviewDueCount} student${input.reviewDueCount > 1 ? "s need" : " needs"} updated allergy and dietary information.`,
-      ctaLabel: "Review Now",
+      headline: "Dietary & Food Allergy Form Required",
+      description: `${input.dietaryFormIssueCount} student${input.dietaryFormIssueCount > 1 ? "s need" : " needs"} a complete or updated dietary and allergy form.`,
+      ctaLabel: "Update Forms",
       href: input.reviewHref,
     })
   }

@@ -9,22 +9,23 @@ import {
   countAttentionItems,
 } from "@/components/parent/AlertCenter"
 import { ParentTopNav } from "@/components/parent/ParentTopNav"
-import { parentAnnouncements, parentLinkedStudents } from "@/data/demo"
-import { isReviewDue } from "@/lib/food-safety"
+import { getPendingSubmission, getStudentProfile, parentAnnouncements, parentLinkedStudents } from "@/data/demo"
+import { isDietaryFormBlocking } from "@/lib/types"
 
 const BARE_ROUTES = ["/parent/agreements"]
 
 function useParentNavAlertCount(): number {
-  const { studentProfiles } = useDemo()
+  const { studentProfiles, allergySubmissions } = useDemo()
 
   const lowBalanceStudents = parentLinkedStudents.filter((s) => s.balance < 5)
-  const linkedProfiles = studentProfiles.filter((p) =>
-    parentLinkedStudents.some((s) => s.id === p.studentId)
-  )
-  const reviewDueProfiles = linkedProfiles.filter((p) => isReviewDue(p.allergyExpiresAt))
+  const dietaryFormIssues = parentLinkedStudents.filter((student) => {
+    const profile = getStudentProfile(student.id, studentProfiles)
+    const pending = getPendingSubmission(student.id, allergySubmissions)
+    return isDietaryFormBlocking(profile, pending)
+  })
   const reviewHref =
-    reviewDueProfiles.length === 1
-      ? `/parent/student-profile/${reviewDueProfiles[0].studentId}`
+    dietaryFormIssues.length === 1
+      ? `/parent/student-profile/${dietaryFormIssues[0].id}?tab=dietary`
       : "/parent/student-profile"
 
   return useMemo(
@@ -32,12 +33,12 @@ function useParentNavAlertCount(): number {
       countAttentionItems(
         buildAlertItems({
           lowBalanceStudents,
-          reviewDueCount: reviewDueProfiles.length,
+          dietaryFormIssueCount: dietaryFormIssues.length,
           reviewHref,
           announcements: parentAnnouncements,
         })
       ),
-    [lowBalanceStudents, reviewDueProfiles.length, reviewHref]
+    [lowBalanceStudents, dietaryFormIssues.length, reviewHref, allergySubmissions, studentProfiles]
   )
 }
 

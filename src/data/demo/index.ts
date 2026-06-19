@@ -88,6 +88,9 @@ export const demoStudentProfiles: StudentProfile[] = [
     allergyVerified: true,
     allergyReviewedAt: eightDaysAgo,
     allergyExpiresAt: addOneYear(new Date(eightDaysAgo)),
+    emergencyFoodContactName: "Sarah Anderson",
+    emergencyFoodContactPhone: "555-0201",
+    medicalNotes: "Carries EpiPen. Notify nurse immediately if exposure suspected.",
   },
   {
     studentId: "10458",
@@ -95,6 +98,9 @@ export const demoStudentProfiles: StudentProfile[] = [
     allergyVerified: true,
     allergyReviewedAt: new Date(Date.now() - 120 * 24 * 60 * 60 * 1000).toISOString(),
     allergyExpiresAt: new Date(Date.now() + 245 * 24 * 60 * 60 * 1000).toISOString(),
+    updateRequestedAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
+    emergencyFoodContactName: "Sarah Anderson",
+    emergencyFoodContactPhone: "555-0201",
   },
   {
     studentId: "10459",
@@ -102,6 +108,8 @@ export const demoStudentProfiles: StudentProfile[] = [
     allergyVerified: true,
     allergyReviewedAt: reviewedOneYearAgo,
     allergyExpiresAt: expiredDate,
+    emergencyFoodContactName: "Sarah Anderson",
+    emergencyFoodContactPhone: "555-0201",
   },
 ]
 

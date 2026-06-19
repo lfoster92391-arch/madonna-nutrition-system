@@ -8,29 +8,31 @@ import { ParentHero } from "@/components/parent/ParentHero"
 import { QuickActionsStrip } from "@/components/parent/QuickActionsStrip"
 import { StudentCardRow } from "@/components/parent/StudentCardRow"
 import { PARENT_PAGE_PAD, PARENT_SECTION_GAP } from "@/components/parent/parent-dashboard-styles"
-import { isReviewDue } from "@/lib/food-safety"
+import { getPendingSubmission, getStudentProfile } from "@/data/demo"
+import { isDietaryFormBlocking } from "@/lib/types"
 
 export function ParentCommandCenter() {
   const { user } = useAuth()
-  const { studentProfiles } = useDemo()
+  const { studentProfiles, allergySubmissions } = useDemo()
 
   const firstName = user?.displayName.split(" ")[0] ?? "Parent"
   const totalBalance = parentLinkedStudents.reduce((sum, s) => sum + s.balance, 0)
   const lowBalanceStudents = parentLinkedStudents.filter((s) => s.balance < 5)
 
-  const linkedProfiles = studentProfiles.filter((p) =>
-    parentLinkedStudents.some((s) => s.id === p.studentId)
-  )
-  const reviewDueProfiles = linkedProfiles.filter((p) => isReviewDue(p.allergyExpiresAt))
+  const dietaryFormIssues = parentLinkedStudents.filter((student) => {
+    const profile = getStudentProfile(student.id, studentProfiles)
+    const pending = getPendingSubmission(student.id, allergySubmissions)
+    return isDietaryFormBlocking(profile, pending)
+  })
 
   const reviewHref =
-    reviewDueProfiles.length === 1
-      ? `/parent/student-profile/${reviewDueProfiles[0].studentId}`
+    dietaryFormIssues.length === 1
+      ? `/parent/student-profile/${dietaryFormIssues[0].id}?tab=dietary`
       : "/parent/student-profile"
 
   const alertItems = buildAlertItems({
     lowBalanceStudents,
-    reviewDueCount: reviewDueProfiles.length,
+    dietaryFormIssueCount: dietaryFormIssues.length,
     reviewHref,
     announcements: parentAnnouncements,
   })

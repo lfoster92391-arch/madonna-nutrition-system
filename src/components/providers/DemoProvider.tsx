@@ -525,12 +525,19 @@ function useDemoLocalState() {
 
           setStudentProfiles((profiles) => {
             const existing = profiles.find((p) => p.studentId === submission.studentId)
+            const payload = submission.changePayload
             const updated: StudentProfile = {
               studentId: submission.studentId,
               dietaryRestrictions: dietary,
               allergyVerified: true,
               allergyReviewedAt: now,
               allergyExpiresAt: addOneYear(new Date(now)),
+              updateRequestedAt: null,
+              medicalNotes: payload.medicalNotes ?? payload.reactionInfo ?? existing?.medicalNotes ?? null,
+              emergencyFoodContactName:
+                payload.emergencyFoodContactName ?? existing?.emergencyFoodContactName ?? null,
+              emergencyFoodContactPhone:
+                payload.emergencyFoodContactPhone ?? existing?.emergencyFoodContactPhone ?? null,
             }
             if (existing) {
               return profiles.map((p) =>

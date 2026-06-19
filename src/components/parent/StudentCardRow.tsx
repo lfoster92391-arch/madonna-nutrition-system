@@ -9,18 +9,12 @@ import {
   parentLinkedStudents,
 } from "@/data/demo"
 import { useDemo } from "@/components/providers/DemoProvider"
+import { DietaryFormStatusBadge } from "@/components/parent/DietaryFormStatusBadge"
 import { AddFundsModal } from "@/components/parent/funding/AddFundsModal"
 import { PARENT_CARD, PARENT_NAVY } from "@/components/parent/parent-dashboard-styles"
 import { Button } from "@/components/ui/button"
-import { getFoodProfileStatus, type FoodProfileStatus } from "@/lib/types"
 import { formatCurrency } from "@/lib/utils"
 import { cn } from "@/lib/utils"
-
-const STATUS_PILL: Record<FoodProfileStatus, { label: string; className: string }> = {
-  verified: { label: "Good", className: "bg-success/10 text-success" },
-  pending_review: { label: "Review", className: "bg-warning/10 text-warning" },
-  action_needed: { label: "Action Needed", className: "bg-danger/10 text-danger" },
-}
 
 export function StudentCardRow() {
   const { studentProfiles, allergySubmissions } = useDemo()
@@ -38,8 +32,6 @@ export function StudentCardRow() {
           {parentLinkedStudents.map((student) => {
             const profile = getStudentProfile(student.id, studentProfiles)
             const pending = getPendingSubmission(student.id, allergySubmissions)
-            const status = getFoodProfileStatus(profile, pending)
-            const pill = STATUS_PILL[status]
 
             return (
               <article key={student.id} className={cn(PARENT_CARD, "flex flex-col p-5 md:p-6")}>
@@ -64,14 +56,7 @@ export function StudentCardRow() {
                     >
                       {formatCurrency(student.balance)}
                     </p>
-                    <span
-                      className={cn(
-                        "mt-2 inline-flex rounded-full px-3 py-1 text-xs font-semibold",
-                        pill.className
-                      )}
-                    >
-                      {pill.label}
-                    </span>
+                    <DietaryFormStatusBadge profile={profile} pendingSubmission={pending} />
                   </div>
                 </div>
 

@@ -23,10 +23,13 @@ export interface FoodSafetyFormPayload {
   otherAllergyDescription?: string
   severity: AllergySeverity
   reactionInfo?: string
+  medicalNotes?: string
   crossContact: CrossContactSensitivity
   dietaryRestrictions: string[]
   otherDietaryDescription?: string
   emergencyMealNotes?: string
+  emergencyFoodContactName?: string
+  emergencyFoodContactPhone?: string
   consentConfirmed: boolean
   electronicSignature: string
   signatureDate: string
@@ -44,6 +47,10 @@ export interface StudentProfile {
   allergyVerified: boolean
   allergyReviewedAt: string | null
   allergyExpiresAt: string | null
+  updateRequestedAt?: string | null
+  medicalNotes?: string | null
+  emergencyFoodContactName?: string | null
+  emergencyFoodContactPhone?: string | null
 }
 
 export interface AllergySubmission {
@@ -292,18 +299,47 @@ export interface CalendarSettings {
   schoolName: string
 }
 
-export type FoodProfileStatus = "verified" | "pending_review" | "action_needed"
+export type FoodProfileStatus = "complete" | "needs_review" | "overdue" | "incomplete"
 
 export function getFoodProfileStatus(
   profile: StudentProfile | undefined,
   pendingSubmission?: AllergySubmission
 ): FoodProfileStatus {
-  if (pendingSubmission?.status === "pending_review" || pendingSubmission?.status === "clarification_requested") {
-    return "pending_review"
+  if (
+    pendingSubmission?.status === "pending_review" ||
+    pendingSubmission?.status === "clarification_requested"
+  ) {
+    return "needs_review"
   }
-  if (!profile?.allergyVerified) return "action_needed"
+  if (!profile?.allergyVerified) return "incomplete"
+  if (profile.updateRequestedAt) return "needs_review"
   if (profile.allergyExpiresAt && new Date(profile.allergyExpiresAt) <= new Date()) {
-    return "action_needed"
+    return "overdue"
   }
-  return "verified"
+  if (profile.allergyExpiresAt) {
+    const expires = new Date(profile.allergyExpiresAt).getTime()
+    const threshold = Date.now() + 30 * 24 * 60 * 60 * 1000
+    if (expires <= threshold) return "needs_review"
+  }
+  return "complete"
+}
+
+export function getFoodProfileDisplayLabel(status: FoodProfileStatus): string {
+  switch (status) {
+    case "complete":
+      return "Complete"
+    case "needs_review":
+      return "Needs Review"
+    case "overdue":
+      return "Overdue"
+    case "incomplete":
+      return "Action Needed"
+  }
+}
+
+export function isDietaryFormBlocking(
+  profile: StudentProfile | undefined,
+  pendingSubmission?: AllergySubmission
+): boolean {
+  return getFoodProfileStatus(profile, pendingSubmission) !== "complete"
 }

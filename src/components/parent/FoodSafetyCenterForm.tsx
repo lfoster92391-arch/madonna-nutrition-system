@@ -15,7 +15,7 @@ import {
   foodSafetyFormSchema,
   type FoodSafetyFormValues,
 } from "@/lib/food-safety"
-import type { Student } from "@/lib/types"
+import type { Student, StudentProfile } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
 // TODO: Replace FileReader demo upload with UploadThing when configured
@@ -30,10 +30,12 @@ function readFileAsDataUrl(file: File): Promise<string> {
 
 export function FoodSafetyCenterForm({
   student,
+  profile,
   submittedBy,
   onSubmitted,
 }: {
   student: Student
+  profile?: StudentProfile
   submittedBy: string
   onSubmitted?: () => void
 }) {
@@ -67,7 +69,12 @@ export function FoodSafetyCenterForm({
     dietaryRestrictions: student.dietaryRestrictions.filter((d) =>
       DIETARY_OPTIONS.includes(d as (typeof DIETARY_OPTIONS)[number])
     ),
+    medicalNotes: profile?.medicalNotes ?? "",
     emergencyMealNotes: "",
+    emergencyFoodContactName:
+      profile?.emergencyFoodContactName ?? student.parentContacts[0]?.name ?? "",
+    emergencyFoodContactPhone:
+      profile?.emergencyFoodContactPhone ?? student.parentContacts[0]?.phone ?? "",
     consentConfirmed: false as unknown as true,
     electronicSignature: submittedBy,
     signatureDate: new Date().toISOString().slice(0, 10),
@@ -163,8 +170,10 @@ export function FoodSafetyCenterForm({
   return (
     <form onSubmit={handleSubmit} className="space-y-8">
       <div className="rounded-[20px] border border-primary/20 bg-primary/5 px-6 py-5">
-        <h2 className="text-2xl font-bold text-primary">Food Safety Center</h2>
-        <p className="mt-1 text-lg text-silver-foreground">Help us keep your student safe.</p>
+        <h2 className="text-2xl font-bold text-primary">Dietary &amp; Food Allergy Form</h2>
+        <p className="mt-1 text-lg text-silver-foreground">
+          Required for every student. Must be reviewed annually or when the school requests an update.
+        </p>
       </div>
 
       {/* Allergy Selection */}
@@ -311,6 +320,53 @@ export function FoodSafetyCenterForm({
         </div>
       </section>
 
+      {/* Medical Notes */}
+      <section>
+        <Label>Medical Notes</Label>
+        <Textarea
+          value={form.medicalNotes ?? ""}
+          onChange={(e) => setForm((f) => ({ ...f, medicalNotes: e.target.value }))}
+          placeholder="Physician guidance, medications, EpiPen location, or other medical context..."
+        />
+      </section>
+
+      {/* Emergency Food Contact */}
+      <section>
+        <h3 className="mb-4 text-lg font-bold text-primary">Emergency Contact for Food Issues</h3>
+        <div className="grid gap-4 md:grid-cols-2">
+          <div>
+            <Label>
+              Contact Name <span className="text-danger">*</span>
+            </Label>
+            <Input
+              value={form.emergencyFoodContactName}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, emergencyFoodContactName: e.target.value }))
+              }
+              placeholder="Parent or guardian"
+            />
+            {errors.emergencyFoodContactName && (
+              <p className="mt-1 text-sm text-danger">{errors.emergencyFoodContactName}</p>
+            )}
+          </div>
+          <div>
+            <Label>
+              Contact Phone <span className="text-danger">*</span>
+            </Label>
+            <Input
+              value={form.emergencyFoodContactPhone}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, emergencyFoodContactPhone: e.target.value }))
+              }
+              placeholder="555-0100"
+            />
+            {errors.emergencyFoodContactPhone && (
+              <p className="mt-1 text-sm text-danger">{errors.emergencyFoodContactPhone}</p>
+            )}
+          </div>
+        </div>
+      </section>
+
       {/* Upload Documentation */}
       <section>
         <h3 className="mb-4 text-lg font-bold text-primary">Upload Documentation</h3>
@@ -365,7 +421,7 @@ export function FoodSafetyCenterForm({
       <section className="rounded-[20px] border border-silver/60 bg-white p-6">
         <CheckboxField
           id="consent"
-          label="I confirm this information is accurate"
+          label="I confirm this information is accurate and will keep it current throughout the school year"
           checked={form.consentConfirmed === true}
           onCheckedChange={(v) =>
             setForm((f) => ({ ...f, consentConfirmed: (v ? true : false) as true }))

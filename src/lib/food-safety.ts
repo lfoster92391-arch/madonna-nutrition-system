@@ -44,8 +44,11 @@ export const foodSafetyFormSchema = z
     dietaryRestrictions: z.array(z.string()),
     otherDietaryDescription: z.string().optional(),
     emergencyMealNotes: z.string().optional(),
+    medicalNotes: z.string().optional(),
+    emergencyFoodContactName: z.string().min(2, "Emergency contact name is required"),
+    emergencyFoodContactPhone: z.string().min(7, "Emergency contact phone is required"),
     consentConfirmed: z.literal(true, {
-      message: "You must confirm the information is accurate",
+      message: "You must confirm the information is accurate and kept current",
     }),
     electronicSignature: z.string().min(2, "Signature is required"),
     signatureDate: z.string().min(1),

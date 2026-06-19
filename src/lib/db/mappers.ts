@@ -146,6 +146,10 @@ export function mapStudentProfile(profile: DbStudentProfile, externalId: string)
     allergyVerified: profile.allergyVerified,
     allergyReviewedAt: profile.allergyReviewedAt?.toISOString() ?? null,
     allergyExpiresAt: profile.allergyExpiresAt?.toISOString() ?? null,
+    updateRequestedAt: profile.updateRequestedAt?.toISOString() ?? null,
+    medicalNotes: profile.medicalNotes ?? null,
+    emergencyFoodContactName: profile.emergencyFoodContactName ?? null,
+    emergencyFoodContactPhone: profile.emergencyFoodContactPhone ?? null,
   }
 }
 

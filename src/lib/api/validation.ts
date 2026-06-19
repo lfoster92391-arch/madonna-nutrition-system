@@ -166,6 +166,7 @@ export const foodSafetyPayloadSchema = z.object({
   otherAllergyDescription: z.string().optional(),
   severity: z.enum(["severe", "moderate", "informational"]),
   reactionInfo: z.string().optional(),
+  medicalNotes: z.string().optional(),
   crossContact: z.object({
     avoidSharedEquipment: z.boolean(),
     traceAmountsTrigger: z.boolean(),
@@ -174,6 +175,8 @@ export const foodSafetyPayloadSchema = z.object({
   dietaryRestrictions: z.array(z.string()),
   otherDietaryDescription: z.string().optional(),
   emergencyMealNotes: z.string().optional(),
+  emergencyFoodContactName: z.string().optional(),
+  emergencyFoodContactPhone: z.string().optional(),
   consentConfirmed: z.boolean(),
   electronicSignature: z.string(),
   signatureDate: z.string(),

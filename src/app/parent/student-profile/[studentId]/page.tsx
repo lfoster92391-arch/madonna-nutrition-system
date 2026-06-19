@@ -2,10 +2,11 @@
 
 import { use, useMemo, useState } from "react"
 import Image from "next/image"
-import { notFound } from "next/navigation"
+import { notFound, useSearchParams } from "next/navigation"
 import { useAuth } from "@/components/providers/AuthProvider"
 import { useDemo } from "@/components/providers/DemoProvider"
 import { AnnualReviewBanner } from "@/components/parent/AnnualReviewBanner"
+import { DietaryFormStatusCard } from "@/components/parent/DietaryFormStatusCard"
 import { FoodSafetyCenterForm } from "@/components/parent/FoodSafetyCenterForm"
 import { StudentMealsTab } from "@/components/parent/meals/StudentMealsTab"
 import { StudentTransactionsTab } from "@/components/parent/meals/StudentTransactionsTab"
@@ -14,7 +15,7 @@ import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Input, Label } from "@/components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { parentLinkedStudents } from "@/data/demo"
+import { getPendingSubmission, parentLinkedStudents } from "@/data/demo"
 
 export default function StudentProfilePage({
   params,
@@ -23,7 +24,9 @@ export default function StudentProfilePage({
 }) {
   const { studentId } = use(params)
   const { user } = useAuth()
-  const { students, studentProfiles, updateParentContact } = useDemo()
+  const { students, studentProfiles, allergySubmissions, updateParentContact } = useDemo()
+  const searchParams = useSearchParams()
+  const defaultTab = searchParams.get("tab") === "dietary" ? "dietary" : "overview"
 
   const linkedIds = new Set(parentLinkedStudents.map((s) => s.id))
   const student = useMemo(
@@ -32,6 +35,7 @@ export default function StudentProfilePage({
   )
 
   const profile = studentProfiles.find((p) => p.studentId === studentId)
+  const pendingSubmission = getPendingSubmission(studentId, allergySubmissions)
 
   const [contact, setContact] = useState({
     name: student?.parentContacts[0]?.name ?? user?.displayName ?? "",
@@ -55,24 +59,35 @@ export default function StudentProfilePage({
         <h1 className="mt-1 text-2xl font-bold text-primary">
           {student.firstName} {student.lastName}
         </h1>
+        <p className="mt-0.5 text-xs font-medium tracking-wide text-silver-foreground">
+          MD ID {student.id}
+        </p>
       </header>
 
       <div className="mx-auto max-w-4xl space-y-6 p-8">
         <AnnualReviewBanner
           profiles={profile ? [profile] : []}
           studentName={`${student.firstName} ${student.lastName}`}
-          profileHref={`/parent/student-profile/${studentId}`}
+          profileHref={`/parent/student-profile/${studentId}?tab=dietary`}
+          allergySubmissions={allergySubmissions}
         />
 
-        <Tabs defaultValue="overview">
+        <Tabs defaultValue={defaultTab}>
           <TabsList className="flex h-auto flex-wrap gap-1">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="meals">Meals</TabsTrigger>
-            <TabsTrigger value="nutrition">Nutrition</TabsTrigger>
+            <TabsTrigger value="dietary">Dietary &amp; Food Allergy</TabsTrigger>
             <TabsTrigger value="transactions">Transactions</TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview">
+            <div className="space-y-6">
+              <DietaryFormStatusCard
+                studentId={studentId}
+                studentName={`${student.firstName} ${student.lastName}`}
+                profile={profile}
+                pendingSubmission={pendingSubmission}
+              />
             <Card className="rounded-[20px] p-8 shadow-sm">
               <div className="flex flex-col items-center gap-6 md:flex-row md:items-start">
                 <Image
@@ -91,8 +106,8 @@ export default function StudentProfilePage({
                       </p>
                     </div>
                     <div>
-                      <p className="text-sm text-silver-foreground">Student ID</p>
-                      <p className="text-lg font-semibold text-primary">{student.id}</p>
+                      <p className="text-sm text-silver-foreground">MD ID</p>
+                      <p className="font-mono text-sm font-semibold text-primary">{student.id}</p>
                     </div>
                     <div>
                       <p className="text-sm text-silver-foreground">Grade</p>
@@ -145,6 +160,7 @@ export default function StudentProfilePage({
                 </div>
               </div>
             </Card>
+            </div>
           </TabsContent>
 
           <TabsContent value="meals">
@@ -154,9 +170,10 @@ export default function StudentProfilePage({
             />
           </TabsContent>
 
-          <TabsContent value="nutrition">
+          <TabsContent value="dietary">
             <FoodSafetyCenterForm
               student={student}
+              profile={profile}
               submittedBy={user?.displayName ?? "Parent"}
             />
           </TabsContent>

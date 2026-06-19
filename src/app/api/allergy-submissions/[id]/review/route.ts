@@ -69,6 +69,10 @@ export async function POST(request: Request, { params }: RouteParams) {
               allergyVerified: true,
               allergyReviewedAt: now,
               allergyExpiresAt: addOneYear(now),
+              updateRequestedAt: null,
+              medicalNotes: payload.medicalNotes ?? payload.reactionInfo ?? null,
+              emergencyFoodContactName: payload.emergencyFoodContactName ?? null,
+              emergencyFoodContactPhone: payload.emergencyFoodContactPhone ?? null,
             },
             create: {
               studentId: submission.studentId,
@@ -76,6 +80,9 @@ export async function POST(request: Request, { params }: RouteParams) {
               allergyVerified: true,
               allergyReviewedAt: now,
               allergyExpiresAt: addOneYear(now),
+              medicalNotes: payload.medicalNotes ?? payload.reactionInfo ?? null,
+              emergencyFoodContactName: payload.emergencyFoodContactName ?? null,
+              emergencyFoodContactPhone: payload.emergencyFoodContactPhone ?? null,
             },
           })
 

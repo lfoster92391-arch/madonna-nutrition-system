@@ -9,22 +9,13 @@ import {
   parentRecentActivity,
   todaysMenuItems,
 } from "@/data/demo"
-import type { Student } from "@/lib/types"
+import { getFoodProfileDisplayLabel, getFoodProfileStatus, type FoodProfileStatus, type Student } from "@/lib/types"
 import { useDemo } from "@/components/providers/DemoProvider"
+import { DietaryFormStatusBadge } from "@/components/parent/DietaryFormStatusBadge"
 import { PARENT_CARD, PARENT_NAVY } from "@/components/parent/parent-dashboard-styles"
 import { Button } from "@/components/ui/button"
-import { getFoodProfileStatus, type FoodProfileStatus } from "@/lib/types"
 import { formatCurrency } from "@/lib/utils"
 import { cn } from "@/lib/utils"
-
-const STATUS_BADGE: Record<
-  FoodProfileStatus,
-  { emoji: string; label: string; className: string }
-> = {
-  verified: { emoji: "🟢", label: "Verified", className: "bg-success/10 text-success" },
-  pending_review: { emoji: "🟡", label: "Pending Review", className: "bg-warning/10 text-warning" },
-  action_needed: { emoji: "🔴", label: "Action Needed", className: "bg-danger/10 text-danger" },
-}
 
 type StudentHubCardProps = {
   student: Student
@@ -37,7 +28,7 @@ export function StudentHubCard({ student }: StudentHubCardProps) {
   const profile = getStudentProfile(student.id, studentProfiles)
   const pending = getPendingSubmission(student.id, allergySubmissions)
   const nutritionStatus = getFoodProfileStatus(profile, pending)
-  const badge = STATUS_BADGE[nutritionStatus]
+  const nutritionLabel = getFoodProfileDisplayLabel(nutritionStatus)
 
   const recentPurchase = parentRecentActivity.find((item) =>
     item.student.includes(student.firstName)
@@ -77,16 +68,13 @@ export function StudentHubCard({ student }: StudentHubCardProps) {
           <h3 className="truncate text-base font-bold md:text-lg" style={{ color: PARENT_NAVY }}>
             {student.firstName} {student.lastName}
           </h3>
+          <p className="text-[10px] font-medium uppercase tracking-wide text-[#94A3B8]">
+            MD {student.id}
+          </p>
           <p className="mt-0.5 text-sm text-[#64748B]">Grade {student.grade}</p>
-          <span
-            className={cn(
-              "mt-2 inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold",
-              badge.className
-            )}
-          >
-            <span aria-hidden>{badge.emoji}</span>
-            {badge.label}
-          </span>
+          <div className="mt-2">
+            <DietaryFormStatusBadge profile={profile} pendingSubmission={pending} />
+          </div>
         </div>
       </div>
 
@@ -97,7 +85,7 @@ export function StudentHubCard({ student }: StudentHubCardProps) {
           tone={student.balance < 5 ? "danger" : "success"}
         />
         <StatusCell label="Meals" value={mealStatus} tone={student.balance < 5 ? "warning" : "default"} />
-        <StatusCell label="Nutrition" value={badge.label.split(" ")[0]} tone={nutritionTone(nutritionStatus)} />
+        <StatusCell label="Dietary" value={nutritionLabel} tone={nutritionTone(nutritionStatus)} />
       </div>
 
       <div className="mt-4 flex-1 space-y-2 text-sm">
@@ -131,8 +119,8 @@ export function StudentHubCard({ student }: StudentHubCardProps) {
 }
 
 function nutritionTone(status: FoodProfileStatus): "success" | "warning" | "danger" | "default" {
-  if (status === "verified") return "success"
-  if (status === "pending_review") return "warning"
+  if (status === "complete") return "success"
+  if (status === "needs_review") return "warning"
   return "danger"
 }
 

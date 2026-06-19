@@ -12,8 +12,7 @@ import {
 import { countAttentionItems, buildAlertItems } from "@/components/parent/AlertCenter"
 import { parentAnnouncements } from "@/data/demo"
 import { PARENT_PAGE_PAD, PARENT_SECTION_GAP } from "@/components/parent/parent-dashboard-styles"
-import { getFoodProfileStatus } from "@/lib/types"
-import { isReviewDue } from "@/lib/food-safety"
+import { getFoodProfileStatus, isDietaryFormBlocking } from "@/lib/types"
 import { FamilyOverviewStrip } from "@/components/parent/student-center/FamilyOverviewStrip"
 import { StudentCenterCard } from "@/components/parent/student-center/StudentCenterCard"
 import { StudentCenterHeader } from "@/components/parent/student-center/StudentCenterHeader"
@@ -30,26 +29,22 @@ export function StudentCenterPage() {
   const monthlySpend = parentSpendingByWeek.reduce((sum, w) => sum + w.amount, 0)
   const lowBalanceStudents = parentLinkedStudents.filter((s) => s.balance < 5)
 
-  const linkedProfiles = studentProfiles.filter((p) =>
-    parentLinkedStudents.some((s) => s.id === p.studentId)
-  )
-  const reviewDueProfiles = linkedProfiles.filter((p) => isReviewDue(p.allergyExpiresAt))
-  const pendingReviewCount = parentLinkedStudents.filter((student) => {
+  const dietaryFormIssues = parentLinkedStudents.filter((student) => {
     const profile = getStudentProfile(student.id, studentProfiles)
     const pending = getPendingSubmission(student.id, allergySubmissions)
-    const status = getFoodProfileStatus(profile, pending)
-    return status === "pending_review" || status === "action_needed"
-  }).length
+    return isDietaryFormBlocking(profile, pending)
+  })
+  const pendingReviewCount = dietaryFormIssues.length
 
   const reviewHref =
-    reviewDueProfiles.length === 1
-      ? `/parent/student-profile/${reviewDueProfiles[0].studentId}`
+    dietaryFormIssues.length === 1
+      ? `/parent/student-profile/${dietaryFormIssues[0].id}?tab=dietary`
       : "/parent/student-profile"
 
   const actionsNeeded = countAttentionItems(
     buildAlertItems({
       lowBalanceStudents,
-      reviewDueCount: reviewDueProfiles.length,
+      dietaryFormIssueCount: pendingReviewCount,
       reviewHref,
       announcements: parentAnnouncements,
     })
@@ -73,9 +68,9 @@ export function StudentCenterPage() {
         case "low-balance":
           return isLowBalance
         case "nutrition-review":
-          return nutritionStatus === "pending_review" || nutritionStatus === "action_needed"
+          return isDietaryFormBlocking(profile, pending)
         case "active":
-          return nutritionStatus === "verified" && !isLowBalance
+          return !isDietaryFormBlocking(profile, pending) && !isLowBalance
         default:
           return true
       }

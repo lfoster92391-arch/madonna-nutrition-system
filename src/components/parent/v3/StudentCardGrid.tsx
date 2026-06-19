@@ -9,22 +9,12 @@ import {
   parentLinkedStudents,
 } from "@/data/demo"
 import { useDemo } from "@/components/providers/DemoProvider"
+import { DietaryFormStatusBadge } from "@/components/parent/DietaryFormStatusBadge"
 import { useParentTransactions } from "@/components/parent/useParentTransactions"
 import { V3_CARD, V3_CARD_BORDER, V3_NAVY } from "@/components/parent/v3/parent-v3-theme"
 import { Button } from "@/components/ui/button"
-import { getFoodProfileStatus, type FoodProfileStatus } from "@/lib/types"
-import { formatCurrency } from "@/lib/utils"
-import { cn } from "@/lib/utils"
+import { formatCurrency, cn } from "@/lib/utils"
 import { formatTransactionDate } from "@/lib/parent-transactions"
-
-const STATUS_STYLE: Record<
-  FoodProfileStatus,
-  { label: string; dot: string; text: string }
-> = {
-  verified: { label: "Good", dot: "bg-[#16A34A]", text: "text-[#16A34A]" },
-  pending_review: { label: "Review", dot: "bg-[#EA580C]", text: "text-[#EA580C]" },
-  action_needed: { label: "Action Needed", dot: "bg-[#EA580C]", text: "text-[#EA580C]" },
-}
 
 type StudentCardGridProps = {
   onAddFunds: (studentId: string) => void
@@ -66,11 +56,6 @@ export function StudentCardGrid({ onAddFunds }: StudentCardGridProps) {
         {parentLinkedStudents.map((student) => {
           const profile = getStudentProfile(student.id, studentProfiles)
           const pending = getPendingSubmission(student.id, allergySubmissions)
-          const status = getFoodProfileStatus(profile, pending)
-          const statusStyle =
-            student.balance <= 0
-              ? { label: "Low Balance", dot: "bg-[#94A3B8]", text: "text-[#64748B]" }
-              : STATUS_STYLE[status]
           const activity = studentActivity.get(student.id)
 
           return (
@@ -105,10 +90,13 @@ export function StudentCardGrid({ onAddFunds }: StudentCardGridProps) {
                       {student.firstName} {student.lastName}
                     </h3>
                     <p className="mt-0.5 text-sm text-[#64748B]">Grade {student.grade}</p>
-                    <p className={cn("mt-2 inline-flex items-center gap-1.5 text-xs font-semibold", statusStyle.text)}>
-                      <span className={cn("h-2 w-2 rounded-full", statusStyle.dot)} aria-hidden />
-                      {statusStyle.label}
-                    </p>
+                    <div className="mt-2">
+                      <DietaryFormStatusBadge
+                        profile={profile}
+                        pendingSubmission={pending}
+                        variant="dot"
+                      />
+                    </div>
                   </div>
                   <span
                     className="pointer-events-none select-none text-4xl font-bold opacity-[0.06]"

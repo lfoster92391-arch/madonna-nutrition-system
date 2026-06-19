@@ -14,8 +14,7 @@ import { StudentHubCard } from "@/components/parent/student-hub/StudentHubCard"
 import { StudentHubHeader, type FilterStatus } from "@/components/parent/student-hub/StudentHubHeader"
 import { StudentHubQuickActions } from "@/components/parent/student-hub/StudentHubQuickActions"
 import { PARENT_PAGE_PAD, PARENT_SECTION_GAP } from "@/components/parent/parent-dashboard-styles"
-import { isReviewDue } from "@/lib/food-safety"
-import { getFoodProfileStatus } from "@/lib/types"
+import { isDietaryFormBlocking } from "@/lib/types"
 
 export function StudentHubPage() {
   const router = useRouter()
@@ -41,15 +40,13 @@ export function StudentHubPage() {
 
   const pendingReviews = linkedProfiles.filter((p) => {
     const pending = getPendingSubmission(p.studentId, allergySubmissions)
-    const status = getFoodProfileStatus(p, pending)
-    return status === "pending_review" || isReviewDue(p.allergyExpiresAt)
+    return isDietaryFormBlocking(p, pending)
   }).length
 
   const actionsNeeded = students.reduce((count, student) => {
     const profile = getStudentProfile(student.id, studentProfiles)
     const pending = getPendingSubmission(student.id, allergySubmissions)
-    const status = getFoodProfileStatus(profile, pending)
-    if (status !== "verified" || student.balance < 5) return count + 1
+    if (isDietaryFormBlocking(profile, pending) || student.balance < 5) return count + 1
     return count
   }, 0)
 
@@ -75,8 +72,7 @@ export function StudentHubPage() {
       if (filterStatus === "action") {
         const profile = getStudentProfile(student.id, studentProfiles)
         const pending = getPendingSubmission(student.id, allergySubmissions)
-        const status = getFoodProfileStatus(profile, pending)
-        return status !== "verified" || student.balance < 5
+        return isDietaryFormBlocking(profile, pending) || student.balance < 5
       }
 
       return true

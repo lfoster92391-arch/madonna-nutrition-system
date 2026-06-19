@@ -4,7 +4,13 @@ import { Suspense, useCallback, useMemo, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useAuth } from "@/components/providers/AuthProvider"
 import { useDemo } from "@/components/providers/DemoProvider"
-import { parentAnnouncements, parentLinkedStudents } from "@/data/demo"
+import {
+  getPendingSubmission,
+  getStudentProfile,
+  parentAnnouncements,
+  parentLinkedStudents,
+} from "@/data/demo"
+import { isDietaryFormBlocking } from "@/lib/types"
 import {
   buildAlertItems,
   countAttentionItems,
@@ -28,13 +34,12 @@ import {
   V3_SECTION_GAP,
   type ParentDrawerId,
 } from "@/components/parent/v3/parent-v3-theme"
-import { isReviewDue } from "@/lib/food-safety"
 
 function ParentFamilyHubContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { user } = useAuth()
-  const { studentProfiles } = useDemo()
+  const { studentProfiles, allergySubmissions } = useDemo()
 
   const drawerParam = parseParentDrawer(searchParams.get(PARENT_DRAWER_PARAM))
   const studentParam = searchParams.get(PARENT_STUDENT_PARAM) ?? undefined
@@ -44,25 +49,26 @@ function ParentFamilyHubContent() {
   const totalBalance = parentLinkedStudents.reduce((sum, s) => sum + s.balance, 0)
   const lowBalanceStudents = parentLinkedStudents.filter((s) => s.balance < 5)
 
-  const linkedProfiles = studentProfiles.filter((p) =>
-    parentLinkedStudents.some((s) => s.id === p.studentId)
-  )
-  const reviewDueProfiles = linkedProfiles.filter((p) => isReviewDue(p.allergyExpiresAt))
-  const pendingReviews = reviewDueProfiles.length
+  const dietaryFormIssues = parentLinkedStudents.filter((student) => {
+    const profile = getStudentProfile(student.id, studentProfiles)
+    const pending = getPendingSubmission(student.id, allergySubmissions)
+    return isDietaryFormBlocking(profile, pending)
+  })
 
   const reviewHref =
-    reviewDueProfiles.length === 1
-      ? `/parent/student-profile/${reviewDueProfiles[0].studentId}`
+    dietaryFormIssues.length === 1
+      ? `/parent/student-profile/${dietaryFormIssues[0].id}?tab=dietary`
       : "/parent/student-profile"
 
   const alertItems = buildAlertItems({
     lowBalanceStudents,
-    reviewDueCount: pendingReviews,
+    dietaryFormIssueCount: dietaryFormIssues.length,
     reviewHref,
     announcements: parentAnnouncements,
   })
 
   const actionNeeded = countAttentionItems(alertItems)
+  const pendingReviews = dietaryFormIssues.length
   const participation = useMemo(() => {
     const active = parentLinkedStudents.filter((s) => s.balance > 0).length
     return parentLinkedStudents.length
