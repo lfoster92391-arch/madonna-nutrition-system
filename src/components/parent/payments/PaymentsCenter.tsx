@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { PaymentsActivityTab } from "@/components/parent/payments/PaymentsActivityTab"
 import { PaymentsFundingTab } from "@/components/parent/payments/PaymentsFundingTab"
-import { BillingTab } from "@/components/parent/payments/BillingTab"
+import { PaymentsMethodsTab } from "@/components/parent/payments/PaymentsMethodsTab"
 import { PaymentsOverviewTab } from "@/components/parent/payments/PaymentsOverviewTab"
 import { DEMO_SCHOOL } from "@/data/demo"
 import {
@@ -14,15 +14,15 @@ import {
   PARENT_SECTION_GAP,
 } from "@/components/parent/parent-dashboard-styles"
 
-export type PaymentsTab = "overview" | "activity" | "funding" | "billing"
+export type PaymentsTab = "overview" | "activity" | "funding" | "methods"
 
-const VALID_TABS: PaymentsTab[] = ["overview", "activity", "funding", "billing"]
+const VALID_TABS: PaymentsTab[] = ["overview", "activity", "funding", "methods"]
 
 const TAB_LABELS: Record<PaymentsTab, string> = {
   overview: "Overview",
   activity: "Activity",
   funding: "Funding",
-  billing: "Billing",
+  methods: "Methods",
 }
 
 type PaymentsCenterProps = {
@@ -35,8 +35,8 @@ export function PaymentsCenter({ defaultTab = "overview" }: PaymentsCenterProps)
 
   const tabParam = searchParams.get("tab")
   const resolvedParam =
-    tabParam === "methods"
-      ? "billing"
+    tabParam === "billing" || tabParam === "methods"
+      ? "methods"
       : tabParam === "purchases" || tabParam === "deposits"
         ? "activity"
         : tabParam
@@ -57,20 +57,14 @@ export function PaymentsCenter({ defaultTab = "overview" }: PaymentsCenterProps)
   return (
     <div className={`w-full max-w-none ${PARENT_PAGE_PAD} ${PARENT_SECTION_GAP}`}>
       <header>
-        <p
-          className="text-xs font-bold uppercase tracking-[0.2em]"
-          style={{ color: PARENT_NAVY }}
-        >
+        <p className="text-xs font-bold uppercase tracking-[0.2em]" style={{ color: PARENT_NAVY }}>
           {DEMO_SCHOOL.name} · {DEMO_SCHOOL.location}
         </p>
-        <h1
-          className="mt-2 text-2xl font-bold md:text-3xl"
-          style={{ color: PARENT_NAVY }}
-        >
+        <h1 className="mt-2 text-2xl font-bold md:text-3xl" style={{ color: PARENT_NAVY }}>
           Payments Center
         </h1>
         <p className="mt-2 max-w-3xl text-sm text-[#64748B] md:text-base">
-          Manage family balances, view activity, add funds, and billing preferences in one place.
+          Manage family balances, view activity, add funds, and payment methods in one place.
         </p>
       </header>
 
@@ -96,13 +90,12 @@ export function PaymentsCenter({ defaultTab = "overview" }: PaymentsCenterProps)
         <TabsContent value="funding">
           <PaymentsFundingTab />
         </TabsContent>
-        <TabsContent value="billing">
-          <BillingTab onMakeDeposit={() => setTab("funding")} />
+        <TabsContent value="methods">
+          <PaymentsMethodsTab onAddFunds={() => setTab("funding")} />
         </TabsContent>
       </Tabs>
     </div>
   )
 }
 
-/** @deprecated Use PaymentsCenter */
 export const ParentPaymentsCenter = PaymentsCenter
