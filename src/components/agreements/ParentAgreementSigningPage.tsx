@@ -7,6 +7,7 @@ import { AgreementPreview } from "@/components/agreements/AgreementPreview"
 import { useAuth } from "@/components/providers/AuthProvider"
 import { useDemo } from "@/components/providers/DemoProvider"
 import { DEFAULT_AGREEMENT_CONTENT, DEFAULT_PUBLISHED_VERSION } from "@/config/agreement-defaults"
+import { AGREEMENT_STATUS_CHANGED_EVENT } from "@/components/agreements/useAgreementStatus"
 import { signDemoAgreement } from "@/lib/agreements/demo-store"
 import type { AgreementContent } from "@/config/agreement-defaults"
 import type { AgreementVersionDto } from "@/lib/agreements/types"
@@ -77,6 +78,7 @@ export function ParentAgreementSigningPage() {
         setReceipt(
           `Signed ${result.versionLabel} for ${result.studentNames.join(", ")} on ${new Date(result.signedAt ?? "").toLocaleString()}`
         )
+        window.dispatchEvent(new Event(AGREEMENT_STATUS_CHANGED_EVENT))
         setSigned(true)
         return
       }
@@ -97,6 +99,7 @@ export function ParentAgreementSigningPage() {
         throw new Error(data.error ?? "Unable to sign agreement")
       }
       setReceipt(data.receipt?.message ?? "Agreement signed successfully.")
+      window.dispatchEvent(new Event(AGREEMENT_STATUS_CHANGED_EVENT))
       setSigned(true)
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to sign agreement")

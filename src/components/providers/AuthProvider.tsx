@@ -85,10 +85,30 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
     if (dataLoading) return
     const session = readSession()
     if (session) {
-      const live = users.find((u) => u.id === session.id)
+      let live = users.find((u) => u.id === session.id)
+      if (!live) {
+        const username = session.username.toLowerCase()
+        const email = session.email.toLowerCase()
+        live = users.find(
+          (u) => u.username.toLowerCase() === username || u.email.toLowerCase() === email
+        )
+      }
+
       if (live?.status === "disabled") {
         writeSession(null)
         setUser(null)
+      } else if (live) {
+        const reconciled: AuthUser = {
+          id: live.id,
+          username: live.username,
+          role: session.role,
+          displayName: formatUserName(live),
+          email: live.email,
+        }
+        setUser(reconciled)
+        if (reconciled.id !== session.id) {
+          writeSession(reconciled)
+        }
       } else {
         setUser(session)
       }

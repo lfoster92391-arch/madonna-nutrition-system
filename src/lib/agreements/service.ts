@@ -419,12 +419,12 @@ export async function getParentAgreementStatus(
 }> {
   const currentVersion = await getCurrentPublishedAgreement()
   if (!currentVersion) {
-    return { requiresSignature: false, currentVersion: null, students: [] }
+    return { requiresSignature: true, currentVersion: null, students: [] }
   }
 
   const { parentId, studentIds } = await resolveParentLinkedStudentIds(parentUserId)
   if (studentIds.length === 0) {
-    return { requiresSignature: false, currentVersion, students: [] }
+    return { requiresSignature: true, currentVersion, students: [] }
   }
 
   const signature = await prisma.agreementSignature.findFirst({
