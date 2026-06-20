@@ -96,6 +96,11 @@ interface ImportResult {
     created: boolean
     linked: boolean
   }>
+  welcomeEmails: {
+    attempted: number
+    sent: number
+    failed: Array<{ email: string; error: string }>
+  }
 }
 
 function autoDetectColumn(cols: string[], field: FieldKey): string | undefined {
@@ -453,6 +458,36 @@ export function FamilyImportWizard() {
                     </li>
                   ))}
                 </ul>
+              </div>
+            )}
+
+            {importResult.welcomeEmails.attempted > 0 && (
+              <div
+                className={`rounded-2xl border p-4 text-sm ${
+                  importResult.welcomeEmails.failed.length > 0
+                    ? "border-danger/40 bg-danger/5"
+                    : "border-success/40 bg-success/5"
+                }`}
+              >
+                <p
+                  className={`font-semibold ${
+                    importResult.welcomeEmails.failed.length > 0 ? "text-danger" : "text-success"
+                  }`}
+                >
+                  Welcome emails: {importResult.welcomeEmails.sent} sent
+                  {importResult.welcomeEmails.failed.length > 0
+                    ? ` · ${importResult.welcomeEmails.failed.length} failed`
+                    : ""}
+                </p>
+                {importResult.welcomeEmails.failed.length > 0 && (
+                  <ul className="mt-2 max-h-32 overflow-y-auto text-danger">
+                    {importResult.welcomeEmails.failed.map((entry) => (
+                      <li key={entry.email}>
+                        {entry.email}: {entry.error}
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
             )}
 

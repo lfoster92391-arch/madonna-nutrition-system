@@ -3,7 +3,7 @@ import { z } from "zod"
 import { badRequest, withDatabase } from "@/lib/api/response"
 import { getClientIp } from "@/lib/agreements/ip"
 import { signAgreement } from "@/lib/agreements/service"
-import { sendEmail } from "@/lib/email"
+import { sendAgreementSignedEmail } from "@/lib/email"
 import { prisma } from "@/lib/prisma"
 
 const schema = z.object({
@@ -32,14 +32,21 @@ export async function POST(request: Request) {
       })
 
       if (parentUser?.email) {
-        await sendEmail({
+        const emailDelivery = await sendAgreementSignedEmail({
           to: parentUser.email,
-          subject: "Cafeteria Agreement Signed",
-          body: `Thank you, ${signature.parentName}. Your cafeteria agreement (${signature.versionLabel}) was signed for ${signature.studentNames.join(", ")}.`,
-          type: "AGREEMENT_SIGNED",
+          parentName: signature.parentName,
+          versionLabel: signature.versionLabel,
+          studentNames: signature.studentNames,
           userId: parsed.data.parentUserId,
-          metadata: { signatureId: signature.id },
+          signatureId: signature.id,
         })
+
+        if (!emailDelivery.sent) {
+          console.warn("[agreements/sign] confirmation email not sent:", {
+            to: parentUser.email,
+            error: emailDelivery.error,
+          })
+        }
       }
 
       return NextResponse.json(

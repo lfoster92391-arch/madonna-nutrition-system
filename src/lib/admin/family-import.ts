@@ -2,7 +2,7 @@ import bcrypt from "bcryptjs"
 import { prisma } from "@/lib/prisma"
 import { createAuditLog } from "@/lib/db/audit"
 import { findStudentByExternalId } from "@/lib/db/students"
-import { sendEmail } from "@/lib/email"
+import { sendWelcomeEmail as deliverWelcomeEmail } from "@/lib/email"
 import { generateTempPassword } from "@/lib/users"
 import type { familyImportRowSchema } from "@/lib/api/validation"
 import type { z } from "zod"
@@ -23,12 +23,22 @@ export interface FamilyImportCredential {
   linked: boolean
 }
 
+export interface WelcomeEmailFailure {
+  email: string
+  error: string
+}
+
 export interface FamilyImportResult {
   created: number
   linked: number
   skipped: number
   errors: FamilyImportError[]
   credentials: FamilyImportCredential[]
+  welcomeEmails: {
+    attempted: number
+    sent: number
+    failed: WelcomeEmailFailure[]
+  }
 }
 
 function parseSendWelcomeEmail(value: FamilyImportRow["sendWelcomeEmail"]): boolean {
@@ -157,19 +167,15 @@ async function sendWelcomeEmail(input: {
   username: string
   tempPassword?: string
   userId: string
-}) {
-  const loginHint = input.tempPassword
-    ? `Username: ${input.username}\nTemporary password: ${input.tempPassword}\nYou will be asked to change your password on first login.`
-    : `Username: ${input.username}\nUse the password provided by your school administrator.`
-
-  await sendEmail({
+}): Promise<{ sent: boolean; error?: string }> {
+  const result = await deliverWelcomeEmail({
     to: input.email,
-    subject: "Welcome to Fuel The Dons Parent Portal",
-    body: `Hello ${input.firstName},\n\nYour parent portal account has been created.\n\n${loginHint}\n\nSign in at your school's parent portal URL.`,
-    type: "EMAIL_OUTBOX",
+    firstName: input.firstName,
+    username: input.username,
+    tempPassword: input.tempPassword,
     userId: input.userId,
-    metadata: { kind: "welcome", username: input.username },
   })
+  return { sent: result.sent, error: result.error }
 }
 
 export async function importFamilyRows(input: {
@@ -183,6 +189,7 @@ export async function importFamilyRows(input: {
     skipped: 0,
     errors: [],
     credentials: [],
+    welcomeEmails: { attempted: 0, sent: 0, failed: [] },
   }
 
   const credentialMap = new Map<string, FamilyImportCredential>()
@@ -243,12 +250,21 @@ export async function importFamilyRows(input: {
       }
 
       if (parseSendWelcomeEmail(row.sendWelcomeEmail)) {
-        await sendWelcomeEmail({
+        result.welcomeEmails.attempted += 1
+        const emailResult = await sendWelcomeEmail({
           email,
           firstName: row.parentFirstName.trim(),
           username: existingUser.username,
           userId: existingUser.id,
         })
+        if (emailResult.sent) {
+          result.welcomeEmails.sent += 1
+        } else {
+          result.welcomeEmails.failed.push({
+            email,
+            error: emailResult.error ?? "Email not sent",
+          })
+        }
       }
 
       continue
@@ -333,13 +349,22 @@ export async function importFamilyRows(input: {
     }
 
     if (parseSendWelcomeEmail(row.sendWelcomeEmail)) {
-      await sendWelcomeEmail({
+      result.welcomeEmails.attempted += 1
+      const emailResult = await sendWelcomeEmail({
         email,
         firstName: row.parentFirstName.trim(),
         username,
         tempPassword,
         userId: user.id,
       })
+      if (emailResult.sent) {
+        result.welcomeEmails.sent += 1
+      } else {
+        result.welcomeEmails.failed.push({
+          email,
+          error: emailResult.error ?? "Email not sent",
+        })
+      }
     }
   }
 

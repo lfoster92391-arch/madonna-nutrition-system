@@ -3,7 +3,9 @@ import { z } from "zod"
 import { requireAdmin } from "@/lib/api/admin-auth"
 import { badRequest, serverError, withDatabase } from "@/lib/api/response"
 import { resolveSchoolId } from "@/lib/db/school"
+import { sendAdminBroadcastEmail } from "@/lib/email"
 import { prisma } from "@/lib/prisma"
+import type { UserRole } from "@prisma/client"
 
 const createSchema = z.object({
   adminUserId: z.string().min(1),
@@ -82,7 +84,51 @@ export async function POST(request: Request) {
         },
       })
 
-      return NextResponse.json({ announcement: mapAnnouncement(announcement) }, { status: 201 })
+      const roleFilter: UserRole[] =
+        parsed.data.audience === "TEACHERS"
+          ? ["TEACHER"]
+          : parsed.data.audience === "PARENTS"
+            ? ["PARENT"]
+            : ["PARENT", "TEACHER"]
+
+      const recipients = await prisma.user.findMany({
+        where: {
+          schoolId: auth.schoolId,
+          status: "ACTIVE",
+          role: { in: roleFilter },
+        },
+        select: { id: true, email: true },
+      })
+
+      let emailsSent = 0
+      let emailsFailed = 0
+      const emailErrors: string[] = []
+      for (const recipient of recipients) {
+        const delivery = await sendAdminBroadcastEmail({
+          to: recipient.email,
+          title: parsed.data.title,
+          body: parsed.data.body,
+          userId: recipient.id,
+        })
+        if (delivery.sent) {
+          emailsSent += 1
+        } else {
+          emailsFailed += 1
+          if (delivery.error && emailErrors.length < 3) {
+            emailErrors.push(`${recipient.email}: ${delivery.error}`)
+          }
+        }
+      }
+
+      return NextResponse.json(
+        {
+          announcement: mapAnnouncement(announcement),
+          emailsSent,
+          emailsFailed,
+          emailErrors: emailErrors.length > 0 ? emailErrors : undefined,
+        },
+        { status: 201 }
+      )
     } catch (error) {
       console.error("POST /api/announcements", error)
       return serverError()

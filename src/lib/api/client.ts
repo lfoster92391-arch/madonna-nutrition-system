@@ -259,28 +259,75 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ studentId, parentUserId, amountDollars, savePaymentMethod }),
     }),
-  adminImportFamilies: (
-    input: {
-      adminUserId: string
-      performedBy: string
-      rows: Record<string, unknown>[]
-    }
-  ) =>
+    adminImportFamilies: (
+      input: {
+        adminUserId: string
+        performedBy: string
+        rows: Record<string, unknown>[]
+      }
+    ) =>
+      fetchJson<{
+        created: number
+        linked: number
+        skipped: number
+        errors: Array<{ row: number; message: string }>
+        credentials: Array<{
+          email: string
+          username: string
+          tempPassword?: string
+          studentMdIds: string[]
+          created: boolean
+          linked: boolean
+        }>
+        welcomeEmails: {
+          attempted: number
+          sent: number
+          failed: Array<{ email: string; error: string }>
+        }
+      }>("/api/admin/users/import", {
+        method: "POST",
+        body: JSON.stringify(input),
+      }),
+  adminImportBadges: (input: { adminUserId: string; rows: Record<string, unknown>[] }) =>
     fetchJson<{
+      matched: number
+      updated: number
       created: number
-      linked: number
       skipped: number
       errors: Array<{ row: number; message: string }>
-      credentials: Array<{
-        email: string
-        username: string
-        tempPassword?: string
-        studentMdIds: string[]
-        created: boolean
-        linked: boolean
-      }>
-    }>("/api/admin/users/import", {
+    }>("/api/imports/badges", {
       method: "POST",
       body: JSON.stringify(input),
+    }),
+  adminImportStudents: (input: {
+    adminUserId: string
+    performedBy: string
+    rows: Record<string, unknown>[]
+    updateExisting?: boolean
+  }) =>
+    fetchJson<{
+      matched: number
+      created: number
+      updated: number
+      skipped: number
+      errors: Array<{ row: number; message: string }>
+    }>("/api/imports/students", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  adminImportVendors: (input: { adminUserId: string; rows: Record<string, unknown>[] }) =>
+    fetchJson<{
+      created: number
+      updated: number
+      skipped: number
+      errors: Array<{ row: number; message: string }>
+    }>("/api/imports/vendors", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  uploadStudentPhoto: (mdId: string, photo: string) =>
+    fetchJson<import("@/lib/types").Student>(`/api/students/${encodeURIComponent(mdId)}/photo`, {
+      method: "POST",
+      body: JSON.stringify({ photo }),
     }),
 }
