@@ -3,9 +3,13 @@ import { resolveSchoolId } from "@/lib/db/school"
 import {
   adminBroadcastEmailHtml,
   agreementSignedEmailHtml,
+  agreementSignedEmailText,
   depositConfirmationEmailHtml,
+  depositConfirmationEmailText,
   lowBalanceEmailHtml,
+  PARENT_PORTAL_URL,
   welcomeEmailHtml,
+  welcomeEmailText,
 } from "@/lib/email/templates"
 import type { NotificationType, Prisma } from "@prisma/client"
 
@@ -65,8 +69,8 @@ function parseResendError(status: number, detail: string): string {
 async function sendViaResend(
   to: string,
   subject: string,
-  body: string,
-  html?: string
+  text: string,
+  html: string
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const apiKey = process.env.RESEND_API_KEY?.trim()
   const from = process.env.EMAIL_FROM?.trim() || DEFAULT_EMAIL_FROM
@@ -84,8 +88,8 @@ async function sendViaResend(
       from,
       to,
       subject,
-      text: body,
-      ...(html ? { html } : {}),
+      text,
+      html,
     }),
   })
 
@@ -106,7 +110,12 @@ export async function sendEmail(input: SendEmailInput): Promise<SendEmailResult>
   let error: string | undefined
 
   if (isEmailEnabled() && isResendConfigured()) {
-    const result = await sendViaResend(input.to, input.subject, input.body, input.html)
+    const result = await sendViaResend(
+      input.to,
+      input.subject,
+      input.body,
+      input.html ?? input.body.replace(/\n/g, "<br/>")
+    )
     sent = result.ok
     if (!result.ok) error = result.error
   } else if (!isEmailEnabled()) {
@@ -168,18 +177,17 @@ export async function sendWelcomeEmail(input: {
   userId: string
   portalUrl?: string
 }) {
-  const body = input.tempPassword
-    ? `Hello ${input.firstName},\n\nUsername: ${input.username}\nTemporary password: ${input.tempPassword}`
-    : `Hello ${input.firstName},\n\nUsername: ${input.username}`
+  const portalUrl = input.portalUrl ?? PARENT_PORTAL_URL
+  const templateInput = { ...input, portalUrl }
 
   return sendEmail({
     to: input.to,
     subject: "Welcome to Fuel The Dons Parent Portal",
-    body,
-    html: welcomeEmailHtml(input),
+    body: welcomeEmailText(templateInput),
+    html: welcomeEmailHtml(templateInput),
     type: "EMAIL_OUTBOX",
     userId: input.userId,
-    metadata: { kind: "welcome", username: input.username },
+    metadata: { kind: "welcome", username: input.username, portalUrl },
   })
 }
 
@@ -191,11 +199,10 @@ export async function sendAgreementSignedEmail(input: {
   userId: string
   signatureId: string
 }) {
-  const body = `Thank you, ${input.parentName}. Your cafeteria agreement (${input.versionLabel}) was signed for ${input.studentNames.join(", ")}.`
   return sendEmail({
     to: input.to,
     subject: "Cafeteria Agreement Signed",
-    body,
+    body: agreementSignedEmailText(input),
     html: agreementSignedEmailHtml(input),
     type: "AGREEMENT_SIGNED",
     userId: input.userId,
@@ -212,11 +219,10 @@ export async function sendDepositConfirmationEmail(input: {
   studentId: string
   stripeSessionId?: string
 }) {
-  const body = `${input.amount} was added to ${input.studentName}'s lunch account. New balance: ${input.balanceAfter}.`
   return sendEmail({
     to: input.to,
     subject: "Deposit Received",
-    body,
+    body: depositConfirmationEmailText(input),
     html: depositConfirmationEmailHtml(input),
     type: "DEPOSIT_SUCCESS",
     userId: input.userId,
