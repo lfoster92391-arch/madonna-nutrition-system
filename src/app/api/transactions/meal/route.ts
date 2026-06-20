@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { mapTransaction } from "@/lib/db/mappers"
-import { findStudentByExternalId } from "@/lib/db/students"
+import { findStudentByScanId } from "@/lib/db/students"
 import { mealTransactionSchema } from "@/lib/api/validation"
 import { badRequest, notFound, serverError, withDatabase } from "@/lib/api/response"
 import { requireCashierOrApiKey } from "@/lib/api/session-auth"
@@ -19,7 +19,7 @@ export async function POST(request: Request) {
       }
 
       const { studentId, meal, amount, processedByUserId } = parsed.data
-      const student = await findStudentByExternalId(studentId)
+      const student = await findStudentByScanId(studentId)
       if (!student || student.disabled) {
         return notFound("Student not found or disabled")
       }

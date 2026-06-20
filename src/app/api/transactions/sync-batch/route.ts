@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { createAuditLog } from "@/lib/db/audit"
-import { findStudentByExternalId } from "@/lib/db/students"
+import { findStudentByScanId } from "@/lib/db/students"
 import { syncBatchSchema } from "@/lib/api/validation"
 import { badRequest, serverError, withDatabase } from "@/lib/api/response"
 import { requireCashierOrApiKey } from "@/lib/api/session-auth"
@@ -37,7 +37,7 @@ export async function POST(request: Request) {
           continue
         }
 
-        const student = await findStudentByExternalId(item.studentId)
+        const student = await findStudentByScanId(item.studentId)
         if (!student || student.disabled) {
           failedIds.push(item.clientTxId)
           continue
@@ -96,7 +96,7 @@ export async function POST(request: Request) {
 
       const balances: Record<string, number> = {}
       for (const externalId of studentIds) {
-        const student = await findStudentByExternalId(externalId)
+        const student = await findStudentByScanId(externalId)
         if (student) {
           balances[externalId] = Number(student.balance)
         }

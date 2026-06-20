@@ -6,6 +6,7 @@ const DB_VERSION = 1
 export interface CachedStudent {
   id: string
   externalId: string
+  barcode?: string
   firstName: string
   lastName: string
   photo: string
@@ -13,6 +14,7 @@ export interface CachedStudent {
   balance: number
   allergies: Allergy[]
   disabled?: boolean
+  badgeStatus?: Student["badgeStatus"]
 }
 
 export interface QueuedTransaction {
@@ -76,6 +78,7 @@ export function studentToCached(student: Student): CachedStudent {
   return {
     id: student.id,
     externalId: student.id,
+    barcode: student.barcode,
     firstName: student.firstName,
     lastName: student.lastName,
     photo: student.photo,
@@ -83,6 +86,7 @@ export function studentToCached(student: Student): CachedStudent {
     balance: student.balance,
     allergies: student.allergies,
     disabled: student.disabled,
+    badgeStatus: student.badgeStatus,
   }
 }
 
@@ -98,6 +102,8 @@ export function cachedToStudent(cached: CachedStudent): Student {
     dietaryRestrictions: [],
     parentContacts: [],
     disabled: cached.disabled,
+    barcode: cached.barcode,
+    badgeStatus: cached.badgeStatus,
   }
 }
 
@@ -115,11 +121,28 @@ export async function cacheStudents(students: Student[]): Promise<void> {
   await setMeta("lastCacheAt", new Date().toISOString())
 }
 
-export async function findCachedStudent(externalId: string): Promise<CachedStudent | null> {
-  const result = await runTransaction<CachedStudent>("students", "readonly", (store) =>
-    store.get(externalId)
+export async function findCachedStudent(scanId: string): Promise<CachedStudent | null> {
+  const normalized = scanId.trim()
+  const direct = await runTransaction<CachedStudent>("students", "readonly", (store) =>
+    store.get(normalized)
   )
-  return (result as CachedStudent | undefined) ?? null
+  if (direct) return direct as CachedStudent
+
+  const db = await openDb()
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction("students", "readonly")
+    const store = tx.objectStore("students")
+    const request = store.getAll()
+    request.onsuccess = () => {
+      const items = request.result as CachedStudent[]
+      resolve(
+        items.find(
+          (s) => s.externalId === normalized || s.barcode === normalized || s.id === normalized
+        ) ?? null
+      )
+    }
+    request.onerror = () => reject(request.error ?? new Error("Failed to scan cache"))
+  })
 }
 
 export async function updateCachedStudentBalance(

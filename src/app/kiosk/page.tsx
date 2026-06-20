@@ -335,6 +335,20 @@ export default function ScanStationPage() {
         window.setTimeout(focusScan, 50)
         return
       }
+      if (found.badgeStatus === "inactive") {
+        setScanStatus("error")
+        setFlashMessage("Badge deactivated.")
+        setScanValue("")
+        window.setTimeout(focusScan, 50)
+        return
+      }
+      if (found.badgeStatus === "pending") {
+        setScanStatus("error")
+        setFlashMessage("Badge not yet activated.")
+        setScanValue("")
+        window.setTimeout(focusScan, 50)
+        return
+      }
       setStudent(found)
       setLocalBalance(found.balance)
       setScanStatus("found")
@@ -363,7 +377,9 @@ export default function ScanStationPage() {
         return
       }
 
-      const found = students.find((s) => s.id === trimmed)
+      const found = students.find(
+        (s) => s.id === trimmed || s.barcode === trimmed || (s.barcode ?? s.id) === trimmed
+      )
       if (found) {
         loadStudent(found)
         return
@@ -649,7 +665,10 @@ export default function ScanStationPage() {
                   </p>
                   <p className="mt-0.5 flex items-center gap-1.5 text-xs text-[#64748B] sm:mt-1 sm:gap-2 sm:text-sm md:text-base lg:text-lg">
                     <IdCard className="h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4 md:h-5 md:w-5" aria-hidden />
-                    ID: {student.id}
+                    MD ID: {student.id}
+                    {student.barcode && student.barcode !== student.id ? (
+                      <span className="text-[#64748B]"> · Barcode: {student.barcode}</span>
+                    ) : null}
                   </p>
                 </div>
               </div>
