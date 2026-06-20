@@ -32,6 +32,9 @@ export async function POST(request: Request) {
 
       let created = 0
       let linked = 0
+      let matched = 0
+      let updated = 0
+      let skipped = 0
       const errors: { row: number; message: string }[] = []
 
       for (let i = 0; i < parsed.data.rows.length; i++) {
@@ -39,10 +42,22 @@ export async function POST(request: Request) {
         const student = await findStudentByExternalId(row.mdId)
         if (!student || student.schoolId !== auth.schoolId) {
           errors.push({ row: i + 1, message: `Student MD ID ${row.mdId} not found` })
+          skipped++
           continue
         }
 
         const email = row.parentEmail.toLowerCase()
+        const existingLink = await prisma.parentStudent.findFirst({
+          where: {
+            studentId: student.id,
+            parent: { email },
+          },
+        })
+        if (existingLink) {
+          matched++
+          updated++
+        }
+
         const parent = await prisma.parent.upsert({
           where: { email },
           update: {
@@ -78,7 +93,7 @@ export async function POST(request: Request) {
         linked++
       }
 
-      return NextResponse.json({ created, linked, errors })
+      return NextResponse.json({ created, linked, matched, updated, skipped, errors })
     } catch (error) {
       console.error("POST /api/imports/parents", error)
       return serverError()

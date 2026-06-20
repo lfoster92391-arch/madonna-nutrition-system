@@ -2,6 +2,7 @@
 
 import { useCallback, useMemo, useState } from "react"
 import Papa from "papaparse"
+import { useQueryClient } from "@tanstack/react-query"
 import { z } from "zod"
 import {
   AlertCircle,
@@ -12,6 +13,8 @@ import {
   Upload,
 } from "lucide-react"
 import { useDemo } from "@/components/providers/DemoProvider"
+import { useAuth } from "@/components/providers/AuthProvider"
+import { api } from "@/lib/api/client"
 import { Badge } from "@/components/ui/badge"
 import { downloadImportTemplate } from "@/lib/import-export"
 import { Button } from "@/components/ui/button"
@@ -84,7 +87,16 @@ function parseAllergies(raw?: string) {
 }
 
 export function CsvImportWizard() {
-  const { students, bulkImportStudents, addImportLog, rollbackImport, importLogs } = useDemo()
+  const queryClient = useQueryClient()
+  const { user } = useAuth()
+  const { students, addImportLog, rollbackImport, importLogs, databaseEnabled } = useDemo()
+  const [importReport, setImportReport] = useState<{
+    matched: number
+    created: number
+    updated: number
+    skipped: number
+    errors: Array<{ row: number; message: string }>
+  } | null>(null)
   const [step, setStep] = useState<ImportStep>("upload")
   const [filename, setFilename] = useState("")
   const [rawRows, setRawRows] = useState<Record<string, string>[]>([])
@@ -188,14 +200,37 @@ export function CsvImportWizard() {
   }
 
   async function executeImport() {
-    await bulkImportStudents(validRows)
+    if (!user?.id) return
+    const rows = validRows.map((student) => ({
+      mdId: student.id,
+      firstName: student.firstName,
+      lastName: student.lastName,
+      grade: student.grade,
+      homeroom: student.homeroom ?? "",
+      balance: student.balance,
+      photoUrl: student.photo,
+      parentEmail: student.parentContacts[0]?.email ?? "",
+      parentPhone: student.parentContacts[0]?.phone ?? "",
+      allergies: student.allergies.map((a) => a.name).join(", "),
+      dietaryRestrictions: student.dietaryRestrictions.join(", "),
+    }))
+
+    const report = await api.adminImportStudents({
+      adminUserId: user.id,
+      performedBy: user.username ?? user.id,
+      rows,
+      updateExisting: true,
+    })
+    setImportReport(report)
+    void queryClient.invalidateQueries({ queryKey: ["students"] })
+
     const log: ImportLog = {
       id: `imp-${Date.now()}`,
       filename,
       importedAt: new Date().toISOString(),
       totalRows: rawRows.length,
-      successRows: validRows.length,
-      errorRows: errorRows.length,
+      successRows: report.created + report.updated,
+      errorRows: report.errors.length,
       status: "completed",
       importedStudentIds: validRows.map((r) => r.id),
     }
@@ -356,8 +391,19 @@ export function CsvImportWizard() {
           <CheckCircle2 className="mx-auto h-12 w-12 text-success" />
           <p className="text-lg font-semibold text-primary">Import Complete</p>
           <p className="text-silver-foreground">
-            {validRows.length} students imported from {filename}
+            {importReport
+              ? `Matched ${importReport.matched}, created ${importReport.created}, updated ${importReport.updated}, skipped ${importReport.skipped}.`
+              : `${validRows.length} students imported from ${filename}`}
           </p>
+          {importReport && importReport.errors.length > 0 && (
+            <ul className="mx-auto max-w-md text-left text-sm text-warning">
+              {importReport.errors.slice(0, 8).map((err) => (
+                <li key={`${err.row}-${err.message}`}>
+                  Row {err.row}: {err.message}
+                </li>
+              ))}
+            </ul>
+          )}
           <div className="flex justify-center gap-3">
             <Button variant="outline" onClick={handleRollback}>
               <RotateCcw className="h-4 w-4" />
