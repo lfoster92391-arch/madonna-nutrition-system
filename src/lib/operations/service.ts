@@ -154,6 +154,7 @@ export async function getReceiptsData() {
 }
 
 export async function createReceivingRecord(input: {
+  vendorId?: string
   vendorName: string
   invoiceNumber?: string
   lines: ReceivingLine[]
@@ -187,6 +188,7 @@ export async function createReceivingRecord(input: {
   const schoolId = await resolveSchoolId()
   const row = await prisma.receivingRecord.create({
     data: {
+      vendorId: input.vendorId,
       vendorName: input.vendorName,
       invoiceNumber: input.invoiceNumber,
       status,
