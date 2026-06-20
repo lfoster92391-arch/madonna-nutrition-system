@@ -8,7 +8,7 @@ import { assertBadgeIdAvailable, userRoleSupportsBadge } from "@/lib/db/users"
 import { requireAdmin } from "@/lib/api/admin-auth"
 import { adminCreateUserSchema } from "@/lib/api/validation"
 import { badRequest, serverError, withDatabase } from "@/lib/api/response"
-import { generateTempPassword } from "@/lib/users"
+import { generateTempPassword, normalizeUsername } from "@/lib/users"
 import type { UserRole } from "@/lib/types"
 
 function normalizeBadgeId(role: UserRole, badgeId?: string | null) {
@@ -68,7 +68,7 @@ export async function POST(request: Request) {
 
       const user = await prisma.user.create({
         data: {
-          username: data.username.toLowerCase(),
+          username: normalizeUsername(data.username),
           email: data.email.toLowerCase(),
           firstName: data.firstName,
           lastName: data.lastName,

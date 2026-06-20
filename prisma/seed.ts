@@ -18,7 +18,11 @@ import { DEFAULT_AGREEMENT_CONTENT } from "../src/config/agreement-defaults"
 const prisma = new PrismaClient()
 
 /** Default password for all seeded portal accounts (change after first login). */
-const DEFAULT_PASSWORD = "FuelTheDons2026!"
+const DEFAULT_PASSWORD = process.env.ADMIN_SEED_PASSWORD ?? "FuelTheDons2026!"
+
+function normalizeUsername(username: string): string {
+  return username.trim().toLowerCase().replace(/\s+/g, "")
+}
 
 async function main() {
   const passwordHash = await bcrypt.hash(DEFAULT_PASSWORD, 10)
@@ -47,7 +51,7 @@ async function main() {
     await prisma.user.upsert({
       where: { email: user.email },
       update: {
-        username: user.username.toLowerCase(),
+        username: normalizeUsername(user.username),
         firstName: user.firstName,
         lastName: user.lastName,
         role:
@@ -70,7 +74,7 @@ async function main() {
         schoolId: school.id,
       },
       create: {
-        username: user.username.toLowerCase(),
+        username: normalizeUsername(user.username),
         email: user.email.toLowerCase(),
         firstName: user.firstName,
         lastName: user.lastName,
@@ -95,6 +99,36 @@ async function main() {
       },
     })
   }
+
+  const lisaAdminPasswordHash = await bcrypt.hash(DEFAULT_PASSWORD, 10)
+  await prisma.user.upsert({
+    where: { email: "lisa.morris@madonnahs.org" },
+    update: {
+      username: "itlisa",
+      firstName: "Lisa",
+      lastName: "Morris",
+      role: UserRole.ADMIN,
+      status: UserStatus.ACTIVE,
+      badgeId: "90010",
+      phone: "555-1010",
+      passwordHash: lisaAdminPasswordHash,
+      mustChangePassword: false,
+      schoolId: school.id,
+    },
+    create: {
+      username: "itlisa",
+      email: "lisa.morris@madonnahs.org",
+      firstName: "Lisa",
+      lastName: "Morris",
+      role: UserRole.ADMIN,
+      status: UserStatus.ACTIVE,
+      badgeId: "90010",
+      phone: "555-1010",
+      passwordHash: lisaAdminPasswordHash,
+      mustChangePassword: false,
+      schoolId: school.id,
+    },
+  })
 
   const parent = await prisma.parent.upsert({
     where: { email: "sarah.anderson@email.com" },
@@ -707,7 +741,7 @@ async function main() {
   })
 
   console.log("Seed completed for", school.name)
-  console.log("Default portal password for all seeded users:", DEFAULT_PASSWORD)
+  console.log("Lisa Morris admin login username: itlisa")
 }
 
 main()

@@ -50,11 +50,16 @@ export function generateTempPassword(length = 12): string {
   return result
 }
 
+/** Lowercase login id; strips whitespace so "IT Lisa" matches stored `itlisa`. */
+export function normalizeUsername(username: string): string {
+  return username.trim().toLowerCase().replace(/\s+/g, "")
+}
+
 export function findUserByLogin(
   users: User[],
   username: string
 ): User | undefined {
-  const normalized = username.trim().toLowerCase()
+  const normalized = normalizeUsername(username)
   const aliases: Record<string, string> = {
     parent: "sarah.anderson",
     admin: "d.garcia",
@@ -64,7 +69,7 @@ export function findUserByLogin(
   const lookup = aliases[normalized] ?? normalized
   return users.find(
     (u) =>
-      u.username.toLowerCase() === lookup ||
+      normalizeUsername(u.username) === lookup ||
       u.email.toLowerCase() === lookup
   )
 }

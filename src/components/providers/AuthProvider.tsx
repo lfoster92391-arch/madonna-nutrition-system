@@ -13,7 +13,7 @@ import { useDemo } from "@/components/providers/DemoProvider"
 import { demoUsers } from "@/data/demo"
 import { isAllowedTeacherEmail, TEACHER_ACCESS_DENIED_MESSAGE } from "@/config/teacher-auth"
 import { isDemoPreviewActive, writeDemoPreview } from "@/lib/demo/session"
-import { formatUserName, findUserByLogin } from "@/lib/users"
+import { formatUserName, findUserByLogin, normalizeUsername } from "@/lib/users"
 import type { UserRole } from "@/lib/types"
 
 export type PortalRole = "cashier" | "parent" | "admin" | "teacher" | null
@@ -94,32 +94,50 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
     if (session) {
       let live = authUsers.find((u) => u.id === session.id)
       if (!live) {
-        const username = session.username.toLowerCase()
+        const username = normalizeUsername(session.username)
         const email = session.email.toLowerCase()
         live = authUsers.find(
-          (u) => u.username.toLowerCase() === username || u.email.toLowerCase() === email
+          (u) => normalizeUsername(u.username) === username || u.email.toLowerCase() === email
         )
       }
 
       if (live?.status === "disabled") {
         writeSession(null)
         setUser(null)
+        setMustChangePassword(false)
       } else if (live) {
-        const reconciled: AuthUser = {
-          id: live.id,
-          username: live.username,
-          role: session.role,
-          displayName: formatUserName(live),
-          email: live.email,
-          mustChangePassword: live.mustChangePassword ?? session.mustChangePassword,
-        }
-        setUser(reconciled)
-        setMustChangePassword(Boolean(reconciled.mustChangePassword))
-        if (reconciled.id !== session.id) {
-          writeSession(reconciled)
+        const portalRole = live.role
+        if (
+          portalRole !== "admin" &&
+          portalRole !== "cashier" &&
+          portalRole !== "parent" &&
+          portalRole !== "teacher"
+        ) {
+          writeSession(null)
+          setUser(null)
+          setMustChangePassword(false)
+        } else {
+          const reconciled: AuthUser = {
+            id: live.id,
+            username: live.username,
+            role: portalRole,
+            displayName: formatUserName(live),
+            email: live.email,
+            mustChangePassword: live.mustChangePassword ?? false,
+          }
+          setUser(reconciled)
+          setMustChangePassword(Boolean(reconciled.mustChangePassword))
+          if (
+            reconciled.id !== session.id ||
+            reconciled.role !== session.role ||
+            reconciled.mustChangePassword !== session.mustChangePassword
+          ) {
+            writeSession(reconciled)
+          }
         }
       } else {
         setUser(session)
+        setMustChangePassword(Boolean(session.mustChangePassword))
       }
     }
     setIsLoading(false)

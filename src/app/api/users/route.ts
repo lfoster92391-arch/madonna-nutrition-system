@@ -7,6 +7,7 @@ import { assertBadgeIdAvailable, userRoleSupportsBadge } from "@/lib/db/users"
 import { createUserSchema } from "@/lib/api/validation"
 import { badRequest, serverError, withDatabase } from "@/lib/api/response"
 import type { UserRole } from "@/lib/types"
+import { normalizeUsername } from "@/lib/users"
 
 function normalizeBadgeId(role: UserRole, badgeId?: string | null) {
   if (!userRoleSupportsBadge(role)) return null
@@ -43,7 +44,7 @@ export async function POST(request: Request) {
 
       const user = await prisma.user.create({
         data: {
-          username: data.username.toLowerCase(),
+          username: normalizeUsername(data.username),
           email: data.email.toLowerCase(),
           firstName: data.firstName,
           lastName: data.lastName,

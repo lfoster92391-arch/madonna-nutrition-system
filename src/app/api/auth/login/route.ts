@@ -5,7 +5,7 @@ export const runtime = "nodejs"
 import { prisma } from "@/lib/prisma"
 import { mapUser } from "@/lib/db/mappers"
 import { resolveSchoolId } from "@/lib/db/school"
-import { findUserByLogin } from "@/lib/users"
+import { findUserByLogin, normalizeUsername } from "@/lib/users"
 import { loginSchema } from "@/lib/api/validation"
 import { badRequest, withDatabase } from "@/lib/api/response"
 import { isAllowedTeacherEmail, TEACHER_ACCESS_DENIED_MESSAGE } from "@/config/teacher-auth"
@@ -31,9 +31,10 @@ export async function POST(request: Request) {
     }
 
     const { username, password, role } = parsed.data
+    const loginId = normalizeUsername(username)
     const schoolId = await resolveSchoolId()
     const users = (await prisma.user.findMany({ where: { schoolId } })).map(mapUser)
-    const user = findUserByLogin(users, username)
+    const user = findUserByLogin(users, loginId)
 
     if (!user) {
       return NextResponse.json(
