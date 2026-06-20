@@ -1,9 +1,11 @@
 "use client"
 
+import { useCallback, useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { ModuleShell } from "@/components/layout/ModuleShell"
 import { useAgreementStatus } from "@/components/agreements/useAgreementStatus"
 import { useDemo } from "@/components/providers/DemoProvider"
+import { useAuth } from "@/components/providers/AuthProvider"
 import { formatStudentAgreementStatus, isLunchSignupAllowed } from "@/lib/agreements/student-status"
 import { getPendingSubmission, getStudentProfile } from "@/data/demo"
 import { useParentLinkedStudents } from "@/hooks/useParentLinkedStudents"
@@ -14,14 +16,137 @@ import {
 } from "@/lib/types"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
+import { Label, Select } from "@/components/ui/input"
 import { formatCurrency } from "@/lib/utils"
 
+type MealType = "MAIN" | "SIDE" | "ALA_CARTE" | "MILK"
+
+const MEAL_OPTIONS: { value: MealType; label: string; defaultPrice: number }[] = [
+  { value: "MAIN", label: "Main Meal", defaultPrice: 3 },
+  { value: "SIDE", label: "Side", defaultPrice: 2 },
+  { value: "ALA_CARTE", label: "A La Carte", defaultPrice: 4.5 },
+  { value: "MILK", label: "Milk", defaultPrice: 0.75 },
+]
+
+interface ReservationRow {
+  id: string
+  studentId: string
+  studentName: string
+  date: string
+  mealType: MealType
+  price: number
+  status: string
+}
+
 export default function ParentReserveLunchPage() {
+  const { user } = useAuth()
   const { students, requiresSignature, loading } = useAgreementStatus()
-  const { studentProfiles, allergySubmissions } = useDemo()
+  const { studentProfiles, allergySubmissions, calendarEvents, demoPreviewActive, databaseEnabled } =
+    useDemo()
   const { students: linkedStudents } = useParentLinkedStudents()
 
+  const [selectedStudentId, setSelectedStudentId] = useState("")
+  const [selectedDate, setSelectedDate] = useState("")
+  const [mealType, setMealType] = useState<MealType>("MAIN")
+  const [submitting, setSubmitting] = useState(false)
+  const [message, setMessage] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [reservations, setReservations] = useState<ReservationRow[]>([])
+
   const statusByStudent = new Map(students.map((s) => [s.studentId, s]))
+
+  const menuDates = useMemo(() => {
+    const today = new Date().toISOString().slice(0, 10)
+    return calendarEvents
+      .filter((e) => e.category === "menu_day" && e.date >= today)
+      .map((e) => e.date)
+      .filter((date, index, arr) => arr.indexOf(date) === index)
+      .sort()
+  }, [calendarEvents])
+
+  const selectedMenu = useMemo(
+    () => calendarEvents.find((e) => e.category === "menu_day" && e.date === selectedDate),
+    [calendarEvents, selectedDate]
+  )
+
+  const loadReservations = useCallback(async () => {
+    if (!user || demoPreviewActive || !databaseEnabled) return
+    const res = await fetch(`/api/lunch-reservations?parentUserId=${user.id}`, {
+      headers: { "x-session-user-id": user.id },
+    })
+    if (res.ok) {
+      const data = await res.json()
+      setReservations(data.reservations ?? [])
+    }
+  }, [user, demoPreviewActive, databaseEnabled])
+
+  useEffect(() => {
+    void loadReservations()
+  }, [loadReservations])
+
+  useEffect(() => {
+    if (!selectedStudentId && linkedStudents[0]) {
+      setSelectedStudentId(linkedStudents[0].id)
+    }
+    if (!selectedDate && menuDates[0]) {
+      setSelectedDate(menuDates[0])
+    }
+  }, [linkedStudents, menuDates, selectedDate, selectedStudentId])
+
+  async function handleSubmit() {
+    setError(null)
+    setMessage(null)
+    if (!user || !selectedStudentId || !selectedDate) return
+
+    if (demoPreviewActive) {
+      const student = linkedStudents.find((s) => s.id === selectedStudentId)
+      const price = MEAL_OPTIONS.find((m) => m.value === mealType)?.defaultPrice ?? 3
+      setReservations((prev) => [
+        {
+          id: `demo-${Date.now()}`,
+          studentId: selectedStudentId,
+          studentName: student ? `${student.firstName} ${student.lastName}` : selectedStudentId,
+          date: selectedDate,
+          mealType,
+          price,
+          status: "RESERVED",
+        },
+        ...prev,
+      ])
+      setMessage("Demo reservation saved (preview mode only).")
+      return
+    }
+
+    setSubmitting(true)
+    try {
+      const price = MEAL_OPTIONS.find((m) => m.value === mealType)?.defaultPrice ?? 3
+      const res = await fetch("/api/lunch-reservations", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-session-user-id": user.id,
+        },
+        body: JSON.stringify({
+          parentUserId: user.id,
+          studentId: selectedStudentId,
+          date: selectedDate,
+          mealType,
+          price,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setError(data.error ?? "Unable to reserve lunch")
+        return
+      }
+      setMessage(`Reserved ${data.menuTitle ?? "meal"} for ${data.reservation.studentName}.`)
+      await loadReservations()
+    } catch {
+      setError("Unable to reserve lunch. Try again.")
+    } finally {
+      setSubmitting(false)
+    }
+  }
 
   if (loading) {
     return (
@@ -51,6 +176,24 @@ export default function ParentReserveLunchPage() {
     )
   }
 
+  if (linkedStudents.length === 0) {
+    return (
+      <ModuleShell
+        section="Parent Portal"
+        title="Reserve Lunch"
+        description="Pre-order meals for students with a signed cafeteria agreement."
+      >
+        <Card className="rounded-[20px] border-[#AEB6C2]/60 p-8">
+          <p className="font-semibold text-[#041B52]">No students yet</p>
+          <p className="mt-2 text-sm text-[#64748B]">
+            No students are linked to your account. Ask your school administrator to import student
+            records from Admin → Imports.
+          </p>
+        </Card>
+      </ModuleShell>
+    )
+  }
+
   const blockingStudents = linkedStudents.filter((student) => {
     const profile = getStudentProfile(student.id, studentProfiles)
     const pending = getPendingSubmission(student.id, allergySubmissions)
@@ -68,7 +211,7 @@ export default function ParentReserveLunchPage() {
           <p className="font-semibold text-[#041B52]">Dietary &amp; Food Allergy Form Required</p>
           <p className="mt-2 text-sm text-[#64748B]">
             Each student needs a complete, current dietary and food allergy form before lunch
-            reservations can proceed. This is separate from the cafeteria agreement.
+            reservations can proceed.
           </p>
           <ul className="mt-4 space-y-2 text-sm text-[#041B52]">
             {blockingStudents.map((student) => {
@@ -76,7 +219,10 @@ export default function ParentReserveLunchPage() {
               const pending = getPendingSubmission(student.id, allergySubmissions)
               const status = getFoodProfileStatus(profile, pending)
               return (
-                <li key={student.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[#D62828]/20 bg-white px-4 py-3">
+                <li
+                  key={student.id}
+                  className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[#D62828]/20 bg-white px-4 py-3"
+                >
                   <span className="font-medium">
                     {student.firstName} {student.lastName}
                   </span>
@@ -99,45 +245,97 @@ export default function ParentReserveLunchPage() {
     <ModuleShell
       section="Parent Portal"
       title="Reserve Lunch"
-      description="Pre-order meals for students with a signed cafeteria agreement."
+      description="Pre-order meals from the published school calendar."
     >
-      <Card className="rounded-[20px] border-[#AEB6C2]/60 p-8">
-        <div className="grid gap-4 md:grid-cols-2">
-          {linkedStudents.map((student) => {
-            const agreement = statusByStudent.get(student.id)
-            const eligible = agreement ? isLunchSignupAllowed(agreement.status) : false
-            return (
-              <div
-                key={student.id}
-                className="rounded-2xl border border-[#AEB6C2]/60 px-5 py-4"
+      <div className="grid gap-6 lg:grid-cols-2">
+        <Card className="rounded-[20px] border-[#AEB6C2]/60 p-8">
+          <h2 className="text-lg font-semibold text-[#041B52]">New Reservation</h2>
+          <div className="mt-6 space-y-4">
+            <div>
+              <Label>Student</Label>
+              <Select
+                value={selectedStudentId}
+                onChange={(e) => setSelectedStudentId(e.target.value)}
               >
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="font-semibold text-[#041B52]">
+                {linkedStudents.map((student) => {
+                  const agreement = statusByStudent.get(student.id)
+                  const eligible = agreement ? isLunchSignupAllowed(agreement.status) : false
+                  return (
+                    <option key={student.id} value={student.id} disabled={!eligible}>
                       {student.firstName} {student.lastName}
-                    </p>
-                    <p className="text-sm text-[#AEB6C2]">
-                      Balance: {formatCurrency(student.balance)}
-                    </p>
-                  </div>
-                  <span
-                    className={`rounded-full px-3 py-1 text-xs font-bold uppercase ${
-                      eligible
-                        ? "bg-[#00A83E]/15 text-[#00A83E]"
-                        : "bg-[#D62828]/10 text-[#D62828]"
-                    }`}
-                  >
-                    {agreement ? formatStudentAgreementStatus(agreement.status) : "Required"}
-                  </span>
-                </div>
-              </div>
-            )
-          })}
-        </div>
-        <Button asChild className="mt-6">
-          <Link href="/parent/calendar">Open Meal Calendar</Link>
-        </Button>
-      </Card>
+                      {agreement ? ` — ${formatStudentAgreementStatus(agreement.status)}` : ""}
+                    </option>
+                  )
+                })}
+              </Select>
+            </div>
+            <div>
+              <Label>Date (published menu)</Label>
+              <Select value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)}>
+                {menuDates.length === 0 ? (
+                  <option value="">No published menus</option>
+                ) : (
+                  menuDates.map((date) => (
+                    <option key={date} value={date}>
+                      {date}
+                    </option>
+                  ))
+                )}
+              </Select>
+            </div>
+            {selectedMenu ? (
+              <p className="text-sm text-[#64748B]">
+                Menu: <span className="font-medium text-[#041B52]">{selectedMenu.title}</span>
+              </p>
+            ) : null}
+            <div>
+              <Label>Meal</Label>
+              <Select
+                value={mealType}
+                onChange={(e) => setMealType(e.target.value as MealType)}
+              >
+                {MEAL_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label} ({formatCurrency(option.defaultPrice)})
+                  </option>
+                ))}
+              </Select>
+            </div>
+            {error ? <p className="text-sm text-[#D62828]">{error}</p> : null}
+            {message ? <p className="text-sm text-[#00A83E]">{message}</p> : null}
+            <Button
+              type="button"
+              disabled={submitting || !selectedDate || menuDates.length === 0}
+              onClick={() => void handleSubmit()}
+            >
+              {submitting ? "Saving..." : "Reserve Lunch"}
+            </Button>
+          </div>
+        </Card>
+
+        <Card className="rounded-[20px] border-[#AEB6C2]/60 p-8">
+          <h2 className="text-lg font-semibold text-[#041B52]">Your Reservations</h2>
+          {reservations.length === 0 ? (
+            <p className="mt-4 text-sm text-[#64748B]">No lunch reservations yet.</p>
+          ) : (
+            <ul className="mt-4 divide-y divide-[#AEB6C2]/40">
+              {reservations.map((row) => (
+                <li key={row.id} className="py-3 text-sm">
+                  <p className="font-medium text-[#041B52]">
+                    {row.studentName} — {row.date}
+                  </p>
+                  <p className="text-[#64748B]">
+                    {row.mealType.replace(/_/g, " ")} · {formatCurrency(row.price)} · {row.status}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          )}
+          <Button asChild variant="outline" className="mt-6">
+            <Link href="/parent/calendar">View Meal Calendar</Link>
+          </Button>
+        </Card>
+      </div>
     </ModuleShell>
   )
 }

@@ -1,5 +1,5 @@
-import { AdminStudentManager } from "@/components/admin/AdminStudentManager"
+import { AdminImportsHub } from "@/components/admin/AdminImportsHub"
 
 export default function AdminImportsPage() {
-  return <AdminStudentManager />
+  return <AdminImportsHub />
 }

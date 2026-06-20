@@ -2,14 +2,17 @@
 
 import { useMemo } from "react"
 import { usePathname } from "next/navigation"
-import { useDemo } from "@/components/providers/DemoProvider"
+import { ParentLayoutProvider } from "@/components/layout/parent-layout-context"
+import { ParentSidebar } from "@/components/layout/ParentSidebar"
 import {
   buildAlertItems,
   countAttentionItems,
 } from "@/components/parent/AlertCenter"
 import { ParentTopNav } from "@/components/parent/ParentTopNav"
-import { getPendingSubmission, getStudentProfile, parentAnnouncements } from "@/data/demo"
+import { useDemo } from "@/components/providers/DemoProvider"
+import { getPendingSubmission, getStudentProfile } from "@/data/demo"
 import { useParentLinkedStudents } from "@/hooks/useParentLinkedStudents"
+import { useParentAnnouncements } from "@/hooks/useParentAnnouncements"
 import { isDietaryFormBlocking } from "@/lib/types"
 
 const BARE_ROUTES = ["/parent/agreements"]
@@ -33,6 +36,7 @@ function getParentPageTitle(pathname: string): string {
 function useParentNavAlertCount(): number {
   const { studentProfiles, allergySubmissions } = useDemo()
   const { students: linkedStudents } = useParentLinkedStudents()
+  const announcements = useParentAnnouncements()
 
   const lowBalanceStudents = linkedStudents.filter((s) => s.balance < 5)
   const dietaryFormIssues = linkedStudents.filter((student) => {
@@ -52,10 +56,10 @@ function useParentNavAlertCount(): number {
           lowBalanceStudents,
           dietaryFormIssueCount: dietaryFormIssues.length,
           reviewHref,
-          announcements: parentAnnouncements,
+          announcements,
         })
       ),
-    [lowBalanceStudents, dietaryFormIssues.length, reviewHref]
+    [lowBalanceStudents, dietaryFormIssues.length, reviewHref, announcements]
   )
 }
 
@@ -70,9 +74,14 @@ export function ParentPortalShell({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-[#F8F9FB]">
-      <ParentTopNav alertCount={alertCount} title={pageTitle} />
-      <main className="flex-1 overflow-x-hidden bg-white">{children}</main>
-    </div>
+    <ParentLayoutProvider>
+      <div className="flex min-h-screen overflow-x-hidden bg-[#F8F9FB]">
+        <ParentSidebar />
+        <div className="flex min-h-screen min-w-0 flex-1 flex-col bg-white">
+          <ParentTopNav alertCount={alertCount} title={pageTitle} />
+          <main className="min-w-0 flex-1 overflow-x-hidden">{children}</main>
+        </div>
+      </div>
+    </ParentLayoutProvider>
   )
 }

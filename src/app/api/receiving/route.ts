@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { badRequest, serverError } from "@/lib/api/response"
+import { requireMutatingSession } from "@/lib/api/session-auth"
 import { createReceivingSchema, updateReceivingSchema } from "@/lib/api/validation"
 import {
   createReceivingRecord,
@@ -26,6 +27,9 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    const auth = await requireMutatingSession(request, ["ADMIN", "STAFF", "CASHIER"])
+    if ("error" in auth) return auth.error
+
     const body = await request.json()
     const parsed = createReceivingSchema.safeParse(body)
     if (!parsed.success) return badRequest("Invalid receiving record", parsed.error.flatten())
@@ -39,6 +43,9 @@ export async function POST(request: Request) {
 
 export async function PATCH(request: Request) {
   try {
+    const auth = await requireMutatingSession(request, ["ADMIN", "STAFF", "CASHIER"])
+    if ("error" in auth) return auth.error
+
     const body = await request.json()
     const parsed = updateReceivingSchema.safeParse(body)
     if (!parsed.success) return badRequest("Invalid update", parsed.error.flatten())

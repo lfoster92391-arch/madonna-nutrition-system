@@ -13,6 +13,7 @@ import { ensureChartsRegistered, chartColors } from "@/components/intelligence/c
 import { Card, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import type { DashboardData } from "@/lib/intelligence/types"
+import { downloadReportCsv } from "@/lib/export/download-report"
 import { formatCurrency } from "@/lib/utils"
 
 ensureChartsRegistered()
@@ -46,7 +47,7 @@ export default function AdminIntelligencePage() {
       actions={
         <>
           <RefreshIndicator refreshedAt={data?.refreshedAt} onRefresh={refresh} />
-          <Button variant="outline" size="sm" type="button">
+          <Button variant="outline" size="sm" type="button" onClick={() => downloadReportCsv("dashboard")}>
             <Download className="mr-2 h-4 w-4" />
             Export
           </Button>

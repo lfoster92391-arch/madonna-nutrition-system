@@ -2,20 +2,23 @@ import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { createAuditLog } from "@/lib/db/audit"
 import { findStudentByExternalId } from "@/lib/db/students"
-import { resolveSchoolId } from "@/lib/db/school"
 import { syncBatchSchema } from "@/lib/api/validation"
 import { badRequest, serverError, withDatabase } from "@/lib/api/response"
+import { requireCashierOrApiKey } from "@/lib/api/session-auth"
 
 export async function POST(request: Request) {
   const result = await withDatabase(async () => {
     try {
+      const auth = await requireCashierOrApiKey(request)
+      if ("error" in auth) return auth.error
+
       const body = await request.json()
       const parsed = syncBatchSchema.safeParse(body)
       if (!parsed.success) {
         return badRequest("Invalid sync batch payload", parsed.error.flatten())
       }
 
-      const schoolId = await resolveSchoolId()
+      const schoolId = auth.schoolId
       const sorted = [...parsed.data.transactions].sort(
         (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
       )

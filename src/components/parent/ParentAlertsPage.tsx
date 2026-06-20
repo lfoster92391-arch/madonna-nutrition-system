@@ -2,8 +2,9 @@
 
 import { Suspense } from "react"
 import { useDemo } from "@/components/providers/DemoProvider"
-import { getPendingSubmission, getStudentProfile, parentAnnouncements } from "@/data/demo"
+import { getPendingSubmission, getStudentProfile } from "@/data/demo"
 import { useParentLinkedStudents } from "@/hooks/useParentLinkedStudents"
+import { useParentAnnouncements } from "@/hooks/useParentAnnouncements"
 import { AlertCenter, buildAlertItems } from "@/components/parent/AlertCenter"
 import { PARENT_PAGE_PAD, PARENT_SECTION_GAP } from "@/components/parent/parent-dashboard-styles"
 import { isDietaryFormBlocking } from "@/lib/types"
@@ -11,6 +12,7 @@ import { isDietaryFormBlocking } from "@/lib/types"
 function ParentAlertsContent() {
   const { studentProfiles, allergySubmissions } = useDemo()
   const { students: linkedStudents } = useParentLinkedStudents()
+  const announcements = useParentAnnouncements()
   const lowBalanceStudents = linkedStudents.filter((s) => s.balance < 5)
   const dietaryFormIssues = linkedStudents.filter((student) => {
     const profile = getStudentProfile(student.id, studentProfiles)
@@ -26,7 +28,7 @@ function ParentAlertsContent() {
     lowBalanceStudents,
     dietaryFormIssueCount: dietaryFormIssues.length,
     reviewHref,
-    announcements: parentAnnouncements,
+    announcements,
   })
 
   return (

@@ -1,8 +1,22 @@
 async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
+  const sessionHeaders: Record<string, string> = {}
+  if (typeof window !== "undefined") {
+    try {
+      const raw = sessionStorage.getItem("mnms-demo-session")
+      if (raw) {
+        const user = JSON.parse(raw) as { id?: string }
+        if (user.id) sessionHeaders["x-session-user-id"] = user.id
+      }
+    } catch {
+      // ignore invalid session payload
+    }
+  }
+
   const res = await fetch(url, {
     ...init,
     headers: {
       "Content-Type": "application/json",
+      ...sessionHeaders,
       ...init?.headers,
     },
   })
@@ -244,5 +258,29 @@ export const api = {
     fetchJson<{ url: string; sessionId: string }>("/api/stripe/create-checkout-session", {
       method: "POST",
       body: JSON.stringify({ studentId, parentUserId, amountDollars, savePaymentMethod }),
+    }),
+  adminImportFamilies: (
+    input: {
+      adminUserId: string
+      performedBy: string
+      rows: Record<string, unknown>[]
+    }
+  ) =>
+    fetchJson<{
+      created: number
+      linked: number
+      skipped: number
+      errors: Array<{ row: number; message: string }>
+      credentials: Array<{
+        email: string
+        username: string
+        tempPassword?: string
+        studentMdIds: string[]
+        created: boolean
+        linked: boolean
+      }>
+    }>("/api/admin/users/import", {
+      method: "POST",
+      body: JSON.stringify(input),
     }),
 }

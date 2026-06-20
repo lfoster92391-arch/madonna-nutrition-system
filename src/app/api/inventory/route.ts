@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { badRequest, serverError } from "@/lib/api/response"
+import { requireMutatingSession } from "@/lib/api/session-auth"
 import { inventoryMovementSchema } from "@/lib/api/validation"
 import { getInventoryData, recordInventoryMovement } from "@/lib/operations/service"
 
@@ -15,6 +16,9 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
+    const auth = await requireMutatingSession(request, ["ADMIN", "STAFF", "CASHIER"])
+    if ("error" in auth) return auth.error
+
     const body = await request.json()
 
     if (body.action === "movement") {

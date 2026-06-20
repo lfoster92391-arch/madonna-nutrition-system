@@ -9,8 +9,8 @@ import {
   parentSpendingByWeek,
 } from "@/data/demo"
 import { useParentLinkedStudents } from "@/hooks/useParentLinkedStudents"
+import { useParentAnnouncements } from "@/hooks/useParentAnnouncements"
 import { countAttentionItems, buildAlertItems } from "@/components/parent/AlertCenter"
-import { parentAnnouncements } from "@/data/demo"
 import { PARENT_PAGE_PAD, PARENT_SECTION_GAP } from "@/components/parent/parent-dashboard-styles"
 import { getFoodProfileStatus, isDietaryFormBlocking } from "@/lib/types"
 import { FamilyOverviewStrip } from "@/components/parent/student-center/FamilyOverviewStrip"
@@ -22,6 +22,7 @@ export function StudentCenterPage() {
   const { user } = useAuth()
   const { studentProfiles, allergySubmissions } = useDemo()
   const { students: linkedStudents } = useParentLinkedStudents()
+  const announcements = useParentAnnouncements()
   const [searchQuery, setSearchQuery] = useState("")
   const [filterValue, setFilterValue] = useState("all")
 
@@ -47,7 +48,7 @@ export function StudentCenterPage() {
       lowBalanceStudents,
       dietaryFormIssueCount: pendingReviewCount,
       reviewHref,
-      announcements: parentAnnouncements,
+      announcements,
     })
   )
 

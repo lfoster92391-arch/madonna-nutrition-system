@@ -60,12 +60,12 @@ interface TeacherDataContextValue {
 const TeacherDataContext = createContext<TeacherDataContextValue | null>(null)
 
 function readRecentIds(): string[] {
-  if (typeof window === "undefined") return demoTeacherRecentStudentIds
+  if (typeof window === "undefined") return []
   try {
     const raw = localStorage.getItem(RECENT_STUDENTS_KEY)
-    return raw ? (JSON.parse(raw) as string[]) : demoTeacherRecentStudentIds
+    return raw ? (JSON.parse(raw) as string[]) : []
   } catch {
-    return demoTeacherRecentStudentIds
+    return []
   }
 }
 
@@ -84,7 +84,7 @@ export function TeacherDataProvider({ children }: { children: ReactNode }) {
   const [signups, setSignups] = useState<StudentLunchSignupView[]>(demoStudentLunchSignups)
   const [stats, setStats] = useState<TeacherDashboardStats>(demoTeacherDashboardStats)
   const [announcements, setAnnouncements] =
-    useState<TeacherAnnouncement[]>(demoTeacherAnnouncements)
+    useState<TeacherAnnouncement[]>([])
   const [recentStudentIds, setRecentStudentIds] = useState<string[]>(demoTeacherRecentStudentIds)
   const [rememberRecent, setRememberRecentState] = useState(true)
   const [selectedStudent, setSelectedStudent] = useState<TeacherStudentView | null>(null)

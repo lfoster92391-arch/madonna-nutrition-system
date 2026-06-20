@@ -4,6 +4,7 @@ import { allergiesToCreateInput, mapStudent } from "@/lib/db/mappers"
 import { findStudentByExternalId, studentInclude } from "@/lib/db/students"
 import { studentUpdateSchema } from "@/lib/api/validation"
 import { badRequest, notFound, serverError, withDatabase } from "@/lib/api/response"
+import { requireMutatingSession } from "@/lib/api/session-auth"
 
 type RouteParams = { params: Promise<{ id: string }> }
 
@@ -20,6 +21,9 @@ export async function GET(_request: Request, { params }: RouteParams) {
 export async function PATCH(request: Request, { params }: RouteParams) {
   const result = await withDatabase(async () => {
     try {
+      const auth = await requireMutatingSession(request, ["ADMIN"])
+      if ("error" in auth) return auth.error
+
       const { id } = await params
       const body = await request.json()
       const parsed = studentUpdateSchema.safeParse(body)
@@ -70,8 +74,11 @@ export async function PATCH(request: Request, { params }: RouteParams) {
   return result instanceof NextResponse ? result : result
 }
 
-export async function DELETE(_request: Request, { params }: RouteParams) {
+export async function DELETE(request: Request, { params }: RouteParams) {
   const result = await withDatabase(async () => {
+    const auth = await requireMutatingSession(request, ["ADMIN"])
+    if ("error" in auth) return auth.error
+
     const { id } = await params
     const existing = await findStudentByExternalId(id)
     if (!existing) return notFound("Student not found")

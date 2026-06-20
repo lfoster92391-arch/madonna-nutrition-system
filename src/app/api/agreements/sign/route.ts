@@ -3,6 +3,8 @@ import { z } from "zod"
 import { badRequest, withDatabase } from "@/lib/api/response"
 import { getClientIp } from "@/lib/agreements/ip"
 import { signAgreement } from "@/lib/agreements/service"
+import { sendEmail } from "@/lib/email"
+import { prisma } from "@/lib/prisma"
 
 const schema = z.object({
   parentUserId: z.string().min(1),
@@ -23,6 +25,23 @@ export async function POST(request: Request) {
         ...parsed.data,
         ipAddress: getClientIp(request),
       })
+
+      const parentUser = await prisma.user.findUnique({
+        where: { id: parsed.data.parentUserId },
+        select: { email: true },
+      })
+
+      if (parentUser?.email) {
+        await sendEmail({
+          to: parentUser.email,
+          subject: "Cafeteria Agreement Signed",
+          body: `Thank you, ${signature.parentName}. Your cafeteria agreement (${signature.versionLabel}) was signed for ${signature.studentNames.join(", ")}.`,
+          type: "AGREEMENT_SIGNED",
+          userId: parsed.data.parentUserId,
+          metadata: { signatureId: signature.id },
+        })
+      }
+
       return NextResponse.json(
         {
           signature,

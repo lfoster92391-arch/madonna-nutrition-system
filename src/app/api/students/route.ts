@@ -5,6 +5,7 @@ import { findStudentByExternalId, studentInclude } from "@/lib/db/students"
 import { resolveSchoolId } from "@/lib/db/school"
 import { studentSchema } from "@/lib/api/validation"
 import { badRequest, dbUnavailableResponse, serverError, withDatabase } from "@/lib/api/response"
+import { requireMutatingSession } from "@/lib/api/session-auth"
 
 export async function GET() {
   const result = await withDatabase(async () => {
@@ -22,13 +23,16 @@ export async function GET() {
 export async function POST(request: Request) {
   const result = await withDatabase(async () => {
     try {
+      const auth = await requireMutatingSession(request, ["ADMIN"])
+      if ("error" in auth) return auth.error
+
       const body = await request.json()
       const parsed = studentSchema.safeParse(body)
       if (!parsed.success) {
         return badRequest("Invalid student payload", parsed.error.flatten())
       }
 
-      const schoolId = await resolveSchoolId()
+      const schoolId = auth.schoolId
       const data = parsed.data
       const existing = await findStudentByExternalId(data.id)
       if (existing) {

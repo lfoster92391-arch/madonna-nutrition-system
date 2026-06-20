@@ -4,7 +4,6 @@ import { Suspense, useCallback, useEffect, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useAuth } from "@/components/providers/AuthProvider"
 import { useDemo } from "@/components/providers/DemoProvider"
-import { parentAnnouncements } from "@/data/demo"
 import { buildAlertItems, countAttentionItems } from "@/components/parent/AlertCenter"
 import { ParentEmptyState } from "@/components/parent/ParentEmptyState"
 import { ParentHero } from "@/components/parent/ParentHero"
@@ -23,6 +22,7 @@ import {
 } from "@/components/parent/v3/parent-v3-theme"
 import { getPendingSubmission, getStudentProfile } from "@/data/demo"
 import { useParentLinkedStudents } from "@/hooks/useParentLinkedStudents"
+import { useParentAnnouncements } from "@/hooks/useParentAnnouncements"
 import { isDietaryFormBlocking } from "@/lib/types"
 
 function ParentCommandCenterContent() {
@@ -31,6 +31,7 @@ function ParentCommandCenterContent() {
   const { user } = useAuth()
   const { studentProfiles, allergySubmissions } = useDemo()
   const { students: linkedStudents, isLoading } = useParentLinkedStudents()
+  const announcements = useParentAnnouncements()
 
   const drawerParam = parseParentDrawer(searchParams.get(PARENT_DRAWER_PARAM))
   const studentParam = searchParams.get(PARENT_STUDENT_PARAM) ?? undefined
@@ -55,7 +56,7 @@ function ParentCommandCenterContent() {
     lowBalanceStudents,
     dietaryFormIssueCount: dietaryFormIssues.length,
     reviewHref,
-    announcements: parentAnnouncements,
+    announcements,
   })
 
   const navAlertCount = countAttentionItems(alertItems)

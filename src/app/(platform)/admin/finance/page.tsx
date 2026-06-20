@@ -9,6 +9,7 @@ import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/ca
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import type { ReconciliationData } from "@/lib/intelligence/types"
+import { downloadReportCsv } from "@/lib/export/download-report"
 import { formatCurrency } from "@/lib/utils"
 
 async function fetchReconciliation(): Promise<ReconciliationData> {
@@ -37,7 +38,7 @@ export default function AdminFinancePage() {
       icon={DollarSign}
       source={data?.source}
       actions={
-        <Button variant="outline" size="sm" type="button">
+        <Button variant="outline" size="sm" type="button" onClick={() => downloadReportCsv("reconciliation")}>
           <Download className="mr-2 h-4 w-4" />
           Export
         </Button>

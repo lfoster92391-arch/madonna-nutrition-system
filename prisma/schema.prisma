@@ -42,6 +42,7 @@ model School {
   agreementVersions        AgreementVersion[]
   agreementSignatures      AgreementSignature[]
   agreementAuditLogs       AgreementAuditLog[]
+  announcements            Announcement[]
 }
 
 model User {
@@ -69,6 +70,7 @@ model User {
   processedTransactions  Transaction[]            @relation("ProcessedByUser")
   teacherReservations  TeacherLunchReservation[]
   assistedSignups      StudentLunchSignup[]       @relation("SignedUpByTeacher")
+  inboxNotifications   Notification[]           @relation("UserNotifications")
 
   @@unique([schoolId, badgeId])
 }
@@ -332,14 +334,31 @@ model ProductionOrder {
 model Notification {
   id        String           @id @default(cuid())
   type      NotificationType
+  title     String?
   message   String
   channel   NotifyChannel    @default(EMAIL)
   read      Boolean          @default(false)
-  studentId String
-  student   Student          @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  emailSent Boolean          @default(false)
+  studentId String?
+  student   Student?         @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  userId    String?
+  user      User?            @relation("UserNotifications", fields: [userId], references: [id], onDelete: SetNull)
+  metadata  Json?
   schoolId  String
   school    School           @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   createdAt DateTime         @default(now())
+}
+
+model Announcement {
+  id          String               @id @default(cuid())
+  title       String
+  body        String               @db.Text
+  audience    AnnouncementAudience @default(ALL)
+  publishedBy String?
+  schoolId    String
+  school      School               @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
 }
 
 enum NotificationType {
@@ -347,6 +366,16 @@ enum NotificationType {
   NEGATIVE_BALANCE
   REPEATED_CHARGES
   MISSED_MEALS
+  AGREEMENT_SIGNED
+  DEPOSIT_SUCCESS
+  EMAIL_OUTBOX
+  ANNOUNCEMENT
+}
+
+enum AnnouncementAudience {
+  PARENTS
+  TEACHERS
+  ALL
 }
 
 enum NotifyChannel {

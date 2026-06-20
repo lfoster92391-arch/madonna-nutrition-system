@@ -7,9 +7,9 @@ import { useDemo } from "@/components/providers/DemoProvider"
 import {
   getPendingSubmission,
   getStudentProfile,
-  parentAnnouncements,
 } from "@/data/demo"
 import { useParentLinkedStudents } from "@/hooks/useParentLinkedStudents"
+import { useParentAnnouncements } from "@/hooks/useParentAnnouncements"
 import { isDietaryFormBlocking } from "@/lib/types"
 import {
   buildAlertItems,
@@ -42,6 +42,7 @@ function ParentFamilyHubContent() {
   const { user } = useAuth()
   const { studentProfiles, allergySubmissions } = useDemo()
   const { students: linkedStudents, isLoading } = useParentLinkedStudents()
+  const announcements = useParentAnnouncements()
 
   const drawerParam = parseParentDrawer(searchParams.get(PARENT_DRAWER_PARAM))
   const studentParam = searchParams.get(PARENT_STUDENT_PARAM) ?? undefined
@@ -66,7 +67,7 @@ function ParentFamilyHubContent() {
     lowBalanceStudents,
     dietaryFormIssueCount: dietaryFormIssues.length,
     reviewHref,
-    announcements: parentAnnouncements,
+    announcements,
   })
 
   const actionNeeded = countAttentionItems(alertItems)

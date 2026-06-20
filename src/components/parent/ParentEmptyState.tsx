@@ -9,10 +9,10 @@ export function ParentEmptyState() {
       <span className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-[#001E62]/10 text-[#001E62]">
         <Users className="h-7 w-7" />
       </span>
-      <h2 className="text-xl font-semibold text-[#001E62]">No students linked yet</h2>
+      <h2 className="text-xl font-semibold text-[#001E62]">No students yet</h2>
       <p className="mt-2 text-sm leading-relaxed text-slate-600">
-        Your family account does not have any students assigned. An administrator can import
-        students from your school information system and link them to your account.
+        No students are linked to your account yet. Import from Admin to add students and link
+        parents to your school.
       </p>
       <p className="mt-4 text-xs text-slate-500">
         School staff: import students in{" "}
