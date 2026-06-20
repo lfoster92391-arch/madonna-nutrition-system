@@ -104,6 +104,15 @@ const SECTIONS: LauncherSection[] = [
     title: "Menu Management",
     cards: [
       {
+        title: "Cookbook",
+        description: "Saved meals with photos — Recipes, Lunches, Sides, and more.",
+        href: "/admin/cookbook",
+        icon: ChefHat,
+        statusLabel: "Reusable library",
+        statusColor: "neutral",
+        importExportType: "menu",
+      },
+      {
         title: "Menu Builder",
         description: "Create and manage weekly meal templates.",
         href: "/admin/menu",

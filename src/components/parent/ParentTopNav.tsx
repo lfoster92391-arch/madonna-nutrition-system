@@ -1,29 +1,31 @@
 "use client"
 
-import Image from "next/image"
 import Link from "next/link"
 import { Bell, Settings, User } from "lucide-react"
 import { PARENT_NAVY } from "@/components/parent/parent-dashboard-styles"
 
-export function ParentTopNav({ alertCount = 0 }: { alertCount?: number }) {
+type ParentTopNavProps = {
+  alertCount?: number
+  title?: string
+}
+
+export function ParentTopNav({ alertCount = 0, title = "Parent Dashboard" }: ParentTopNavProps) {
   return (
-    <header
-      className="sticky top-0 z-20 flex h-[60px] shrink-0 items-center border-b border-[#C8CDD7] bg-white px-4 sm:h-[68px] sm:px-6 md:px-8"
-    >
+    <header className="sticky top-0 z-20 flex h-[60px] shrink-0 items-center border-b border-[#C8CDD7] bg-white px-4 sm:h-[68px] sm:px-6 md:px-8">
       <div className="flex w-full items-center justify-between gap-4">
         <div className="hidden w-[180px] shrink-0 md:block" aria-hidden />
 
         <h1
-          className="flex-1 text-center text-base font-semibold sm:text-lg"
+          className="min-w-0 flex-1 truncate text-center text-sm font-semibold sm:text-base md:text-lg"
           style={{ color: PARENT_NAVY }}
         >
-          Parent Dashboard
+          {title}
         </h1>
 
-        <div className="flex shrink-0 items-center gap-1 sm:gap-2">
+        <div className="flex w-[180px] shrink-0 items-center justify-end gap-0.5 sm:gap-1">
           <Link
             href="/parent/notifications"
-            className="relative flex h-10 w-10 items-center justify-center rounded-[10px] transition hover:bg-[#041B52]/5"
+            className="relative flex min-h-11 min-w-11 items-center justify-center rounded-[10px] transition hover:bg-[#041B52]/5"
             aria-label="Notifications"
           >
             <Bell className="h-5 w-5" style={{ color: PARENT_NAVY }} />
@@ -34,28 +36,18 @@ export function ParentTopNav({ alertCount = 0 }: { alertCount?: number }) {
             )}
           </Link>
           <Link
-            href="/parent/settings"
-            className="flex h-10 w-10 items-center justify-center rounded-[10px] transition hover:bg-[#041B52]/5"
+            href="/parent/settings?section=profile"
+            className="flex min-h-11 min-w-11 items-center justify-center rounded-[10px] transition hover:bg-[#041B52]/5"
             aria-label="Profile"
           >
             <User className="h-5 w-5" style={{ color: PARENT_NAVY }} />
           </Link>
           <Link
             href="/parent/settings"
-            className="flex h-10 w-10 items-center justify-center rounded-[10px] transition hover:bg-[#041B52]/5"
+            className="flex min-h-11 min-w-11 items-center justify-center rounded-[10px] transition hover:bg-[#041B52]/5"
             aria-label="Settings"
           >
             <Settings className="h-5 w-5" style={{ color: PARENT_NAVY }} />
-          </Link>
-          <Link href="/parent" className="ml-1 hidden items-center sm:flex">
-            <Image
-              src="/brand-logo.png"
-              alt="Fuel The Dons"
-              width={120}
-              height={32}
-              priority
-              className="h-8 w-auto max-w-[120px] object-contain"
-            />
           </Link>
         </div>
       </div>
