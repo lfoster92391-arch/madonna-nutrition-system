@@ -300,3 +300,25 @@ export const matchReceiptSchema = z.object({
   receivingId: z.string().min(1),
   approve: z.boolean().optional(),
 })
+
+export const familyImportRowSchema = z.object({
+  parentEmail: z.string().email(),
+  parentFirstName: z.string().min(1),
+  parentLastName: z.string().min(1),
+  parentPhone: z.string().optional(),
+  parentUsername: z.string().optional(),
+  studentMdId: z.string().min(1),
+  studentFirstName: z.string().optional(),
+  studentLastName: z.string().optional(),
+  grade: z.string().optional(),
+  balance: z.coerce.number().optional(),
+  relationship: z.string().optional(),
+  password: z.string().optional(),
+  sendWelcomeEmail: z.union([z.boolean(), z.string()]).optional(),
+})
+
+export const familyImportRequestSchema = z.object({
+  adminUserId: z.string().min(1),
+  performedBy: z.string().min(1),
+  rows: z.array(familyImportRowSchema).min(1).max(500),
+})

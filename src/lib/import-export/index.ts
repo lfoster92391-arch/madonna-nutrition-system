@@ -5,4 +5,5 @@ export {
   downloadImportTemplate,
   exportRowsToCsv,
   getTemplateColumnGuide,
+  rowsToCsv,
 } from "@/lib/import-export/csv"

@@ -23,7 +23,14 @@ function readFileAsDataUrl(file: File): Promise<string> {
   })
 }
 
-export function AdminStudentManager() {
+export function AdminStudentManager({
+  embedded = false,
+  importsTab = false,
+}: {
+  embedded?: boolean
+  /** Render inside /admin/imports Students tab (no page header, includes SIS import wizard) */
+  importsTab?: boolean
+}) {
   const { students, addStudent, updateStudent, disableStudent } = useDemo()
   const [search, setSearch] = useState("")
   const [editing, setEditing] = useState<Student | null>(null)
@@ -137,8 +144,12 @@ export function AdminStudentManager() {
     photoInputRef.current?.click()
   }
 
+  const showPageHeader = !embedded && !importsTab
+  const showImportWizard = !embedded || importsTab
+  const showImportExportMenu = !embedded || importsTab
+
   return (
-    <div className="w-full px-6 py-8 md:px-8">
+    <div className={showPageHeader ? "w-full px-6 py-8 md:px-8" : "w-full"}>
       <input
         ref={photoInputRef}
         type="file"
@@ -148,31 +159,62 @@ export function AdminStudentManager() {
       />
 
       <div className="mx-auto max-w-full space-y-8">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-[0.2em] text-silver-foreground">
-              Launch
-            </p>
-            <h1 className="text-3xl font-bold text-primary">Parent Imports</h1>
-            <p className="text-silver-foreground">
-              Student management, SIS import, and photo upload
-            </p>
+        {showPageHeader && (
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.2em] text-silver-foreground">
+                Launch
+              </p>
+              <h1 className="text-3xl font-bold text-primary">Parent Imports</h1>
+              <p className="text-silver-foreground">
+                Student management, SIS import, and photo upload
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-3">
+              {showImportExportMenu && (
+                <ImportExportMenu
+                  type="students"
+                  onImport={scrollToImport}
+                  exportRows={exportRows}
+                />
+              )}
+              <Button variant="outline" asChild>
+                <Link href="/admin/allergy-review">Allergy Review Queue</Link>
+              </Button>
+              <Button onClick={() => { setShowAdd(true); setEditing(null) }}>
+                <Plus className="h-4 w-4" />
+                Add Student
+              </Button>
+            </div>
           </div>
-          <div className="flex flex-wrap gap-3">
-            <ImportExportMenu
-              type="students"
-              onImport={scrollToImport}
-              exportRows={exportRows}
-            />
-            <Button variant="outline" asChild>
-              <Link href="/admin/allergy-review">Allergy Review Queue</Link>
-            </Button>
-            <Button onClick={() => { setShowAdd(true); setEditing(null) }}>
-              <Plus className="h-4 w-4" />
-              Add Student
-            </Button>
+        )}
+
+        {(embedded || importsTab) && (
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <h2 className="text-xl font-semibold text-primary">Student Manager</h2>
+              <p className="text-sm text-silver-foreground">
+                Manage students before linking parent accounts
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-3">
+              {showImportExportMenu && (
+                <ImportExportMenu
+                  type="students"
+                  onImport={scrollToImport}
+                  exportRows={exportRows}
+                />
+              )}
+              <Button variant="outline" asChild>
+                <Link href="/admin/allergy-review">Allergy Review Queue</Link>
+              </Button>
+              <Button onClick={() => { setShowAdd(true); setEditing(null) }}>
+                <Plus className="h-4 w-4" />
+                Add Student
+              </Button>
+            </div>
           </div>
-        </div>
+        )}
 
         <div className="grid gap-6 lg:grid-cols-3">
           <Card className="lg:col-span-2">
@@ -314,9 +356,11 @@ export function AdminStudentManager() {
           </Card>
         )}
 
-        <div ref={importWizardRef}>
-          <CsvImportWizard />
-        </div>
+        {showImportWizard && (
+          <div ref={importWizardRef}>
+            <CsvImportWizard />
+          </div>
+        )}
       </div>
     </div>
   )

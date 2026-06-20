@@ -1,6 +1,7 @@
 export type ImportExportType =
   | "students"
   | "parents"
+  | "families"
   | "badges"
   | "menu"
   | "inventory"

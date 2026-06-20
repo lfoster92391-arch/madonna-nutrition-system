@@ -8,7 +8,7 @@ function escapeCsvCell(value: string): string {
   return value
 }
 
-function rowsToCsv(headers: string[], rows: Record<string, string>[]): string {
+export function rowsToCsv(headers: string[], rows: Record<string, string>[]): string {
   const lines = [headers.map(escapeCsvCell).join(",")]
   for (const row of rows) {
     lines.push(headers.map((h) => escapeCsvCell(row[h] ?? "")).join(","))
