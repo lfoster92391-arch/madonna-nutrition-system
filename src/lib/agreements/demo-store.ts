@@ -11,7 +11,12 @@ import type {
   AgreementVersionDto,
   StudentAgreementStatusDto,
 } from "@/lib/agreements/types"
+import { isDemoPreviewActive } from "@/lib/demo/session"
 import { parentLinkedStudents } from "@/data/demo"
+
+function demoWalkthroughStudents() {
+  return isDemoPreviewActive() ? parentLinkedStudents : []
+}
 
 export interface DemoSignatureRecord {
   id: string
@@ -93,7 +98,7 @@ export function getDemoParentStatus(parentUserId: string): {
     (s) => s.parentUserId === parentUserId && s.agreementVersionId === currentVersion.id
   )
 
-  const students: StudentAgreementStatusDto[] = parentLinkedStudents.map((student) => {
+  const students: StudentAgreementStatusDto[] = demoWalkthroughStudents().map((student) => {
     const status = computeStudentAgreementStatus({
       hasPublishedVersion: true,
       signatureStatus: signature?.status ?? null,
@@ -135,7 +140,7 @@ export function signDemoAgreement(input: {
     parentName: input.parentName,
     relationship: input.relationship,
     typedSignature: input.typedSignature,
-    studentIds: parentLinkedStudents.map((s) => s.id),
+    studentIds: demoWalkthroughStudents().map((s) => s.id),
     signedAt: new Date().toISOString(),
     ipAddress: input.ipAddress ?? null,
     status: "SIGNED",
@@ -155,7 +160,7 @@ export function signDemoAgreement(input: {
     relationship: input.relationship,
     typedSignature: input.typedSignature,
     studentIds: record.studentIds,
-    studentNames: parentLinkedStudents.map((s) => `${s.firstName} ${s.lastName}`),
+    studentNames: demoWalkthroughStudents().map((s) => `${s.firstName} ${s.lastName}`),
     signedAt: record.signedAt,
     ipAddress: record.ipAddress,
     status: "SIGNED",
@@ -234,7 +239,7 @@ export function listDemoDashboard(): AgreementDashboardRow[] {
     parentId: "demo-parent",
     parentName: sig.parentName,
     parentEmail: "sarah.anderson@email.com",
-    students: parentLinkedStudents
+    students: demoWalkthroughStudents()
       .filter((s) => sig.studentIds.includes(s.id))
       .map((s) => `${s.firstName} ${s.lastName}`),
     versionLabel: currentVersion.versionLabel,

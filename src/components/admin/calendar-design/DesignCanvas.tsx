@@ -267,7 +267,7 @@ function ElementOverlay({
         color: themeText,
       }}
     >
-      {element.label}
+      {element.mealRef?.name ?? element.label}
     </button>
   )
 }

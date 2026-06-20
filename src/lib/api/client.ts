@@ -7,8 +7,24 @@ async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
     },
   })
   if (!res.ok) {
-    const body = await res.json().catch(() => ({}))
-    throw new Error(body.error ?? `Request failed: ${res.status}`)
+    const body = (await res.json().catch(() => ({}))) as {
+      error?: string
+      details?: {
+        formErrors?: string[]
+        fieldErrors?: Record<string, string[] | undefined>
+      }
+    }
+    let message = body.error ?? `Request failed: ${res.status}`
+    const details = body.details
+    if (details?.fieldErrors) {
+      const fieldMsgs = Object.entries(details.fieldErrors).flatMap(([field, msgs]) =>
+        (msgs ?? []).map((msg) => `${field}: ${msg}`)
+      )
+      if (fieldMsgs.length > 0) message = fieldMsgs.join("; ")
+    } else if (details?.formErrors?.length) {
+      message = details.formErrors.join("; ")
+    }
+    throw new Error(message)
   }
   return res.json() as Promise<T>
 }

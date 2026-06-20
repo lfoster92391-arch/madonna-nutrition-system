@@ -968,13 +968,13 @@ export function DemoProvider({ children }: { children: ReactNode }) {
       usersQuery.isLoading ||
       auditLogsQuery.isLoading)
 
-  const students = useLiveData ? (studentsQuery.data ?? []) : demoPreviewActive ? demo.students : []
+  const students = useLiveData ? (studentsQuery.data ?? []) : demo.students
   const transactions = useLiveData
     ? (transactionsQuery.data ?? [])
     : demoPreviewActive
       ? demo.transactions
       : []
-  const users = useLiveData ? (usersQuery.data ?? []) : demoPreviewActive ? demo.users : []
+  const users = useLiveData ? (usersQuery.data ?? []) : demo.users
   const auditLogs = useLiveData ? (auditLogsQuery.data ?? []) : demoPreviewActive ? demo.auditLogs : []
   const calendarEvents = useLiveData
     ? (calendarEventsQuery.data ?? [])

@@ -256,9 +256,13 @@ export function mapMealTemplate(template: MealTemplateWithRelations): MealTempla
     category: template.category as MealTemplate["category"],
     mealType: template.mealType as MealTemplate["mealType"],
     allergens: template.allergens,
+    ingredients: Array.isArray(template.ingredients)
+      ? (template.ingredients as string[])
+      : undefined,
     nutritionNotes: template.nutritionNotes ?? undefined,
     portionNotes: template.portionNotes ?? undefined,
     gradeAvailability: template.gradeAvailability as MealTemplate["gradeAvailability"],
+    isReusable: template.isReusable,
     isFavorite: template.isFavorite,
     isPublished: template.isPublished,
     isArchived: template.isArchived,

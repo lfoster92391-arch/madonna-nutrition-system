@@ -11,6 +11,7 @@ type ParentHeroProps = {
   accountBalance: number
   actionsRequired: number
   reviewHref: string
+  onAddFunds?: () => void
 }
 
 export function ParentHero({
@@ -19,6 +20,7 @@ export function ParentHero({
   accountBalance,
   actionsRequired,
   reviewHref,
+  onAddFunds,
 }: ParentHeroProps) {
   const greeting = getTimeGreeting()
 
@@ -54,14 +56,26 @@ export function ParentHero({
           >
             <Link href={reviewHref}>Update Dietary Forms</Link>
           </Button>
-          <Button
-            asChild
-            variant="outline"
-            className="h-11 rounded-[10px] border-[#C8CDD7] px-6 text-sm font-semibold"
-            style={{ color: PARENT_NAVY }}
-          >
-            <Link href="/parent/add-funds">Add Funds</Link>
-          </Button>
+          {onAddFunds ? (
+            <Button
+              type="button"
+              variant="outline"
+              className="h-11 rounded-[10px] border-[#C8CDD7] px-6 text-sm font-semibold"
+              style={{ color: PARENT_NAVY }}
+              onClick={onAddFunds}
+            >
+              Add Funds
+            </Button>
+          ) : (
+            <Button
+              asChild
+              variant="outline"
+              className="h-11 rounded-[10px] border-[#C8CDD7] px-6 text-sm font-semibold"
+              style={{ color: PARENT_NAVY }}
+            >
+              <Link href="/parent/add-funds">Add Funds</Link>
+            </Button>
+          )}
         </div>
       </div>
     </section>

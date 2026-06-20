@@ -2,7 +2,7 @@
 
 import { useMemo } from "react"
 import { useParentTransactions } from "@/components/parent/useParentTransactions"
-import { parentLinkedStudents } from "@/data/demo"
+import { useParentLinkedStudents } from "@/hooks/useParentLinkedStudents"
 import { V3_CARD, V3_CARD_BORDER, V3_NAVY } from "@/components/parent/v3/parent-v3-theme"
 import { formatCurrency } from "@/lib/utils"
 import { formatTransactionDate } from "@/lib/parent-transactions"
@@ -18,6 +18,7 @@ type FeedItem = {
 
 export function RecentActivityFeed() {
   const { familyTransactions } = useParentTransactions()
+  const { students: linkedStudents } = useParentLinkedStudents()
 
   const items = useMemo(() => {
     const feed: FeedItem[] = []
@@ -35,7 +36,7 @@ export function RecentActivityFeed() {
       })
     }
 
-    for (const student of parentLinkedStudents) {
+    for (const student of linkedStudents) {
       if (student.balance < getStudentThreshold(student.id)) {
         feed.push({
           id: `alert-${student.id}`,
@@ -48,7 +49,7 @@ export function RecentActivityFeed() {
     }
 
     return feed.slice(0, 8)
-  }, [familyTransactions])
+  }, [familyTransactions, linkedStudents])
 
   return (
     <section aria-label="Recent family activity">

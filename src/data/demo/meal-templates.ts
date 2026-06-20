@@ -31,6 +31,7 @@ export const demoMealTemplates: MealTemplate[] = [
     isFavorite: true,
     isPublished: true,
     isArchived: false,
+    isReusable: true,
     lastUsedAt: threeDaysAgo,
     studentMealPrice: 3.25,
     alaCartePrice: 4.5,
@@ -63,6 +64,7 @@ export const demoMealTemplates: MealTemplate[] = [
     isFavorite: false,
     isPublished: true,
     isArchived: false,
+    isReusable: true,
     lastUsedAt: twoWeeksAgo,
     studentMealPrice: 2.75,
     alaCartePrice: 3.5,
@@ -92,6 +94,7 @@ export const demoMealTemplates: MealTemplate[] = [
     isFavorite: true,
     isPublished: false,
     isArchived: false,
+    isReusable: true,
     lastUsedAt: undefined,
     studentMealPrice: 4.0,
     alaCartePrice: 6.0,
@@ -112,7 +115,11 @@ export const demoMealTemplates: MealTemplate[] = [
   },
 ]
 
-const EXTRA_MEALS: Omit<MealTemplate, "id" | "createdAt" | "updatedAt">[] = [
+type MealSeed = Omit<MealTemplate, "id" | "createdAt" | "updatedAt" | "isReusable"> & {
+  isReusable?: boolean
+}
+
+const EXTRA_MEALS: MealSeed[] = [
   { name: "Grilled Cheese & Tomato Soup", category: "lunch", mealType: "lunch", description: "Classic comfort lunch.", allergens: ["Wheat", "Milk"], gradeAvailability: ["grades_7_8", "grades_9_12"], isFavorite: false, isPublished: true, isArchived: false, lastUsedAt: twoWeeksAgo, studentMealPrice: 3.0, items: [{ id: "x", name: "Grilled Cheese", sortOrder: 0 }], photos: [{ id: "x", slot: "entree", url: "https://images.unsplash.com/photo-1528735602780-2552fd46c7af?q=80&w=600&auto=format&fit=crop" }] },
   { name: "Yogurt Parfait Bar", category: "breakfast", mealType: "breakfast", description: "Build-your-own parfait.", allergens: ["Milk"], gradeAvailability: ["grades_7_8", "grades_9_12"], isFavorite: true, isPublished: true, isArchived: false, lastUsedAt: threeDaysAgo, studentMealPrice: 2.5, items: [{ id: "x", name: "Yogurt", sortOrder: 0 }], photos: [{ id: "x", slot: "entree", url: "https://images.unsplash.com/photo-1488477181946-6428a0291777?q=80&w=600&auto=format&fit=crop" }] },
   { name: "Taco Tuesday Plate", category: "lunch", mealType: "lunch", description: "Seasoned beef tacos with rice.", allergens: ["Wheat", "Milk"], gradeAvailability: ["grades_7_8", "grades_9_12"], isFavorite: true, isPublished: true, isArchived: false, lastUsedAt: twoWeeksAgo, studentMealPrice: 3.5, items: [{ id: "x", name: "Tacos", sortOrder: 0 }], photos: [{ id: "x", slot: "entree", url: "https://images.unsplash.com/photo-1565299585323-38d6b0865b47?q=80&w=600&auto=format&fit=crop" }] },
@@ -133,7 +140,71 @@ const EXTRA_MEALS: Omit<MealTemplate, "id" | "createdAt" | "updatedAt">[] = [
   { name: "Turkey & Cranberry Wrap", category: "seasonal", mealType: "lunch", description: "Holiday leftover favorite.", allergens: ["Wheat"], gradeAvailability: ["grades_7_8", "grades_9_12"], isFavorite: false, isPublished: true, isArchived: false, lastUsedAt: oneMonthAgo, studentMealPrice: 3.5, items: [{ id: "x", name: "Wrap", sortOrder: 0 }], photos: [{ id: "x", slot: "entree", url: wrapPhoto }] },
   { name: "Classic BLT Sandwich", category: "lunch", mealType: "lunch", description: "Bacon, lettuce, tomato on wheat.", allergens: ["Wheat"], gradeAvailability: ["grades_7_8", "grades_9_12"], isFavorite: false, isPublished: true, isArchived: false, studentMealPrice: 3.25, items: [{ id: "x", name: "BLT", sortOrder: 0 }], photos: [{ id: "x", slot: "entree", url: "https://images.unsplash.com/photo-1528735602780-2552fd46c7af?q=80&w=600&auto=format&fit=crop" }] },
   { name: "Archived Test Kitchen", category: "lunch", mealType: "lunch", description: "Retired pilot menu.", allergens: [], gradeAvailability: ["grades_7_8"], isFavorite: false, isPublished: false, isArchived: true, studentMealPrice: 3.0, items: [{ id: "x", name: "Test", sortOrder: 0 }], photos: [] },
-  { name: "Waffle Wednesday", category: "breakfast", mealType: "breakfast", description: "Belgian waffles with syrup.", allergens: ["Wheat", "Eggs", "Milk"], gradeAvailability: ["grades_7_8", "grades_9_12"], isFavorite: true, isPublished: true, isArchived: false, lastUsedAt: twoWeeksAgo, studentMealPrice: 2.75, items: [{ id: "x", name: "Waffles", sortOrder: 0 }], photos: [{ id: "x", slot: "entree", url: "https://images.unsplash.com/photo-1567620905732-2d1ec7ab7445?q=80&w=600&auto=format&fit=crop" }] },
+  { name: "Waffle Wednesday", category: "breakfast", mealType: "breakfast", description: "Belgian waffles with syrup.", allergens: ["Wheat", "Eggs", "Milk"], gradeAvailability: ["grades_7_8", "grades_9_12"], isFavorite: true, isPublished: true, isArchived: false, isReusable: true, lastUsedAt: twoWeeksAgo, studentMealPrice: 2.75, items: [{ id: "x", name: "Waffles", sortOrder: 0 }], photos: [{ id: "x", slot: "entree", url: "https://images.unsplash.com/photo-1567620905732-2d1ec7ab7445?q=80&w=600&auto=format&fit=crop" }] },
+]
+
+const COOKBOOK_SAMPLES: MealSeed[] = [
+  {
+    name: "House Marinara Sauce",
+    category: "recipe",
+    mealType: "special",
+    description: "Batch recipe for pasta days — yields 50 servings.",
+    allergens: [],
+    ingredients: ["Tomato puree", "Garlic", "Oregano", "Olive oil"],
+    gradeAvailability: ["grades_7_8", "grades_9_12"],
+    isFavorite: false,
+    isPublished: true,
+    isArchived: false,
+    isReusable: true,
+    studentMealPrice: 0,
+    items: [{ id: "x", name: "Marinara", sortOrder: 0 }],
+    photos: [{ id: "x", slot: "entree", url: "https://images.unsplash.com/photo-1621996346565-e3dbc646d9a9?q=80&w=600&auto=format&fit=crop" }],
+  },
+  {
+    name: "Chocolate Chip Cookie",
+    category: "dessert",
+    mealType: "special",
+    description: "Fresh-baked cookie add-on.",
+    allergens: ["Wheat", "Milk", "Eggs"],
+    gradeAvailability: ["grades_7_8", "grades_9_12"],
+    isFavorite: true,
+    isPublished: true,
+    isArchived: false,
+    isReusable: true,
+    studentMealPrice: 1.25,
+    items: [{ id: "x", name: "Cookie", sortOrder: 0 }],
+    photos: [{ id: "x", slot: "dessert", url: cookiePhoto }],
+  },
+  {
+    name: "Seasoned Fries",
+    category: "side",
+    mealType: "lunch",
+    description: "Crispy seasoned potato side.",
+    allergens: [],
+    gradeAvailability: ["grades_7_8", "grades_9_12"],
+    isFavorite: false,
+    isPublished: true,
+    isArchived: false,
+    isReusable: true,
+    studentMealPrice: 1.5,
+    items: [{ id: "x", name: "Fries", sortOrder: 0 }],
+    photos: [{ id: "x", slot: "side", url: friesPhoto }],
+  },
+  {
+    name: "Chocolate Milk",
+    category: "drink",
+    mealType: "lunch",
+    description: "8 oz carton.",
+    allergens: ["Milk"],
+    gradeAvailability: ["grades_7_8", "grades_9_12"],
+    isFavorite: false,
+    isPublished: true,
+    isArchived: false,
+    isReusable: true,
+    studentMealPrice: 0.75,
+    items: [{ id: "x", name: "Milk", sortOrder: 0 }],
+    photos: [{ id: "x", slot: "drink", url: milkPhoto }],
+  },
 ]
 
 const fiveDaysAgo = new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString()
@@ -143,10 +214,25 @@ for (let i = 0; i < EXTRA_MEALS.length; i++) {
   const id = `mt-${String(i + 4).padStart(3, "0")}`
   demoMealTemplates.push({
     ...base,
+    isReusable: base.isReusable ?? true,
     id,
     items: base.items.map((item, j) => ({ ...item, id: `mti-${id}-${j}` })),
     photos: base.photos.map((photo, j) => ({ ...photo, id: `mp-${id}-${j}` })),
     createdAt: i < 3 ? fiveDaysAgo : oneMonthAgo,
     updatedAt: base.lastUsedAt ?? oneMonthAgo,
+  })
+}
+
+for (let i = 0; i < COOKBOOK_SAMPLES.length; i++) {
+  const base = COOKBOOK_SAMPLES[i]
+  const id = `mt-cb-${String(i + 1).padStart(2, "0")}`
+  demoMealTemplates.push({
+    ...base,
+    isReusable: base.isReusable ?? true,
+    id,
+    items: base.items.map((item, j) => ({ ...item, id: `mti-${id}-${j}` })),
+    photos: base.photos.map((photo, j) => ({ ...photo, id: `mp-${id}-${j}` })),
+    createdAt: fiveDaysAgo,
+    updatedAt: fiveDaysAgo,
   })
 }

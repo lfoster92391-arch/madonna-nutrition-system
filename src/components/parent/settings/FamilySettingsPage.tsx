@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { parentLinkedStudents } from "@/data/demo"
+import { useParentLinkedStudents } from "@/hooks/useParentLinkedStudents"
 import { useAuth } from "@/components/providers/AuthProvider"
 import { FamilySettingsNav } from "@/components/parent/settings/FamilySettingsNav"
 import { NotificationsSection } from "@/components/parent/settings/sections/NotificationsSection"
@@ -87,8 +87,10 @@ export function FamilySettingsPage() {
     return Object.values(prefs).some(Boolean)
   }, [activeSection])
 
+  const { students: linkedStudents } = useParentLinkedStudents()
+
   const headerPills = [
-    { emoji: "👨‍🎓", label: `${parentLinkedStudents.length} Students` },
+    { emoji: "👨‍🎓", label: `${linkedStudents.length} Students` },
     {
       emoji: "🔔",
       label: notificationsEnabled ? "Notifications Enabled" : "Notifications Off",

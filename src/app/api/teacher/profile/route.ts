@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { resolveSchoolId } from "@/lib/db/school"
 import { withTeacherAccess } from "@/lib/teacher/api"
 import { todayDateOnly, fromDbPaymentMethod } from "@/lib/teacher/db"
 import { demoTeacherLunchReservation } from "@/data/demo/teacher"
@@ -8,7 +7,6 @@ import { demoTeacherLunchReservation } from "@/data/demo/teacher"
 export async function GET(request: Request) {
   const teacherId = new URL(request.url).searchParams.get("teacherId")
   return withTeacherAccess(teacherId, async (teacher) => {
-    const schoolId = await resolveSchoolId()
     const today = todayDateOnly()
 
     const reservation = await prisma.teacherLunchReservation.findUnique({

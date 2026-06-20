@@ -3,7 +3,6 @@
 import { useMemo } from "react"
 import { usePathname } from "next/navigation"
 import { useDemo } from "@/components/providers/DemoProvider"
-import { ParentSidebar } from "@/components/layout/ParentSidebar"
 import {
   buildAlertItems,
   countAttentionItems,
@@ -71,12 +70,9 @@ export function ParentPortalShell({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="flex min-h-screen bg-[#F8F9FB]">
-      <ParentSidebar />
-      <div className="flex min-h-screen min-w-0 flex-1 flex-col bg-white">
-        <ParentTopNav alertCount={alertCount} title={pageTitle} />
-        <main className="flex-1 overflow-x-hidden">{children}</main>
-      </div>
+    <div className="flex min-h-screen flex-col bg-[#F8F9FB]">
+      <ParentTopNav alertCount={alertCount} title={pageTitle} />
+      <main className="flex-1 overflow-x-hidden bg-white">{children}</main>
     </div>
   )
 }

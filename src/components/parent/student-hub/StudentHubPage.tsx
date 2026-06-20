@@ -4,11 +4,8 @@ import { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/components/providers/AuthProvider"
 import { useDemo } from "@/components/providers/DemoProvider"
-import {
-  getPendingSubmission,
-  getStudentProfile,
-  parentLinkedStudents,
-} from "@/data/demo"
+import { getPendingSubmission, getStudentProfile } from "@/data/demo"
+import { useParentLinkedStudents } from "@/hooks/useParentLinkedStudents"
 import { FamilyOverviewStrip } from "@/components/parent/student-hub/FamilyOverviewStrip"
 import { StudentHubCard } from "@/components/parent/student-hub/StudentHubCard"
 import { StudentHubHeader, type FilterStatus } from "@/components/parent/student-hub/StudentHubHeader"
@@ -23,7 +20,8 @@ export function StudentHubPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [filterStatus, setFilterStatus] = useState<FilterStatus>("all")
 
-  const students = useMemo(() => parentLinkedStudents, [])
+  const { students: linkedStudents } = useParentLinkedStudents()
+  const students = linkedStudents
   const firstName = user?.displayName.split(" ")[0] ?? "Parent"
 
   useEffect(() => {

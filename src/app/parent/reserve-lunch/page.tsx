@@ -5,7 +5,8 @@ import { ModuleShell } from "@/components/layout/ModuleShell"
 import { useAgreementStatus } from "@/components/agreements/useAgreementStatus"
 import { useDemo } from "@/components/providers/DemoProvider"
 import { formatStudentAgreementStatus, isLunchSignupAllowed } from "@/lib/agreements/student-status"
-import { getPendingSubmission, getStudentProfile, parentLinkedStudents } from "@/data/demo"
+import { getPendingSubmission, getStudentProfile } from "@/data/demo"
+import { useParentLinkedStudents } from "@/hooks/useParentLinkedStudents"
 import {
   getFoodProfileDisplayLabel,
   getFoodProfileStatus,
@@ -18,6 +19,7 @@ import { formatCurrency } from "@/lib/utils"
 export default function ParentReserveLunchPage() {
   const { students, requiresSignature, loading } = useAgreementStatus()
   const { studentProfiles, allergySubmissions } = useDemo()
+  const { students: linkedStudents } = useParentLinkedStudents()
 
   const statusByStudent = new Map(students.map((s) => [s.studentId, s]))
 
@@ -49,7 +51,7 @@ export default function ParentReserveLunchPage() {
     )
   }
 
-  const blockingStudents = parentLinkedStudents.filter((student) => {
+  const blockingStudents = linkedStudents.filter((student) => {
     const profile = getStudentProfile(student.id, studentProfiles)
     const pending = getPendingSubmission(student.id, allergySubmissions)
     return isDietaryFormBlocking(profile, pending)
@@ -101,7 +103,7 @@ export default function ParentReserveLunchPage() {
     >
       <Card className="rounded-[20px] border-[#AEB6C2]/60 p-8">
         <div className="grid gap-4 md:grid-cols-2">
-          {parentLinkedStudents.map((student) => {
+          {linkedStudents.map((student) => {
             const agreement = statusByStudent.get(student.id)
             const eligible = agreement ? isLunchSignupAllowed(agreement.status) : false
             return (

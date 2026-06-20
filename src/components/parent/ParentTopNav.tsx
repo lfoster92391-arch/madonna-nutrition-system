@@ -1,5 +1,6 @@
 "use client"
 
+import Image from "next/image"
 import Link from "next/link"
 import { Bell, Settings, User } from "lucide-react"
 import { PARENT_NAVY } from "@/components/parent/parent-dashboard-styles"
@@ -11,9 +12,18 @@ type ParentTopNavProps = {
 
 export function ParentTopNav({ alertCount = 0, title = "Parent Dashboard" }: ParentTopNavProps) {
   return (
-    <header className="sticky top-0 z-20 flex h-[60px] shrink-0 items-center border-b border-[#C8CDD7] bg-white px-4 sm:h-[68px] sm:px-6 md:px-8">
-      <div className="flex w-full items-center justify-between gap-4">
-        <div className="hidden w-[180px] shrink-0 md:block" aria-hidden />
+    <header className="sticky top-0 z-20 flex h-14 shrink-0 items-center border-b border-[#C8CDD7] bg-white px-4 sm:px-6">
+      <div className="flex w-full items-center justify-between gap-3">
+        <Link href="/parent" className="flex shrink-0 items-center" aria-label="Fuel The Dons home">
+          <Image
+            src="/brand-logo.png"
+            alt="Fuel The Dons"
+            width={140}
+            height={36}
+            priority
+            className="h-8 w-auto max-w-[120px] object-contain sm:h-9 sm:max-w-[140px]"
+          />
+        </Link>
 
         <h1
           className="min-w-0 flex-1 truncate text-center text-sm font-semibold sm:text-base md:text-lg"
@@ -22,7 +32,7 @@ export function ParentTopNav({ alertCount = 0, title = "Parent Dashboard" }: Par
           {title}
         </h1>
 
-        <div className="flex w-[180px] shrink-0 items-center justify-end gap-0.5 sm:gap-1">
+        <div className="flex shrink-0 items-center gap-0.5 sm:gap-1">
           <Link
             href="/parent/notifications"
             className="relative flex min-h-11 min-w-11 items-center justify-center rounded-[10px] transition hover:bg-[#041B52]/5"

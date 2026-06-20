@@ -2,17 +2,24 @@
 
 import { useMemo, useState } from "react"
 import { ImageIcon, Lightbulb, Search } from "lucide-react"
+import { CookbookPicker } from "@/components/admin/cookbook/CookbookPicker"
 import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { cn } from "@/lib/utils"
 import { CALENDAR_THEMES } from "@/data/calendar-themes"
 import { ELEMENT_CATALOG } from "@/lib/calendar-design/types"
 import type { DesignElementType } from "@/lib/calendar-design/types"
+import type { MealTemplate } from "@/lib/types"
 
 interface ElementsPanelProps {
   activeThemeId: string
   onAddElement: (type: DesignElementType) => void
   onApplyTheme: (themeId: string) => void
+  mealTemplates?: MealTemplate[]
+  onAddFromCookbook?: (template: MealTemplate, day: number) => void
+  cookbookDay?: number
+  onCookbookDayChange?: (day: number) => void
 }
 
 const MEDIA_LIBRARY = [
@@ -24,7 +31,15 @@ const MEDIA_LIBRARY = [
   { id: "ml-6", name: "Staff Photo Frame", emoji: "📸" },
 ]
 
-export function ElementsPanel({ activeThemeId, onAddElement, onApplyTheme }: ElementsPanelProps) {
+export function ElementsPanel({
+  activeThemeId,
+  onAddElement,
+  onApplyTheme,
+  mealTemplates = [],
+  onAddFromCookbook,
+  cookbookDay = 1,
+  onCookbookDayChange,
+}: ElementsPanelProps) {
   const [search, setSearch] = useState("")
 
   const filteredCatalog = useMemo(() => {
@@ -46,6 +61,9 @@ export function ElementsPanel({ activeThemeId, onAddElement, onApplyTheme }: Ele
         <TabsList className="mt-3 h-11 shrink-0">
           <TabsTrigger value="elements" className="min-h-9 text-xs">
             Elements
+          </TabsTrigger>
+          <TabsTrigger value="cookbook" className="min-h-9 text-xs">
+            Cookbook
           </TabsTrigger>
           <TabsTrigger value="assets" className="min-h-9 text-xs">
             My Assets
@@ -106,6 +124,30 @@ export function ElementsPanel({ activeThemeId, onAddElement, onApplyTheme }: Ele
                 ))}
               </div>
             </div>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="cookbook" className="mt-3 flex flex-1 flex-col overflow-hidden">
+          <div className="mb-3 shrink-0 space-y-2">
+            <Label className="text-xs font-semibold text-primary">Insert on calendar day</Label>
+            <Input
+              type="number"
+              min={1}
+              max={31}
+              value={cookbookDay}
+              onChange={(e) => onCookbookDayChange?.(Number(e.target.value) || 1)}
+              className="h-10"
+            />
+            <p className="text-[11px] text-primary/60">
+              Click a saved meal to add a meal card and schedule it on the selected day.
+            </p>
+          </div>
+          <div className="flex-1 overflow-y-auto pb-3">
+            <CookbookPicker
+              templates={mealTemplates}
+              compact
+              onSelect={(template) => onAddFromCookbook?.(template, cookbookDay)}
+            />
           </div>
         </TabsContent>
 

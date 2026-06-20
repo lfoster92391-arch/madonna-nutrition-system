@@ -1,6 +1,7 @@
 "use client"
 
 import { useMemo } from "react"
+import Image from "next/image"
 import {
   Ban,
   Clock,
@@ -19,7 +20,8 @@ import {
   getMonthGrid,
   groupEventsByDate,
 } from "@/lib/calendar"
-import type { CalendarEvent, CalendarEventCategory } from "@/lib/types"
+import type { CalendarEvent, CalendarEventCategory, MealTemplate } from "@/lib/types"
+import { getMealCoverPhoto } from "@/lib/meal-templates"
 import { cn } from "@/lib/utils"
 
 export const CATEGORY_ICONS: Record<CalendarEventCategory, LucideIcon> = {
@@ -39,6 +41,8 @@ interface CalendarMonthGridProps {
   selectedDate?: string | null
   onDayClick?: (dateKey: string) => void
   readOnly?: boolean
+  /** When provided, menu_day events show cover photos from linked templates */
+  mealTemplatesById?: Map<string, MealTemplate>
 }
 
 export function CalendarMonthGrid({
@@ -49,6 +53,7 @@ export function CalendarMonthGrid({
   selectedDate,
   onDayClick,
   readOnly = false,
+  mealTemplatesById,
 }: CalendarMonthGridProps) {
   const weeks = useMemo(() => getMonthGrid(year, month), [year, month])
   const eventsByDate = useMemo(() => groupEventsByDate(events), [events])
@@ -107,6 +112,10 @@ export function CalendarMonthGrid({
                     {dayEvents.slice(0, readOnly ? 3 : 2).map((event) => {
                       const Icon = CATEGORY_ICONS[event.category]
                       const color = getEventColor(event)
+                      const template = event.mealTemplateId
+                        ? mealTemplatesById?.get(event.mealTemplateId)
+                        : undefined
+                      const cover = template ? getMealCoverPhoto(template.photos) : undefined
                       return (
                         <div
                           key={event.id}
@@ -114,7 +123,20 @@ export function CalendarMonthGrid({
                           style={{ backgroundColor: `${color}18`, color }}
                           title={event.title}
                         >
-                          <Icon className="h-3 w-3 shrink-0" />
+                          {cover ? (
+                            <span className="relative h-4 w-4 shrink-0 overflow-hidden rounded">
+                              <Image
+                                src={cover}
+                                alt=""
+                                fill
+                                className="object-cover"
+                                sizes="16px"
+                                unoptimized={cover.startsWith("/uploads/") || cover.startsWith("blob:")}
+                              />
+                            </span>
+                          ) : (
+                            <Icon className="h-3 w-3 shrink-0" />
+                          )}
                           <span className="truncate">{event.title}</span>
                         </div>
                       )

@@ -2,15 +2,17 @@
 
 import { Suspense } from "react"
 import { useDemo } from "@/components/providers/DemoProvider"
-import { getPendingSubmission, getStudentProfile, parentAnnouncements, parentLinkedStudents } from "@/data/demo"
+import { getPendingSubmission, getStudentProfile, parentAnnouncements } from "@/data/demo"
+import { useParentLinkedStudents } from "@/hooks/useParentLinkedStudents"
 import { AlertCenter, buildAlertItems } from "@/components/parent/AlertCenter"
 import { PARENT_PAGE_PAD, PARENT_SECTION_GAP } from "@/components/parent/parent-dashboard-styles"
 import { isDietaryFormBlocking } from "@/lib/types"
 
 function ParentAlertsContent() {
   const { studentProfiles, allergySubmissions } = useDemo()
-  const lowBalanceStudents = parentLinkedStudents.filter((s) => s.balance < 5)
-  const dietaryFormIssues = parentLinkedStudents.filter((student) => {
+  const { students: linkedStudents } = useParentLinkedStudents()
+  const lowBalanceStudents = linkedStudents.filter((s) => s.balance < 5)
+  const dietaryFormIssues = linkedStudents.filter((student) => {
     const profile = getStudentProfile(student.id, studentProfiles)
     const pending = getPendingSubmission(student.id, allergySubmissions)
     return isDietaryFormBlocking(profile, pending)

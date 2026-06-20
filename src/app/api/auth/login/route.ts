@@ -81,6 +81,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       success: true,
+      mustChangePassword: dbUser.mustChangePassword,
       user: {
         id: user.id,
         username: user.username,

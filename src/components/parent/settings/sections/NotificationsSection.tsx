@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { parentLinkedStudents } from "@/data/demo"
+import { useParentLinkedStudents } from "@/hooks/useParentLinkedStudents"
 import { PreferenceToggle } from "@/components/parent/PreferenceToggle"
 import { SettingsAccordion, SettingsPanel } from "@/components/parent/settings/SettingsPanel"
 import { StudentBalanceAlertSection } from "@/components/parent/student-profile/StudentBalanceAlertSection"
@@ -47,6 +47,7 @@ const CATEGORIES: {
 ]
 
 export function NotificationsSection() {
+  const { students: linkedStudents } = useParentLinkedStudents()
   const [prefs, setPrefs] = useState<ParentNotificationPrefs>(getNotificationPrefs)
   const [channels, setChannels] = useState<ChannelPrefs>(getChannelPrefs)
 
@@ -119,7 +120,7 @@ export function NotificationsSection() {
           description="Customize alerts for individual students (coming soon)."
         >
           <ul className="space-y-2 text-sm text-silver-foreground">
-            {parentLinkedStudents.map((student) => (
+            {linkedStudents.map((student) => (
               <li
                 key={student.id}
                 className="flex items-center justify-between rounded-[14px] border border-silver/40 px-3 py-2"
@@ -139,7 +140,7 @@ export function NotificationsSection() {
         description="Set per-student thresholds and pause alerts when needed."
       >
         <div className="space-y-8">
-          {parentLinkedStudents.map((student) => (
+          {linkedStudents.map((student) => (
             <div key={student.id}>
               <p className="mb-4 text-sm font-semibold text-primary">
                 {student.firstName} {student.lastName}

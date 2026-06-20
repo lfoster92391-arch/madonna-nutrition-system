@@ -8,14 +8,15 @@ import {
   getPendingSubmission,
   getStudentProfile,
   parentAnnouncements,
-  parentLinkedStudents,
 } from "@/data/demo"
+import { useParentLinkedStudents } from "@/hooks/useParentLinkedStudents"
 import { isDietaryFormBlocking } from "@/lib/types"
 import {
   buildAlertItems,
   countAttentionItems,
 } from "@/components/parent/AlertCenter"
 import { ActionTiles } from "@/components/parent/v3/ActionTiles"
+import { ParentEmptyState } from "@/components/parent/ParentEmptyState"
 import { AddFundsDrawer } from "@/components/parent/v3/drawers/AddFundsDrawer"
 import { AlertsDrawer } from "@/components/parent/v3/drawers/AlertsDrawer"
 import { MealActivityDrawer } from "@/components/parent/v3/drawers/MealActivityDrawer"
@@ -40,16 +41,17 @@ function ParentFamilyHubContent() {
   const searchParams = useSearchParams()
   const { user } = useAuth()
   const { studentProfiles, allergySubmissions } = useDemo()
+  const { students: linkedStudents, isLoading } = useParentLinkedStudents()
 
   const drawerParam = parseParentDrawer(searchParams.get(PARENT_DRAWER_PARAM))
   const studentParam = searchParams.get(PARENT_STUDENT_PARAM) ?? undefined
   const [fundingStudentId, setFundingStudentId] = useState<string | undefined>(studentParam)
 
   const firstName = user?.displayName.split(" ")[0] ?? "Parent"
-  const totalBalance = parentLinkedStudents.reduce((sum, s) => sum + s.balance, 0)
-  const lowBalanceStudents = parentLinkedStudents.filter((s) => s.balance < 5)
+  const totalBalance = linkedStudents.reduce((sum, s) => sum + s.balance, 0)
+  const lowBalanceStudents = linkedStudents.filter((s) => s.balance < 5)
 
-  const dietaryFormIssues = parentLinkedStudents.filter((student) => {
+  const dietaryFormIssues = linkedStudents.filter((student) => {
     const profile = getStudentProfile(student.id, studentProfiles)
     const pending = getPendingSubmission(student.id, allergySubmissions)
     return isDietaryFormBlocking(profile, pending)
@@ -70,11 +72,11 @@ function ParentFamilyHubContent() {
   const actionNeeded = countAttentionItems(alertItems)
   const pendingReviews = dietaryFormIssues.length
   const participation = useMemo(() => {
-    const active = parentLinkedStudents.filter((s) => s.balance > 0).length
-    return parentLinkedStudents.length
-      ? Math.round((active / parentLinkedStudents.length) * 100)
+    const active = linkedStudents.filter((s) => s.balance > 0).length
+    return linkedStudents.length
+      ? Math.round((active / linkedStudents.length) * 100)
       : 0
-  }, [])
+  }, [linkedStudents])
 
   const setDrawer = useCallback(
     (drawer: ParentDrawerId, studentId?: string) => {
@@ -104,6 +106,17 @@ function ParentFamilyHubContent() {
     document.getElementById("my-students")?.scrollIntoView({ behavior: "smooth", block: "start" })
   }
 
+  if (!isLoading && linkedStudents.length === 0) {
+    return (
+      <div className="flex min-h-screen flex-col bg-white">
+        <ParentV3Header />
+        <div className={`${V3_MAX_WIDTH} ${V3_PAGE_PAD} flex-1`}>
+          <ParentEmptyState />
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="flex min-h-screen flex-col bg-white">
       <ParentV3Header />
@@ -112,7 +125,7 @@ function ParentFamilyHubContent() {
         <FamilyHero
           parentName={firstName}
           familyBalance={totalBalance}
-          studentsCount={parentLinkedStudents.length}
+          studentsCount={linkedStudents.length}
           actionNeeded={actionNeeded}
           onViewStudents={scrollToStudents}
           onAddFunds={() => openDrawer("add-funds")}
@@ -130,7 +143,7 @@ function ParentFamilyHubContent() {
 
         <FamilyOverviewStrip
           totalBalance={totalBalance}
-          studentsActive={parentLinkedStudents.length}
+          studentsActive={linkedStudents.length}
           pendingReviews={pendingReviews}
           participation={participation}
         />

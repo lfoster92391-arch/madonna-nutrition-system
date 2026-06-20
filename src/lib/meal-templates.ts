@@ -3,10 +3,23 @@ import type { GradeAvailability, MealCategory, MealPhotoSlot, MealTemplate } fro
 export const MEAL_CATEGORIES: { id: MealCategory; label: string }[] = [
   { id: "breakfast", label: "Breakfast" },
   { id: "lunch", label: "Lunch" },
+  { id: "recipe", label: "Recipe" },
+  { id: "dessert", label: "Dessert" },
+  { id: "side", label: "Side" },
+  { id: "drink", label: "Drink" },
   { id: "special_event", label: "Special Event" },
   { id: "holiday", label: "Holiday" },
   { id: "seasonal", label: "Seasonal" },
   { id: "archived", label: "Archived" },
+]
+
+/** Cookbook browse tabs for admin calendar / menu workflows */
+export const COOKBOOK_TABS: { id: MealCategory; label: string }[] = [
+  { id: "recipe", label: "Recipes" },
+  { id: "dessert", label: "Desserts" },
+  { id: "lunch", label: "Lunches" },
+  { id: "side", label: "Sides" },
+  { id: "drink", label: "Drinks" },
 ]
 
 export const CATEGORY_FILTER_PILLS: { id: MealCategory | "all"; label: string }[] = [

@@ -251,6 +251,10 @@ export interface CalendarEvent {
 export type MealCategory =
   | "breakfast"
   | "lunch"
+  | "recipe"
+  | "dessert"
+  | "side"
+  | "drink"
   | "special_event"
   | "holiday"
   | "seasonal"
@@ -279,9 +283,11 @@ export interface MealTemplate {
   category: MealCategory
   mealType: "breakfast" | "lunch" | "special"
   allergens: string[]
+  ingredients?: string[]
   nutritionNotes?: string
   portionNotes?: string
   gradeAvailability: GradeAvailability[]
+  isReusable: boolean
   isFavorite: boolean
   isPublished: boolean
   isArchived: boolean

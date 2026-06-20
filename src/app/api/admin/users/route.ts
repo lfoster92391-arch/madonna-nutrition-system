@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import bcrypt from "bcryptjs"
+import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import { createAuditLog } from "@/lib/db/audit"
 import { mapUser, toDbUserRole } from "@/lib/db/mappers"
@@ -107,6 +108,16 @@ export async function POST(request: Request) {
       )
     } catch (error) {
       console.error("POST /api/admin/users", error)
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+        const targets = (error.meta?.target as string[] | undefined) ?? []
+        if (targets.includes("email")) {
+          return badRequest("A user with this email already exists.")
+        }
+        if (targets.includes("username")) {
+          return badRequest("A user with this username already exists.")
+        }
+        return badRequest("A user with this username or email already exists.")
+      }
       return serverError()
     }
   })

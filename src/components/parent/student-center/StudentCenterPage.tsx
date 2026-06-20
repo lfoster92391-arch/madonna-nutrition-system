@@ -6,9 +6,9 @@ import { useDemo } from "@/components/providers/DemoProvider"
 import {
   getPendingSubmission,
   getStudentProfile,
-  parentLinkedStudents,
   parentSpendingByWeek,
 } from "@/data/demo"
+import { useParentLinkedStudents } from "@/hooks/useParentLinkedStudents"
 import { countAttentionItems, buildAlertItems } from "@/components/parent/AlertCenter"
 import { parentAnnouncements } from "@/data/demo"
 import { PARENT_PAGE_PAD, PARENT_SECTION_GAP } from "@/components/parent/parent-dashboard-styles"
@@ -21,15 +21,16 @@ import { StudentCenterQuickActions } from "@/components/parent/student-center/St
 export function StudentCenterPage() {
   const { user } = useAuth()
   const { studentProfiles, allergySubmissions } = useDemo()
+  const { students: linkedStudents } = useParentLinkedStudents()
   const [searchQuery, setSearchQuery] = useState("")
   const [filterValue, setFilterValue] = useState("all")
 
   const firstName = user?.displayName.split(" ")[0] ?? "Parent"
-  const familyBalance = parentLinkedStudents.reduce((sum, s) => sum + s.balance, 0)
+  const familyBalance = linkedStudents.reduce((sum, s) => sum + s.balance, 0)
   const monthlySpend = parentSpendingByWeek.reduce((sum, w) => sum + w.amount, 0)
-  const lowBalanceStudents = parentLinkedStudents.filter((s) => s.balance < 5)
+  const lowBalanceStudents = linkedStudents.filter((s) => s.balance < 5)
 
-  const dietaryFormIssues = parentLinkedStudents.filter((student) => {
+  const dietaryFormIssues = linkedStudents.filter((student) => {
     const profile = getStudentProfile(student.id, studentProfiles)
     const pending = getPendingSubmission(student.id, allergySubmissions)
     return isDietaryFormBlocking(profile, pending)
@@ -52,7 +53,7 @@ export function StudentCenterPage() {
 
   const filteredStudents = useMemo(() => {
     const query = searchQuery.trim().toLowerCase()
-    return parentLinkedStudents.filter((student) => {
+    return linkedStudents.filter((student) => {
       const fullName = `${student.firstName} ${student.lastName}`.toLowerCase()
       const matchesSearch =
         !query || fullName.includes(query) || student.grade.includes(query)
@@ -75,14 +76,14 @@ export function StudentCenterPage() {
           return true
       }
     })
-  }, [searchQuery, filterValue, studentProfiles, allergySubmissions])
+  }, [linkedStudents, searchQuery, filterValue, studentProfiles, allergySubmissions])
 
   return (
     <div className="flex min-h-full flex-col bg-white">
       <div className={`mx-auto w-full max-w-6xl ${PARENT_PAGE_PAD} ${PARENT_SECTION_GAP}`}>
         <StudentCenterHeader
           parentName={firstName}
-          studentCount={parentLinkedStudents.length}
+          studentCount={linkedStudents.length}
           familyBalance={familyBalance}
           actionsNeeded={actionsNeeded}
           searchQuery={searchQuery}
@@ -105,7 +106,7 @@ export function StudentCenterPage() {
 
         <FamilyOverviewStrip
           familyBalance={familyBalance}
-          studentsActive={parentLinkedStudents.length}
+          studentsActive={linkedStudents.length}
           monthlySpend={monthlySpend}
           pendingReviews={pendingReviewCount}
         />

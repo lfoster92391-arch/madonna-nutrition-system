@@ -149,6 +149,7 @@ function ActionsMenu({
 export function UserManager() {
   const { user: authUser } = useAuth()
   const {
+    databaseEnabled,
     users,
     students,
     createUser,
@@ -177,25 +178,11 @@ export function UserManager() {
   })
   const [tempPassword, setTempPassword] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
-  const [toast, setToast] = useState<string | null>(null)
+  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null)
+  const [saving, setSaving] = useState(false)
 
   const performedBy = authUser?.displayName ?? "System Admin"
   const adminUserId = authUser?.id ?? ""
-
-  if (authUser && authUser.role !== "admin") {
-    return (
-      <div className="p-8">
-        <Card>
-          <CardHeader>
-            <CardTitle>Access Denied</CardTitle>
-          </CardHeader>
-          <p className="px-6 pb-6 text-sm text-silver-foreground">
-            User management is restricted to administrators.
-          </p>
-        </Card>
-      </div>
-    )
-  }
 
   const filtered = useMemo(() => {
     return users.filter((u) => {
@@ -212,8 +199,23 @@ export function UserManager() {
     })
   }, [users, search, roleFilter])
 
-  function showToast(message: string) {
-    setToast(message)
+  if (authUser && authUser.role !== "admin") {
+    return (
+      <div className="p-8">
+        <Card>
+          <CardHeader>
+            <CardTitle>Access Denied</CardTitle>
+          </CardHeader>
+          <p className="px-6 pb-6 text-sm text-silver-foreground">
+            User management is restricted to administrators.
+          </p>
+        </Card>
+      </div>
+    )
+  }
+
+  function showToast(message: string, type: "success" | "error" = "success") {
+    setToast({ message, type })
     setTimeout(() => setToast(null), 4000)
   }
 
@@ -303,7 +305,7 @@ export function UserManager() {
   async function handleConfirmRoleChange() {
     if (!selected || !pendingRole) return
     if (!adminUserId) {
-      showToast("Admin session required to change roles.")
+      showToast("Admin session required to change roles.", "error")
       return
     }
     if (pendingRole === selected.role) {
@@ -325,7 +327,7 @@ export function UserManager() {
       setPendingRole(null)
       setRoleChangeAfterEdit(false)
     } catch (error) {
-      showToast(error instanceof Error ? error.message : "Role change failed.")
+      showToast(error instanceof Error ? error.message : "Role change failed.", "error")
       if (roleChangeAfterEdit) {
         setMode("edit")
       }
@@ -343,105 +345,155 @@ export function UserManager() {
 
   async function handleSaveAdd() {
     if (!form.username || !form.email || !form.firstName || !form.lastName) {
-      showToast("Please fill in all required fields.")
+      showToast("Please fill in all required fields.", "error")
       return
     }
     if (form.passwordMode === "custom" && form.password.length < 8) {
-      showToast("Custom password must be at least 8 characters.")
+      showToast("Custom password must be at least 8 characters.", "error")
       return
     }
-    const result = await createUser(
-      {
-        username: form.username,
-        email: form.email,
-        firstName: form.firstName,
-        lastName: form.lastName,
-        role: form.role,
-        phone: form.phone || undefined,
-        badgeId: userRoleSupportsBadge(form.role) ? form.badgeId || undefined : undefined,
-        linkedStudentIds: form.role === "parent" ? form.linkedStudentIds : undefined,
-        password: form.passwordMode === "custom" ? form.password : undefined,
-        generateTempPassword: form.passwordMode === "generate",
-        forcePasswordChange: form.forcePasswordChange,
-        adminUserId,
-      },
-      performedBy
-    )
-    if (result.tempPassword) {
-      setSelected(result)
-      setTempPassword(result.tempPassword)
-      setMode("reset")
-      showToast(`User ${form.firstName} ${form.lastName} created. Copy the temporary password below.`)
+    if (databaseEnabled && !adminUserId) {
+      showToast("Admin session required. Sign out and sign in again.", "error")
       return
     }
-    setMode(null)
-    showToast(`User ${form.firstName} ${form.lastName} created.`)
+    setSaving(true)
+    try {
+      const result = await createUser(
+        {
+          username: form.username,
+          email: form.email,
+          firstName: form.firstName,
+          lastName: form.lastName,
+          role: form.role,
+          phone: form.phone || undefined,
+          badgeId: userRoleSupportsBadge(form.role) ? form.badgeId || undefined : undefined,
+          linkedStudentIds: form.role === "parent" ? form.linkedStudentIds : undefined,
+          password: form.passwordMode === "custom" ? form.password : undefined,
+          generateTempPassword: form.passwordMode === "generate",
+          forcePasswordChange: form.forcePasswordChange,
+          adminUserId,
+        },
+        performedBy
+      )
+      if (result.tempPassword) {
+        setSelected(result)
+        setTempPassword(result.tempPassword)
+        setMode("reset")
+        showToast(`User ${form.firstName} ${form.lastName} created. Copy the temporary password below.`)
+        return
+      }
+      setMode(null)
+      showToast(`User ${form.firstName} ${form.lastName} created.`)
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Failed to create user.", "error")
+    } finally {
+      setSaving(false)
+    }
   }
 
   async function handleSaveEdit() {
     if (!selected) return
     if (!form.reason.trim()) {
-      showToast("A reason note is required for account corrections.")
+      showToast("A reason note is required for account corrections.", "error")
       return
     }
     if (form.role !== selected.role) {
       promptRoleChange(selected, form.role, true)
       return
     }
-    await saveEditFields()
-    setMode(null)
-    showToast("Account updated and logged to audit trail.")
+    setSaving(true)
+    try {
+      await saveEditFields()
+      setMode(null)
+      showToast("Account updated and logged to audit trail.")
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Failed to update account.", "error")
+    } finally {
+      setSaving(false)
+    }
   }
 
   async function handleConfirmEnable() {
     if (!selected) return
-    await enableUser(selected.id, performedBy, form.reason || "Re-enabled by administrator")
-    setMode(null)
-    showToast(`${formatUserName(selected)} has been enabled.`)
+    setSaving(true)
+    try {
+      await enableUser(selected.id, performedBy, form.reason || "Re-enabled by administrator")
+      setMode(null)
+      showToast(`${formatUserName(selected)} has been enabled.`)
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Failed to enable account.", "error")
+    } finally {
+      setSaving(false)
+    }
   }
 
   async function handleConfirmDisable() {
     if (!selected || !form.reason.trim()) {
-      showToast("Please provide a reason for disabling this account.")
+      showToast("Please provide a reason for disabling this account.", "error")
       return
     }
-    await disableUser(selected.id, performedBy, form.reason)
-    setMode(null)
-    showToast(`${formatUserName(selected)} has been disabled.`)
+    setSaving(true)
+    try {
+      await disableUser(selected.id, performedBy, form.reason)
+      setMode(null)
+      showToast(`${formatUserName(selected)} has been disabled.`)
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Failed to disable account.", "error")
+    } finally {
+      setSaving(false)
+    }
   }
 
   async function handleConfirmDelete() {
     if (!selected || !form.reason.trim()) {
-      showToast("Please provide a reason for deleting this account.")
+      showToast("Please provide a reason for deleting this account.", "error")
       return
     }
-    await deleteUser(selected.id, performedBy, form.reason)
-    setMode(null)
-    showToast("User deleted and recorded in audit log.")
+    setSaving(true)
+    try {
+      await deleteUser(selected.id, performedBy, form.reason)
+      setMode(null)
+      showToast("User deleted and recorded in audit log.")
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Failed to delete user.", "error")
+    } finally {
+      setSaving(false)
+    }
   }
 
   async function handleResetPassword() {
     if (!selected) return
     if (resetForm.passwordMode === "custom" && resetForm.password.length < 8) {
-      showToast("Custom password must be at least 8 characters.")
+      showToast("Custom password must be at least 8 characters.", "error")
       return
     }
-    const result = await resetUserPassword(selected.id, performedBy, {
-      adminUserId,
-      password: resetForm.passwordMode === "custom" ? resetForm.password : undefined,
-      generateTempPassword: resetForm.passwordMode === "generate",
-      forcePasswordChange: resetForm.forcePasswordChange,
-      reason: resetForm.reason || undefined,
-    })
-    if (result) {
-      if (result.tempPassword) {
-        setTempPassword(result.tempPassword)
+    if (databaseEnabled && !adminUserId) {
+      showToast("Admin session required. Sign out and sign in again.", "error")
+      return
+    }
+    setSaving(true)
+    try {
+      const result = await resetUserPassword(selected.id, performedBy, {
+        adminUserId,
+        password: resetForm.passwordMode === "custom" ? resetForm.password : undefined,
+        generateTempPassword: resetForm.passwordMode === "generate",
+        forcePasswordChange: resetForm.forcePasswordChange,
+        reason: resetForm.reason || undefined,
+      })
+      if (result) {
+        if (result.tempPassword) {
+          setTempPassword(result.tempPassword)
+        }
+        showToast(
+          result.tempPassword
+            ? "Password reset generated. Copy the temporary password below."
+            : "Password updated successfully."
+        )
       }
-      showToast(
-        result.tempPassword
-          ? "Password reset generated. Copy the temporary password below."
-          : "Password updated successfully."
-      )
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Password reset failed.", "error")
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -488,8 +540,15 @@ export function UserManager() {
         </div>
 
         {toast && (
-          <div className="rounded-2xl border border-success/40 bg-success/10 px-6 py-4 font-medium text-success">
-            {toast}
+          <div
+            className={cn(
+              "rounded-2xl border px-6 py-4 font-medium",
+              toast.type === "error"
+                ? "border-danger/40 bg-danger/10 text-danger"
+                : "border-success/40 bg-success/10 text-success"
+            )}
+          >
+            {toast.message}
           </div>
         )}
 
@@ -777,8 +836,18 @@ export function UserManager() {
                 )}
 
                 <div className="flex gap-3 pt-2">
-                  <Button onClick={mode === "add" ? handleSaveAdd : handleSaveEdit}>
-                    {mode === "add" ? "Create User" : "Save Changes"}
+                  <Button
+                    type="button"
+                    onClick={mode === "add" ? handleSaveAdd : handleSaveEdit}
+                    disabled={saving}
+                  >
+                    {saving
+                      ? mode === "add"
+                        ? "Creating..."
+                        : "Saving..."
+                      : mode === "add"
+                        ? "Create User"
+                        : "Save Changes"}
                   </Button>
                   <Button variant="outline" onClick={() => setMode(null)}>Cancel</Button>
                 </div>

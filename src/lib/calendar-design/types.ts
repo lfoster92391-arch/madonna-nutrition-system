@@ -44,6 +44,13 @@ export interface DesignElement {
   content?: string
   staffPick?: StaffPickSettings
   dailyBite?: DailyBiteSettings
+  /** Linked cookbook meal for meal_card / featured_meal elements */
+  mealRef?: {
+    templateId: string
+    name: string
+    photoUrl?: string
+    category?: string
+  }
 }
 
 export interface DesignPage {

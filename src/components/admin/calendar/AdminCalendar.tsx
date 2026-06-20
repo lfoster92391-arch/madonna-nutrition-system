@@ -13,6 +13,7 @@ import {
   UtensilsCrossed,
 } from "lucide-react"
 import { CalendarMonthGrid, CategoryLegend } from "@/components/calendar/CalendarMonthGrid"
+import { CookbookPicker } from "@/components/admin/cookbook/CookbookPicker"
 import { useDemo } from "@/components/providers/DemoProvider"
 import { Button } from "@/components/ui/button"
 import { Card, CardHeader, CardTitle } from "@/components/ui/card"
@@ -28,6 +29,7 @@ import {
 } from "@/lib/calendar"
 import type { CalendarEvent, CalendarEventCategory } from "@/lib/types"
 import type { MealTemplate } from "@/lib/types"
+import { getMealCoverPhoto } from "@/lib/meal-templates"
 
 const CATEGORIES = Object.keys(EVENT_CATEGORIES) as CalendarEventCategory[]
 
@@ -69,8 +71,14 @@ export function AdminCalendar() {
   const [eventForm, setEventForm] = useState<EventFormState>(emptyForm(formatDateKey(now)))
   const [savedFlash, setSavedFlash] = useState(false)
   const [showMealPicker, setShowMealPicker] = useState(false)
+  const [showCookbookPicker, setShowCookbookPicker] = useState(false)
 
   const accentHex = getAccentHex(calendarSettings.accentColor)
+
+  const mealTemplatesById = useMemo(
+    () => new Map(mealTemplates.map((t) => [t.id, t])),
+    [mealTemplates]
+  )
 
   const selectedEvents = useMemo(() => {
     if (!selectedDate) return []
@@ -139,6 +147,24 @@ export function AdminCalendar() {
       mealTemplateId: template.id,
     }))
     setShowMealPicker(false)
+    setShowCookbookPicker(false)
+  }
+
+  async function quickAddFromCookbook(template: MealTemplate) {
+    if (!selectedDate) return
+    const itemsList = template.items.map((i) => i.name).join(", ")
+    await addCalendarEvent({
+      title: template.name,
+      date: selectedDate,
+      description: template.description ?? itemsList,
+      category: "menu_day",
+      mealTemplateId: template.id,
+    })
+    await updateMealTemplate(template.id, {
+      lastUsedAt: new Date().toISOString(),
+    })
+    setShowCookbookPicker(false)
+    flashSaved()
   }
 
   async function handleSaveEvent() {
@@ -226,6 +252,7 @@ export function AdminCalendar() {
               accentHex={accentHex}
               selectedDate={selectedDate}
               onDayClick={handleDayClick}
+              mealTemplatesById={mealTemplatesById}
             />
             <div className="mt-4">
               <CategoryLegend categories={ADMIN_LEGEND_CATEGORIES} />
@@ -246,6 +273,10 @@ export function AdminCalendar() {
                   })}
                 </CardTitle>
               </CardHeader>
+              <Button size="sm" variant="outline" onClick={() => setShowCookbookPicker(true)}>
+                <UtensilsCrossed className="h-4 w-4" />
+                Add from Cookbook
+              </Button>
               <Button size="sm" onClick={startAddEvent}>
                 <Plus className="h-4 w-4" />
                 Add Event
@@ -258,24 +289,43 @@ export function AdminCalendar() {
                 {selectedEvents.map((event) => {
                   const color = getEventColor(event)
                   const cat = EVENT_CATEGORIES[event.category]
+                  const template = event.mealTemplateId
+                    ? mealTemplatesById.get(event.mealTemplateId)
+                    : undefined
+                  const cover = template ? getMealCoverPhoto(template.photos) : undefined
                   return (
                     <div
                       key={event.id}
                       className="flex items-start justify-between gap-4 rounded-2xl border border-silver/40 p-4"
                     >
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span
-                            className="rounded-lg px-2 py-0.5 text-xs font-bold uppercase"
-                            style={{ backgroundColor: `${color}20`, color }}
-                          >
-                            {cat.label}
-                          </span>
-                          <p className="font-semibold text-primary">{event.title}</p>
-                        </div>
-                        {event.description && (
-                          <p className="mt-1 text-sm text-silver-foreground">{event.description}</p>
+                      <div className="flex gap-3">
+                        {cover && (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={cover}
+                            alt=""
+                            className="h-16 w-16 shrink-0 rounded-xl object-cover"
+                          />
                         )}
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span
+                              className="rounded-lg px-2 py-0.5 text-xs font-bold uppercase"
+                              style={{ backgroundColor: `${color}20`, color }}
+                            >
+                              {cat.label}
+                            </span>
+                            <p className="font-semibold text-primary">{event.title}</p>
+                          </div>
+                          {event.description && (
+                            <p className="mt-1 text-sm text-silver-foreground">{event.description}</p>
+                          )}
+                          {template && (
+                            <p className="mt-1 text-xs text-silver-foreground">
+                              Linked to cookbook template — edits in cookbook update future uses
+                            </p>
+                          )}
+                        </div>
                       </div>
                       <div className="flex shrink-0 gap-2">
                         <Button size="sm" variant="outline" onClick={() => startEditEvent(event)}>
@@ -347,11 +397,11 @@ export function AdminCalendar() {
                   <Button
                     type="button"
                     variant="outline"
-                    onClick={() => setShowMealPicker(true)}
+                    onClick={() => setShowCookbookPicker(true)}
                     className="w-full justify-start"
                   >
                     <UtensilsCrossed className="h-4 w-4" />
-                    Assign from Menu Library
+                    Add from Cookbook
                   </Button>
                 </div>
               )}
@@ -365,6 +415,26 @@ export function AdminCalendar() {
           </Card>
         )}
       </div>
+
+      {showCookbookPicker && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-primary/40 p-4 backdrop-blur-sm">
+          <div className="max-h-[85vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-silver/60 bg-white p-6 shadow-2xl">
+            <h3 className="text-lg font-bold text-primary">Add from Cookbook</h3>
+            <p className="mb-4 text-sm text-silver-foreground">
+              {selectedDate
+                ? `Click a saved meal to schedule on ${new Date(selectedDate + "T12:00:00").toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}.`
+                : "Select a day on the calendar first."}
+            </p>
+            <CookbookPicker
+              templates={mealTemplates}
+              onSelect={showEventForm ? applyMealTemplate : quickAddFromCookbook}
+            />
+            <Button variant="outline" className="mt-4 w-full" onClick={() => setShowCookbookPicker(false)}>
+              Cancel
+            </Button>
+          </div>
+        </div>
+      )}
 
       {showMealPicker && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-primary/40 p-4 backdrop-blur-sm">

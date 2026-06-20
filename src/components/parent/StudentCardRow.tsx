@@ -3,33 +3,39 @@
 import { useState } from "react"
 import Image from "next/image"
 import Link from "next/link"
-import {
-  getPendingSubmission,
-  getStudentProfile,
-  parentLinkedStudents,
-} from "@/data/demo"
+import { getPendingSubmission, getStudentProfile } from "@/data/demo"
 import { useDemo } from "@/components/providers/DemoProvider"
 import { DietaryFormStatusBadge } from "@/components/parent/DietaryFormStatusBadge"
 import { AddFundsModal } from "@/components/parent/funding/AddFundsModal"
+import { ParentEmptyState } from "@/components/parent/ParentEmptyState"
 import { PARENT_CARD, PARENT_NAVY } from "@/components/parent/parent-dashboard-styles"
 import { Button } from "@/components/ui/button"
+import { useParentLinkedStudents } from "@/hooks/useParentLinkedStudents"
+import type { Student } from "@/lib/types"
 import { formatCurrency } from "@/lib/utils"
 import { cn } from "@/lib/utils"
 
-export function StudentCardRow() {
+type StudentCardRowProps = {
+  onAddFunds?: (studentId: string) => void
+}
+
+export function StudentCardRow({ onAddFunds }: StudentCardRowProps = {}) {
   const { studentProfiles, allergySubmissions } = useDemo()
-  const [fundingStudent, setFundingStudent] = useState<(typeof parentLinkedStudents)[number] | null>(
-    null
-  )
+  const { students: linkedStudents, isLoading } = useParentLinkedStudents()
+  const [fundingStudent, setFundingStudent] = useState<Student | null>(null)
+
+  if (!isLoading && linkedStudents.length === 0) {
+    return <ParentEmptyState />
+  }
 
   return (
     <>
-      <section>
+      <section id="my-students">
         <h2 className="mb-4 text-lg font-bold md:mb-6 md:text-xl" style={{ color: PARENT_NAVY }}>
           My Students
         </h2>
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {parentLinkedStudents.map((student) => {
+          {linkedStudents.map((student) => {
             const profile = getStudentProfile(student.id, studentProfiles)
             const pending = getPendingSubmission(student.id, allergySubmissions)
 
@@ -73,7 +79,9 @@ export function StudentCardRow() {
                     type="button"
                     className="h-10 flex-1 rounded-[10px] text-sm font-semibold"
                     style={{ backgroundColor: PARENT_NAVY }}
-                    onClick={() => setFundingStudent(student)}
+                    onClick={() =>
+                      onAddFunds ? onAddFunds(student.id) : setFundingStudent(student)
+                    }
                   >
                     Add Funds
                   </Button>
@@ -84,7 +92,7 @@ export function StudentCardRow() {
         </div>
       </section>
 
-      {fundingStudent && (
+      {!onAddFunds && fundingStudent && (
         <AddFundsModal
           open={!!fundingStudent}
           onOpenChange={(open) => {

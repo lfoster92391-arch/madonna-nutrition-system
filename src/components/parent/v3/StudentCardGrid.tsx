@@ -3,14 +3,11 @@
 import { useMemo } from "react"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
-import {
-  getPendingSubmission,
-  getStudentProfile,
-  parentLinkedStudents,
-} from "@/data/demo"
+import { getPendingSubmission, getStudentProfile } from "@/data/demo"
 import { useDemo } from "@/components/providers/DemoProvider"
 import { DietaryFormStatusBadge } from "@/components/parent/DietaryFormStatusBadge"
 import { useParentTransactions } from "@/components/parent/useParentTransactions"
+import { useParentLinkedStudents } from "@/hooks/useParentLinkedStudents"
 import { V3_CARD, V3_CARD_BORDER, V3_NAVY } from "@/components/parent/v3/parent-v3-theme"
 import { Button } from "@/components/ui/button"
 import { formatCurrency, cn } from "@/lib/utils"
@@ -23,6 +20,7 @@ type StudentCardGridProps = {
 export function StudentCardGrid({ onAddFunds }: StudentCardGridProps) {
   const router = useRouter()
   const { studentProfiles, allergySubmissions } = useDemo()
+  const { students: linkedStudents } = useParentLinkedStudents()
   const { mealTransactions } = useParentTransactions()
 
   const studentActivity = useMemo(() => {
@@ -31,7 +29,7 @@ export function StudentCardGrid({ onAddFunds }: StudentCardGridProps) {
       { recentMeal?: string; recentDate?: string; updatedLabel: string }
     >()
 
-    for (const student of parentLinkedStudents) {
+    for (const student of linkedStudents) {
       const profile = getStudentProfile(student.id, studentProfiles)
       const updatedLabel = profile?.allergyReviewedAt
         ? formatTransactionDate(profile.allergyReviewedAt)
@@ -45,7 +43,7 @@ export function StudentCardGrid({ onAddFunds }: StudentCardGridProps) {
       })
     }
     return map
-  }, [mealTransactions, studentProfiles])
+  }, [linkedStudents, mealTransactions, studentProfiles])
 
   return (
     <section id="my-students">
@@ -53,7 +51,7 @@ export function StudentCardGrid({ onAddFunds }: StudentCardGridProps) {
         My Students
       </h2>
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
-        {parentLinkedStudents.map((student) => {
+        {linkedStudents.map((student) => {
           const profile = getStudentProfile(student.id, studentProfiles)
           const pending = getPendingSubmission(student.id, allergySubmissions)
           const activity = studentActivity.get(student.id)

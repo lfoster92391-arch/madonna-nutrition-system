@@ -6,15 +6,17 @@ import { FamilyBalanceSlideOver } from "@/components/parent/funding/FamilyBalanc
 import { getSuggestedDeposit } from "@/components/parent/funding/useAddFundsPayment"
 import { PARENT_CARD, PARENT_NAVY } from "@/components/parent/parent-dashboard-styles"
 import { Button } from "@/components/ui/button"
-import { parentLinkedStudents } from "@/data/demo"
+import { useParentLinkedStudents } from "@/hooks/useParentLinkedStudents"
+import type { Student } from "@/lib/types"
 import { formatCurrency } from "@/lib/utils"
 
 type FamilyBalanceCardProps = {
   totalBalance: number
-  lowBalanceStudents: typeof parentLinkedStudents
+  lowBalanceStudents: Student[]
 }
 
 export function FamilyBalanceCard({ totalBalance, lowBalanceStudents }: FamilyBalanceCardProps) {
+  const { students: linkedStudents } = useParentLinkedStudents()
   const [slideOverOpen, setSlideOverOpen] = useState(false)
 
   const suggestedDeposit = useMemo(
@@ -23,7 +25,7 @@ export function FamilyBalanceCard({ totalBalance, lowBalanceStudents }: FamilyBa
   )
 
   const defaultStudentId =
-    lowBalanceStudents[0]?.id ?? parentLinkedStudents[0]?.id
+    lowBalanceStudents[0]?.id ?? linkedStudents[0]?.id
 
   const openSlideOver = () => {
     setSlideOverOpen(true)

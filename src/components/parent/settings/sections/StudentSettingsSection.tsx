@@ -2,20 +2,22 @@
 
 import Image from "next/image"
 import Link from "next/link"
-import { parentLinkedStudents } from "@/data/demo"
+import { useParentLinkedStudents } from "@/hooks/useParentLinkedStudents"
 import { SettingsPanel } from "@/components/parent/settings/SettingsPanel"
 import { Button } from "@/components/ui/button"
 import { getStudentThreshold } from "@/lib/parent-balance-alerts"
 import { formatCurrency } from "@/lib/utils"
 
 export function StudentSettingsSection() {
+  const { students: linkedStudents } = useParentLinkedStudents()
+
   return (
     <SettingsPanel
       title="Student Settings"
       description="Quick access to lunch restrictions, funding defaults, and food preferences."
     >
       <div className="space-y-6">
-        {parentLinkedStudents.map((student) => {
+        {linkedStudents.map((student) => {
           const restrictions = [
             ...student.allergies.map((a) => a.name),
             ...student.dietaryRestrictions,

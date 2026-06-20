@@ -400,9 +400,11 @@ model MealTemplate {
   category          String
   mealType          String
   allergens         String[]           @default([])
+  ingredients       Json?
   nutritionNotes    String?
   portionNotes      String?
   gradeAvailability String[]           @default([])
+  isReusable        Boolean            @default(true)
   isFavorite        Boolean            @default(false)
   isPublished       Boolean            @default(false)
   isArchived        Boolean            @default(false)

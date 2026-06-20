@@ -7,6 +7,7 @@ import { DesignCanvas } from "@/components/admin/calendar-design/DesignCanvas"
 import { PropertiesPanel } from "@/components/admin/calendar-design/PropertiesPanel"
 import { PageStrip } from "@/components/admin/calendar-design/PageStrip"
 import { ExportDesignModal } from "@/components/admin/calendar-design/ExportDesignModal"
+import { useDemo } from "@/components/providers/DemoProvider"
 import { createDefaultPage } from "@/lib/calendar-design/defaults"
 import {
   debounce,
@@ -15,6 +16,8 @@ import {
 } from "@/lib/calendar-design/storage"
 import { DEFAULT_APPEARANCE } from "@/lib/calendar-design/defaults"
 import { ELEMENT_CATALOG } from "@/lib/calendar-design/types"
+import { getMealCoverPhoto } from "@/lib/meal-templates"
+import type { MealTemplate } from "@/lib/types"
 import type {
   CalendarDesignDocument,
   DesignElement,
@@ -65,8 +68,10 @@ function createElementFromCatalog(type: DesignElementType): DesignElement {
 }
 
 export function CalendarDesignStudio() {
+  const { mealTemplates, addCalendarEvent, updateMealTemplate } = useDemo()
   const [doc, setDoc] = useState<CalendarDesignDocument>(() => loadDesignDocument())
   const [selectedElementId, setSelectedElementId] = useState<string | null>(null)
+  const [cookbookDay, setCookbookDay] = useState(1)
   const [zoom, setZoom] = useState(1)
   const [viewport, setViewport] = useState<ViewportMode>("desktop")
   const [showGrid, setShowGrid] = useState(false)
@@ -263,6 +268,53 @@ export function CalendarDesignStudio() {
     updateDoc((prev) => ({ ...prev, activePageId: pageId }))
   }, [updateDoc])
 
+  const handleAddFromCookbook = useCallback(
+    async (template: MealTemplate, day: number) => {
+      const page = doc.pages.find((p) => p.id === doc.activePageId) ?? doc.pages[0]
+      if (!page) return
+
+      const cover = getMealCoverPhoto(template.photos)
+      const el: DesignElement = {
+        id: `el-meal-${Date.now()}`,
+        type: "meal_card",
+        label: template.name,
+        x: 5,
+        y: 55,
+        width: 28,
+        height: 18,
+        appearance: { ...DEFAULT_APPEARANCE },
+        mealRef: {
+          templateId: template.id,
+          name: template.name,
+          photoUrl: cover,
+          category: template.category,
+        },
+      }
+
+      updateDoc((prev) => ({
+        ...prev,
+        pages: prev.pages.map((p) =>
+          p.id === prev.activePageId ? { ...p, elements: [...p.elements, el] } : p
+        ),
+      }))
+      setSelectedElementId(el.id)
+
+      const dateKey = `${page.year}-${String(page.month).padStart(2, "0")}-${String(day).padStart(2, "0")}`
+      const itemsList = template.items.map((i) => i.name).join(", ")
+      await addCalendarEvent({
+        title: template.name,
+        date: dateKey,
+        description: template.description ?? itemsList,
+        category: "menu_day",
+        mealTemplateId: template.id,
+      })
+      await updateMealTemplate(template.id, {
+        lastUsedAt: new Date().toISOString(),
+      })
+    },
+    [doc.pages, doc.activePageId, updateDoc, addCalendarEvent, updateMealTemplate]
+  )
+
   const handleAddPage = useCallback(() => {
     const last = doc.pages[doc.pages.length - 1]
     let nextMonth = last.month + 1
@@ -316,6 +368,10 @@ export function CalendarDesignStudio() {
           activeThemeId={activePage.themeId}
           onAddElement={handleAddElement}
           onApplyTheme={handleApplyTheme}
+          mealTemplates={mealTemplates}
+          onAddFromCookbook={handleAddFromCookbook}
+          cookbookDay={cookbookDay}
+          onCookbookDayChange={setCookbookDay}
         />
         <DesignCanvas
           page={activePage}

@@ -40,6 +40,7 @@ import { Textarea } from "@/components/ui/textarea"
 import {
   CATEGORY_FILTER_PILLS,
   COMMON_ALLERGENS,
+  COOKBOOK_TABS,
   countPhotoLibrary,
   formatCategoryLabel,
   formatGradeRange,
@@ -55,6 +56,7 @@ import {
   PHOTO_SLOTS,
   sortMealTemplates,
 } from "@/lib/meal-templates"
+import { uploadMealPhoto } from "@/lib/meal-photo-upload"
 import type {
   GradeAvailability,
   MealCategory,
@@ -76,6 +78,10 @@ const PILL_ICONS: Record<MealCategory | "all", typeof Sun> = {
   all: UtensilsCrossed,
   breakfast: Sun,
   lunch: UtensilsCrossed,
+  recipe: Pencil,
+  dessert: Star,
+  side: Leaf,
+  drink: ImageIcon,
   special_event: Star,
   holiday: TreePine,
   seasonal: Leaf,
@@ -92,6 +98,7 @@ function emptyTemplate(category: MealCategory = "lunch"): Omit<MealTemplate, "id
     nutritionNotes: "",
     portionNotes: "",
     gradeAvailability: ["grades_7_8", "grades_9_12"],
+    isReusable: true,
     isFavorite: false,
     isPublished: false,
     isArchived: false,
@@ -204,6 +211,8 @@ export function MenuLibraryManager() {
       nutritionNotes: draft.nutritionNotes?.trim() || undefined,
       portionNotes: draft.portionNotes?.trim() || undefined,
       gradeAvailability: draft.gradeAvailability,
+      ingredients: draft.ingredients,
+      isReusable: draft.isReusable,
       isFavorite: draft.isFavorite,
       isPublished: draft.isPublished,
       isArchived: draft.isArchived,
@@ -248,9 +257,14 @@ export function MenuLibraryManager() {
     }
   }
 
-  const handlePhotoUpload = (slot: MealPhotoSlot, file: File) => {
+  const handlePhotoUpload = async (slot: MealPhotoSlot, file: File) => {
     if (!draft) return
-    const url = URL.createObjectURL(file)
+    let url: string
+    try {
+      url = await uploadMealPhoto(file)
+    } catch {
+      url = URL.createObjectURL(file)
+    }
     const existing = draft.photos.find((p) => p.slot === slot)
     const newPhoto: MealPhoto = { id: existing?.id ?? `mp-local-${Date.now()}`, slot, url }
     setDraft({
@@ -320,9 +334,11 @@ export function MenuLibraryManager() {
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold" style={{ color: NAVY }}>
-              Menu Library
+              Cookbook
             </h1>
-            <p className="text-silver-foreground">Create meals once. Reuse anytime.</p>
+            <p className="text-silver-foreground">
+              Save meals with photos once — reuse on the calendar anytime.
+            </p>
           </div>
           <div className="flex flex-wrap items-center gap-4">
             <ImportExportMenu type="menu" importDisabled />
@@ -402,6 +418,29 @@ export function MenuLibraryManager() {
                 ))}
               </select>
             </div>
+          </div>
+
+          {/* Cookbook tabs */}
+          <div className="mb-4 flex flex-wrap gap-2">
+            {COOKBOOK_TABS.map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => {
+                  setActiveCategory(tab.id)
+                  setPage(1)
+                }}
+                className={cn(
+                  "rounded-full border px-4 py-2 text-sm font-semibold transition",
+                  activeCategory === tab.id
+                    ? "border-transparent text-white shadow-sm"
+                    : "border-silver/60 bg-white text-primary hover:border-primary/30"
+                )}
+                style={activeCategory === tab.id ? { backgroundColor: NAVY } : undefined}
+              >
+                {tab.label}
+              </button>
+            ))}
           </div>
 
           {/* Category pills */}
