@@ -2,8 +2,7 @@
 
 import Image from "next/image"
 import Link from "next/link"
-import { Bell, Menu, Settings, User } from "lucide-react"
-import { useParentLayout } from "@/components/layout/parent-layout-context"
+import { Bell, Settings, User } from "lucide-react"
 import { PARENT_NAVY } from "@/components/parent/parent-dashboard-styles"
 
 type ParentTopNavProps = {
@@ -12,25 +11,10 @@ type ParentTopNavProps = {
 }
 
 export function ParentTopNav({ alertCount = 0, title = "Parent Dashboard" }: ParentTopNavProps) {
-  const { setMobileSidebarOpen } = useParentLayout()
-
   return (
-    <header className="sticky top-0 z-20 flex h-14 shrink-0 items-center gap-2 border-b border-[#C8CDD7] bg-white px-3 sm:gap-3 sm:px-6">
-      <button
-        type="button"
-        className="flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-[10px] border border-[#C8CDD7] transition hover:bg-[#041B52]/5 md:hidden"
-        aria-label="Open menu"
-        onClick={() => setMobileSidebarOpen(true)}
-      >
-        <Menu className="h-5 w-5" style={{ color: PARENT_NAVY }} />
-      </button>
-
-      <div className="flex w-full min-w-0 items-center justify-between gap-2 sm:gap-3">
-        <Link
-          href="/parent"
-          className="hidden shrink-0 items-center md:flex"
-          aria-label="Fuel The Dons home"
-        >
+    <header className="sticky top-0 z-20 flex h-14 shrink-0 items-center border-b border-[#C8CDD7] bg-white px-4 sm:px-6">
+      <div className="flex w-full items-center justify-between gap-3">
+        <Link href="/parent" className="flex shrink-0 items-center" aria-label="Fuel The Dons home">
           <Image
             src="/brand-logo.png"
             alt="Fuel The Dons"
@@ -70,7 +54,7 @@ export function ParentTopNav({ alertCount = 0, title = "Parent Dashboard" }: Par
           </Link>
           <Link
             href="/parent?drawer=settings"
-            className="hidden min-h-11 min-w-11 items-center justify-center rounded-[10px] transition hover:bg-[#041B52]/5 sm:flex"
+            className="flex min-h-11 min-w-11 items-center justify-center rounded-[10px] transition hover:bg-[#041B52]/5"
             aria-label="Settings"
           >
             <Settings className="h-5 w-5" style={{ color: PARENT_NAVY }} />

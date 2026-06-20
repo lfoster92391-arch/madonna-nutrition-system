@@ -2,8 +2,6 @@
 
 import { useMemo } from "react"
 import { usePathname } from "next/navigation"
-import { ParentLayoutProvider } from "@/components/layout/parent-layout-context"
-import { ParentSidebar } from "@/components/layout/ParentSidebar"
 import {
   buildAlertItems,
   countAttentionItems,
@@ -74,14 +72,9 @@ export function ParentPortalShell({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <ParentLayoutProvider>
-      <div className="flex min-h-screen overflow-x-hidden bg-[#F8F9FB]">
-        <ParentSidebar />
-        <div className="flex min-h-screen min-w-0 flex-1 flex-col bg-white">
-          <ParentTopNav alertCount={alertCount} title={pageTitle} />
-          <main className="min-w-0 flex-1 overflow-x-hidden">{children}</main>
-        </div>
-      </div>
-    </ParentLayoutProvider>
+    <div className="flex min-h-screen flex-col bg-[#F8F9FB]">
+      <ParentTopNav alertCount={alertCount} title={pageTitle} />
+      <main className="flex-1 overflow-x-hidden bg-white">{children}</main>
+    </div>
   )
 }
