@@ -3,7 +3,7 @@
 import { useMemo } from "react"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
-import { getPendingSubmission, getStudentProfile } from "@/data/demo"
+import { getPendingSubmission, getStudentProfile } from "@/lib/student-profiles"
 import { useDemo } from "@/components/providers/DemoProvider"
 import { DietaryFormStatusBadge } from "@/components/parent/DietaryFormStatusBadge"
 import { useParentTransactions } from "@/components/parent/useParentTransactions"

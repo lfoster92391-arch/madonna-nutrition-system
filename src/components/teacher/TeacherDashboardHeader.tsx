@@ -4,7 +4,7 @@ import Image from "next/image"
 import { Bell } from "lucide-react"
 import { useAuth } from "@/components/providers/AuthProvider"
 import { useTeacherData } from "@/components/providers/TeacherDataProvider"
-import { TEACHER_NAVY } from "@/data/demo/teacher"
+import { TEACHER_NAVY } from "@/config/teacher-theme"
 
 interface TeacherDashboardHeaderProps {
   subtitle?: string

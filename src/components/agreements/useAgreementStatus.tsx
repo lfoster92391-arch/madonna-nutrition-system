@@ -4,11 +4,6 @@ import { useCallback, useEffect, useState } from "react"
 import { usePathname, useRouter } from "next/navigation"
 import { useAuth } from "@/components/providers/AuthProvider"
 import { useDemo } from "@/components/providers/DemoProvider"
-import {
-  clearDemoAgreementCacheForParent,
-  ensureDemoPublishedVersion,
-  getDemoParentStatus,
-} from "@/lib/agreements/demo-store"
 import type { StudentAgreementStatusDto } from "@/lib/agreements/types"
 import type { AgreementVersionDto } from "@/lib/agreements/types"
 
@@ -23,7 +18,7 @@ interface AgreementStatusState {
 
 export function useAgreementStatus() {
   const { user, isLoading: authLoading } = useAuth()
-  const { databaseEnabled, demoPreviewActive, isLoading: demoLoading } = useDemo()
+  const { isLoading: demoLoading } = useDemo()
   const [state, setState] = useState<AgreementStatusState>({
     requiresSignature: true,
     currentVersion: null,
@@ -38,7 +33,6 @@ export function useAgreementStatus() {
     }
 
     if (!user?.id) {
-      // Fail closed until parent auth is fully resolved.
       setState({
         requiresSignature: true,
         currentVersion: null,
@@ -48,25 +42,10 @@ export function useAgreementStatus() {
       return
     }
 
-    if (demoPreviewActive) {
-      ensureDemoPublishedVersion()
-      const demo = getDemoParentStatus(user.id)
-      setState({
-        requiresSignature: demo.requiresSignature,
-        currentVersion: demo.currentVersion,
-        students: demo.students,
-        loading: false,
-      })
-      return
-    }
-
     try {
       const res = await fetch(`/api/agreements/status?parentUserId=${encodeURIComponent(user.id)}`)
       if (!res.ok) throw new Error("Failed to load agreement status")
       const data = await res.json()
-      if (data.requiresSignature) {
-        clearDemoAgreementCacheForParent(user.id)
-      }
       setState({
         requiresSignature: Boolean(data.requiresSignature),
         currentVersion: data.currentVersion,
@@ -74,7 +53,6 @@ export function useAgreementStatus() {
         loading: false,
       })
     } catch {
-      // Fail closed: block parent routes until status can be verified.
       setState({
         requiresSignature: true,
         currentVersion: null,
@@ -82,7 +60,7 @@ export function useAgreementStatus() {
         loading: false,
       })
     }
-  }, [user?.id, databaseEnabled, demoPreviewActive, demoLoading, authLoading])
+  }, [user?.id, demoLoading, authLoading])
 
   useEffect(() => {
     void refresh()

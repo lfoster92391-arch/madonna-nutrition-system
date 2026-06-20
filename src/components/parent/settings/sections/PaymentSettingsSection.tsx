@@ -13,11 +13,6 @@ import {
 } from "@/lib/parent-balance-alerts"
 import { formatCurrency } from "@/lib/utils"
 
-const DEMO_PAYMENT_METHODS = [
-  { id: "pm-1", label: "Visa ending in 4242", default: true },
-  { id: "pm-2", label: "Mastercard ending in 8888", default: false },
-]
-
 export function PaymentSettingsSection() {
   const [autoReload, setAutoReload] = useState<AutoReloadPrefs>(getAutoReloadPrefs)
 
@@ -37,24 +32,9 @@ export function PaymentSettingsSection() {
         title="Saved Payment Methods"
         description="Cards used for cafeteria prepay and auto reload."
       >
-        <ul className="space-y-3">
-          {DEMO_PAYMENT_METHODS.map((method) => (
-            <li
-              key={method.id}
-              className="flex items-center justify-between rounded-[14px] border border-silver/60 px-4 py-3"
-            >
-              <div>
-                <p className="text-sm font-medium text-primary">{method.label}</p>
-                {method.default && (
-                  <p className="text-xs text-silver-foreground">Default for deposits</p>
-                )}
-              </div>
-              <Button variant="outline" size="sm" disabled>
-                Manage
-              </Button>
-            </li>
-          ))}
-        </ul>
+        <p className="rounded-[14px] border border-dashed border-silver/60 px-4 py-6 text-center text-sm text-silver-foreground">
+          No saved payment methods yet. Add funds to save a card through Stripe checkout.
+        </p>
         <div className="flex flex-wrap gap-3">
           <Button asChild variant="outline">
             <Link href="/parent/payments?tab=funding">Open Payments Center</Link>

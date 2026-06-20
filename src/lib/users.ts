@@ -60,16 +60,9 @@ export function findUserByLogin(
   username: string
 ): User | undefined {
   const normalized = normalizeUsername(username)
-  const aliases: Record<string, string> = {
-    parent: "sarah.anderson",
-    admin: "d.garcia",
-    cashier: "j.wilson",
-    teacher: "m.anderson",
-  }
-  const lookup = aliases[normalized] ?? normalized
   return users.find(
     (u) =>
-      normalizeUsername(u.username) === lookup ||
-      u.email.toLowerCase() === lookup
+      normalizeUsername(u.username) === normalized ||
+      u.email.toLowerCase() === normalized
   )
 }

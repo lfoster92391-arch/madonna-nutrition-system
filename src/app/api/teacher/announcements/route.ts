@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server"
 import { withTeacherAccess } from "@/lib/teacher/api"
-import { demoTeacherAnnouncements } from "@/data/demo/teacher"
 import { isDatabaseEnabled } from "@/lib/db/config"
 import { resolveSchoolId } from "@/lib/db/school"
 import { prisma } from "@/lib/prisma"
@@ -8,11 +7,10 @@ import { withDatabase } from "@/lib/api/response"
 
 export async function GET(request: Request) {
   const teacherId = new URL(request.url).searchParams.get("teacherId")
-  const demoPreview = request.headers.get("x-demo-preview") === "1"
 
-  if (demoPreview || !isDatabaseEnabled()) {
+  if (!isDatabaseEnabled()) {
     return withTeacherAccess(teacherId, async () => {
-      return NextResponse.json({ announcements: demoTeacherAnnouncements })
+      return NextResponse.json({ announcements: [] })
     })
   }
 

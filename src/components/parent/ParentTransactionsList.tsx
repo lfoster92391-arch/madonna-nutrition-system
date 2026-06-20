@@ -4,7 +4,7 @@ import { useMemo } from "react"
 import Link from "next/link"
 import { useAuth } from "@/components/providers/AuthProvider"
 import { useDemo } from "@/components/providers/DemoProvider"
-import { DEMO_SCHOOL } from "@/data/demo"
+import { SCHOOL } from "@/config/school"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { formatCurrency } from "@/lib/utils"
@@ -33,7 +33,7 @@ export function ParentTransactionsList() {
     <div className="space-y-6 p-8">
       <div>
         <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary">
-          {DEMO_SCHOOL.name} · {DEMO_SCHOOL.location}
+          {SCHOOL.name} · {SCHOOL.location}
         </p>
         <h1 className="mt-2 text-2xl font-bold text-primary">Transactions</h1>
         <p className="mt-2 text-silver-foreground">

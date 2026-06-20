@@ -39,9 +39,9 @@ export function IntelligenceShell({
             <Badge variant="outline" className="text-sm">
               Read-only
             </Badge>
-            {source && (
+            {source && source !== "demo" && (
               <Badge variant="default" className="text-xs uppercase">
-                {source === "demo" ? "Demo data" : "Live data"}
+                Live data
               </Badge>
             )}
             {actions}

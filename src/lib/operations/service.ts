@@ -3,11 +3,6 @@ import { prisma } from "@/lib/prisma"
 import { isDatabaseEnabled } from "@/lib/db/config"
 import { resolveSchoolId } from "@/lib/db/school"
 import {
-  createInitialDemoStore,
-  type DemoOperationsStore,
-} from "@/lib/operations/demo-data"
-import { getDemoOperationsStore, newId } from "@/lib/operations/demo-store"
-import {
   mapInventoryItem,
   mapMovement,
   mapProductionOrder,
@@ -30,7 +25,7 @@ import type {
 } from "@/lib/operations/types"
 
 export interface OperationsSnapshot {
-  source: "database" | "demo"
+  source: "database"
   storageLocations: StorageLocation[]
   inventory: OpsInventoryItem[]
   movements: InventoryMovement[]
@@ -39,21 +34,35 @@ export interface OperationsSnapshot {
   production: ProductionOrder[]
 }
 
-function demoSnapshot(store: DemoOperationsStore = getDemoOperationsStore()): OperationsSnapshot {
+function emptySnapshot(): OperationsSnapshot {
   return {
-    source: "demo",
-    storageLocations: store.storageLocations,
-    inventory: store.inventory,
-    movements: store.movements,
-    receiving: store.receiving,
-    receipts: store.receipts,
-    production: store.production,
+    source: "database",
+    storageLocations: [],
+    inventory: [],
+    movements: [],
+    receiving: [],
+    receipts: [],
+    production: [],
+  }
+}
+
+function requireDatabase() {
+  if (!isDatabaseEnabled()) {
+    throw new Error("Database is not configured. Set DATABASE_URL to enable operations.")
   }
 }
 
 export async function getOperationsSnapshot(): Promise<OperationsSnapshot> {
   if (!isDatabaseEnabled()) {
-    return demoSnapshot()
+    return {
+      source: "database",
+      storageLocations: [],
+      inventory: [],
+      movements: [],
+      receiving: [],
+      receipts: [],
+      production: [],
+    }
   }
 
   try {
@@ -91,8 +100,8 @@ export async function getOperationsSnapshot(): Promise<OperationsSnapshot> {
       production: production.map(mapProductionOrder),
     }
   } catch (error) {
-    console.error("getOperationsSnapshot fallback to demo:", error)
-    return demoSnapshot(createInitialDemoStore())
+    console.error("getOperationsSnapshot failed:", error)
+    return emptySnapshot()
   }
 }
 
@@ -144,65 +153,6 @@ export async function getReceiptsData() {
   }
 }
 
-function applyInventoryReceiveDemo(
-  store: DemoOperationsStore,
-  lines: ReceivingLine[],
-  receivingId: string,
-  storageLocationId?: string
-) {
-  const now = new Date().toISOString()
-  for (const line of lines) {
-    const existing = line.inventoryItemId
-      ? store.inventory.find((i) => i.id === line.inventoryItemId)
-      : store.inventory.find((i) => i.name.toLowerCase() === line.name.toLowerCase())
-
-    if (existing) {
-      existing.qty += line.quantity
-      existing.lastReceivedAt = now
-      if (storageLocationId) existing.storageLocationId = storageLocationId
-      store.movements.unshift({
-        id: newId("mov"),
-        type: "receive",
-        quantity: line.quantity,
-        note: `Received via ${receivingId}`,
-        inventoryItemId: existing.id,
-        storageLocationId,
-        receivingRecordId: receivingId,
-        schoolId: existing.schoolId,
-        createdAt: now,
-        createdBy: "Receiving",
-      })
-    } else {
-      const item: OpsInventoryItem = {
-        id: newId("inv"),
-        name: line.name,
-        qty: line.quantity,
-        unit: line.unit,
-        cost: line.unitCost ?? 0,
-        expiration: new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10),
-        category: "General",
-        lowStockThreshold: 10,
-        storageLocationId,
-        lastReceivedAt: now,
-        schoolId: "demo",
-      }
-      store.inventory.push(item)
-      store.movements.unshift({
-        id: newId("mov"),
-        type: "receive",
-        quantity: line.quantity,
-        note: `New item from ${receivingId}`,
-        inventoryItemId: item.id,
-        storageLocationId,
-        receivingRecordId: receivingId,
-        schoolId: "demo",
-        createdAt: now,
-        createdBy: "Receiving",
-      })
-    }
-  }
-}
-
 export async function createReceivingRecord(input: {
   vendorName: string
   invoiceNumber?: string
@@ -232,23 +182,7 @@ export async function createReceivingRecord(input: {
     }
   }
 
-  if (!isDatabaseEnabled()) {
-    const store = getDemoOperationsStore()
-    const record: ReceivingRecord = {
-      id: newId("rcv"),
-      vendorName: input.vendorName,
-      invoiceNumber: input.invoiceNumber,
-      status,
-      notes: input.notes,
-      lines,
-      receivedAt: status !== "draft" ? now : undefined,
-      schoolId: "demo",
-      createdAt: now,
-      updatedAt: now,
-    }
-    store.receiving.unshift(record)
-    return { source: "demo" as const, record }
-  }
+  requireDatabase()
 
   const schoolId = await resolveSchoolId()
   const row = await prisma.receivingRecord.create({
@@ -271,26 +205,7 @@ export async function updateReceivingRecord(
   approvedBy?: string,
   storageLocationId?: string
 ) {
-  if (!isDatabaseEnabled()) {
-    const store = getDemoOperationsStore()
-    const record = store.receiving.find((r) => r.id === id)
-    if (!record) throw new Error("Receiving record not found")
-
-    const now = new Date().toISOString()
-    if (action === "submit") {
-      record.status = "pending_approval"
-      record.receivedAt = now
-    } else if (action === "approve") {
-      record.status = "approved"
-      record.approvedAt = now
-      record.approvedBy = approvedBy ?? "Admin"
-      applyInventoryReceiveDemo(store, record.lines, record.id, storageLocationId)
-    } else if (action === "reject") {
-      record.status = "rejected"
-    }
-    record.updatedAt = now
-    return { source: "demo" as const, record }
-  }
+  requireDatabase()
 
   const schoolId = await resolveSchoolId()
   const existing = await prisma.receivingRecord.findFirst({ where: { id, schoolId } })
@@ -388,25 +303,7 @@ export async function recordInventoryMovement(input: {
 }) {
   const qtyDelta = input.type === "waste" || input.type === "production" ? -Math.abs(input.quantity) : input.quantity
 
-  if (!isDatabaseEnabled()) {
-    const store = getDemoOperationsStore()
-    const item = store.inventory.find((i) => i.id === input.inventoryItemId)
-    if (!item) throw new Error("Inventory item not found")
-    item.qty = Math.max(0, item.qty + qtyDelta)
-    const movement: InventoryMovement = {
-      id: newId("mov"),
-      type: input.type,
-      quantity: qtyDelta,
-      note: input.note,
-      inventoryItemId: item.id,
-      storageLocationId: item.storageLocationId,
-      schoolId: item.schoolId,
-      createdAt: new Date().toISOString(),
-      createdBy: input.createdBy ?? "Kitchen",
-    }
-    store.movements.unshift(movement)
-    return { source: "demo" as const, movement, item }
-  }
+  requireDatabase()
 
   const schoolId = await resolveSchoolId()
   const item = await prisma.inventoryItem.findFirst({
@@ -449,25 +346,7 @@ export async function updateProductionOrder(
     wasteItemId?: string
   }
 ) {
-  if (!isDatabaseEnabled()) {
-    const store = getDemoOperationsStore()
-    const order = store.production.find((o) => o.id === id)
-    if (!order) throw new Error("Production order not found")
-    if (updates.status) order.status = updates.status
-    if (updates.portionsMade !== undefined) order.portionsMade = updates.portionsMade
-    order.updatedAt = new Date().toISOString()
-
-    if (updates.wasteItemId && updates.wasteQuantity) {
-      await recordInventoryMovement({
-        inventoryItemId: updates.wasteItemId,
-        type: "waste",
-        quantity: updates.wasteQuantity,
-        note: updates.wasteNote ?? `Production waste — ${order.title}`,
-        createdBy: "Production",
-      })
-    }
-    return { source: "demo" as const, order }
-  }
+  requireDatabase()
 
   const schoolId = await resolveSchoolId()
   const data: Prisma.ProductionOrderUpdateInput = {}
@@ -505,21 +384,7 @@ export async function createReceiptScan(input: { fileName: string; imageUrl?: st
       : undefined
   const ocrText = `[OCR Stub] Parsed ${input.fileName}\nVendor: ${vendorGuess ?? "Unknown"}\nTotal: $---\nLine items pending review`
 
-  if (!isDatabaseEnabled()) {
-    const store = getDemoOperationsStore()
-    const scan: ReceiptScan = {
-      id: newId("rcp"),
-      fileName: input.fileName,
-      imageUrl: input.imageUrl,
-      vendorGuess,
-      status: vendorGuess ? "unmatched" : "pending",
-      schoolId: "demo",
-      createdAt: new Date().toISOString(),
-    }
-    ;(scan as ReceiptScan & { ocrText?: string }).ocrText = ocrText
-    store.receipts.unshift(scan)
-    return { source: "demo" as const, scan, ocrText }
-  }
+  requireDatabase()
 
   const schoolId = await resolveSchoolId()
   const row = await prisma.receiptScan.create({
@@ -536,17 +401,7 @@ export async function createReceiptScan(input: { fileName: string; imageUrl?: st
 }
 
 export async function matchReceiptScan(id: string, receivingId: string, approve = false) {
-  if (!isDatabaseEnabled()) {
-    const store = getDemoOperationsStore()
-    const scan = store.receipts.find((s) => s.id === id)
-    if (!scan) throw new Error("Receipt scan not found")
-    scan.status = "matched"
-    scan.matchedReceivingId = receivingId
-    if (approve) {
-      await updateReceivingRecord(receivingId, "approve", "Receipt Center")
-    }
-    return { source: "demo" as const, scan }
-  }
+  requireDatabase()
 
   const schoolId = await resolveSchoolId()
   const row = await prisma.receiptScan.update({

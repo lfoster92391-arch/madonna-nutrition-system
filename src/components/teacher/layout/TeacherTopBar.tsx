@@ -11,7 +11,7 @@ import {
 } from "lucide-react"
 import { useAuth } from "@/components/providers/AuthProvider"
 import { useTeacherData } from "@/components/providers/TeacherDataProvider"
-import { DEMO_SCHOOL } from "@/data/demo"
+import { SCHOOL } from "@/config/school"
 import {
   TEACHER_BG,
   TEACHER_DANGER,
@@ -54,7 +54,7 @@ export function TeacherTopBar() {
           className="flex items-center gap-2 rounded-2xl border px-4 py-2 text-sm font-medium shadow-sm"
           style={{ borderColor: TEACHER_SILVER, color: TEACHER_NAVY }}
         >
-          {DEMO_SCHOOL.name}
+          {SCHOOL.name}
           <ChevronDown className="h-4 w-4" style={{ color: TEACHER_SILVER }} />
         </button>
         <span

@@ -7,7 +7,7 @@ import { badRequest, notFound } from "@/lib/api/response"
 import { withTeacherAccess } from "@/lib/teacher/api"
 import { todayDateOnly, toDbPaymentMethod } from "@/lib/teacher/db"
 import { mapStudentForTeacher } from "@/lib/teacher/privacy"
-import { demoTeacherLunchReservation } from "@/data/demo/teacher"
+import { TEACHER_LUNCH_DEFAULTS } from "@/lib/teacher/defaults"
 
 const signupSchema = z.object({
   teacherId: z.string().min(1),
@@ -39,8 +39,8 @@ export async function POST(request: Request) {
         studentId: student.id,
         schoolId,
         date: today,
-        mealName: demoTeacherLunchReservation.mealName,
-        mealPrice: demoTeacherLunchReservation.mealPrice,
+        mealName: TEACHER_LUNCH_DEFAULTS.mealName,
+        mealPrice: TEACHER_LUNCH_DEFAULTS.mealPrice,
         paymentMethod: toDbPaymentMethod(paymentMethod),
         signedUpByUserId: teacher.id,
       },

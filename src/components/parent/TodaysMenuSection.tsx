@@ -1,7 +1,6 @@
 "use client"
 
 import { UtensilsCrossed } from "lucide-react"
-import { todaysMenuItems } from "@/data/demo"
 import { PARENT_CARD, PARENT_NAVY } from "@/components/parent/parent-dashboard-styles"
 
 export function TodaysMenuSection() {
@@ -10,9 +9,6 @@ export function TodaysMenuSection() {
     month: "long",
     day: "numeric",
   })
-
-  const main = todaysMenuItems[0] ?? "Today's entrée"
-  const sides = todaysMenuItems.slice(1)
 
   return (
     <section>
@@ -25,17 +21,10 @@ export function TodaysMenuSection() {
           <div className="min-w-0 flex-1">
             <p className="text-sm text-[#64748B]">{today}</p>
             <p className="mt-2 text-base font-semibold" style={{ color: PARENT_NAVY }}>
-              {main}
+              Menu not published yet
             </p>
-            {sides.length > 0 && (
-              <ul className="mt-3 space-y-1.5 text-sm text-[#64748B]">
-                {sides.map((item) => (
-                  <li key={item}>{item}</li>
-                ))}
-              </ul>
-            )}
-            <p className="mt-4 text-xs text-[#64748B]">
-              Balanced meal includes protein, grains, vegetables, fruit, and milk.
+            <p className="mt-4 text-sm text-[#64748B]">
+              Today&apos;s lunch menu will appear here once published from Admin Calendar.
             </p>
           </div>
         </div>

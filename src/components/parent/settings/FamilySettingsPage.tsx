@@ -18,8 +18,6 @@ import {
 } from "@/components/parent/settings/sections"
 import { getNotificationPrefs } from "@/lib/parent-balance-alerts"
 
-const DEMO_PAYMENT_METHOD_COUNT = 2
-
 function firstNameFromDisplay(displayName: string): string {
   return displayName.trim().split(/\s+/)[0] ?? displayName
 }
@@ -80,7 +78,7 @@ export function FamilySettingsPage() {
 
   const parentFirstName = user?.displayName
     ? firstNameFromDisplay(user.displayName)
-    : "Sarah"
+    : user?.username ?? "there"
 
   const notificationsEnabled = useMemo(() => {
     const prefs = getNotificationPrefs()
@@ -95,7 +93,7 @@ export function FamilySettingsPage() {
       emoji: "🔔",
       label: notificationsEnabled ? "Notifications Enabled" : "Notifications Off",
     },
-    { emoji: "💳", label: `${DEMO_PAYMENT_METHOD_COUNT} Payment Methods` },
+    { emoji: "💳", label: "Payments" },
   ]
 
   return (

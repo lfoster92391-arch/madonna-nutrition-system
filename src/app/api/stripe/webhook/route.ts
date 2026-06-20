@@ -57,7 +57,7 @@ export async function POST(request: Request) {
         "[stripe/webhook] payment received but DATABASE_URL not set — balance not updated",
         session.id
       )
-      return NextResponse.json({ received: true, demoMode: true })
+      return NextResponse.json({ received: true, databaseConfigured: false })
     }
 
     try {

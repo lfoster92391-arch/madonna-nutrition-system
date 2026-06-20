@@ -497,7 +497,7 @@ export function AdminCalendarDesigner() {
 
             <Card className="rounded-[20px] border-silver/60 bg-silver/10 p-6">
               <p className="text-sm font-medium text-primary">
-                Changes save automatically in demo mode. Use Preview to see the parent view.
+                Changes save automatically. Use Preview to see the parent view.
               </p>
             </Card>
           </aside>

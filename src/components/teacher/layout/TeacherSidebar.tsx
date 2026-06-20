@@ -19,7 +19,7 @@ import {
 } from "lucide-react"
 import { useAuth } from "@/components/providers/AuthProvider"
 import { signOutAndRedirect } from "@/lib/auth/logout"
-import { DEMO_SCHOOL } from "@/data/demo"
+import { SCHOOL } from "@/config/school"
 import { cn } from "@/lib/utils"
 import {
   TEACHER_NAVY,
@@ -138,7 +138,7 @@ export function TeacherSidebar() {
               Madonna Nutrition System
             </p>
             <p className="mt-0.5 text-[10px]" style={{ color: TEACHER_SILVER }}>
-              {DEMO_SCHOOL.name}
+              {SCHOOL.name}
             </p>
             <p className="mt-1 text-[10px]" style={{ color: TEACHER_SILVER }}>
               © 2025 Fuel The Dons

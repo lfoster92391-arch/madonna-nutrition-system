@@ -2,18 +2,15 @@
 
 import { useState } from "react"
 import { RefreshCw } from "lucide-react"
-import { useDemo } from "@/components/providers/DemoProvider"
 import { Button } from "@/components/ui/button"
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { clearAllDemoCaches } from "@/lib/demo/session"
 
 export function StartFreshPanel() {
-  const { deactivateDemoPreview, databaseEnabled } = useDemo()
   const [cleared, setCleared] = useState(false)
 
   function handleStartFresh() {
     clearAllDemoCaches()
-    deactivateDemoPreview()
     setCleared(true)
     window.setTimeout(() => setCleared(false), 3000)
   }
@@ -23,20 +20,19 @@ export function StartFreshPanel() {
       <CardHeader className="p-0 pb-4">
         <CardTitle className="flex items-center gap-2 text-base">
           <RefreshCw className="h-4 w-4" />
-          Start Fresh
+          Clear Local Caches
         </CardTitle>
         <CardDescription>
-          Clear demonstration caches and exit demo preview mode. Imported students and database
-          records are not affected.
-          {databaseEnabled ? " Live data comes from your database." : ""}
+          Clear stale browser caches for agreements and legacy session data. Imported students and
+          database records are not affected.
         </CardDescription>
       </CardHeader>
       <div className="flex flex-wrap items-center gap-3">
         <Button type="button" variant="outline" onClick={handleStartFresh}>
-          Clear demo caches
+          Clear local caches
         </Button>
         {cleared ? (
-          <span className="text-sm text-emerald-700">Demo caches cleared.</span>
+          <span className="text-sm text-emerald-700">Local caches cleared.</span>
         ) : null}
       </div>
     </Card>

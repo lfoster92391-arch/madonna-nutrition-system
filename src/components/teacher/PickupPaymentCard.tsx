@@ -3,7 +3,7 @@
 import { CheckCircle2, Clock, MapPin } from "lucide-react"
 import { useTeacherData } from "@/components/providers/TeacherDataProvider"
 import { Card } from "@/components/ui/card"
-import { TEACHER_NAVY } from "@/data/demo/teacher"
+import { TEACHER_NAVY } from "@/config/teacher-theme"
 import { formatCurrency } from "@/lib/utils"
 
 export function PickupPaymentCard() {

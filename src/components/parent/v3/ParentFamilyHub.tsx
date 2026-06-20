@@ -7,7 +7,7 @@ import { useDemo } from "@/components/providers/DemoProvider"
 import {
   getPendingSubmission,
   getStudentProfile,
-} from "@/data/demo"
+} from "@/lib/student-profiles"
 import { useParentLinkedStudents } from "@/hooks/useParentLinkedStudents"
 import { useParentAnnouncements } from "@/hooks/useParentAnnouncements"
 import { isDietaryFormBlocking } from "@/lib/types"

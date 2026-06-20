@@ -25,7 +25,7 @@ import {
   Wine,
 } from "lucide-react"
 import { useDemo } from "@/components/providers/DemoProvider"
-import { getAllergyBannerStyle, getHighestAllergySeverity } from "@/data/demo"
+import { getAllergyBannerStyle, getHighestAllergySeverity } from "@/lib/allergy-display"
 import { ScanKeypad } from "@/components/scan/ScanKeypad"
 import { OfflineBanner } from "@/components/scan/OfflineBanner"
 import { MEAL_PRICES } from "@/lib/types"
@@ -707,7 +707,7 @@ export default function ScanStationPage() {
                 Ready to scan
               </p>
               <p className="mt-1 px-4 text-xs sm:mt-2 sm:text-sm lg:text-base">
-                Demo student: 10457 ΓÇö James Anderson (peanut allergy)
+                Scan a student ID badge or enter their MD ID to begin.
               </p>
             </div>
           )}

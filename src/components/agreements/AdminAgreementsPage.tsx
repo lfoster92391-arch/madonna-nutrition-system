@@ -4,19 +4,10 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 import { Archive, Bell, Download, Eye, FileText, Plus, Search, Send } from "lucide-react"
 import { AgreementPreview } from "@/components/agreements/AgreementPreview"
 import { useAuth } from "@/components/providers/AuthProvider"
-import { useDemo } from "@/components/providers/DemoProvider"
 import {
   DEFAULT_AGREEMENT_CONTENT,
   DEFAULT_PUBLISHED_VERSION,
 } from "@/config/agreement-defaults"
-import {
-  archiveDemoVersion,
-  ensureDemoPublishedVersion,
-  listDemoDashboard,
-  listDemoVersions,
-  publishDemoVersion,
-  saveDemoDraftVersion,
-} from "@/lib/agreements/demo-store"
 import type { AgreementContent } from "@/config/agreement-defaults"
 import type { AgreementDashboardRow, AgreementVersionDto } from "@/lib/agreements/types"
 import { Button } from "@/components/ui/button"
@@ -37,7 +28,6 @@ interface AdminNotification {
 
 export function AdminAgreementsPage() {
   const { user } = useAuth()
-  const { databaseEnabled, demoPreviewActive } = useDemo()
   const [versions, setVersions] = useState<AgreementVersionDto[]>([])
   const [rows, setRows] = useState<AgreementDashboardRow[]>([])
   const [notifications, setNotifications] = useState<AdminNotification[]>([])
@@ -60,15 +50,6 @@ export function AdminAgreementsPage() {
   )
 
   const load = useCallback(async () => {
-    if (demoPreviewActive) {
-      ensureDemoPublishedVersion()
-      const demoVersions = listDemoVersions()
-      setVersions(demoVersions.length ? demoVersions : [DEFAULT_PUBLISHED_VERSION as AgreementVersionDto])
-      setRows(listDemoDashboard())
-      setNotifications([])
-      return
-    }
-
     const [versionsRes, dashboardRes] = await Promise.all([
       fetch("/api/agreements/versions"),
       fetch(`/api/agreements/dashboard?parent=${encodeURIComponent(parentQuery)}&student=${encodeURIComponent(studentQuery)}`),
@@ -83,7 +64,7 @@ export function AdminAgreementsPage() {
       setRows(data.rows ?? [])
       setNotifications(data.notifications ?? [])
     }
-  }, [demoPreviewActive, parentQuery, studentQuery, selectedVersionId])
+  }, [parentQuery, studentQuery, selectedVersionId])
 
   useEffect(() => {
     void load()
@@ -99,20 +80,6 @@ export function AdminAgreementsPage() {
   }, [selectedVersion])
 
   async function saveDraft() {
-    if (demoPreviewActive) {
-      const saved = saveDemoDraftVersion({
-        id: selectedVersion?.status === "DRAFT" ? selectedVersion.id : undefined,
-        versionLabel: draftLabel,
-        effectiveDate: new Date(effectiveDate).toISOString(),
-        expiresAt: expiresAt ? new Date(expiresAt).toISOString() : null,
-        content: draftContent,
-      })
-      setSelectedVersionId(saved.id)
-      setToast("Draft saved locally")
-      void load()
-      return
-    }
-
     const payload = {
       versionLabel: draftLabel,
       effectiveDate: new Date(effectiveDate).toISOString(),
@@ -145,12 +112,6 @@ export function AdminAgreementsPage() {
       setToast("Select a draft version to publish")
       return
     }
-    if (demoPreviewActive) {
-      publishDemoVersion(selectedVersion.status === "DRAFT" ? selectedVersion.id : selectedVersion.id)
-      setToast("Agreement published")
-      void load()
-      return
-    }
     await fetch(`/api/agreements/versions/${selectedVersion.id}/publish`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -162,12 +123,6 @@ export function AdminAgreementsPage() {
 
   async function archiveVersion() {
     if (!selectedVersion) return
-    if (demoPreviewActive) {
-      archiveDemoVersion(selectedVersion.id)
-      setToast("Version archived")
-      void load()
-      return
-    }
     await fetch(`/api/agreements/versions/${selectedVersion.id}/archive`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },

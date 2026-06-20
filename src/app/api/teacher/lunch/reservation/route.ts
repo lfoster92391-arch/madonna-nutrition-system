@@ -5,7 +5,7 @@ import { resolveSchoolId } from "@/lib/db/school"
 import { badRequest } from "@/lib/api/response"
 import { withTeacherAccess } from "@/lib/teacher/api"
 import { todayDateOnly, toDbPaymentMethod, fromDbPaymentMethod } from "@/lib/teacher/db"
-import { demoTeacherLunchReservation } from "@/data/demo/teacher"
+import { TEACHER_LUNCH_DEFAULTS } from "@/lib/teacher/defaults"
 
 const reservationSchema = z.object({
   teacherId: z.string().min(1),
@@ -39,7 +39,7 @@ export async function GET(request: Request) {
         pickupLocation: reservation.pickupLocation,
         pickupStart: reservation.pickupStart,
         pickupEnd: reservation.pickupEnd,
-        cutoffTime: demoTeacherLunchReservation.cutoffTime,
+        cutoffTime: TEACHER_LUNCH_DEFAULTS.cutoffTime,
       },
     })
   })
@@ -69,21 +69,21 @@ export async function POST(request: Request) {
       update: {
         paymentMethod: toDbPaymentMethod(paymentMethod),
         status: "RESERVED",
-        mealName: mealName ?? demoTeacherLunchReservation.mealName,
-        mealPrice: mealPrice ?? demoTeacherLunchReservation.mealPrice,
+        mealName: mealName ?? TEACHER_LUNCH_DEFAULTS.mealName,
+        mealPrice: mealPrice ?? TEACHER_LUNCH_DEFAULTS.mealPrice,
       },
       create: {
         userId: teacher.id,
         schoolId,
         date: today,
-        mealName: mealName ?? demoTeacherLunchReservation.mealName,
-        mealPrice: mealPrice ?? demoTeacherLunchReservation.mealPrice,
-        mealPhotoUrl: demoTeacherLunchReservation.mealPhotoUrl,
+        mealName: mealName ?? TEACHER_LUNCH_DEFAULTS.mealName,
+        mealPrice: mealPrice ?? TEACHER_LUNCH_DEFAULTS.mealPrice,
+        mealPhotoUrl: TEACHER_LUNCH_DEFAULTS.mealPhotoUrl,
         paymentMethod: toDbPaymentMethod(paymentMethod),
         status: "RESERVED",
-        pickupLocation: demoTeacherLunchReservation.pickupLocation,
-        pickupStart: demoTeacherLunchReservation.pickupStart,
-        pickupEnd: demoTeacherLunchReservation.pickupEnd,
+        pickupLocation: TEACHER_LUNCH_DEFAULTS.pickupLocation,
+        pickupStart: TEACHER_LUNCH_DEFAULTS.pickupStart,
+        pickupEnd: TEACHER_LUNCH_DEFAULTS.pickupEnd,
       },
     })
 

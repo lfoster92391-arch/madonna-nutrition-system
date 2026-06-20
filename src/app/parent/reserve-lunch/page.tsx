@@ -7,7 +7,7 @@ import { useAgreementStatus } from "@/components/agreements/useAgreementStatus"
 import { useDemo } from "@/components/providers/DemoProvider"
 import { useAuth } from "@/components/providers/AuthProvider"
 import { formatStudentAgreementStatus, isLunchSignupAllowed } from "@/lib/agreements/student-status"
-import { getPendingSubmission, getStudentProfile } from "@/data/demo"
+import { getPendingSubmission, getStudentProfile } from "@/lib/student-profiles"
 import { useParentLinkedStudents } from "@/hooks/useParentLinkedStudents"
 import {
   getFoodProfileDisplayLabel,
@@ -41,8 +41,7 @@ interface ReservationRow {
 export default function ParentReserveLunchPage() {
   const { user } = useAuth()
   const { students, requiresSignature, loading } = useAgreementStatus()
-  const { studentProfiles, allergySubmissions, calendarEvents, demoPreviewActive, databaseEnabled } =
-    useDemo()
+  const { studentProfiles, allergySubmissions, calendarEvents, databaseEnabled } = useDemo()
   const { students: linkedStudents } = useParentLinkedStudents()
 
   const [selectedStudentId, setSelectedStudentId] = useState("")
@@ -70,7 +69,7 @@ export default function ParentReserveLunchPage() {
   )
 
   const loadReservations = useCallback(async () => {
-    if (!user || demoPreviewActive || !databaseEnabled) return
+    if (!user || !databaseEnabled) return
     const res = await fetch(`/api/lunch-reservations?parentUserId=${user.id}`, {
       headers: { "x-session-user-id": user.id },
     })
@@ -78,7 +77,7 @@ export default function ParentReserveLunchPage() {
       const data = await res.json()
       setReservations(data.reservations ?? [])
     }
-  }, [user, demoPreviewActive, databaseEnabled])
+  }, [user, databaseEnabled])
 
   useEffect(() => {
     void loadReservations()
@@ -97,25 +96,6 @@ export default function ParentReserveLunchPage() {
     setError(null)
     setMessage(null)
     if (!user || !selectedStudentId || !selectedDate) return
-
-    if (demoPreviewActive) {
-      const student = linkedStudents.find((s) => s.id === selectedStudentId)
-      const price = MEAL_OPTIONS.find((m) => m.value === mealType)?.defaultPrice ?? 3
-      setReservations((prev) => [
-        {
-          id: `demo-${Date.now()}`,
-          studentId: selectedStudentId,
-          studentName: student ? `${student.firstName} ${student.lastName}` : selectedStudentId,
-          date: selectedDate,
-          mealType,
-          price,
-          status: "RESERVED",
-        },
-        ...prev,
-      ])
-      setMessage("Demo reservation saved (preview mode only).")
-      return
-    }
 
     setSubmitting(true)
     try {

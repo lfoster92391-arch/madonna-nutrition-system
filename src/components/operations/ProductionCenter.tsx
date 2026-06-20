@@ -110,7 +110,7 @@ export function ProductionCenter() {
       stats={[
         { label: "Active Orders", value: String(active), variant: active ? "warning" : "success" },
         { label: "Scheduled Today", value: String(orders.length) },
-        { label: "Source", value: data?.source === "demo" ? "Demo" : "Live", hint: "Calendar + templates" },
+        { label: "Source", value: "Live", hint: "Calendar + templates" },
       ]}
     >
       {isLoading && <p className="text-silver-foreground">Loading production queue…</p>}

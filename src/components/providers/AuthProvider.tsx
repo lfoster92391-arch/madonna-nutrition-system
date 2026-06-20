@@ -10,7 +10,7 @@ import {
   type ReactNode,
 } from "react"
 import { useDemo } from "@/components/providers/DemoProvider"
-import { clearAllDemoCaches } from "@/lib/demo/session"
+import { clearLegacySessionCaches } from "@/lib/demo/session"
 import { formatUserName, normalizeUsername } from "@/lib/users"
 import type { UserRole } from "@/lib/types"
 
@@ -43,7 +43,7 @@ interface AuthContextValue {
   logout: () => void
 }
 
-const STORAGE_KEY = "mnms-demo-session"
+const STORAGE_KEY = "mnms-auth-session"
 
 const AuthContext = createContext<AuthContextValue | null>(null)
 
@@ -211,7 +211,7 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
     setUser(null)
     setMustChangePassword(false)
     writeSession(null)
-    clearAllDemoCaches()
+    clearLegacySessionCaches()
   }, [])
 
   const clearMustChangePassword = useCallback(() => {

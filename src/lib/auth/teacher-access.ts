@@ -1,5 +1,4 @@
 import { isAllowedTeacherEmail, TEACHER_ACCESS_DENIED_MESSAGE } from "@/config/teacher-auth"
-import { demoUsers } from "@/data/demo"
 import { isDatabaseEnabled } from "@/lib/db/config"
 import { prisma } from "@/lib/prisma"
 import type { UserRole } from "@/lib/types"
@@ -18,52 +17,37 @@ export async function assertTeacherUser(userId: string): Promise<{
   department: string
   accountBalance: number
 }> {
-  if (isDatabaseEnabled()) {
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: {
-        id: true,
-        email: true,
-        firstName: true,
-        lastName: true,
-        role: true,
-        department: true,
-        accountBalance: true,
-      },
-    })
-
-    if (!user || user.role !== "TEACHER") {
-      throw new TeacherAccessError("Teacher access required")
-    }
-
-    if (!isAllowedTeacherEmail(user.email)) {
-      throw new TeacherAccessError(TEACHER_ACCESS_DENIED_MESSAGE)
-    }
-
-    return {
-      id: user.id,
-      email: user.email,
-      displayName: `${user.firstName} ${user.lastName}`,
-      department: user.department ?? "Faculty",
-      accountBalance: Number(user.accountBalance),
-    }
+  if (!isDatabaseEnabled()) {
+    throw new TeacherAccessError("Teacher access requires a configured database.")
   }
 
-  const demoUser = demoUsers.find((u) => u.id === userId)
-  if (!demoUser || demoUser.role !== "teacher") {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      id: true,
+      email: true,
+      firstName: true,
+      lastName: true,
+      role: true,
+      department: true,
+      accountBalance: true,
+    },
+  })
+
+  if (!user || user.role !== "TEACHER") {
     throw new TeacherAccessError("Teacher access required")
   }
 
-  if (!isAllowedTeacherEmail(demoUser.email)) {
+  if (!isAllowedTeacherEmail(user.email)) {
     throw new TeacherAccessError(TEACHER_ACCESS_DENIED_MESSAGE)
   }
 
   return {
-    id: demoUser.id,
-    email: demoUser.email,
-    displayName: `${demoUser.firstName} ${demoUser.lastName}`,
-    department: demoUser.department ?? "Faculty",
-    accountBalance: demoUser.accountBalance ?? 0,
+    id: user.id,
+    email: user.email,
+    displayName: `${user.firstName} ${user.lastName}`,
+    department: user.department ?? "Faculty",
+    accountBalance: Number(user.accountBalance),
   }
 }
 

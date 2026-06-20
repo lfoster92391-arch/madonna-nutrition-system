@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { AlertTriangle } from "lucide-react"
-import { getPendingSubmission } from "@/data/demo"
+import { getPendingSubmission } from "@/lib/student-profiles"
 import { isDietaryFormBlocking, type AllergySubmission, type StudentProfile } from "@/lib/types"
 
 export function AnnualReviewBanner({

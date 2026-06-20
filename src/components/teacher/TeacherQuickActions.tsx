@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { Calendar, CreditCard, Download, Wallet } from "lucide-react"
 import { Card } from "@/components/ui/card"
-import { TEACHER_NAVY } from "@/data/demo/teacher"
+import { TEACHER_NAVY } from "@/config/teacher-theme"
 
 const actions = [
   { label: "Add Funds", href: "/teacher/account", icon: Wallet },

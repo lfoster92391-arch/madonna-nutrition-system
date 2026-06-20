@@ -4,7 +4,6 @@ import { useCallback, useEffect, useState } from "react"
 import { Megaphone, Send } from "lucide-react"
 import { useAuth } from "@/components/providers/AuthProvider"
 import { useDemo } from "@/components/providers/DemoProvider"
-import { parentAnnouncements } from "@/data/demo"
 import { Button } from "@/components/ui/button"
 import { Card, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input, Label } from "@/components/ui/input"
@@ -19,7 +18,7 @@ interface AnnouncementRow {
 
 export default function AdminCommunicationPage() {
   const { user } = useAuth()
-  const { demoPreviewActive, databaseEnabled } = useDemo()
+  const { databaseEnabled } = useDemo()
   const [announcements, setAnnouncements] = useState<AnnouncementRow[]>([])
   const [title, setTitle] = useState("")
   const [body, setBody] = useState("")
@@ -28,10 +27,6 @@ export default function AdminCommunicationPage() {
   const [toast, setToast] = useState<string | null>(null)
 
   const loadAnnouncements = useCallback(async () => {
-    if (demoPreviewActive) {
-      setAnnouncements(parentAnnouncements)
-      return
-    }
     if (!databaseEnabled) {
       setAnnouncements([])
       return
@@ -41,7 +36,7 @@ export default function AdminCommunicationPage() {
       const data = await res.json()
       setAnnouncements(data.announcements ?? [])
     }
-  }, [demoPreviewActive, databaseEnabled])
+  }, [databaseEnabled])
 
   useEffect(() => {
     void loadAnnouncements()
@@ -49,25 +44,12 @@ export default function AdminCommunicationPage() {
 
   async function handlePublish() {
     if (!user || !title.trim() || !body.trim()) return
+    if (!databaseEnabled) {
+      setToast("Database is required to publish announcements.")
+      return
+    }
     setSaving(true)
     try {
-      if (demoPreviewActive) {
-        setAnnouncements((prev) => [
-          {
-            id: `demo-${Date.now()}`,
-            title: title.trim(),
-            body: body.trim(),
-            audience,
-            date: new Date().toISOString().slice(0, 10),
-          },
-          ...prev,
-        ])
-        setTitle("")
-        setBody("")
-        setToast("Demo announcement added (preview only).")
-        return
-      }
-
       const res = await fetch("/api/announcements", {
         method: "POST",
         headers: {
@@ -143,7 +125,7 @@ export default function AdminCommunicationPage() {
                 onChange={(e) => setBody(e.target.value)}
               />
             </div>
-            <Button type="button" disabled={saving} onClick={() => void handlePublish()}>
+            <Button type="button" disabled={saving || !databaseEnabled} onClick={() => void handlePublish()}>
               <Send className="mr-2 h-4 w-4" />
               {saving ? "Publishing..." : "Publish"}
             </Button>

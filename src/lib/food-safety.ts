@@ -1,6 +1,5 @@
 import { z } from "zod"
 import type { Allergy, AllergySeverity, Student } from "@/lib/types"
-import { demoMenus, todaysMenuItems } from "@/data/demo"
 
 export const ALLERGY_OPTIONS = [
   "Peanut",
@@ -96,19 +95,7 @@ function allergenMatchesMenu(allergyName: string, menuAllergen: string) {
 }
 
 function getTodaysMenuAllergens(): string[] {
-  const today = new Date().toISOString().slice(0, 10)
-  const fromMenus = demoMenus
-    .filter((m) => m.date === today)
-    .flatMap((m) => m.allergens)
-  const fromItems = todaysMenuItems.flatMap((item) => {
-    const lower = item.toLowerCase()
-    const found: string[] = []
-    if (lower.includes("milk")) found.push("Dairy")
-    if (lower.includes("meat") || lower.includes("sauce")) found.push("Gluten")
-    if (lower.includes("bread")) found.push("Gluten", "Wheat")
-    return found
-  })
-  return [...new Set([...fromMenus, ...fromItems])]
+  return []
 }
 
 export function checkMealCompatibility(student: Student): "SAFE" | "BLOCKED" {
@@ -119,11 +106,6 @@ export function checkMealCompatibility(student: Student): "SAFE" | "BLOCKED" {
   for (const allergy of severeAllergies) {
     for (const menuAllergen of menuAllergens) {
       if (allergenMatchesMenu(allergy.name, menuAllergen)) {
-        return "BLOCKED"
-      }
-    }
-    for (const item of todaysMenuItems) {
-      if (allergenMatchesMenu(allergy.name, item)) {
         return "BLOCKED"
       }
     }

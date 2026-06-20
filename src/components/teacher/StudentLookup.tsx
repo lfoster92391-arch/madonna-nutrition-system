@@ -9,7 +9,7 @@ import {
 } from "@/components/providers/TeacherDataProvider"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { TEACHER_NAVY } from "@/data/demo/teacher"
+import { TEACHER_NAVY } from "@/config/teacher-theme"
 
 export function StudentLookup() {
   const {

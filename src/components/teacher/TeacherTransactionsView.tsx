@@ -2,7 +2,7 @@
 
 import { TeacherDashboardHeader } from "@/components/teacher/TeacherDashboardHeader"
 import { Card } from "@/components/ui/card"
-import { TEACHER_NAVY } from "@/data/demo/teacher"
+import { TEACHER_NAVY } from "@/config/teacher-theme"
 
 export function TeacherTransactionsView() {
   return (

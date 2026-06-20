@@ -2,7 +2,7 @@
 
 import { Suspense } from "react"
 import { useDemo } from "@/components/providers/DemoProvider"
-import { getPendingSubmission, getStudentProfile } from "@/data/demo"
+import { getPendingSubmission, getStudentProfile } from "@/lib/student-profiles"
 import { useParentLinkedStudents } from "@/hooks/useParentLinkedStudents"
 import { useParentAnnouncements } from "@/hooks/useParentAnnouncements"
 import { AlertCenter, buildAlertItems } from "@/components/parent/AlertCenter"

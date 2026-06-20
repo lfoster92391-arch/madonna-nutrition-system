@@ -3,12 +3,9 @@
 import { useMemo, useState } from "react"
 import { useAuth } from "@/components/providers/AuthProvider"
 import { useDemo } from "@/components/providers/DemoProvider"
-import {
-  getPendingSubmission,
-  getStudentProfile,
-  parentSpendingByWeek,
-} from "@/data/demo"
+import { getPendingSubmission, getStudentProfile } from "@/lib/student-profiles"
 import { useParentLinkedStudents } from "@/hooks/useParentLinkedStudents"
+import { useParentTransactions } from "@/components/parent/useParentTransactions"
 import { useParentAnnouncements } from "@/hooks/useParentAnnouncements"
 import { countAttentionItems, buildAlertItems } from "@/components/parent/AlertCenter"
 import { PARENT_PAGE_PAD, PARENT_SECTION_GAP } from "@/components/parent/parent-dashboard-styles"
@@ -22,13 +19,14 @@ export function StudentCenterPage() {
   const { user } = useAuth()
   const { studentProfiles, allergySubmissions } = useDemo()
   const { students: linkedStudents } = useParentLinkedStudents()
+  const { mealTransactions } = useParentTransactions()
   const announcements = useParentAnnouncements()
   const [searchQuery, setSearchQuery] = useState("")
   const [filterValue, setFilterValue] = useState("all")
 
   const firstName = user?.displayName.split(" ")[0] ?? "Parent"
   const familyBalance = linkedStudents.reduce((sum, s) => sum + s.balance, 0)
-  const monthlySpend = parentSpendingByWeek.reduce((sum, w) => sum + w.amount, 0)
+  const monthlySpend = mealTransactions.reduce((sum, tx) => sum + tx.amount, 0)
   const lowBalanceStudents = linkedStudents.filter((s) => s.balance < 5)
 
   const dietaryFormIssues = linkedStudents.filter((student) => {

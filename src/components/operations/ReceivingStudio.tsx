@@ -142,7 +142,7 @@ export function ReceivingStudio() {
       icon={PackageCheck}
       stats={[
         { label: "Pending Approval", value: String(pending), variant: pending ? "warning" : "success" },
-        { label: "Queue Total", value: String(records.length), hint: data?.source === "demo" ? "Demo mode" : "Live data" },
+        { label: "Queue Total", value: String(records.length), hint: "Live data" },
       ]}
     >
       {isLoading && <p className="text-silver-foreground">Loading receiving queue…</p>}

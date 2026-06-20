@@ -3,7 +3,7 @@
 import { useState } from "react"
 import Image from "next/image"
 import Link from "next/link"
-import { getPendingSubmission, getStudentProfile } from "@/data/demo"
+import { getPendingSubmission, getStudentProfile } from "@/lib/student-profiles"
 import { useDemo } from "@/components/providers/DemoProvider"
 import { DietaryFormStatusBadge } from "@/components/parent/DietaryFormStatusBadge"
 import { AddFundsModal } from "@/components/parent/funding/AddFundsModal"

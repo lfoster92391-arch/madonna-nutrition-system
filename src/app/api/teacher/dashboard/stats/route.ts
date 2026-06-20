@@ -4,7 +4,14 @@ import { resolveSchoolId } from "@/lib/db/school"
 import { withTeacherAccess } from "@/lib/teacher/api"
 import { fromDbPaymentMethod, todayDateOnly } from "@/lib/teacher/db"
 import { isLowFunds, STUDENT_MEAL_PRICE } from "@/lib/teacher/low-funds"
-import { demoTeacherDashboardStats } from "@/data/demo/teacher"
+
+const EMPTY_STATS = {
+  studentsSignedUp: 0,
+  payAtKiosk: 0,
+  usingAccount: 0,
+  usingAccountLowFunds: 0,
+  prepaidOnline: 0,
+}
 
 export async function GET(request: Request) {
   const teacherId = new URL(request.url).searchParams.get("teacherId")
@@ -19,7 +26,7 @@ export async function GET(request: Request) {
     })
 
     if (signups.length === 0) {
-      return NextResponse.json({ stats: demoTeacherDashboardStats })
+      return NextResponse.json({ stats: EMPTY_STATS })
     }
 
     let payAtKiosk = 0

@@ -5,7 +5,7 @@ import { CheckCircle2 } from "lucide-react"
 import { useTeacherData } from "@/components/providers/TeacherDataProvider"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
-import { TEACHER_NAVY } from "@/data/demo/teacher"
+import { TEACHER_NAVY } from "@/config/teacher-theme"
 import { formatCurrency } from "@/lib/utils"
 import type { TeacherPaymentMethod } from "@/lib/teacher/types"
 

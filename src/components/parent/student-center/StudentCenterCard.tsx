@@ -6,13 +6,8 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { History, User, Wallet } from "lucide-react"
 import { AddFundsModal } from "@/components/parent/funding/AddFundsModal"
-import {
-  getPendingSubmission,
-  getStudentProfile,
-  parentRecentActivity,
-  todaysMenuItems,
-  type Student,
-} from "@/data/demo"
+import { getPendingSubmission, getStudentProfile } from "@/lib/student-profiles"
+import type { Student } from "@/lib/types"
 import { useDemo } from "@/components/providers/DemoProvider"
 import { PARENT_CARD, PARENT_NAVY } from "@/components/parent/parent-dashboard-styles"
 import { Button } from "@/components/ui/button"
@@ -34,7 +29,7 @@ export function StudentCenterCard({ student }: StudentCenterCardProps) {
   const fullName = `${student.firstName} ${student.lastName}`
   const profileHref = `/parent/student-profile/${student.id}`
 
-  const recentPurchase = parentRecentActivity.find((a) => a.student === fullName)
+
   const isLowBalance = student.balance < 5
   const mealStatus = isLowBalance ? "Needs Funds" : "Active"
 
@@ -101,10 +96,7 @@ export function StudentCenterCard({ student }: StudentCenterCardProps) {
 
       <div className="mt-5 grid grid-cols-3 gap-3 border-y border-[#C8CDD7] py-4">
         <Metric label="Balance" value={formatCurrency(student.balance)} alert={isLowBalance} />
-        <Metric
-          label="Recent Purchase"
-          value={recentPurchase ? formatCurrency(recentPurchase.amount) : "—"}
-        />
+        <Metric label="Recent Purchase" value="—" />
         <Metric label="Meal Status" value={mealStatus} alert={isLowBalance} />
       </div>
 
@@ -113,15 +105,13 @@ export function StudentCenterCard({ student }: StudentCenterCardProps) {
           <span className="font-medium" style={{ color: PARENT_NAVY }}>
             Today&apos;s Lunch:
           </span>{" "}
-          {todaysMenuItems[0]}
+          Menu not published yet
         </p>
         <p className="text-[#64748B]">
           <span className="font-medium" style={{ color: PARENT_NAVY }}>
             Recent:
           </span>{" "}
-          {recentPurchase
-            ? `${recentPurchase.description} ${formatCurrency(recentPurchase.amount)}`
-            : "No recent activity"}
+          No recent activity
         </p>
       </div>
 

@@ -9,7 +9,7 @@ import { QuickAmountPicker } from "@/components/parent/funding/QuickAmountPicker
 import { getSuggestedDeposit } from "@/components/parent/funding/useAddFundsPayment"
 import { useAuth } from "@/components/providers/AuthProvider"
 import { useDemo } from "@/components/providers/DemoProvider"
-import { DEMO_SCHOOL } from "@/data/demo"
+import { SCHOOL } from "@/config/school"
 import { api } from "@/lib/api/client"
 import {
   ADD_FUNDS_MAX,
@@ -155,7 +155,7 @@ export function AddFundsForm() {
     <div className="space-y-6 p-8">
       <div>
         <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary">
-          {DEMO_SCHOOL.name} · {DEMO_SCHOOL.location}
+          {SCHOOL.name} · {SCHOOL.location}
         </p>
         <h1 className="mt-2 text-2xl font-bold text-primary">Deposit Funds</h1>
         <p className="mt-2 max-w-2xl text-silver-foreground">
@@ -323,7 +323,7 @@ export function AddFundsForm() {
                 Payment method
               </div>
               <p className="mt-1 text-sm text-silver-foreground">
-                {stripeConfigured ? "Card checkout via Stripe" : "Demo mode"}
+                {stripeConfigured ? "Card checkout via Stripe" : "Card payments unavailable"}
               </p>
               <Link
                 href="/parent/payments?tab=billing"

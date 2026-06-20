@@ -5,10 +5,8 @@ import { useRouter } from "next/navigation"
 import { CheckCircle2 } from "lucide-react"
 import { AgreementPreview } from "@/components/agreements/AgreementPreview"
 import { useAuth } from "@/components/providers/AuthProvider"
-import { useDemo } from "@/components/providers/DemoProvider"
 import { DEFAULT_AGREEMENT_CONTENT, DEFAULT_PUBLISHED_VERSION } from "@/config/agreement-defaults"
 import { AGREEMENT_STATUS_CHANGED_EVENT } from "@/components/agreements/useAgreementStatus"
-import { signDemoAgreement } from "@/lib/agreements/demo-store"
 import type { AgreementContent } from "@/config/agreement-defaults"
 import type { AgreementVersionDto } from "@/lib/agreements/types"
 import { Button } from "@/components/ui/button"
@@ -19,7 +17,6 @@ import { Label } from "@/components/ui/label"
 export function ParentAgreementSigningPage() {
   const router = useRouter()
   const { user } = useAuth()
-  const { databaseEnabled, demoPreviewActive } = useDemo()
   const [version, setVersion] = useState<AgreementVersionDto | null>(null)
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
@@ -34,11 +31,6 @@ export function ParentAgreementSigningPage() {
 
   useEffect(() => {
     async function load() {
-      if (demoPreviewActive) {
-        setVersion(DEFAULT_PUBLISHED_VERSION as AgreementVersionDto)
-        setLoading(false)
-        return
-      }
       try {
         const res = await fetch("/api/agreements/current")
         const data = await res.json()
@@ -50,7 +42,7 @@ export function ParentAgreementSigningPage() {
       }
     }
     void load()
-  }, [demoPreviewActive])
+  }, [])
 
   const content: AgreementContent = useMemo(
     () => version?.content ?? DEFAULT_AGREEMENT_CONTENT,
@@ -68,21 +60,6 @@ export function ParentAgreementSigningPage() {
     setError(null)
 
     try {
-      if (demoPreviewActive) {
-        const result = signDemoAgreement({
-          parentUserId: user.id,
-          parentName: parentName.trim(),
-          relationship: relationship.trim(),
-          typedSignature: typedSignature.trim(),
-        })
-        setReceipt(
-          `Signed ${result.versionLabel} for ${result.studentNames.join(", ")} on ${new Date(result.signedAt ?? "").toLocaleString()}`
-        )
-        window.dispatchEvent(new Event(AGREEMENT_STATUS_CHANGED_EVENT))
-        setSigned(true)
-        return
-      }
-
       const res = await fetch("/api/agreements/sign", {
         method: "POST",
         headers: { "Content-Type": "application/json" },

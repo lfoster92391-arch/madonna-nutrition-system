@@ -12,17 +12,12 @@ import {
 import { useParentTransactions } from "@/components/parent/useParentTransactions"
 import { MealPurchasesTable } from "@/components/parent/meals/MealPurchasesTable"
 import { FamilyOverviewStrip } from "@/components/parent/student-hub/FamilyOverviewStrip"
-import { parentSpendingByWeek } from "@/data/demo"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { PARENT_NAVY } from "@/components/parent/parent-dashboard-styles"
 import { formatCurrency } from "@/lib/utils"
 
-const FAVORITE_MEALS_STUB = [
-  { meal: "Lunch", count: 12 },
-  { meal: "Milk", count: 8 },
-  { meal: "Breakfast", count: 4 },
-]
+const FAVORITE_MEALS_STUB: { meal: string; count: number }[] = []
 
 export function MealActivityView() {
   const { linkedStudents, getFilteredMeals, isLoading } = useParentTransactions()
@@ -34,7 +29,8 @@ export function MealActivityView() {
   )
 
   const totalBalance = linkedStudents.reduce((sum, s) => sum + s.balance, 0)
-  const monthlySpend = parentSpendingByWeek.reduce((sum, w) => sum + w.amount, 0)
+  const monthlySpend = filteredMeals.reduce((sum, tx) => sum + tx.amount, 0)
+  const spendingByWeek = [{ week: "This month", amount: monthlySpend }]
 
   if (isLoading) {
     return <p className="p-8 text-silver-foreground">Loading meal activity…</p>
@@ -92,7 +88,7 @@ export function MealActivityView() {
           </p>
           <div className="mt-4 h-44">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={parentSpendingByWeek} margin={{ top: 4, right: 4, left: -12, bottom: 0 }}>
+              <BarChart data={spendingByWeek} margin={{ top: 4, right: 4, left: -12, bottom: 0 }}>
                 <XAxis dataKey="week" tick={{ fontSize: 11, fill: "#64748B" }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fontSize: 11, fill: "#64748B" }} width={36} axisLine={false} tickLine={false} />
                 <Tooltip formatter={(v) => formatCurrency(Number(v))} />
@@ -104,7 +100,10 @@ export function MealActivityView() {
 
         <Card className="rounded-[20px] border-silver/60 p-6 shadow-sm">
           <h3 className="text-base font-bold text-primary">Favorite Meals</h3>
-          <p className="mt-1 text-sm text-silver-foreground">Based on purchase frequency (demo)</p>
+          <p className="mt-1 text-sm text-silver-foreground">Based on purchase frequency</p>
+          {FAVORITE_MEALS_STUB.length === 0 ? (
+            <p className="mt-4 text-sm text-silver-foreground">Favorite meals appear after purchases are recorded.</p>
+          ) : (
           <ul className="mt-4 space-y-3">
             {FAVORITE_MEALS_STUB.map(({ meal, count }) => (
               <li
@@ -116,6 +115,7 @@ export function MealActivityView() {
               </li>
             ))}
           </ul>
+          )}
         </Card>
       </div>
 

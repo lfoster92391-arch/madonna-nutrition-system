@@ -2,7 +2,7 @@ async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
   const sessionHeaders: Record<string, string> = {}
   if (typeof window !== "undefined") {
     try {
-      const raw = sessionStorage.getItem("mnms-demo-session")
+      const raw = sessionStorage.getItem("mnms-auth-session")
       if (raw) {
         const user = JSON.parse(raw) as { id?: string }
         if (user.id) sessionHeaders["x-session-user-id"] = user.id

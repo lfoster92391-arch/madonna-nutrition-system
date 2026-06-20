@@ -16,7 +16,6 @@ import { useDemo } from "@/components/providers/DemoProvider"
 import { Badge } from "@/components/ui/badge"
 import { api } from "@/lib/api/client"
 import { downloadImportTemplate, exportRowsToCsv } from "@/lib/import-export"
-import { generateTempPassword } from "@/lib/users"
 import { Button } from "@/components/ui/button"
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label, Select } from "@/components/ui/input"
@@ -129,10 +128,6 @@ export function FamilyImportWizard() {
     students,
     users,
     databaseEnabled,
-    demoPreviewActive,
-    createUser,
-    updateUser,
-    addStudent,
   } = useDemo()
 
   const [step, setStep] = useState<ImportStep>("upload")
@@ -227,117 +222,29 @@ export function FamilyImportWizard() {
     setStep(errors.length > 0 && parsed.length === 0 ? "validation" : "preview")
   }
 
-  async function runDemoImport(rows: ParsedFamilyRow[]): Promise<ImportResult> {
-    const result: ImportResult = {
-      created: 0,
-      linked: 0,
-      skipped: 0,
-      errors: [],
-      credentials: [],
-    }
-    const credentialMap = new Map<string, ImportResult["credentials"][number]>()
-    const knownStudentIds = new Set(students.map((student) => student.id))
-
-    for (let index = 0; index < rows.length; index++) {
-      const row = rows[index]!
-      const rowNumber = index + 1
-      const email = row.parentEmail.trim().toLowerCase()
-      const mdId = row.studentMdId.trim()
-
-      if (!knownStudentIds.has(mdId)) {
-        await addStudent({
-          id: mdId,
-          firstName: row.studentFirstName!.trim(),
-          lastName: row.studentLastName!.trim(),
-          grade: row.grade!.trim(),
-          balance: row.balance!,
-          photo: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=400&auto=format&fit=crop",
-          allergies: [],
-          dietaryRestrictions: [],
-          parentContacts: [],
-        })
-        knownStudentIds.add(mdId)
-      }
-
-      const existingUser = users.find((entry) => entry.email.toLowerCase() === email)
-      if (existingUser && existingUser.role !== "parent") {
-        result.skipped += 1
-        result.errors.push({
-          row: rowNumber,
-          message: `Email ${email} is already registered as ${existingUser.role}`,
-        })
-        continue
-      }
-
-      if (existingUser) {
-        const linkedStudentIds = [...new Set([...(existingUser.linkedStudentIds ?? []), mdId])]
-        await updateUser(existingUser.id, { linkedStudentIds }, authUser?.username ?? "admin")
-        result.linked += 1
-        const cred = credentialMap.get(email)
-        if (cred) {
-          cred.studentMdIds = [...new Set([...cred.studentMdIds, mdId])]
-        } else {
-          credentialMap.set(email, {
-            email,
-            username: existingUser.username,
-            studentMdIds: [mdId],
-            created: false,
-            linked: true,
-          })
-        }
-        continue
-      }
-
-      const password = row.password?.trim() || generateTempPassword()
-      const username = defaultUsername(email, row.parentUsername)
-      const created = await createUser(
-        {
-          username,
-          email,
-          firstName: row.parentFirstName.trim(),
-          lastName: row.parentLastName.trim(),
-          role: "parent",
-          phone: row.parentPhone?.trim(),
-          linkedStudentIds: [mdId],
-          password,
-          generateTempPassword: !row.password?.trim(),
-        },
-        authUser?.username ?? "admin"
-      )
-
-      result.created += 1
-      credentialMap.set(email, {
-        email,
-        username: created.username,
-        tempPassword: row.password?.trim() ? undefined : password,
-        studentMdIds: [mdId],
-        created: true,
-        linked: true,
-      })
-    }
-
-    result.credentials = [...credentialMap.values()]
-    return result
-  }
-
   async function executeImport() {
     setImporting(true)
     try {
-      let result: ImportResult
-      if (databaseEnabled && !demoPreviewActive) {
-        if (!authUser?.id) {
-          setErrorRows([{ row: 0, errors: ["Admin session required for import"] }])
-          setStep("validation")
-          return
-        }
-        result = await api.adminImportFamilies({
-          adminUserId: authUser.id,
-          performedBy: authUser.username,
-          rows: validRows,
-        })
-      } else {
-        result = await runDemoImport(validRows)
+      if (!databaseEnabled) {
+        setErrorRows([
+          {
+            row: 0,
+            errors: ["Database is not configured. Set DATABASE_URL to import families."],
+          },
+        ])
+        setStep("validation")
+        return
       }
+      if (!authUser?.id) {
+        setErrorRows([{ row: 0, errors: ["Admin session required for import"] }])
+        setStep("validation")
+        return
+      }
+      const result = await api.adminImportFamilies({
+        adminUserId: authUser.id,
+        performedBy: authUser.username,
+        rows: validRows,
+      })
       setImportResult(result)
       setStep("complete")
     } catch (error) {

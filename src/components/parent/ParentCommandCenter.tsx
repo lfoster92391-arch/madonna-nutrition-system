@@ -20,7 +20,7 @@ import {
   parseParentDrawer,
   type ParentDrawerId,
 } from "@/components/parent/v3/parent-v3-theme"
-import { getPendingSubmission, getStudentProfile } from "@/data/demo"
+import { getPendingSubmission, getStudentProfile } from "@/lib/student-profiles"
 import { useParentLinkedStudents } from "@/hooks/useParentLinkedStudents"
 import { useParentAnnouncements } from "@/hooks/useParentAnnouncements"
 import { isDietaryFormBlocking } from "@/lib/types"

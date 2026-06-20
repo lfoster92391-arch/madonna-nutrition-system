@@ -6,7 +6,7 @@ import { useTeacherData } from "@/components/providers/TeacherDataProvider"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
-import { TEACHER_NAVY } from "@/data/demo/teacher"
+import { TEACHER_NAVY } from "@/config/teacher-theme"
 
 const STATUS_LABELS = {
   using_account: "Using Account",

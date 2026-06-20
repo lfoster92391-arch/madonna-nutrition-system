@@ -1,6 +1,6 @@
 import Link from "next/link"
 import { LoginForm } from "@/components/auth/LoginForm"
-import { TEACHER_NAVY } from "@/data/demo/teacher"
+import { TEACHER_NAVY } from "@/config/teacher-theme"
 
 export default function TeacherLoginPage() {
   return (
@@ -15,8 +15,6 @@ export default function TeacherLoginPage() {
       <LoginForm role="teacher" redirectTo="/teacher" />
       <p className="mt-6 max-w-md text-center text-sm text-silver-foreground">
         Teacher accounts must use an approved school email (e.g. @weirtonmadonna.org).
-        Demo: <span className="font-medium">m.anderson</span> or{" "}
-        <span className="font-medium">teacher</span>
       </p>
     </div>
   )

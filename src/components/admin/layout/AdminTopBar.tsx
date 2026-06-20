@@ -12,7 +12,7 @@ import {
   User,
 } from "lucide-react"
 import { useAuth } from "@/components/providers/AuthProvider"
-import { DEMO_SCHOOL } from "@/data/demo"
+import { SCHOOL } from "@/config/school"
 import { mockNotifications } from "@/data/mockNotifications"
 import { useAdminLayout } from "@/components/admin/layout/admin-layout-context"
 import {
@@ -96,7 +96,7 @@ export function AdminTopBar() {
           className="flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-medium shadow-sm"
           style={{ borderColor: ADMIN_SILVER, color: ADMIN_NAVY }}
         >
-          {DEMO_SCHOOL.name}
+          {SCHOOL.name}
           <ChevronDown className="h-4 w-4" style={{ color: ADMIN_SILVER }} />
         </button>
         <span

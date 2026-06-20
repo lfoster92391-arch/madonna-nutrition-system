@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { CreditCard, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { TEACHER_NAVY } from "@/data/demo/teacher"
+import { TEACHER_NAVY } from "@/config/teacher-theme"
 
 const BANNER_TEXT =
   "Reminder: Bring your lunch badge to the cafeteria. Please remind students to bring theirs as well and pay before or at the kiosk."

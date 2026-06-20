@@ -1,7 +1,6 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { parentDemoUser } from "@/data/demo"
 import { useAuth } from "@/components/providers/AuthProvider"
 import { Button } from "@/components/ui/button"
 import { Input, Label } from "@/components/ui/input"
@@ -16,20 +15,20 @@ type ProfileForm = {
   householdNotes: string
 }
 
-const DEFAULT_PROFILE: ProfileForm = {
-  name: parentDemoUser.name,
-  email: parentDemoUser.email,
-  phone: "555-0201",
+const EMPTY_PROFILE: ProfileForm = {
+  name: "",
+  email: "",
+  phone: "",
   preferredContact: "email",
   language: "English",
-  householdNotes: "Nut-free household prep; notify for field trips.",
+  householdNotes: "",
 }
 
 export function ProfileSection() {
   const { user } = useAuth()
   const [editing, setEditing] = useState(false)
-  const [saved, setSaved] = useState<ProfileForm>(DEFAULT_PROFILE)
-  const [draft, setDraft] = useState<ProfileForm>(DEFAULT_PROFILE)
+  const [saved, setSaved] = useState<ProfileForm>(EMPTY_PROFILE)
+  const [draft, setDraft] = useState<ProfileForm>(EMPTY_PROFILE)
 
   useEffect(() => {
     if (user?.displayName) {
@@ -61,7 +60,7 @@ export function ProfileSection() {
               onChange={(e) => setDraft({ ...draft, name: e.target.value })}
             />
           ) : (
-            <p className="text-sm font-medium text-primary">{saved.name}</p>
+            <p className="text-sm font-medium text-primary">{saved.name || "—"}</p>
           )}
         </Field>
         <Field label="Email">
@@ -72,7 +71,7 @@ export function ProfileSection() {
               onChange={(e) => setDraft({ ...draft, email: e.target.value })}
             />
           ) : (
-            <p className="text-sm font-medium text-primary">{saved.email}</p>
+            <p className="text-sm font-medium text-primary">{saved.email || "—"}</p>
           )}
         </Field>
         <Field label="Phone">
@@ -82,7 +81,7 @@ export function ProfileSection() {
               onChange={(e) => setDraft({ ...draft, phone: e.target.value })}
             />
           ) : (
-            <p className="text-sm font-medium text-primary">{saved.phone}</p>
+            <p className="text-sm font-medium text-primary">{saved.phone || "—"}</p>
           )}
         </Field>
         <Field label="Preferred contact">
@@ -124,7 +123,7 @@ export function ProfileSection() {
               className="w-full rounded-[14px] border border-silver/60 bg-white px-3 py-2 text-sm"
             />
           ) : (
-            <p className="text-sm text-primary">{saved.householdNotes}</p>
+            <p className="text-sm text-primary">{saved.householdNotes || "—"}</p>
           )}
         </Field>
       </div>

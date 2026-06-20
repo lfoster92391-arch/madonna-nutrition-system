@@ -3,7 +3,7 @@
 import { useTeacherData } from "@/components/providers/TeacherDataProvider"
 import { TeacherDashboardHeader } from "@/components/teacher/TeacherDashboardHeader"
 import { Card } from "@/components/ui/card"
-import { TEACHER_NAVY } from "@/data/demo/teacher"
+import { TEACHER_NAVY } from "@/config/teacher-theme"
 import { formatCurrency } from "@/lib/utils"
 
 export function TeacherAccountView() {

@@ -3,12 +3,7 @@
 import Image from "next/image"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import {
-  getPendingSubmission,
-  getStudentProfile,
-  parentRecentActivity,
-  todaysMenuItems,
-} from "@/data/demo"
+import { getPendingSubmission, getStudentProfile } from "@/lib/student-profiles"
 import { getFoodProfileDisplayLabel, getFoodProfileStatus, type FoodProfileStatus, type Student } from "@/lib/types"
 import { useDemo } from "@/components/providers/DemoProvider"
 import { DietaryFormStatusBadge } from "@/components/parent/DietaryFormStatusBadge"
@@ -30,9 +25,7 @@ export function StudentHubCard({ student }: StudentHubCardProps) {
   const nutritionStatus = getFoodProfileStatus(profile, pending)
   const nutritionLabel = getFoodProfileDisplayLabel(nutritionStatus)
 
-  const recentPurchase = parentRecentActivity.find((item) =>
-    item.student.includes(student.firstName)
-  )
+
   const mealStatus = student.balance < 5 ? "Low Balance" : "Active"
   const lastUpdated = profile?.allergyReviewedAt
     ? new Date(profile.allergyReviewedAt).toLocaleDateString()
@@ -89,11 +82,8 @@ export function StudentHubCard({ student }: StudentHubCardProps) {
       </div>
 
       <div className="mt-4 flex-1 space-y-2 text-sm">
-        <SnapshotRow label="Today's Lunch" value={todaysMenuItems[0] ?? "Menu unavailable"} />
-        <SnapshotRow
-          label="Recent Purchase"
-          value={recentPurchase ? `${recentPurchase.description} (${recentPurchase.date})` : "No recent activity"}
-        />
+        <SnapshotRow label="Today's Lunch" value="Menu not published yet" />
+        <SnapshotRow label="Recent Purchase" value="No recent activity" />
         <SnapshotRow label="Last Updated" value={lastUpdated} />
       </div>
 

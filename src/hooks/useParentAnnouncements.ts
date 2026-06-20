@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useState } from "react"
 import { useDemo } from "@/components/providers/DemoProvider"
-import { parentAnnouncements } from "@/data/demo"
 
 export interface ParentAnnouncement {
   id: string
@@ -11,14 +10,10 @@ export interface ParentAnnouncement {
 }
 
 export function useParentAnnouncements(): ParentAnnouncement[] {
-  const { demoPreviewActive, databaseEnabled } = useDemo()
+  const { databaseEnabled } = useDemo()
   const [announcements, setAnnouncements] = useState<ParentAnnouncement[]>([])
 
   const load = useCallback(async () => {
-    if (demoPreviewActive) {
-      setAnnouncements(parentAnnouncements)
-      return
-    }
     if (!databaseEnabled) {
       setAnnouncements([])
       return
@@ -30,7 +25,7 @@ export function useParentAnnouncements(): ParentAnnouncement[] {
     } else {
       setAnnouncements([])
     }
-  }, [demoPreviewActive, databaseEnabled])
+  }, [databaseEnabled])
 
   useEffect(() => {
     void load()

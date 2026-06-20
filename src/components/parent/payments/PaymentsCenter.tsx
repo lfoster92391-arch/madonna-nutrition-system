@@ -7,7 +7,7 @@ import { PaymentsActivityTab } from "@/components/parent/payments/PaymentsActivi
 import { PaymentsFundingTab } from "@/components/parent/payments/PaymentsFundingTab"
 import { PaymentsMethodsTab } from "@/components/parent/payments/PaymentsMethodsTab"
 import { PaymentsOverviewTab } from "@/components/parent/payments/PaymentsOverviewTab"
-import { DEMO_SCHOOL } from "@/data/demo"
+import { SCHOOL } from "@/config/school"
 import {
   PARENT_NAVY,
   PARENT_PAGE_PAD,
@@ -58,7 +58,7 @@ export function PaymentsCenter({ defaultTab = "overview" }: PaymentsCenterProps)
     <div className={`w-full max-w-none ${PARENT_PAGE_PAD} ${PARENT_SECTION_GAP}`}>
       <header>
         <p className="text-xs font-bold uppercase tracking-[0.2em]" style={{ color: PARENT_NAVY }}>
-          {DEMO_SCHOOL.name} · {DEMO_SCHOOL.location}
+          {SCHOOL.name} · {SCHOOL.location}
         </p>
         <h1 className="mt-2 text-2xl font-bold md:text-3xl" style={{ color: PARENT_NAVY }}>
           Payments Center

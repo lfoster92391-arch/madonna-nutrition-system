@@ -8,7 +8,7 @@ import { Card } from "@/components/ui/card"
 import { CheckboxField } from "@/components/ui/checkbox"
 import { Input, Label } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { getMedicalDocumentsForStudent } from "@/data/demo"
+import { getMedicalDocumentsForStudent } from "@/lib/student-profiles"
 import {
   ALLERGY_OPTIONS,
   DIETARY_OPTIONS,

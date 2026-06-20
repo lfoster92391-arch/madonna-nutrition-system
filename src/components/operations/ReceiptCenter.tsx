@@ -89,7 +89,7 @@ export function ReceiptCenter() {
       stats={[
         { label: "Unmatched", value: String(unmatched), variant: unmatched ? "warning" : "success" },
         { label: "Total Scans", value: String(scans.length) },
-        { label: "Mode", value: data?.source === "demo" ? "Demo" : "Live" },
+        { label: "Mode", value: "Live" },
       ]}
     >
       {isLoading && <p className="text-silver-foreground">Loading receipt inbox…</p>}
