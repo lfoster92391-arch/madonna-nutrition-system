@@ -43,6 +43,7 @@ model School {
   agreementSignatures      AgreementSignature[]
   agreementAuditLogs       AgreementAuditLog[]
   announcements            Announcement[]
+  vendors                  Vendor[]
 }
 
 model User {
@@ -89,21 +90,29 @@ enum UserStatus {
   DISABLED
 }
 
+enum BadgeStatus {
+  ACTIVE
+  PENDING
+  INACTIVE
+}
+
 model Student {
-  id                  String   @id @default(cuid())
+  id                  String      @id @default(cuid())
   externalId          String
+  barcode             String?
+  badgeStatus         BadgeStatus @default(PENDING)
   firstName           String
   lastName            String
   photo               String?
   grade               String
   homeroom            String?
-  balance             Decimal  @default(0) @db.Decimal(10, 2)
-  dietaryRestrictions String[] @default([])
-  disabled            Boolean  @default(false)
+  balance             Decimal     @default(0) @db.Decimal(10, 2)
+  dietaryRestrictions String[]    @default([])
+  disabled            Boolean     @default(false)
   schoolId            String
-  school              School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+  school              School      @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  createdAt           DateTime    @default(now())
+  updatedAt           DateTime    @updatedAt
 
   allergies          Allergy[]
   parentLinks        ParentStudent[]
@@ -117,6 +126,7 @@ model Student {
   lunchReservations  LunchReservation[]
 
   @@unique([schoolId, externalId])
+  @@unique([schoolId, barcode])
 }
 
 model Allergy {
@@ -281,8 +291,27 @@ model InventoryMovement {
   createdAt         DateTime         @default(now())
 }
 
+model Vendor {
+  id          String   @id @default(cuid())
+  name        String
+  contactName String?
+  email       String?
+  phone       String?
+  category    String?
+  active      Boolean  @default(true)
+  schoolId    String
+  school      School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  receivingRecords ReceivingRecord[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([schoolId, name])
+}
+
 model ReceivingRecord {
   id            String              @id @default(cuid())
+  vendorId      String?
+  vendor        Vendor?             @relation(fields: [vendorId], references: [id], onDelete: SetNull)
   vendorName    String
   invoiceNumber String?
   status        String              @default("draft")
