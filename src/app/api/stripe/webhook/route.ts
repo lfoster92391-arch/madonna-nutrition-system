@@ -3,7 +3,7 @@ import Stripe from "stripe"
 import { creditStudentDeposit } from "@/lib/db/deposits"
 import { isDatabaseEnabled } from "@/lib/db/config"
 import { getStripe } from "@/lib/stripe"
-import { sendEmail } from "@/lib/email"
+import { sendDepositConfirmationEmail } from "@/lib/email"
 import { prisma } from "@/lib/prisma"
 
 export const runtime = "nodejs"
@@ -80,14 +80,14 @@ export async function POST(request: Request) {
           select: { email: true },
         })
         if (parentUser?.email && student) {
-          await sendEmail({
+          await sendDepositConfirmationEmail({
             to: parentUser.email,
-            subject: "Deposit Received",
-            body: `$${amountDollars.toFixed(2)} was added to ${student.firstName} ${student.lastName}'s lunch account. New balance: $${result.balanceAfter.toFixed(2)}.`,
-            type: "DEPOSIT_SUCCESS",
+            amount: `$${amountDollars.toFixed(2)}`,
+            studentName: `${student.firstName} ${student.lastName}`,
+            balanceAfter: `$${result.balanceAfter.toFixed(2)}`,
             userId: parentUserId,
             studentId,
-            metadata: { stripeSessionId: session.id },
+            stripeSessionId: session.id,
           })
         }
       }
