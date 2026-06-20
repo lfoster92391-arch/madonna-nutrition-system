@@ -18,6 +18,7 @@ import {
   Settings,
 } from "lucide-react"
 import { useAuth } from "@/components/providers/AuthProvider"
+import { signOutAndRedirect } from "@/lib/auth/logout"
 import { DEMO_SCHOOL } from "@/data/demo"
 import { cn } from "@/lib/utils"
 import {
@@ -120,10 +121,7 @@ export function TeacherSidebar() {
         })}
         <button
           type="button"
-          onClick={() => {
-            logout()
-            window.location.href = "/"
-          }}
+          onClick={() => signOutAndRedirect("teacher", logout)}
           title={!expanded ? "Logout" : undefined}
           className="flex min-h-11 w-full items-center gap-3 rounded-2xl px-3 text-sm font-medium transition hover:bg-[#0A1E3F]/5"
           style={{ color: TEACHER_NAVY }}

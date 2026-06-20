@@ -4,6 +4,7 @@ import Image from "next/image"
 import Link from "next/link"
 import { LogOut } from "lucide-react"
 import { useAuth } from "@/components/providers/AuthProvider"
+import { signOutAndRedirect } from "@/lib/auth/logout"
 import { V3_NAVY, V3_SILVER } from "@/components/parent/v3/parent-v3-theme"
 
 export function ParentV3Header() {
@@ -28,10 +29,7 @@ export function ParentV3Header() {
 
         <button
           type="button"
-          onClick={() => {
-            logout()
-            window.location.href = "/"
-          }}
+          onClick={() => signOutAndRedirect("parent", logout)}
           className="flex h-11 min-w-[44px] items-center justify-center gap-2 rounded-[12px] px-3 text-sm font-medium text-[#64748B] transition hover:bg-[#041B52]/5"
           style={{ color: V3_NAVY }}
           aria-label="Sign out"

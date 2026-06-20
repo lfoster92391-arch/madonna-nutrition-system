@@ -10,6 +10,7 @@ import {
   ChevronLeft,
   Headphones,
   LayoutDashboard,
+  LogOut,
   Megaphone,
   Rocket,
   Settings,
@@ -19,9 +20,9 @@ import {
   Wallet,
   Wrench,
 } from "lucide-react"
-import { DemoLauncher } from "@/components/admin/demo/DemoLauncher"
 import { useAuth } from "@/components/providers/AuthProvider"
-import { DEMO_SCHOOL } from "@/data/demo"
+import { SCHOOL } from "@/config/school"
+import { signOutAndRedirect } from "@/lib/auth/logout"
 import { cn } from "@/lib/utils"
 import { useAdminLayout } from "@/components/admin/layout/admin-layout-context"
 import {
@@ -52,7 +53,7 @@ function isActive(pathname: string, href: string, exact?: boolean) {
 
 export function AdminSidebar() {
   const pathname = usePathname()
-  const { user } = useAuth()
+  const { user, logout } = useAuth()
   const adminName = user?.displayName ?? "Admin User"
   const { mobileSidebarOpen, setMobileSidebarOpen } = useAdminLayout()
   const [expanded, setExpanded] = useState(true)
@@ -133,8 +134,8 @@ export function AdminSidebar() {
         <div className="border-t border-white/10 p-3">
           <div className={cn("space-y-3", !expanded && "md:hidden")}>
             <div>
-              <p className="text-xs font-semibold text-white">{DEMO_SCHOOL.name}</p>
-              <p className="mt-0.5 text-[11px] text-white/60">{DEMO_SCHOOL.location}</p>
+              <p className="text-xs font-semibold text-white">{SCHOOL.name}</p>
+              <p className="mt-0.5 text-[11px] text-white/60">{SCHOOL.location}</p>
             </div>
 
             <div className="flex items-center gap-2.5 rounded-lg bg-white/10 px-3 py-2.5">
@@ -147,7 +148,14 @@ export function AdminSidebar() {
               </div>
             </div>
 
-            <DemoLauncher expanded onCloseMobile={closeMobile} />
+            <button
+              type="button"
+              onClick={() => signOutAndRedirect("admin", logout)}
+              className="flex min-h-11 w-full items-center justify-center gap-2 rounded-lg border border-white/15 px-3 py-2 text-xs font-medium text-white/80 transition hover:bg-white/10 hover:text-white"
+            >
+              <LogOut className="h-3.5 w-3.5 shrink-0" />
+              Sign out
+            </button>
 
             <button
               type="button"
@@ -162,7 +170,15 @@ export function AdminSidebar() {
 
           {expanded ? null : (
             <div className="hidden space-y-2 md:block">
-              <DemoLauncher expanded={false} onCloseMobile={closeMobile} />
+              <button
+                type="button"
+                title="Sign out"
+                onClick={() => signOutAndRedirect("admin", logout)}
+                className="mx-auto flex h-11 w-11 items-center justify-center rounded-lg bg-white/10 text-white/80 transition hover:bg-white/15 hover:text-white"
+                aria-label="Sign out"
+              >
+                <LogOut className="h-4 w-4" />
+              </button>
               <button
                 type="button"
                 onClick={toggle}

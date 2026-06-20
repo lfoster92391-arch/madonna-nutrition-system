@@ -10,10 +10,8 @@ import {
   type ReactNode,
 } from "react"
 import { useDemo } from "@/components/providers/DemoProvider"
-import { demoUsers } from "@/data/demo"
-import { isAllowedTeacherEmail, TEACHER_ACCESS_DENIED_MESSAGE } from "@/config/teacher-auth"
-import { isDemoPreviewActive, writeDemoPreview } from "@/lib/demo/session"
-import { formatUserName, findUserByLogin, normalizeUsername } from "@/lib/users"
+import { clearAllDemoCaches } from "@/lib/demo/session"
+import { formatUserName, normalizeUsername } from "@/lib/users"
 import type { UserRole } from "@/lib/types"
 
 export type PortalRole = "cashier" | "parent" | "admin" | "teacher" | null
@@ -69,21 +67,8 @@ function writeSession(user: AuthUser | null) {
   }
 }
 
-function portalMatchesUserRole(
-  portalRole: Exclude<PortalRole, null>,
-  userRole: UserRole
-): boolean {
-  if (portalRole === "admin") return userRole === "admin"
-  if (portalRole === "cashier") return userRole === "cashier"
-  if (portalRole === "parent") return userRole === "parent"
-  if (portalRole === "teacher") return userRole === "teacher"
-  return false
-}
-
 function AuthProviderInner({ children }: { children: ReactNode }) {
-  const { databaseEnabled, getUserByUsername, recordUserLogin, users, isLoading: dataLoading } =
-    useDemo()
-  const authUsers = databaseEnabled ? users : demoUsers
+  const { databaseEnabled, recordUserLogin, users, isLoading: dataLoading } = useDemo()
   const [user, setUser] = useState<AuthUser | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [mustChangePassword, setMustChangePassword] = useState(false)
@@ -92,11 +77,11 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
     if (dataLoading) return
     const session = readSession()
     if (session) {
-      let live = authUsers.find((u) => u.id === session.id)
+      let live = users.find((u) => u.id === session.id)
       if (!live) {
         const username = normalizeUsername(session.username)
         const email = session.email.toLowerCase()
-        live = authUsers.find(
+        live = users.find(
           (u) => normalizeUsername(u.username) === username || u.email.toLowerCase() === email
         )
       }
@@ -135,13 +120,17 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
             writeSession(reconciled)
           }
         }
+      } else if (databaseEnabled) {
+        writeSession(null)
+        setUser(null)
+        setMustChangePassword(false)
       } else {
         setUser(session)
         setMustChangePassword(Boolean(session.mustChangePassword))
       }
     }
     setIsLoading(false)
-  }, [authUsers, dataLoading])
+  }, [users, dataLoading, databaseEnabled])
 
   const login = useCallback(
     async (
@@ -154,105 +143,75 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
         return { success: false, error: "Please enter a username." }
       }
 
-      if (databaseEnabled && !isDemoPreviewActive()) {
+      if (!databaseEnabled) {
+        return {
+          success: false,
+          error: "Authentication requires a configured database. Contact your system administrator.",
+        }
+      }
+
+      try {
+        const res = await fetch("/api/auth/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username: trimmed, password, role }),
+        })
+        const raw = await res.text()
+        let data: {
+          success?: boolean
+          error?: string
+          mustChangePassword?: boolean
+          user?: AuthUser
+        }
         try {
-          const res = await fetch("/api/auth/login", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ username: trimmed, password, role }),
-          })
-          const raw = await res.text()
-          let data: {
-            success?: boolean
-            error?: string
-            mustChangePassword?: boolean
-            user?: AuthUser
-          }
-          try {
-            data = raw ? (JSON.parse(raw) as typeof data) : {}
-          } catch {
-            return {
-              success: false,
-              error:
-                res.status >= 500
-                  ? "Authentication service is unavailable. Check server database configuration."
-                  : "Unable to reach authentication service.",
-            }
-          }
-          const authUser = data.user
-          if (!res.ok || !data.success || !authUser) {
-            return {
-              success: false,
-              error: data.error ?? (res.status >= 500 ? "Authentication service is unavailable." : "Login failed."),
-            }
-          }
-
-          const session: AuthUser = {
-            id: authUser.id,
-            username: authUser.username,
-            role: authUser.role,
-            displayName: authUser.displayName,
-            email: authUser.email,
-            mustChangePassword: data.mustChangePassword,
-          }
-
-          setUser(session)
-          setMustChangePassword(Boolean(data.mustChangePassword))
-          writeSession(session)
-          await recordUserLogin(authUser.id)
-          return { success: true }
+          data = raw ? (JSON.parse(raw) as typeof data) : {}
         } catch {
-          return { success: false, error: "Unable to reach authentication service." }
+          return {
+            success: false,
+            error:
+              res.status >= 500
+                ? "Authentication service is unavailable. Check server database configuration."
+                : "Unable to reach authentication service.",
+          }
         }
-      }
-
-      const demoUser = findUserByLogin(demoUsers, trimmed)
-      if (!demoUser) {
-        return {
-          success: false,
-          error: "No account found with that username. Try admin, parent, or j.wilson.",
+        const authUser = data.user
+        if (!res.ok || !data.success || !authUser) {
+          return {
+            success: false,
+            error:
+              data.error ??
+              (res.status >= 500
+                ? "Authentication service is unavailable."
+                : "Login failed."),
+          }
         }
-      }
 
-      if (demoUser.status === "disabled") {
-        return {
-          success: false,
-          error: "Account disabled. Contact your system administrator.",
+        const session: AuthUser = {
+          id: authUser.id,
+          username: authUser.username,
+          role: authUser.role,
+          displayName: authUser.displayName,
+          email: authUser.email,
+          mustChangePassword: data.mustChangePassword,
         }
-      }
 
-      if (!portalMatchesUserRole(role, demoUser.role)) {
-        return {
-          success: false,
-          error: `This account is registered as ${demoUser.role}. Use the correct portal to sign in.`,
-        }
+        setUser(session)
+        setMustChangePassword(Boolean(data.mustChangePassword))
+        writeSession(session)
+        await recordUserLogin(authUser.id)
+        return { success: true }
+      } catch {
+        return { success: false, error: "Unable to reach authentication service." }
       }
-
-      if (role === "teacher" && !isAllowedTeacherEmail(demoUser.email)) {
-        return { success: false, error: TEACHER_ACCESS_DENIED_MESSAGE }
-      }
-
-      const session: AuthUser = {
-        id: demoUser.id,
-        username: demoUser.username,
-        role,
-        displayName: formatUserName(demoUser),
-        email: demoUser.email,
-      }
-
-      setUser(session)
-      writeSession(session)
-      await recordUserLogin(demoUser.id)
-      return { success: true }
     },
-    [databaseEnabled, getUserByUsername, recordUserLogin]
+    [databaseEnabled, recordUserLogin]
   )
 
   const logout = useCallback(() => {
     setUser(null)
     setMustChangePassword(false)
     writeSession(null)
-    writeDemoPreview(false)
+    clearAllDemoCaches()
   }, [])
 
   const clearMustChangePassword = useCallback(() => {
