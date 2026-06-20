@@ -1,6 +1,7 @@
 import type {
   AllergySeverity as PrismaAllergySeverity,
   AllergySubmissionStatus as PrismaSubmissionStatus,
+  BadgeStatus as PrismaBadgeStatus,
   UserRole as PrismaUserRole,
   UserStatus as PrismaUserStatus,
 } from "@prisma/client"
@@ -105,6 +106,26 @@ const USER_STATUS_TO_DB: Record<UserStatus, PrismaUserStatus> = {
   disabled: "DISABLED",
 }
 
+const BADGE_STATUS_TO_APP: Record<PrismaBadgeStatus, NonNullable<Student["badgeStatus"]>> = {
+  ACTIVE: "active",
+  PENDING: "pending",
+  INACTIVE: "inactive",
+}
+
+const BADGE_STATUS_TO_DB: Record<NonNullable<Student["badgeStatus"]>, PrismaBadgeStatus> = {
+  active: "ACTIVE",
+  pending: "PENDING",
+  inactive: "INACTIVE",
+}
+
+export function mapBadgeStatus(status: PrismaBadgeStatus): NonNullable<Student["badgeStatus"]> {
+  return BADGE_STATUS_TO_APP[status]
+}
+
+export function badgeStatusToDb(status: NonNullable<Student["badgeStatus"]>): PrismaBadgeStatus {
+  return BADGE_STATUS_TO_DB[status]
+}
+
 export function mapAllergy(allergy: DbAllergy): Allergy {
   return {
     name: allergy.name,
@@ -132,6 +153,8 @@ export function mapStudent(student: StudentWithRelations): Student {
       relationship: link.relationship,
     })),
     disabled: student.disabled,
+    barcode: student.barcode ?? undefined,
+    badgeStatus: mapBadgeStatus(student.badgeStatus),
   }
 }
 

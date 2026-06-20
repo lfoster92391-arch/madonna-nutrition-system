@@ -97,6 +97,7 @@ export const IMPORT_EXPORT_TEMPLATES: Record<ImportExportType, ImportExportTempl
       { key: "grade", label: "Grade", required: true },
       { key: "photoUrl", label: "Photo URL", required: false },
       { key: "badgeStatus", label: "Badge Status", required: false, description: "active | pending | inactive" },
+      { key: "barcode", label: "Barcode", required: false, description: "Physical badge number if different from MD ID" },
     ],
     sampleRow: {
       mdId: "10457",
@@ -105,6 +106,7 @@ export const IMPORT_EXPORT_TEMPLATES: Record<ImportExportType, ImportExportTempl
       grade: "10",
       photoUrl: "https://example.com/photos/10457.jpg",
       badgeStatus: "active",
+      barcode: "10457",
     },
   },
   menu: {

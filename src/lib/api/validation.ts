@@ -20,6 +20,8 @@ export const studentSchema = z.object({
   homeroom: z.string().optional(),
   balance: z.number(),
   photo: z.string().optional(),
+  barcode: z.string().optional(),
+  badgeStatus: z.enum(["active", "pending", "inactive"]).optional(),
   allergies: z.array(allergySchema).optional(),
   dietaryRestrictions: z.array(z.string()).optional(),
   parentContacts: z.array(parentContactSchema).optional(),
@@ -321,4 +323,70 @@ export const familyImportRequestSchema = z.object({
   adminUserId: z.string().min(1),
   performedBy: z.string().min(1),
   rows: z.array(familyImportRowSchema).min(1).max(500),
+})
+
+export const badgeStatusSchema = z.enum(["active", "pending", "inactive"])
+
+export const badgeAssignSchema = z.object({
+  barcode: z.string().min(1).optional().nullable(),
+  badgeStatus: badgeStatusSchema.optional(),
+  photo: z.string().optional(),
+})
+
+export const badgeImportRowSchema = z.object({
+  mdId: z.string().min(1),
+  firstName: z.string().min(1),
+  lastName: z.string().min(1),
+  grade: z.string().min(1),
+  photoUrl: z.string().optional(),
+  badgeStatus: badgeStatusSchema.optional(),
+  barcode: z.string().optional(),
+})
+
+export const badgeImportRequestSchema = z.object({
+  adminUserId: z.string().min(1),
+  rows: z.array(badgeImportRowSchema).min(1).max(1000),
+})
+
+export const studentImportRowSchema = z.object({
+  mdId: z.string().min(1),
+  firstName: z.string().min(1),
+  lastName: z.string().min(1),
+  grade: z.string().min(1),
+  homeroom: z.string().optional(),
+  balance: z.coerce.number(),
+  photoUrl: z.string().optional(),
+  parentEmail: z.string().email().optional().or(z.literal("")),
+  parentPhone: z.string().optional(),
+  allergies: z.string().optional(),
+  dietaryRestrictions: z.string().optional(),
+})
+
+export const studentImportRequestSchema = z.object({
+  adminUserId: z.string().min(1),
+  performedBy: z.string().min(1),
+  rows: z.array(studentImportRowSchema).min(1).max(1000),
+  updateExisting: z.boolean().optional(),
+})
+
+export const vendorSchema = z.object({
+  name: z.string().min(1),
+  contactName: z.string().optional(),
+  email: z.string().email().optional().or(z.literal("")),
+  phone: z.string().optional(),
+  category: z.string().optional(),
+  active: z.boolean().optional(),
+})
+
+export const vendorImportRowSchema = vendorSchema.extend({
+  name: z.string().min(1),
+})
+
+export const vendorImportRequestSchema = z.object({
+  adminUserId: z.string().min(1),
+  rows: z.array(vendorImportRowSchema).min(1).max(500),
+})
+
+export const studentPhotoUploadSchema = z.object({
+  photo: z.string().min(1),
 })

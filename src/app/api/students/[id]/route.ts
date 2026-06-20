@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { allergiesToCreateInput, mapStudent } from "@/lib/db/mappers"
-import { findStudentByExternalId, studentInclude } from "@/lib/db/students"
+import { allergiesToCreateInput, badgeStatusToDb, mapStudent } from "@/lib/db/mappers"
+import { assertBarcodeAvailable, findStudentByExternalId, studentInclude } from "@/lib/db/students"
 import { studentUpdateSchema } from "@/lib/api/validation"
 import { badRequest, notFound, serverError, withDatabase } from "@/lib/api/response"
 import { requireMutatingSession } from "@/lib/api/session-auth"
@@ -35,6 +35,16 @@ export async function PATCH(request: Request, { params }: RouteParams) {
       if (!existing) return notFound("Student not found")
 
       const data = parsed.data
+
+      if (data.barcode !== undefined) {
+        const conflict = await assertBarcodeAvailable(
+          data.barcode,
+          auth.schoolId,
+          existing.id
+        )
+        if (conflict) return badRequest(conflict)
+      }
+
       const student = await prisma.$transaction(async (tx) => {
         if (data.allergies) {
           await tx.allergy.deleteMany({ where: { studentId: existing.id } })
@@ -58,6 +68,8 @@ export async function PATCH(request: Request, { params }: RouteParams) {
             homeroom: data.homeroom,
             balance: data.balance,
             photo: data.photo,
+            barcode: data.barcode,
+            badgeStatus: data.badgeStatus ? badgeStatusToDb(data.badgeStatus) : undefined,
             dietaryRestrictions: data.dietaryRestrictions,
             disabled: data.disabled,
           },

@@ -147,6 +147,9 @@ export interface Student {
   dietaryRestrictions: string[]
   parentContacts: ParentContact[]
   disabled?: boolean
+  /** Physical badge barcode; defaults to mdId when unset */
+  barcode?: string
+  badgeStatus?: "active" | "pending" | "inactive"
 }
 
 export type TransactionKind = "meal" | "deposit"
