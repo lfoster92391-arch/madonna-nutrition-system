@@ -1,24 +1,31 @@
+"use client"
+
 import Link from "next/link"
+import { ArrowLeft } from "lucide-react"
+import { PARENT_NAVY } from "@/components/parent/parent-dashboard-styles"
 import { cn } from "@/lib/utils"
 
 type ParentBackLinkProps = {
-  className?: string
+  href?: string
   label?: string
+  className?: string
 }
 
-/** Parent portal navigation — returns to the family dashboard. */
 export function ParentBackLink({
+  href = "/parent/students",
+  label = "Back to Students",
   className,
-  label = "Back to Dashboard",
 }: ParentBackLinkProps) {
   return (
     <Link
-      href="/parent"
+      href={href}
       className={cn(
-        "inline-flex items-center text-sm font-medium text-[#1E3A5F] underline-offset-4 hover:underline",
-        className,
+        "inline-flex min-h-11 items-center gap-2 text-sm font-medium transition hover:opacity-80",
+        className
       )}
+      style={{ color: PARENT_NAVY }}
     >
+      <ArrowLeft className="h-4 w-4 shrink-0" aria-hidden />
       {label}
     </Link>
   )

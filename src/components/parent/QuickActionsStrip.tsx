@@ -1,17 +1,27 @@
 "use client"
 
+import type { ReactNode } from "react"
+import Image from "next/image"
 import Link from "next/link"
 import {
   Bell,
   CreditCard,
   HelpCircle,
   History,
+  Mail,
+  School,
   Settings,
   Users,
   UtensilsCrossed,
   Wallet,
 } from "lucide-react"
 import { PARENT_CARD, PARENT_NAVY } from "@/components/parent/parent-dashboard-styles"
+import {
+  getAssetPilotEduUrl,
+  getFactsFamilyLoginUrl,
+  getParentGmailUrl,
+  getParentNutritionEmail,
+} from "@/config/parent-external-links"
 
 type QuickActionsStripProps = {
   onAddFunds?: () => void
@@ -29,6 +39,34 @@ const iconWrapClass =
   "flex h-14 w-14 items-center justify-center rounded-full bg-[#041B52]/5"
 
 const labelClass = "text-center text-xs font-semibold sm:text-sm"
+
+const subtitleClass = "text-center text-[10px] leading-tight text-[#64748B] sm:text-xs"
+
+type ExternalLinkTileProps = {
+  href: string
+  label: string
+  subtitle?: string
+  icon: ReactNode
+}
+
+function ExternalLinkTile({ href, label, subtitle, icon }: ExternalLinkTileProps) {
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className={tileClass}
+    >
+      <span className={iconWrapClass} aria-hidden>
+        {icon}
+      </span>
+      <span className={labelClass} style={{ color: PARENT_NAVY }}>
+        {label}
+      </span>
+      {subtitle ? <span className={subtitleClass}>{subtitle}</span> : null}
+    </a>
+  )
+}
 
 export function QuickActionsStrip({
   onAddFunds,
@@ -118,6 +156,40 @@ export function QuickActionsStrip({
               Alerts
             </span>
           </button>
+        </div>
+
+        <div className="mt-6 border-t border-[#C8CDD7] pt-6">
+          <h3 className="mb-4 text-sm font-bold md:text-base" style={{ color: PARENT_NAVY }}>
+            Family Login Resources
+          </h3>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+            <ExternalLinkTile
+              href={getFactsFamilyLoginUrl()}
+              label="FACTS Family Login"
+              subtitle="School information system"
+              icon={<School className="h-6 w-6" style={{ color: PARENT_NAVY }} />}
+            />
+            <ExternalLinkTile
+              href={getAssetPilotEduUrl()}
+              label="AssetPilot Edu"
+              subtitle="Student asset management"
+              icon={
+                <Image
+                  src="/assetpilot-logo.png"
+                  alt=""
+                  width={28}
+                  height={28}
+                  className="h-7 w-7 rounded-md object-contain"
+                />
+              }
+            />
+            <ExternalLinkTile
+              href={getParentGmailUrl()}
+              label="Open Gmail"
+              subtitle={getParentNutritionEmail()}
+              icon={<Mail className="h-6 w-6" style={{ color: PARENT_NAVY }} />}
+            />
+          </div>
         </div>
       </div>
     </section>
