@@ -1,10 +1,5 @@
-import { Suspense } from "react"
-import { MealActivityView } from "@/components/parent/meals/MealActivityView"
+import { redirect } from "next/navigation"
 
 export default function MealHistoryPage() {
-  return (
-    <Suspense fallback={<div className="min-h-[40vh] bg-white" />}>
-      <MealActivityView />
-    </Suspense>
-  )
+  redirect("/parent?drawer=meal-activity")
 }

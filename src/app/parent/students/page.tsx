@@ -1,10 +1,5 @@
-import { Suspense } from "react"
-import { StudentHubPage } from "@/components/parent/student-hub/StudentHubPage"
+import { redirect } from "next/navigation"
 
 export default function StudentsPage() {
-  return (
-    <Suspense fallback={<div className="min-h-[40vh] bg-white" />}>
-      <StudentHubPage />
-    </Suspense>
-  )
+  redirect("/parent#my-students")
 }

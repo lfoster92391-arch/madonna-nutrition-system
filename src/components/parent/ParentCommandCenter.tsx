@@ -1,6 +1,6 @@
 "use client"
 
-import { Suspense, useCallback, useState } from "react"
+import { Suspense, useCallback, useEffect, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useAuth } from "@/components/providers/AuthProvider"
 import { useDemo } from "@/components/providers/DemoProvider"
@@ -11,6 +11,7 @@ import { ParentHero } from "@/components/parent/ParentHero"
 import { QuickActionsStrip } from "@/components/parent/QuickActionsStrip"
 import { StudentCardRow } from "@/components/parent/StudentCardRow"
 import { AddFundsDrawer } from "@/components/parent/v3/drawers/AddFundsDrawer"
+import { AlertsDrawer } from "@/components/parent/v3/drawers/AlertsDrawer"
 import { MealActivityDrawer } from "@/components/parent/v3/drawers/MealActivityDrawer"
 import { SettingsDrawer } from "@/components/parent/v3/drawers/SettingsDrawer"
 import { PARENT_PAGE_PAD, PARENT_SECTION_GAP } from "@/components/parent/parent-dashboard-styles"
@@ -87,6 +88,12 @@ function ParentCommandCenterContent() {
     document.getElementById("my-students")?.scrollIntoView({ behavior: "smooth", block: "start" })
   }
 
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.location.hash === "#my-students") {
+      scrollToStudents()
+    }
+  }, [])
+
   if (!isLoading && linkedStudents.length === 0) {
     return (
       <div className={`mx-auto w-full max-w-6xl ${PARENT_PAGE_PAD}`}>
@@ -115,6 +122,8 @@ function ParentCommandCenterContent() {
         <QuickActionsStrip
           onAddFunds={() => openDrawer("add-funds")}
           onHistory={() => openDrawer("meal-activity")}
+          onMealActivity={() => openDrawer("meal-activity")}
+          onAlerts={() => openDrawer("alerts")}
           onSettings={() => openDrawer("settings")}
           onStudents={scrollToStudents}
         />
@@ -138,6 +147,13 @@ function ParentCommandCenterContent() {
         onOpenChange={(open) => {
           if (!open) closeDrawer()
         }}
+      />
+      <AlertsDrawer
+        open={drawerParam === "alerts"}
+        onOpenChange={(open) => {
+          if (!open) closeDrawer()
+        }}
+        items={alertItems}
       />
     </>
   )

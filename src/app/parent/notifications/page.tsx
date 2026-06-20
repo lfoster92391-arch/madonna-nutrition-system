@@ -1,10 +1,5 @@
-import { Suspense } from "react"
-import { ParentNotificationsPage } from "@/components/parent/ParentNotificationsPage"
+import { redirect } from "next/navigation"
 
 export default function NotificationsPage() {
-  return (
-    <Suspense fallback={<div className="min-h-[40vh] bg-white" />}>
-      <ParentNotificationsPage />
-    </Suspense>
-  )
+  redirect("/parent?drawer=alerts")
 }

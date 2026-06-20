@@ -34,7 +34,7 @@ export function ParentTopNav({ alertCount = 0, title = "Parent Dashboard" }: Par
 
         <div className="flex shrink-0 items-center gap-0.5 sm:gap-1">
           <Link
-            href="/parent/notifications"
+            href="/parent?drawer=alerts"
             className="relative flex min-h-11 min-w-11 items-center justify-center rounded-[10px] transition hover:bg-[#041B52]/5"
             aria-label="Notifications"
           >
@@ -53,7 +53,7 @@ export function ParentTopNav({ alertCount = 0, title = "Parent Dashboard" }: Par
             <User className="h-5 w-5" style={{ color: PARENT_NAVY }} />
           </Link>
           <Link
-            href="/parent/settings"
+            href="/parent?drawer=settings"
             className="flex min-h-11 min-w-11 items-center justify-center rounded-[10px] transition hover:bg-[#041B52]/5"
             aria-label="Settings"
           >
