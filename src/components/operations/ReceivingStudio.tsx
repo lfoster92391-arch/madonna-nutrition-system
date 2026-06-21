@@ -156,13 +156,27 @@ export function ReceivingStudio() {
     >
       {isLoading && <p className="text-silver-foreground">Loading receiving queue…</p>}
 
-      <Tabs defaultValue="queue">
-        <TabsList>
-          <TabsTrigger value="queue">Receiving Queue</TabsTrigger>
-          <TabsTrigger value="scan">Barcode Scan</TabsTrigger>
-          <TabsTrigger value="manual">Manual Receive</TabsTrigger>
-          <TabsTrigger value="upload">Receipt Upload</TabsTrigger>
-        </TabsList>
+      <Tabs defaultValue="queue" className="min-w-0">
+        <div className="-mx-6 min-w-0 w-full max-w-full touch-pan-x overflow-x-auto scroll-smooth px-6 pb-1 [-ms-overflow-style:none] [-webkit-overflow-scrolling:touch] [scrollbar-width:none] sm:mx-0 sm:overflow-visible sm:px-0 sm:pb-0 [&::-webkit-scrollbar]:hidden">
+          <TabsList className="inline-flex w-max flex-nowrap sm:w-full">
+            <TabsTrigger value="queue" className="flex-none shrink-0 snap-start whitespace-nowrap px-4 sm:flex-1 sm:px-6">
+              <span className="sm:hidden">Queue</span>
+              <span className="hidden sm:inline">Receiving Queue</span>
+            </TabsTrigger>
+            <TabsTrigger value="scan" className="flex-none shrink-0 snap-start whitespace-nowrap px-4 sm:flex-1 sm:px-6">
+              <span className="sm:hidden">Scan</span>
+              <span className="hidden sm:inline">Barcode Scan</span>
+            </TabsTrigger>
+            <TabsTrigger value="manual" className="flex-none shrink-0 snap-start whitespace-nowrap px-4 sm:flex-1 sm:px-6">
+              <span className="sm:hidden">Manual</span>
+              <span className="hidden sm:inline">Manual Receive</span>
+            </TabsTrigger>
+            <TabsTrigger value="upload" className="flex-none shrink-0 snap-start whitespace-nowrap px-4 sm:flex-1 sm:px-6">
+              <span className="sm:hidden">Upload</span>
+              <span className="hidden sm:inline">Receipt Upload</span>
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
         <TabsContent value="queue">
           <Card>

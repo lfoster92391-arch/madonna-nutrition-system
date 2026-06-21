@@ -21,7 +21,7 @@ export function AdminLayoutShell({ children }: { children: React.ReactNode }) {
             <AdminTopBar />
             <AdminQuickActionBar />
             <div className="flex min-h-0 min-w-0 flex-1">
-              <main className="min-w-0 flex-1 overflow-y-auto overflow-x-hidden">
+              <main className="min-w-0 flex-1 overflow-y-auto">
                 {children}
               </main>
               <AdminUtilityRail />
