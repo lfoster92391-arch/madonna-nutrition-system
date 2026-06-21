@@ -51,11 +51,18 @@ async function main() {
   let user
 
   if (existingByUsername && existingByEmail && existingByUsername.id !== existingByEmail.id) {
+    const linkedStudentIds = [
+      ...new Set([
+        ...(existingByUsername.linkedStudentIds ?? []),
+        ...(existingByEmail.linkedStudentIds ?? []),
+      ]),
+    ]
+
     await prisma.user.delete({ where: { id: existingByEmail.id } })
 
     user = await prisma.user.update({
       where: { id: existingByUsername.id },
-      data: adminData,
+      data: { ...adminData, linkedStudentIds },
     })
   } else if (existingByUsername) {
     user = await prisma.user.update({
