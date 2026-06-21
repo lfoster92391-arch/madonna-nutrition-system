@@ -3,10 +3,12 @@
 import { useMemo, useRef, useState } from "react"
 import Image from "next/image"
 import Link from "next/link"
+import { useQueryClient } from "@tanstack/react-query"
 import { Camera, Plus, Search, UserX } from "lucide-react"
 import { CsvImportWizard } from "@/components/admin/CsvImportWizard"
 import { ImportExportMenu } from "@/components/admin/import-export/ImportExportMenu"
 import { useDemo } from "@/components/providers/DemoProvider"
+import { useAuth } from "@/components/providers/AuthProvider"
 import { isDemoStudentExternalId } from "@/config/demo-students"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -32,7 +34,9 @@ export function AdminStudentManager({
   /** Render inside /admin/imports Students tab (no page header, includes SIS import wizard) */
   importsTab?: boolean
 }) {
-  const { students, addStudent, updateStudent, disableStudent } = useDemo()
+  const { students, addStudent, updateStudent, disableStudent, databaseEnabled } = useDemo()
+  const { user } = useAuth()
+  const queryClient = useQueryClient()
   const [search, setSearch] = useState("")
   const [editing, setEditing] = useState<Student | null>(null)
   const [showAdd, setShowAdd] = useState(false)
@@ -136,7 +140,27 @@ export function AdminStudentManager({
     const targetId = photoTargetId
     if (!file || !targetId) return
     const dataUrl = await readFileAsDataUrl(file)
-    await updateStudent(targetId, { photo: dataUrl })
+
+    if (databaseEnabled) {
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      }
+      if (user?.id) headers["x-session-user-id"] = user.id
+
+      const res = await fetch(`/api/students/${encodeURIComponent(targetId)}/photo`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ photo: dataUrl }),
+      })
+      if (!res.ok) {
+        await updateStudent(targetId, { photo: dataUrl })
+      } else {
+        void queryClient.invalidateQueries({ queryKey: ["students"] })
+      }
+    } else {
+      await updateStudent(targetId, { photo: dataUrl })
+    }
+
     setPhotoTargetId(null)
     e.target.value = ""
   }

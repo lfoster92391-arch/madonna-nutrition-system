@@ -16,7 +16,7 @@ import { useDemo } from "@/components/providers/DemoProvider"
 import { useAuth } from "@/components/providers/AuthProvider"
 import { api } from "@/lib/api/client"
 import { Badge } from "@/components/ui/badge"
-import { downloadImportTemplate } from "@/lib/import-export"
+import { downloadImportTemplate, exportRowsToCsv } from "@/lib/import-export"
 import { Button } from "@/components/ui/button"
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label, Select } from "@/components/ui/input"
@@ -96,6 +96,12 @@ export function CsvImportWizard() {
     updated: number
     skipped: number
     errors: Array<{ row: number; message: string }>
+    rowOutcomes?: Array<{
+      row: number
+      mdId: string
+      status: string
+      message?: string
+    }>
   } | null>(null)
   const [step, setStep] = useState<ImportStep>("upload")
   const [filename, setFilename] = useState("")
@@ -237,6 +243,36 @@ export function CsvImportWizard() {
     addImportLog(log)
     setLastImportId(log.id)
     setStep("complete")
+  }
+
+  function exportReconciliationCsv() {
+    if (!importReport) return
+    const rows =
+      importReport.rowOutcomes?.map((row) => ({
+        row: String(row.row),
+        mdId: row.mdId,
+        status: row.status,
+        message: row.message ?? "",
+      })) ??
+      importReport.errors.map((err) => ({
+        row: String(err.row),
+        mdId: "",
+        status: "error",
+        message: err.message,
+      }))
+
+    exportRowsToCsv(
+      "students",
+      [
+        { metric: "matched", value: String(importReport.matched) },
+        { metric: "created", value: String(importReport.created) },
+        { metric: "updated", value: String(importReport.updated) },
+        { metric: "skipped", value: String(importReport.skipped) },
+        { metric: "errors", value: String(importReport.errors.length) },
+        ...rows,
+      ],
+      "sis-import-reconciliation"
+    )
   }
 
   function handleRollback() {
@@ -405,6 +441,12 @@ export function CsvImportWizard() {
             </ul>
           )}
           <div className="flex justify-center gap-3">
+            {importReport && (
+              <Button variant="outline" onClick={exportReconciliationCsv}>
+                <Download className="h-4 w-4" />
+                Export Reconciliation CSV
+              </Button>
+            )}
             <Button variant="outline" onClick={handleRollback}>
               <RotateCcw className="h-4 w-4" />
               Rollback Import

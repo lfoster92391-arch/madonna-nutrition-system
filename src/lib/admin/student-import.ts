@@ -12,12 +12,20 @@ export interface StudentImportError {
   message: string
 }
 
+export interface StudentImportRowOutcome {
+  row: number
+  mdId: string
+  status: "created" | "updated" | "skipped" | "error"
+  message?: string
+}
+
 export interface StudentImportResult {
   matched: number
   created: number
   updated: number
   skipped: number
   errors: StudentImportError[]
+  rowOutcomes: StudentImportRowOutcome[]
 }
 
 function parseAllergies(raw?: string) {
@@ -45,6 +53,7 @@ export async function importStudentRows(input: {
     updated: 0,
     skipped: 0,
     errors: [],
+    rowOutcomes: [],
   }
 
   for (let i = 0; i < input.rows.length; i++) {
@@ -61,8 +70,18 @@ export async function importStudentRows(input: {
         result.matched += 1
         if (!input.updateExisting) {
           result.skipped += 1
+          result.rowOutcomes.push({
+            row: rowNumber,
+            mdId,
+            status: "skipped",
+            message: "Existing student — update not enabled",
+          })
           continue
         }
+
+        const photoUpdate = row.photoUrl?.trim()
+          ? { photo: row.photoUrl.trim() }
+          : {}
 
         await prisma.$transaction(async (tx) => {
           await tx.allergy.deleteMany({ where: { studentId: existing.id } })
@@ -84,7 +103,7 @@ export async function importStudentRows(input: {
               grade: row.grade.trim(),
               homeroom: row.homeroom?.trim() || undefined,
               balance: row.balance,
-              photo: row.photoUrl?.trim() || undefined,
+              ...photoUpdate,
               dietaryRestrictions,
             },
           })
@@ -117,9 +136,11 @@ export async function importStudentRows(input: {
         }
 
         result.updated += 1
+        result.rowOutcomes.push({ row: rowNumber, mdId, status: "updated" })
         continue
       }
 
+      const createPhoto = row.photoUrl?.trim() || undefined
       const student = await prisma.student.create({
         data: {
           externalId: mdId,
@@ -130,7 +151,7 @@ export async function importStudentRows(input: {
           grade: row.grade.trim(),
           homeroom: row.homeroom?.trim() || undefined,
           balance: row.balance,
-          photo: row.photoUrl?.trim() || undefined,
+          photo: createPhoto,
           dietaryRestrictions,
           schoolId: input.schoolId,
           allergies: {
@@ -173,11 +194,14 @@ export async function importStudentRows(input: {
       })
 
       result.created += 1
+      result.rowOutcomes.push({ row: rowNumber, mdId, status: "created" })
     } catch (error) {
+      const message = error instanceof Error ? error.message : "Import failed"
       result.errors.push({
         row: rowNumber,
-        message: error instanceof Error ? error.message : "Import failed",
+        message,
       })
+      result.rowOutcomes.push({ row: rowNumber, mdId, status: "error", message })
     }
   }
 
