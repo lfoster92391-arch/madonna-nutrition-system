@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { LayoutGrid, SlidersHorizontal } from "lucide-react"
 import { DesignToolbar } from "@/components/admin/calendar-design/DesignToolbar"
 import { ElementsPanel } from "@/components/admin/calendar-design/ElementsPanel"
 import { DesignCanvas } from "@/components/admin/calendar-design/DesignCanvas"
@@ -8,6 +9,14 @@ import { PropertiesPanel } from "@/components/admin/calendar-design/PropertiesPa
 import { PageStrip } from "@/components/admin/calendar-design/PageStrip"
 import { ExportDesignModal } from "@/components/admin/calendar-design/ExportDesignModal"
 import { useDemo } from "@/components/providers/DemoProvider"
+import { Button } from "@/components/ui/button"
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet"
 import { createDefaultPage } from "@/lib/calendar-design/defaults"
 import {
   debounce,
@@ -27,6 +36,21 @@ import type {
 } from "@/lib/calendar-design/types"
 
 const MAX_HISTORY = 50
+const MOBILE_LAYOUT_QUERY = "(max-width: 1023px)"
+
+function useIsMobileLayout() {
+  const [isMobile, setIsMobile] = useState(false)
+
+  useEffect(() => {
+    const media = window.matchMedia(MOBILE_LAYOUT_QUERY)
+    const sync = () => setIsMobile(media.matches)
+    sync()
+    media.addEventListener("change", sync)
+    return () => media.removeEventListener("change", sync)
+  }, [])
+
+  return isMobile
+}
 
 function cloneDoc(doc: CalendarDesignDocument): CalendarDesignDocument {
   return JSON.parse(JSON.stringify(doc)) as CalendarDesignDocument
@@ -69,6 +93,7 @@ function createElementFromCatalog(type: DesignElementType): DesignElement {
 
 export function CalendarDesignStudio() {
   const { mealTemplates, addCalendarEvent, updateMealTemplate } = useDemo()
+  const isMobileLayout = useIsMobileLayout()
   const [doc, setDoc] = useState<CalendarDesignDocument>(() => loadDesignDocument())
   const [selectedElementId, setSelectedElementId] = useState<string | null>(null)
   const [cookbookDay, setCookbookDay] = useState(1)
@@ -78,6 +103,8 @@ export function CalendarDesignStudio() {
   const [snapToGrid, setSnapToGrid] = useState(true)
   const [showLayers, setShowLayers] = useState(false)
   const [exportOpen, setExportOpen] = useState(false)
+  const [elementsOpen, setElementsOpen] = useState(false)
+  const [propertiesOpen, setPropertiesOpen] = useState(false)
   const [history, setHistory] = useState<CalendarDesignDocument[]>([])
   const [future, setFuture] = useState<CalendarDesignDocument[]>([])
   const initialized = useRef(false)
@@ -117,9 +144,18 @@ export function CalendarDesignStudio() {
   useEffect(() => {
     if (!initialized.current) {
       initialized.current = true
+      if (window.matchMedia(MOBILE_LAYOUT_QUERY).matches) {
+        setViewport("mobile")
+      }
       return
     }
   }, [])
+
+  useEffect(() => {
+    if (isMobileLayout) {
+      setViewport((current) => (current === "desktop" || current === "tablet" ? "mobile" : current))
+    }
+  }, [isMobileLayout])
 
   const handleUndo = useCallback(() => {
     setHistory((h) => {
@@ -157,8 +193,12 @@ export function CalendarDesignStudio() {
         ),
       }))
       setSelectedElementId(el.id)
+      if (isMobileLayout) {
+        setElementsOpen(false)
+        setPropertiesOpen(true)
+      }
     },
-    [updateDoc]
+    [isMobileLayout, updateDoc]
   )
 
   const handleApplyTheme = useCallback(
@@ -338,6 +378,26 @@ export function CalendarDesignStudio() {
 
   if (!activePage) return null
 
+  const elementsPanelProps = {
+    activeThemeId: activePage.themeId,
+    onAddElement: handleAddElement,
+    onApplyTheme: handleApplyTheme,
+    mealTemplates,
+    onAddFromCookbook: handleAddFromCookbook,
+    cookbookDay,
+    onCookbookDayChange: setCookbookDay,
+  }
+
+  const propertiesPanelProps = {
+    page: activePage,
+    selectedElement,
+    onUpdateElement: handleUpdateElement,
+    onUpdatePage: handleUpdatePage,
+    onUpdateAppearance: handleUpdateAppearance,
+    onUpdateStaffPick: handleUpdateStaffPick,
+    onUpdateDailyBite: handleUpdateDailyBite,
+  }
+
   return (
     <div className="flex h-[calc(100vh-0px)] flex-col overflow-hidden">
       <DesignToolbar
@@ -346,6 +406,7 @@ export function CalendarDesignStudio() {
         showGrid={showGrid}
         snapToGrid={snapToGrid}
         showLayers={showLayers}
+        compact={isMobileLayout}
         canUndo={history.length > 0}
         canRedo={future.length > 0}
         onUndo={handleUndo}
@@ -363,33 +424,43 @@ export function CalendarDesignStudio() {
         onPublish={() => alert("Calendar published successfully!")}
       />
 
-      <div className="flex flex-1 overflow-hidden">
-        <ElementsPanel
-          activeThemeId={activePage.themeId}
-          onAddElement={handleAddElement}
-          onApplyTheme={handleApplyTheme}
-          mealTemplates={mealTemplates}
-          onAddFromCookbook={handleAddFromCookbook}
-          cookbookDay={cookbookDay}
-          onCookbookDayChange={setCookbookDay}
-        />
+      <div className="flex min-h-0 flex-1 overflow-hidden">
+        <ElementsPanel {...elementsPanelProps} className="hidden lg:flex" />
         <DesignCanvas
           page={activePage}
           zoom={zoom}
           viewport={viewport}
           showGrid={showGrid}
           selectedElementId={selectedElementId}
-          onSelectElement={setSelectedElementId}
+          onSelectElement={(id) => {
+            setSelectedElementId(id)
+            if (id && isMobileLayout) {
+              setPropertiesOpen(true)
+            }
+          }}
         />
-        <PropertiesPanel
-          page={activePage}
-          selectedElement={selectedElement}
-          onUpdateElement={handleUpdateElement}
-          onUpdatePage={handleUpdatePage}
-          onUpdateAppearance={handleUpdateAppearance}
-          onUpdateStaffPick={handleUpdateStaffPick}
-          onUpdateDailyBite={handleUpdateDailyBite}
-        />
+        <PropertiesPanel {...propertiesPanelProps} className="hidden lg:flex" />
+      </div>
+
+      <div className="flex shrink-0 items-center gap-2 border-t border-silver bg-white px-3 py-2 lg:hidden">
+        <Button
+          type="button"
+          variant="outline"
+          className="min-h-11 flex-1"
+          onClick={() => setElementsOpen(true)}
+        >
+          <LayoutGrid className="h-4 w-4" />
+          Add Elements
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          className="min-h-11 flex-1"
+          onClick={() => setPropertiesOpen(true)}
+        >
+          <SlidersHorizontal className="h-4 w-4" />
+          Properties
+        </Button>
       </div>
 
       <PageStrip
@@ -398,6 +469,32 @@ export function CalendarDesignStudio() {
         onSelectPage={handleSelectPage}
         onAddPage={handleAddPage}
       />
+
+      <Sheet open={elementsOpen} onOpenChange={setElementsOpen}>
+        <SheetContent
+          side="left"
+          className="flex h-full w-full max-w-[min(20rem,92vw)] flex-col gap-0 overflow-hidden p-0"
+        >
+          <SheetHeader className="sr-only">
+            <SheetTitle>Add Elements</SheetTitle>
+            <SheetDescription>Add calendar widgets, themes, and cookbook meals</SheetDescription>
+          </SheetHeader>
+          <ElementsPanel {...elementsPanelProps} className="h-full w-full border-0" />
+        </SheetContent>
+      </Sheet>
+
+      <Sheet open={propertiesOpen} onOpenChange={setPropertiesOpen}>
+        <SheetContent
+          side="right"
+          className="flex h-full w-full max-w-[min(22rem,92vw)] flex-col gap-0 overflow-hidden p-0"
+        >
+          <SheetHeader className="sr-only">
+            <SheetTitle>Properties</SheetTitle>
+            <SheetDescription>Edit the selected calendar element or page settings</SheetDescription>
+          </SheetHeader>
+          <PropertiesPanel {...propertiesPanelProps} className="h-full w-full border-0" />
+        </SheetContent>
+      </Sheet>
 
       <ExportDesignModal open={exportOpen} onClose={() => setExportOpen(false)} />
     </div>

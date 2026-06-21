@@ -30,6 +30,7 @@ interface DesignToolbarProps {
   showLayers: boolean
   canUndo: boolean
   canRedo: boolean
+  compact?: boolean
   onUndo: () => void
   onRedo: () => void
   onZoomIn: () => void
@@ -60,6 +61,7 @@ export function DesignToolbar({
   showLayers,
   canUndo,
   canRedo,
+  compact = false,
   onUndo,
   onRedo,
   onZoomIn,
@@ -75,8 +77,8 @@ export function DesignToolbar({
   onPublish,
 }: DesignToolbarProps) {
   return (
-    <header className="flex shrink-0 items-center gap-3 border-b border-silver bg-primary px-4 py-2 text-white">
-      <div className="flex items-center gap-1">
+    <header className="flex shrink-0 items-center gap-2 overflow-x-auto border-b border-silver bg-primary px-3 py-2 text-white sm:gap-3 sm:px-4">
+      <div className="flex shrink-0 items-center gap-1">
         <Button
           variant="ghost"
           size="sm"
@@ -123,29 +125,34 @@ export function DesignToolbar({
 
       <div className="mx-1 h-6 w-px bg-white/20" />
 
-      <div className="flex items-center gap-1 rounded-xl bg-white/10 p-1">
-        {VIEWPORTS.map(({ mode, label, icon: Icon }) => (
+      <div className="flex shrink-0 items-center gap-1 rounded-xl bg-white/10 p-1">
+        {VIEWPORTS.filter(({ mode }) => !compact || mode === "mobile" || mode === "print").map(
+          ({ mode, label, icon: Icon }) => (
           <button
             key={mode}
             type="button"
             onClick={() => onViewportChange(mode)}
             className={cn(
-              "flex min-h-8 items-center gap-1.5 rounded-lg px-2.5 text-xs font-semibold transition",
+              "flex min-h-9 min-w-9 items-center justify-center gap-1.5 rounded-lg px-2.5 text-xs font-semibold transition sm:min-h-8",
               viewport === mode
                 ? "bg-white text-primary"
                 : "text-white/80 hover:bg-white/10 hover:text-white"
             )}
             title={label}
+            aria-label={label}
           >
-            <Icon className="h-3.5 w-3.5" />
+            <Icon className="h-4 w-4" />
             <span className="hidden lg:inline">{label}</span>
           </button>
-        ))}
+          )
+        )}
       </div>
 
-      <div className="mx-1 h-6 w-px bg-white/20" />
+      {!compact ? (
+        <>
+      <div className="mx-1 hidden h-6 w-px shrink-0 bg-white/20 md:block" />
 
-      <div className="flex items-center gap-1">
+      <div className="hidden shrink-0 items-center gap-1 md:flex">
         <Button
           variant="ghost"
           size="sm"
@@ -186,56 +193,62 @@ export function DesignToolbar({
           <span className="hidden md:inline">Layers</span>
         </Button>
       </div>
+        </>
+      ) : null}
 
-      <div className="flex-1" />
+      <div className="min-w-2 flex-1" />
 
+      {!compact ? (
       <Button
         variant="ghost"
         size="sm"
-        className="min-h-9 text-white hover:bg-white/10 hover:text-white"
+        className="hidden min-h-9 shrink-0 text-white hover:bg-white/10 hover:text-white md:inline-flex"
         onClick={onVersionHistory}
       >
         <History className="h-4 w-4" />
         <span className="hidden md:inline">Version History</span>
       </Button>
+      ) : null}
       <Button
         variant="ghost"
         size="sm"
-        className="min-h-9 text-white hover:bg-white/10 hover:text-white"
+        className="min-h-9 shrink-0 text-white hover:bg-white/10 hover:text-white"
         onClick={onExport}
       >
         <Download className="h-4 w-4" />
-        Export
+        <span className={compact ? "sr-only" : undefined}>Export</span>
       </Button>
 
-      <div className="mx-1 h-6 w-px bg-white/20" />
+      <div className="mx-1 hidden h-6 w-px shrink-0 bg-white/20 sm:block" />
 
       <Button
         variant="ghost"
         size="sm"
-        className="min-h-9 text-white hover:bg-white/10 hover:text-white"
+        className="min-h-9 shrink-0 text-white hover:bg-white/10 hover:text-white"
         onClick={onSave}
       >
         <Save className="h-4 w-4" />
-        Save
+        <span className={compact ? "sr-only" : undefined}>Save</span>
       </Button>
+      {!compact ? (
       <Button
         variant="secondary"
         size="sm"
-        className="min-h-9 bg-white/15 text-white hover:bg-white/25"
+        className="hidden min-h-9 shrink-0 bg-white/15 text-white hover:bg-white/25 sm:inline-flex"
         onClick={onPreview}
       >
         <Eye className="h-4 w-4" />
         Preview
       </Button>
+      ) : null}
       <Button
         variant="success"
         size="sm"
-        className="min-h-9"
+        className="min-h-9 shrink-0"
         onClick={onPublish}
       >
         <Upload className="h-4 w-4" />
-        Publish
+        <span className={compact ? "sr-only" : undefined}>Publish</span>
       </Button>
     </header>
   )

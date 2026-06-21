@@ -67,8 +67,8 @@ export function DesignCanvas({
   const canvasWidth = VIEWPORT_WIDTHS[viewport]
 
   return (
-    <div className="relative flex flex-1 flex-col overflow-hidden bg-silver/20">
-      <div className="flex flex-1 items-start justify-center overflow-auto p-6">
+    <div className="relative flex min-w-0 flex-1 flex-col overflow-hidden bg-silver/20">
+      <div className="flex flex-1 items-start justify-center overflow-auto p-2 sm:p-4 lg:p-6">
         <div
           className="relative origin-top transition-transform duration-200"
           style={{ transform: `scale(${zoom})`, width: canvasWidth, maxWidth: "100%" }}

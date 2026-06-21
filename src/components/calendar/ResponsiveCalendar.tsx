@@ -100,10 +100,10 @@ export function ResponsiveCalendar({
   }
 
   return (
-    <div className={cn("space-y-3", className)}>
+    <div className={cn("space-y-4", className)}>
       {/* Mobile navigation + layout toggle */}
       <div className="md:hidden">
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 px-0.5">
           <h3 className="text-base font-bold text-primary">
             {mobileLayout === "week" ? formatWeekRange(weekStart) : formatMonthYear(year, month)}
           </h3>
@@ -143,7 +143,7 @@ export function ResponsiveCalendar({
           <Tabs
             value={mobileLayout}
             onValueChange={(value) => setMobileLayout(value as MobileCalendarLayout)}
-            className="mb-3"
+            className="mb-4"
           >
             <TabsList className="grid w-full max-w-xs grid-cols-2">
               <TabsTrigger value="week">Week</TabsTrigger>

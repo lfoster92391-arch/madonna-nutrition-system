@@ -20,6 +20,7 @@ interface ElementsPanelProps {
   onAddFromCookbook?: (template: MealTemplate, day: number) => void
   cookbookDay?: number
   onCookbookDayChange?: (day: number) => void
+  className?: string
 }
 
 const MEDIA_LIBRARY = [
@@ -39,6 +40,7 @@ export function ElementsPanel({
   onAddFromCookbook,
   cookbookDay = 1,
   onCookbookDayChange,
+  className,
 }: ElementsPanelProps) {
   const [search, setSearch] = useState("")
 
@@ -51,7 +53,7 @@ export function ElementsPanel({
   }, [search])
 
   return (
-    <aside className="flex w-72 shrink-0 flex-col border-r border-silver bg-white">
+    <aside className={cn("flex h-full w-72 shrink-0 flex-col border-r border-silver bg-white", className)}>
       <div className="border-b border-silver px-4 py-3">
         <h2 className="text-sm font-bold text-primary">Add Elements</h2>
         <p className="text-xs text-primary/60">Drag or click to add to canvas</p>

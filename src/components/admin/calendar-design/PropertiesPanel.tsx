@@ -22,6 +22,7 @@ interface PropertiesPanelProps {
   onUpdateAppearance: (id: string, patch: Partial<ElementAppearance>) => void
   onUpdateStaffPick: (id: string, patch: Partial<StaffPickSettings>) => void
   onUpdateDailyBite: (id: string, patch: Partial<DailyBiteSettings>) => void
+  className?: string
 }
 
 function Toggle({
@@ -125,11 +126,12 @@ export function PropertiesPanel({
   onUpdateAppearance,
   onUpdateStaffPick,
   onUpdateDailyBite,
+  className,
 }: PropertiesPanelProps) {
   const appearance = selectedElement?.appearance
 
   return (
-    <aside className="flex w-80 shrink-0 flex-col border-l border-silver bg-white">
+    <aside className={cn("flex h-full w-80 shrink-0 flex-col border-l border-silver bg-white", className)}>
       <div className="border-b border-silver px-4 py-3">
         <h2 className="text-sm font-bold text-primary">Properties</h2>
         <p className="text-xs text-primary/60">

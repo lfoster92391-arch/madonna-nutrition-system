@@ -50,9 +50,9 @@ export function CalendarWeekOutlook({
   }, [events])
 
   return (
-    <div className="overflow-hidden rounded-[20px] border border-silver/60 bg-white">
-      <div className="-mx-1 overflow-x-auto px-1 pb-1">
-        <div className="flex min-w-max gap-2 p-2">
+    <div className="overflow-hidden rounded-[20px] border border-silver/60 bg-white md:hidden">
+      <div className="-mx-1 overflow-x-auto px-3 pb-3 pt-1">
+        <div className="flex min-w-max gap-3.5 p-1">
           {weekDates.map((date) => {
             const dateKey = formatDateKey(date)
             const dayEvents = eventsByDate.get(dateKey) ?? []
@@ -80,7 +80,7 @@ export function CalendarWeekOutlook({
                   day: "numeric",
                 })}
                 className={cn(
-                  "flex w-[5.75rem] shrink-0 flex-col items-center gap-1.5 rounded-2xl border border-silver/50 bg-white p-2 text-left transition",
+                  "flex min-h-[11.5rem] w-[7.5rem] shrink-0 flex-col items-center gap-2.5 rounded-2xl border border-silver/50 bg-white p-3.5 text-left transition min-[420px]:w-[7.75rem]",
                   readOnly ? "cursor-default" : "cursor-pointer hover:border-primary/30 hover:bg-primary/5",
                   isSelected && "border-primary/40 bg-primary/5 ring-2 ring-inset ring-primary/25",
                   isToday && !isSelected && "border-primary/20 bg-success/5"
@@ -88,12 +88,12 @@ export function CalendarWeekOutlook({
                 style={isSelected ? { boxShadow: `inset 0 0 0 1px ${accentHex}` } : undefined}
               >
                 <div className="text-center">
-                  <p className="text-[10px] font-bold uppercase tracking-wide text-primary/60">
+                  <p className="text-xs font-bold uppercase tracking-wide text-primary/60">
                     {date.toLocaleDateString("en-US", { weekday: "short" })}
                   </p>
                   <p
                     className={cn(
-                      "mt-0.5 inline-flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold",
+                      "mt-1 inline-flex h-9 w-9 items-center justify-center rounded-full text-base font-bold",
                       isToday ? "text-white" : "text-primary"
                     )}
                     style={isToday ? { backgroundColor: accentHex } : undefined}
@@ -103,44 +103,44 @@ export function CalendarWeekOutlook({
                 </div>
 
                 {primaryEvent ? (
-                  <div className="flex w-full flex-col items-center gap-1">
+                  <div className="flex w-full flex-col items-center gap-1.5">
                     {cover ? (
-                      <span className="relative h-14 w-14 shrink-0 overflow-hidden rounded-xl border border-silver/40 shadow-sm">
+                      <span className="relative h-[4.5rem] w-[4.5rem] shrink-0 overflow-hidden rounded-xl border border-silver/40 shadow-sm">
                         <Image
                           src={cover}
                           alt=""
                           fill
                           className="object-cover"
-                          sizes="56px"
+                          sizes="72px"
                           unoptimized={cover.startsWith("/uploads/") || cover.startsWith("blob:")}
                         />
                       </span>
                     ) : Icon ? (
                       <span
-                        className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl"
+                        className="flex h-[4.5rem] w-[4.5rem] shrink-0 items-center justify-center rounded-xl"
                         style={{ backgroundColor: `${color}18`, color }}
                       >
-                        <Icon className="h-6 w-6" />
+                        <Icon className="h-7 w-7" />
                       </span>
                     ) : null}
-                    <p className="line-clamp-2 w-full text-center text-[10px] font-semibold leading-tight text-primary">
+                    <p className="line-clamp-2 w-full text-center text-xs font-semibold leading-snug text-primary">
                       {primaryEvent.title}
                     </p>
                     {category ? (
                       <span
-                        className="max-w-full truncate rounded-md px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide"
+                        className="max-w-full truncate rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide"
                         style={{ backgroundColor: `${color}18`, color }}
                       >
                         {EVENT_CATEGORIES[category].label}
                       </span>
                     ) : null}
                     {overflow > 0 ? (
-                      <span className="text-[10px] font-semibold text-primary/60">+{overflow} more</span>
+                      <span className="text-xs font-semibold text-primary/60">+{overflow} more</span>
                     ) : null}
                   </div>
                 ) : (
-                  <div className="flex h-[5.5rem] w-full items-center justify-center rounded-xl border border-dashed border-silver/40 bg-silver/5">
-                    <span className="text-[10px] font-medium text-silver-foreground">No events</span>
+                  <div className="flex h-[6.75rem] w-full items-center justify-center rounded-xl border border-dashed border-silver/40 bg-silver/5">
+                    <span className="text-xs font-medium text-silver-foreground">No events</span>
                   </div>
                 )}
               </button>
