@@ -61,7 +61,7 @@ export function TeacherCalendarView() {
   }
 
   return (
-    <div className="space-y-6 p-6" style={{ backgroundColor: TEACHER_BG }}>
+    <div className="space-y-6 p-4 sm:p-6" style={{ backgroundColor: TEACHER_BG }}>
       <div>
         <h1 className="text-2xl font-bold" style={{ color: TEACHER_NAVY }}>
           Lunch Calendar
@@ -75,7 +75,7 @@ export function TeacherCalendarView() {
         className="rounded-2xl border p-4 shadow-sm"
         style={{ borderColor: TEACHER_SILVER }}
       >
-        <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
           <Tabs value={view} onValueChange={(v) => setView(v as typeof view)}>
             <TabsList>
               <TabsTrigger value="day">Day</TabsTrigger>
@@ -84,21 +84,21 @@ export function TeacherCalendarView() {
             </TabsList>
           </Tabs>
           <span
-            className="rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wide text-white"
+            className="w-fit rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wide text-white"
             style={{ backgroundColor: TEACHER_NAVY }}
           >
             Published
           </span>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={() => window.print()}>
+          <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:pb-0">
+            <Button variant="outline" size="sm" className="shrink-0" onClick={() => window.print()}>
               <Printer className="mr-2 h-4 w-4" />
               Print
             </Button>
-            <Button variant="outline" size="sm">
+            <Button variant="outline" size="sm" className="shrink-0">
               <Download className="mr-2 h-4 w-4" />
               Download PDF
             </Button>
-            <Button variant="outline" size="sm">
+            <Button variant="outline" size="sm" className="shrink-0">
               <Download className="mr-2 h-4 w-4" />
               Export PNG
             </Button>
@@ -113,7 +113,7 @@ export function TeacherCalendarView() {
         className="overflow-hidden rounded-2xl border shadow-sm"
         style={{ borderColor: TEACHER_SILVER }}
       >
-        <div className="px-8 py-6 text-white" style={{ backgroundColor: accentHex }}>
+        <div className="px-4 py-5 text-white sm:px-6 sm:py-6 md:px-8" style={{ backgroundColor: accentHex }}>
           <p className="text-xs font-bold uppercase tracking-wider opacity-80">
             {calendarSettings.schoolName}
           </p>
@@ -126,7 +126,7 @@ export function TeacherCalendarView() {
         </div>
 
         <div
-          className="flex items-center justify-between border-b px-6 py-4"
+          className="flex items-center justify-between border-b px-4 py-3 sm:px-6 sm:py-4"
           style={{ borderColor: TEACHER_SILVER }}
         >
           <Button variant="outline" size="sm" onClick={prevMonth}>
@@ -140,7 +140,7 @@ export function TeacherCalendarView() {
           </Button>
         </div>
 
-        <div className="p-6">
+        <div className="p-4 sm:p-6">
           <CategoryLegend />
           <CalendarMonthGrid
             year={year}

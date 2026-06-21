@@ -189,7 +189,7 @@ export function AdminCalendarDesigner() {
   }
 
   return (
-    <div className="min-h-screen bg-white p-8">
+    <div className="min-h-screen bg-white p-4 sm:p-6 md:p-8">
       <div className="mx-auto max-w-7xl space-y-8">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
@@ -232,12 +232,12 @@ export function AdminCalendarDesigner() {
                   </p>
                 )}
               </div>
-              <div className="p-6">
-                <div className="mb-4 flex items-center justify-between">
-                  <h3 className="text-lg font-bold text-primary">
+              <div className="p-4 sm:p-6">
+                <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                  <h3 className="text-base font-bold text-primary sm:text-lg">
                     {formatMonthYear(year, month)}
                   </h3>
-                  <div className="flex gap-2">
+                  <div className="flex shrink-0 gap-2">
                     <Button size="sm" variant="outline" onClick={prevMonth}>
                       <ChevronLeft className="h-4 w-4" />
                     </Button>

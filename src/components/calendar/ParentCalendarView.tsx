@@ -61,7 +61,7 @@ export function ParentCalendarView() {
 
   return (
     <div className="min-h-screen bg-[#f8f9fb]">
-      <header className="border-b border-silver/40 bg-white px-8 py-6">
+      <header className="border-b border-silver/40 bg-white px-4 py-5 sm:px-6 md:px-8 md:py-6">
         <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary">Parent Portal</p>
         <h1 className="mt-1 text-2xl font-bold text-primary">School Calendar</h1>
         <p className="text-silver-foreground">
@@ -69,9 +69,9 @@ export function ParentCalendarView() {
         </p>
       </header>
 
-      <div className="space-y-6 p-8">
+      <div className="space-y-6 p-4 sm:p-6 md:p-8">
         <Card className="overflow-hidden rounded-[20px] border-silver/60 shadow-sm">
-          <div className="px-8 py-6 text-white" style={{ backgroundColor: accentHex }}>
+          <div className="px-4 py-5 text-white sm:px-6 sm:py-6 md:px-8" style={{ backgroundColor: accentHex }}>
             <p className="text-xs font-bold uppercase tracking-wider opacity-80">
               {calendarSettings.schoolName}
             </p>
@@ -83,10 +83,10 @@ export function ParentCalendarView() {
             )}
           </div>
 
-          <div className="p-6 lg:p-8">
-            <div className="mb-6 flex items-center justify-between">
-              <h3 className="text-xl font-bold text-primary">{formatMonthYear(year, month)}</h3>
-              <div className="flex gap-2">
+          <div className="p-4 sm:p-6 lg:p-8">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3 sm:mb-6">
+              <h3 className="text-lg font-bold text-primary sm:text-xl">{formatMonthYear(year, month)}</h3>
+              <div className="flex shrink-0 gap-2">
                 <Button size="sm" variant="outline" onClick={prevMonth}>
                   <ChevronLeft className="h-4 w-4" />
                 </Button>

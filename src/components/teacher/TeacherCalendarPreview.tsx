@@ -97,7 +97,7 @@ export function TeacherCalendarPreview() {
           </Button>
         </div>
 
-        <div className="p-4">
+        <div className="p-3 sm:p-4">
           <CategoryLegend />
           <CalendarMonthGrid
             year={year}

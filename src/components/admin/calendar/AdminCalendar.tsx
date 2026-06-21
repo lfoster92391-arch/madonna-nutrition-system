@@ -200,7 +200,7 @@ export function AdminCalendar() {
   }
 
   return (
-    <div className="admin-calendar min-h-screen bg-white p-8">
+    <div className="admin-calendar min-h-screen bg-white p-4 sm:p-6 md:p-8">
       <div className="mx-auto max-w-7xl space-y-8">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
@@ -233,10 +233,10 @@ export function AdminCalendar() {
             </p>
             <h2 className="mt-1 text-xl font-bold">{calendarSettings.headerTitle}</h2>
           </div>
-          <div className="p-6">
-            <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-lg font-bold text-primary">{formatMonthYear(year, month)}</h3>
-              <div className="flex gap-2">
+          <div className="p-4 sm:p-6">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+              <h3 className="text-base font-bold text-primary sm:text-lg">{formatMonthYear(year, month)}</h3>
+              <div className="flex shrink-0 gap-2">
                 <Button size="sm" variant="outline" onClick={prevMonth}>
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
@@ -261,10 +261,10 @@ export function AdminCalendar() {
         </Card>
 
         {selectedDate && (
-          <Card className="rounded-[20px] border-silver/60 p-6">
-            <div className="mb-4 flex items-center justify-between">
+          <Card className="rounded-[20px] border-silver/60 p-4 sm:p-6">
+            <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <CardHeader className="p-0">
-                <CardTitle>
+                <CardTitle className="text-base sm:text-lg">
                   Schedule for{" "}
                   {new Date(selectedDate + "T12:00:00").toLocaleDateString("en-US", {
                     weekday: "long",
@@ -273,14 +273,16 @@ export function AdminCalendar() {
                   })}
                 </CardTitle>
               </CardHeader>
-              <Button size="sm" variant="outline" onClick={() => setShowCookbookPicker(true)}>
-                <UtensilsCrossed className="h-4 w-4" />
-                Add from Cookbook
-              </Button>
-              <Button size="sm" onClick={startAddEvent}>
-                <Plus className="h-4 w-4" />
-                Add Event
-              </Button>
+              <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 sm:mx-0 sm:overflow-visible sm:pb-0">
+                <Button size="sm" variant="outline" className="shrink-0" onClick={() => setShowCookbookPicker(true)}>
+                  <UtensilsCrossed className="h-4 w-4" />
+                  Add from Cookbook
+                </Button>
+                <Button size="sm" className="shrink-0" onClick={startAddEvent}>
+                  <Plus className="h-4 w-4" />
+                  Add Event
+                </Button>
+              </div>
             </div>
             {selectedEvents.length === 0 ? (
               <p className="text-sm text-silver-foreground">No events scheduled for this day.</p>
