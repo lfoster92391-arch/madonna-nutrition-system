@@ -11,6 +11,13 @@ import { Input } from "@/components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
 import type { OpsInventoryItem, ReceivingRecord, StorageLocation } from "@/lib/operations/types"
+import type { VendorRecord } from "@/lib/procurement/vendors"
+
+async function fetchVendors(): Promise<VendorRecord[]> {
+  const res = await fetch("/api/vendors")
+  if (!res.ok) return []
+  return res.json()
+}
 
 interface ReceivingData {
   source: string
@@ -47,6 +54,8 @@ export function ReceivingStudio() {
   const [filter, setFilter] = useState<"all" | "pending_approval" | "approved" | "draft">("all")
 
   const { data, isLoading } = useQuery({ queryKey: ["receiving"], queryFn: fetchReceiving })
+  const { data: vendors = [] } = useQuery({ queryKey: ["vendors"], queryFn: fetchVendors })
+  const activeVendors = useMemo(() => vendors.filter((v) => v.active), [vendors])
 
   const invalidate = useCallback(() => {
     void queryClient.invalidateQueries({ queryKey: ["receiving"] })
@@ -295,7 +304,26 @@ export function ReceivingStudio() {
               <CardTitle>Manual Receive Form</CardTitle>
             </CardHeader>
             <div className="grid gap-4 sm:grid-cols-2">
-              <Input placeholder="Vendor name" value={vendorName} onChange={(e) => setVendorName(e.target.value)} />
+              <label className="text-sm sm:col-span-2">
+                Vendor
+                <select
+                  className="mt-1 w-full rounded-xl border border-silver/60 px-3 py-2"
+                  value={vendorName}
+                  onChange={(e) => setVendorName(e.target.value)}
+                >
+                  <option value="">Select vendor…</option>
+                  {activeVendors.map((vendor) => (
+                    <option key={vendor.id} value={vendor.name}>
+                      {vendor.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <Input
+                placeholder="Or type vendor name"
+                value={vendorName}
+                onChange={(e) => setVendorName(e.target.value)}
+              />
               <Input
                 placeholder="Invoice # (optional)"
                 value={invoiceNumber}

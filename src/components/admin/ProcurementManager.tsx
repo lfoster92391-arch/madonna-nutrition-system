@@ -3,7 +3,7 @@
 import { useMemo, useRef, useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import Papa from "papaparse"
-import { Building2, Plus, Truck, Upload } from "lucide-react"
+import { Building2, Pencil, Plus, Trash2, Truck, Upload } from "lucide-react"
 import { ReceivingStudio } from "@/components/operations/ReceivingStudio"
 import { useAuth } from "@/components/providers/AuthProvider"
 import { ImportExportMenu } from "@/components/admin/import-export/ImportExportMenu"
@@ -27,6 +27,7 @@ export function ProcurementManager() {
   const queryClient = useQueryClient()
   const fileRef = useRef<HTMLInputElement>(null)
   const [showAdd, setShowAdd] = useState(false)
+  const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState({
     name: "",
     contactName: "",
@@ -54,9 +55,57 @@ export function ProcurementManager() {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["vendors"] })
       setShowAdd(false)
+      setEditingId(null)
       setForm({ name: "", contactName: "", email: "", phone: "", category: "" })
     },
   })
+
+  const updateMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await fetch(`/api/vendors/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      })
+      if (!res.ok) throw new Error("Failed to update vendor")
+      return res.json()
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["vendors"] })
+      setShowAdd(false)
+      setEditingId(null)
+      setForm({ name: "", contactName: "", email: "", phone: "", category: "" })
+    },
+  })
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await fetch(`/api/vendors/${id}`, { method: "DELETE" })
+      if (!res.ok) throw new Error("Failed to deactivate vendor")
+      return res.json()
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["vendors"] })
+    },
+  })
+
+  function startEdit(vendor: VendorRecord) {
+    setEditingId(vendor.id)
+    setShowAdd(false)
+    setForm({
+      name: vendor.name,
+      contactName: vendor.contactName ?? "",
+      email: vendor.email ?? "",
+      phone: vendor.phone ?? "",
+      category: vendor.category ?? "",
+    })
+  }
+
+  function cancelForm() {
+    setShowAdd(false)
+    setEditingId(null)
+    setForm({ name: "", contactName: "", email: "", phone: "", category: "" })
+  }
 
   const exportRows = useMemo(
     () =>
@@ -144,10 +193,12 @@ export function ProcurementManager() {
             </p>
           )}
 
-          {showAdd && (
+          {showAdd || editingId ? (
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">New vendor</CardTitle>
+                <CardTitle className="text-base">
+                  {editingId ? "Edit vendor" : "New vendor"}
+                </CardTitle>
               </CardHeader>
               <div className="grid gap-4 px-6 pb-6 sm:grid-cols-2">
                 <div>
@@ -187,18 +238,26 @@ export function ProcurementManager() {
                 </div>
                 <div className="flex items-end gap-2">
                   <Button
-                    onClick={() => createMutation.mutate()}
-                    disabled={!form.name.trim() || createMutation.isPending}
+                    onClick={() =>
+                      editingId
+                        ? updateMutation.mutate(editingId)
+                        : createMutation.mutate()
+                    }
+                    disabled={
+                      !form.name.trim() ||
+                      createMutation.isPending ||
+                      updateMutation.isPending
+                    }
                   >
                     Save
                   </Button>
-                  <Button variant="ghost" onClick={() => setShowAdd(false)}>
+                  <Button variant="ghost" onClick={cancelForm}>
                     Cancel
                   </Button>
                 </div>
               </div>
             </Card>
-          )}
+          ) : null}
 
           <Card>
             <CardHeader>
@@ -223,7 +282,8 @@ export function ProcurementManager() {
                       <th className="pb-3 pr-4">Email</th>
                       <th className="pb-3 pr-4">Phone</th>
                       <th className="pb-3 pr-4">Category</th>
-                      <th className="pb-3">Status</th>
+                      <th className="pb-3 pr-4">Status</th>
+                      <th className="pb-3 text-right">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -234,10 +294,38 @@ export function ProcurementManager() {
                         <td className="py-3 pr-4">{vendor.email ?? "—"}</td>
                         <td className="py-3 pr-4">{vendor.phone ?? "—"}</td>
                         <td className="py-3 pr-4">{vendor.category ?? "—"}</td>
-                        <td className="py-3">
+                        <td className="py-3 pr-4">
                           <Badge variant={vendor.active ? "success" : "danger"}>
                             {vendor.active ? "Active" : "Inactive"}
                           </Badge>
+                        </td>
+                        <td className="py-3 text-right">
+                          <div className="flex justify-end gap-1">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => startEdit(vendor)}
+                              disabled={!vendor.active}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => {
+                                if (
+                                  window.confirm(
+                                    `Deactivate ${vendor.name}? They will be hidden from receiving lists.`
+                                  )
+                                ) {
+                                  deleteMutation.mutate(vendor.id)
+                                }
+                              }}
+                              disabled={!vendor.active || deleteMutation.isPending}
+                            >
+                              <Trash2 className="h-4 w-4 text-danger" />
+                            </Button>
+                          </div>
                         </td>
                       </tr>
                     ))}
