@@ -13,6 +13,12 @@ import {
   type ChannelPrefs,
   type ParentNotificationPrefs,
 } from "@/lib/parent-balance-alerts"
+import {
+  fetchServerNotificationPrefs,
+  localPrefsToServerPatch,
+  patchServerNotificationPrefs,
+  serverPrefsToLocal,
+} from "@/lib/parent-notification-sync"
 
 const CATEGORIES: {
   key: keyof ParentNotificationPrefs
@@ -54,18 +60,28 @@ export function NotificationsSection() {
   useEffect(() => {
     setPrefs(getNotificationPrefs())
     setChannels(getChannelPrefs())
+    void fetchServerNotificationPrefs().then((server) => {
+      if (!server) return
+      const mapped = serverPrefsToLocal(server)
+      setPrefs(mapped.notification)
+      setChannels(mapped.channels)
+      setNotificationPrefs(mapped.notification)
+      setChannelPrefs(mapped.channels)
+    })
   }, [])
 
   function updatePrefs(patch: Partial<ParentNotificationPrefs>) {
     const next = { ...prefs, ...patch }
     setPrefs(next)
     setNotificationPrefs(next)
+    void patchServerNotificationPrefs(localPrefsToServerPatch({ notification: next }))
   }
 
   function updateChannels(patch: Partial<ChannelPrefs>) {
     const next = { ...channels, ...patch }
     setChannels(next)
     setChannelPrefs(next)
+    void patchServerNotificationPrefs(localPrefsToServerPatch({ channels: next }))
   }
 
   return (

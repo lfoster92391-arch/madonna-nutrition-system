@@ -63,6 +63,7 @@ model User {
   department       String?
   accountBalance   Decimal    @default(0) @db.Decimal(10, 2)
   lastLoginAt      DateTime?
+  notificationPrefs Json?
   schoolId         String
   school           School     @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   createdAt        DateTime   @default(now())

@@ -12,6 +12,10 @@ import {
   setAlertsPaused,
   setStudentThreshold,
 } from "@/lib/parent-balance-alerts"
+import {
+  fetchServerNotificationPrefs,
+  patchServerNotificationPrefs,
+} from "@/lib/parent-notification-sync"
 import { formatCurrency } from "@/lib/utils"
 
 type StudentBalanceAlertSectionProps = {
@@ -29,6 +33,19 @@ export function StudentBalanceAlertSection({ studentId, balance }: StudentBalanc
     setThreshold(getStudentThreshold(studentId))
     setPaused(isAlertsPaused(studentId))
     setDraftThreshold(String(getStudentThreshold(studentId)))
+
+    void fetchServerNotificationPrefs().then((server) => {
+      if (!server) return
+      const serverThreshold = server.studentThresholds?.[studentId]
+      if (typeof serverThreshold === "number") {
+        setThreshold(serverThreshold)
+        setDraftThreshold(String(serverThreshold))
+        setStudentThreshold(studentId, serverThreshold)
+      }
+      const serverPaused = server.pausedStudents?.includes(studentId) ?? false
+      setPaused(serverPaused)
+      setAlertsPaused(studentId, serverPaused)
+    })
   }, [studentId])
 
   function saveThreshold() {
@@ -37,11 +54,21 @@ export function StudentBalanceAlertSection({ studentId, balance }: StudentBalanc
     setStudentThreshold(studentId, parsed)
     setThreshold(parsed)
     setEditing(false)
+    void patchServerNotificationPrefs({
+      studentThresholds: { [studentId]: parsed },
+    })
   }
 
   function togglePause(next: boolean) {
     setAlertsPaused(studentId, next)
     setPaused(next)
+    void fetchServerNotificationPrefs().then((server) => {
+      const current = server?.pausedStudents ?? []
+      const pausedStudents = next
+        ? [...new Set([...current, studentId])]
+        : current.filter((id) => id !== studentId)
+      void patchServerNotificationPrefs({ pausedStudents })
+    })
   }
 
   const belowThreshold = !paused && balance < threshold

@@ -5,6 +5,7 @@ import { findStudentByScanId } from "@/lib/db/students"
 import { mealTransactionSchema } from "@/lib/api/validation"
 import { badRequest, notFound, serverError, withDatabase } from "@/lib/api/response"
 import { requireCashierOrApiKey } from "@/lib/api/session-auth"
+import { maybeSendLowBalanceAlerts } from "@/lib/email/low-balance-alerts"
 
 export async function POST(request: Request) {
   const result = await withDatabase(async () => {
@@ -36,6 +37,7 @@ export async function POST(request: Request) {
       }
 
       const balanceAfter = Number(student.balance) - amount
+      const previousBalance = Number(student.balance)
 
       const [updatedStudent, transaction] = await prisma.$transaction([
         prisma.student.update({
@@ -59,6 +61,18 @@ export async function POST(request: Request) {
       ])
 
       void updatedStudent
+
+      void maybeSendLowBalanceAlerts({
+        schoolId,
+        studentId: student.id,
+        studentExternalId: student.externalId,
+        studentName: `${student.firstName} ${student.lastName}`,
+        previousBalance,
+        newBalance: balanceAfter,
+      }).catch((error) => {
+        console.error("Low balance alert failed", error)
+      })
+
       return NextResponse.json(mapTransaction(transaction), { status: 201 })
     } catch (error) {
       console.error("POST /api/transactions/meal", error)
