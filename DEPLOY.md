@@ -215,6 +215,39 @@ npm run db:seed
 
 Seed prints `SCHOOL_ID` — optionally add to Vercel. Seeded portal password: `FuelTheDons2026!`
 
+### Production student roster (Lisa Morris / Madonna HS)
+
+**Real students come only from SIS and family CSV imports** — not from `npm run db:seed`.
+
+On a fresh production database:
+
+1. Run schema push/migrate.
+2. Run **`npm run db:seed-lisa`** (or full seed once) to create the **itlisa** admin account only — demo Anderson/Martinez students are seeded as **disabled** and filtered out of badge roster and admin lists.
+3. Import real students via **Admin → Family Import** (SIS export).
+
+Seed/demo MD IDs (`10501`–`10504`, `99999`, `9999`, Anderson/Martinez IDs, etc.) are listed in `src/config/demo-students.ts`. They are excluded from `/api/badges` and the default admin student list.
+
+**If demo students already exist in Supabase** (e.g. from an earlier seed), disable them once:
+
+```bash
+npm run db:disable-demo-students
+```
+
+Or run in Supabase SQL Editor:
+
+```sql
+UPDATE "Student"
+SET disabled = true
+WHERE "externalId" IN (
+  '10501', '10502', '10503', '10504',
+  '99999', '9999',
+  '10457', '10458', '10459',
+  '1001', '1002', '1003'
+);
+```
+
+Redeploy after the script/SQL so badge roster and admin UI pick up the filters.
+
 ---
 
 ## Supabase + Vercel Setup
@@ -275,6 +308,37 @@ npm run db:seed
 ```
 
 `migrate deploy` uses `DIRECT_URL` from `schema.prisma` for DDL; the app at runtime uses `DATABASE_URL` through the transaction pooler.
+
+#### P3005 — database already has tables (baselining)
+
+If `npx prisma migrate deploy` fails with **P3005** (“database schema is not empty”), Supabase was almost certainly set up with **`db push`**, not migrations. Prisma sees real tables but no rows in `_prisma_migrations`, so it refuses to run the first migration.
+
+**Check:** `npx prisma migrate status` — pending migrations + P3005 on deploy = baseline situation.
+
+**Option A — keep using `db push` (safest for this project today):**
+
+```bash
+npx prisma db push --accept-data-loss   # only if Prisma warns about new unique indexes
+npx prisma generate
+```
+
+`db push` compares `schema.prisma` to the live DB and applies only the diff. Existing rows are preserved; new columns get defaults (e.g. `Student.badgeStatus` → `PENDING`).
+
+**Option B — switch to migrations (one-time baseline, then `migrate deploy`):**
+
+After the live DB already matches a migration’s SQL, mark it applied **without re-running** it:
+
+```bash
+npx prisma migrate resolve --applied "20250614120000_add_staff_badges"
+npx prisma migrate resolve --applied "20250614130000_add_calendar_event_meal_template"
+npx prisma migrate resolve --applied "20250614140000_add_client_transaction_id"
+npx prisma migrate resolve --applied "20250619120000_add_dietary_form_fields"
+npx prisma migrate resolve --applied "20250619140000_add_must_change_password"
+npx prisma migrate resolve --applied "20250620120000_phase2_badges_vendors"
+npx prisma migrate status   # should show “Database schema is up to date”
+```
+
+Use Option B only when every migration above is already reflected in Supabase (via prior `db push` or manual DDL). Do **not** run `migrate deploy` before baselining — it would try to re-add columns that exist and fail.
 
 ### Step 4 — Redeploy Vercel
 

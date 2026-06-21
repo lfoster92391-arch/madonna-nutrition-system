@@ -1,7 +1,11 @@
-/** Seed/demo student MD IDs — excluded from badge roster and default admin student lists. */
+/** Seed/demo student MD IDs - excluded from badge roster and default admin student lists. */
 export const DEMO_STUDENT_EXTERNAL_IDS = [
   "99999", // Test Testy (manual mock)
   "9999", // Short mock MD ID
+  "10501", // Emma Johnson (teacher-portal seed demo)
+  "10502", // Mason Brown (teacher-portal seed demo)
+  "10503", // Sophia Davis (teacher-portal seed demo)
+  "10504", // Noah Thompson (teacher-portal seed demo)
   "10457", // James Anderson (seed)
   "10458", // Emma Anderson (seed)
   "10459", // Michael Anderson (seed)
