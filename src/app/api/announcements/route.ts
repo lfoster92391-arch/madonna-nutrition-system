@@ -12,6 +12,7 @@ const createSchema = z.object({
   title: z.string().min(2),
   body: z.string().min(2),
   audience: z.enum(["PARENTS", "TEACHERS", "ALL"]).default("ALL"),
+  sendEmail: z.boolean().default(false),
 })
 
 function mapAnnouncement(row: {
@@ -103,19 +104,22 @@ export async function POST(request: Request) {
       let emailsSent = 0
       let emailsFailed = 0
       const emailErrors: string[] = []
-      for (const recipient of recipients) {
-        const delivery = await sendAdminBroadcastEmail({
-          to: recipient.email,
-          title: parsed.data.title,
-          body: parsed.data.body,
-          userId: recipient.id,
-        })
-        if (delivery.sent) {
-          emailsSent += 1
-        } else {
-          emailsFailed += 1
-          if (delivery.error && emailErrors.length < 3) {
-            emailErrors.push(`${recipient.email}: ${delivery.error}`)
+
+      if (parsed.data.sendEmail) {
+        for (const recipient of recipients) {
+          const delivery = await sendAdminBroadcastEmail({
+            to: recipient.email,
+            title: parsed.data.title,
+            body: parsed.data.body,
+            userId: recipient.id,
+          })
+          if (delivery.sent) {
+            emailsSent += 1
+          } else {
+            emailsFailed += 1
+            if (delivery.error && emailErrors.length < 3) {
+              emailErrors.push(`${recipient.email}: ${delivery.error}`)
+            }
           }
         }
       }

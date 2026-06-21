@@ -23,6 +23,7 @@ export default function AdminCommunicationPage() {
   const [title, setTitle] = useState("")
   const [body, setBody] = useState("")
   const [audience, setAudience] = useState<"ALL" | "PARENTS" | "TEACHERS">("ALL")
+  const [sendEmail, setSendEmail] = useState(true)
   const [saving, setSaving] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
 
@@ -61,15 +62,26 @@ export default function AdminCommunicationPage() {
           title: title.trim(),
           body: body.trim(),
           audience,
+          sendEmail,
         }),
       })
+      const data = (await res.json().catch(() => ({}))) as {
+        emailsSent?: number
+        emailsFailed?: number
+      }
       if (!res.ok) {
         setToast("Unable to publish announcement.")
         return
       }
       setTitle("")
       setBody("")
-      setToast("Announcement published.")
+      setToast(
+        sendEmail
+          ? `Announcement published. ${data.emailsSent ?? 0} email(s) sent${
+              data.emailsFailed ? `, ${data.emailsFailed} failed` : ""
+            }.`
+          : "Announcement published (in-app only)."
+      )
       await loadAnnouncements()
     } finally {
       setSaving(false)
@@ -125,6 +137,15 @@ export default function AdminCommunicationPage() {
                 onChange={(e) => setBody(e.target.value)}
               />
             </div>
+            <label className="flex items-center gap-2 text-sm text-primary">
+              <input
+                type="checkbox"
+                checked={sendEmail}
+                onChange={(e) => setSendEmail(e.target.checked)}
+                className="h-4 w-4 rounded border-silver/60"
+              />
+              Also send branded email to selected audience
+            </label>
             <Button type="button" disabled={saving || !databaseEnabled} onClick={() => void handlePublish()}>
               <Send className="mr-2 h-4 w-4" />
               {saving ? "Publishing..." : "Publish"}
