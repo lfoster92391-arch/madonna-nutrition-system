@@ -13,7 +13,7 @@ export async function POST(request: Request) {
         return badRequest("Invalid badge import payload", parsed.error.flatten())
       }
 
-      const auth = await requireAdmin(parsed.data.adminUserId)
+      const auth = await requireAdmin(parsed.data.adminUserId, request)
       if ("error" in auth) return auth.error
 
       const summary = await importBadgeRows({

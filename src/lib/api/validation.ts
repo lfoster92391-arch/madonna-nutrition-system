@@ -325,11 +325,27 @@ export const familyImportRequestSchema = z.object({
   rows: z.array(familyImportRowSchema).min(1).max(500),
 })
 
-export const badgeStatusSchema = z.enum(["active", "pending", "inactive"])
+export const badgeStatusSchema = z.preprocess(
+  (val) => {
+    if (typeof val !== "string") return val
+    const normalized = val.trim().toLowerCase()
+    return normalized || undefined
+  },
+  z.enum(["active", "pending", "inactive"])
+)
+
+export const optionalBadgeStatusSchema = z.preprocess(
+  (val) => {
+    if (typeof val !== "string") return val
+    const normalized = val.trim().toLowerCase()
+    return normalized || undefined
+  },
+  z.enum(["active", "pending", "inactive"]).optional()
+)
 
 export const badgeAssignSchema = z.object({
   barcode: z.string().min(1).optional().nullable(),
-  badgeStatus: badgeStatusSchema.optional(),
+  badgeStatus: optionalBadgeStatusSchema,
   photo: z.string().optional(),
 })
 
@@ -339,7 +355,7 @@ export const badgeImportRowSchema = z.object({
   lastName: z.string().min(1),
   grade: z.string().min(1),
   photoUrl: z.string().optional(),
-  badgeStatus: badgeStatusSchema.optional(),
+  badgeStatus: optionalBadgeStatusSchema,
   barcode: z.string().optional(),
 })
 

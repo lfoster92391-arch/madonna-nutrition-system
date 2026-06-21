@@ -7,6 +7,7 @@ import { Camera, Plus, Search, UserX } from "lucide-react"
 import { CsvImportWizard } from "@/components/admin/CsvImportWizard"
 import { ImportExportMenu } from "@/components/admin/import-export/ImportExportMenu"
 import { useDemo } from "@/components/providers/DemoProvider"
+import { isDemoStudentExternalId } from "@/config/demo-students"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardHeader, CardTitle } from "@/components/ui/card"
@@ -48,9 +49,10 @@ export function AdminStudentManager({
   const [photoTargetId, setPhotoTargetId] = useState<string | null>(null)
 
   const filtered = useMemo(() => {
-    if (!search) return students
+    const activeStudents = students.filter((s) => !s.disabled && !isDemoStudentExternalId(s.id))
+    if (!search) return activeStudents
     const q = search.toLowerCase()
-    return students.filter(
+    return activeStudents.filter(
       (s) =>
         s.firstName.toLowerCase().includes(q) ||
         s.lastName.toLowerCase().includes(q) ||
@@ -65,7 +67,7 @@ export function AdminStudentManager({
   const exportRows = useMemo(
     () =>
       students
-        .filter((s) => !s.disabled)
+        .filter((s) => !s.disabled && !isDemoStudentExternalId(s.id))
         .map((s) => ({
           mdId: s.id,
           firstName: s.firstName,

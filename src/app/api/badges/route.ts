@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server"
+import { DEMO_STUDENT_EXTERNAL_IDS } from "@/config/demo-students"
 import { mapStudent } from "@/lib/db/mappers"
 import { studentInclude } from "@/lib/db/students"
 import { resolveSchoolId } from "@/lib/db/school"
@@ -9,7 +10,11 @@ export async function GET() {
   const result = await withDatabase(async () => {
     const schoolId = await resolveSchoolId()
     const students = await prisma.student.findMany({
-      where: { schoolId, disabled: false },
+      where: {
+        schoolId,
+        disabled: false,
+        externalId: { notIn: [...DEMO_STUDENT_EXTERNAL_IDS] },
+      },
       include: studentInclude,
       orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
     })

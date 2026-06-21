@@ -32,6 +32,35 @@ const STATUS_VARIANT: Record<
   inactive: "danger",
 }
 
+function normalizeCsvRow(row: Record<string, string>): Record<string, string> {
+  const out: Record<string, string> = {}
+  for (const [key, value] of Object.entries(row)) {
+    out[key.replace(/^\ufeff/, "").trim()] = value?.trim() ?? ""
+  }
+  return out
+}
+
+function pickCsvField(row: Record<string, string>, ...keys: string[]): string {
+  for (const key of keys) {
+    const value = row[key]
+    if (value) return value
+  }
+  const normalized = Object.fromEntries(
+    Object.entries(row).map(([k, v]) => [k.toLowerCase().replace(/[_\s-]/g, ""), v])
+  )
+  for (const key of keys) {
+    const value = normalized[key.toLowerCase().replace(/[_\s-]/g, "")]
+    if (value) return value
+  }
+  return ""
+}
+
+function normalizeBadgeStatus(raw?: string): Student["badgeStatus"] {
+  const value = raw?.trim().toLowerCase()
+  if (value === "active" || value === "inactive") return value
+  return "pending"
+}
+
 async function fetchBadges(): Promise<Student[]> {
   const res = await fetch("/api/badges")
   if (!res.ok) throw new Error("Failed to load badges")
@@ -120,7 +149,10 @@ export function BadgeManager() {
   }
 
   const handleImportFile = async (file: File) => {
-    if (!user?.id) return
+    if (!user?.id) {
+      setImportSummary("Sign in as an admin to import badges.")
+      return
+    }
     setImportSummary(null)
     setImportErrors([])
 
@@ -128,15 +160,27 @@ export function BadgeManager() {
       header: true,
       skipEmptyLines: true,
       complete: async (results) => {
-        const rows = results.data.map((row) => ({
-          mdId: row.mdId ?? row["MD ID"] ?? "",
-          firstName: row.firstName ?? row["First Name"] ?? "",
-          lastName: row.lastName ?? row["Last Name"] ?? "",
-          grade: row.grade ?? row.Grade ?? "",
-          photoUrl: row.photoUrl ?? row["Photo URL"] ?? "",
-          badgeStatus: (row.badgeStatus ?? row["Badge Status"] ?? "pending") as Student["badgeStatus"],
-          barcode: row.barcode ?? row.Barcode ?? undefined,
-        }))
+        const rows = results.data
+          .map((raw) => {
+            const row = normalizeCsvRow(raw)
+            return {
+              mdId: pickCsvField(row, "mdId", "MD ID", "md_id", "MDID"),
+              firstName: pickCsvField(row, "firstName", "First Name", "first_name"),
+              lastName: pickCsvField(row, "lastName", "Last Name", "last_name"),
+              grade: pickCsvField(row, "grade", "Grade"),
+              photoUrl: pickCsvField(row, "photoUrl", "Photo URL", "photo_url") || undefined,
+              badgeStatus: normalizeBadgeStatus(
+                pickCsvField(row, "badgeStatus", "Badge Status", "badge_status")
+              ),
+              barcode: pickCsvField(row, "barcode", "Barcode") || undefined,
+            }
+          })
+          .filter((row) => row.mdId.trim())
+
+        if (rows.length === 0) {
+          setImportSummary("No valid rows found. Check that the CSV has an MD ID column.")
+          return
+        }
 
         try {
           const summary = await api.adminImportBadges({

@@ -40,8 +40,22 @@ export async function importBadgeRows(input: {
 
   for (let i = 0; i < input.rows.length; i++) {
     const row = input.rows[i]!
-    const rowNumber = i + 1
+    const rowNumber = i + 2
     const mdId = row.mdId.trim()
+    if (!mdId) {
+      result.skipped += 1
+      result.errors.push({ row: rowNumber, message: "MD ID is required" })
+      continue
+    }
+    if (!row.firstName.trim() || !row.lastName.trim() || !row.grade.trim()) {
+      result.skipped += 1
+      result.errors.push({
+        row: rowNumber,
+        message: "First name, last name, and grade are required",
+      })
+      continue
+    }
+
     const barcode = row.barcode?.trim() || mdId
     const badgeStatus = normalizeStatus(row.badgeStatus)
     const existing = await findStudentByExternalId(mdId)

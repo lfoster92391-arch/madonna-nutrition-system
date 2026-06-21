@@ -12,6 +12,7 @@ import {
   demoCalendarSettings,
   demoUsers,
 } from "../src/data/demo"
+import { DEMO_STUDENT_EXTERNAL_IDS } from "../src/config/demo-students"
 import { demoMealTemplates } from "../src/data/demo/meal-templates"
 import { DEFAULT_AGREEMENT_CONTENT } from "../src/config/agreement-defaults"
 
@@ -239,11 +240,20 @@ async function main() {
 
     const student = await prisma.student.upsert({
       where: { schoolId_externalId: { schoolId: school.id, externalId: data.externalId } },
-      update: { balance: studentFields.balance, photo },
+      update: {
+        balance: studentFields.balance,
+        photo,
+        disabled: DEMO_STUDENT_EXTERNAL_IDS.includes(
+          data.externalId as (typeof DEMO_STUDENT_EXTERNAL_IDS)[number]
+        ),
+      },
       create: {
         ...studentFields,
         photo,
         dietaryRestrictions: dietaryRestrictions ?? [],
+        disabled: DEMO_STUDENT_EXTERNAL_IDS.includes(
+          data.externalId as (typeof DEMO_STUDENT_EXTERNAL_IDS)[number]
+        ),
         schoolId: school.id,
       },
     })
@@ -271,6 +281,14 @@ async function main() {
       })
     }
   }
+
+  await prisma.student.updateMany({
+    where: {
+      schoolId: school.id,
+      externalId: { in: [...DEMO_STUDENT_EXTERNAL_IDS] },
+    },
+    data: { disabled: true },
+  })
 
   const emma = await prisma.student.findFirst({
     where: { externalId: "10458", schoolId: school.id },
