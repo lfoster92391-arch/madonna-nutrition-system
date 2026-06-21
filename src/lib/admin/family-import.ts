@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma"
 import { createAuditLog } from "@/lib/db/audit"
 import { findStudentByExternalId } from "@/lib/db/students"
 import { sendWelcomeEmail as deliverWelcomeEmail } from "@/lib/email"
-import { generateTempPassword } from "@/lib/users"
+import { generateTempPassword, PRIMARY_ADMIN_EMAIL, PRIMARY_ADMIN_USERNAME } from "@/lib/users"
 import type { familyImportRowSchema } from "@/lib/api/validation"
 import type { z } from "zod"
 
@@ -61,12 +61,49 @@ async function resolveUniqueUsername(base: string, schoolId: string): Promise<st
   while (true) {
     const existing = await prisma.user.findFirst({
       where: { schoolId, username: candidate },
-      select: { id: true },
+      select: { id: true, role: true },
     })
     if (!existing) return candidate
+    if (existing.role === "ADMIN") {
+      throw new Error(
+        `Username ${candidate} is reserved for the IT administrator account`
+      )
+    }
     suffix += 1
     candidate = `${base}${suffix}`
   }
+}
+
+async function validatePrimaryAdminParentImport(
+  email: string,
+  parentUsername?: string
+): Promise<string | null> {
+  const normalizedEmail = email.toLowerCase()
+  const requestedUsername = defaultUsername(email, parentUsername)
+  const explicitUsername = parentUsername?.trim().toLowerCase()
+
+  const primaryAdmin = await prisma.user.findFirst({
+    where: {
+      role: "ADMIN",
+      OR: [{ username: PRIMARY_ADMIN_USERNAME }, { email: PRIMARY_ADMIN_EMAIL }],
+    },
+    select: { id: true },
+  })
+
+  if (!primaryAdmin) return null
+
+  if (normalizedEmail === PRIMARY_ADMIN_EMAIL) {
+    return `Email ${PRIMARY_ADMIN_EMAIL} is reserved for the IT administrator account and cannot be imported as a parent`
+  }
+
+  if (
+    requestedUsername === PRIMARY_ADMIN_USERNAME ||
+    explicitUsername === PRIMARY_ADMIN_USERNAME
+  ) {
+    return `Username ${PRIMARY_ADMIN_USERNAME} is reserved for the IT administrator account`
+  }
+
+  return null
 }
 
 async function ensureStudent(
@@ -126,6 +163,15 @@ async function linkParentToStudent(input: {
   relationship: string
   existingLinkedIds: string[]
 }): Promise<string[]> {
+  const parentUser = await prisma.user.findUnique({
+    where: { id: input.parentUserId },
+    select: { role: true },
+  })
+
+  if (!parentUser || parentUser.role !== "PARENT") {
+    throw new Error("Only parent accounts can be linked through family import")
+  }
+
   const linkedIds = [...new Set([...input.existingLinkedIds, input.studentExternalId])]
 
   await prisma.user.update({
@@ -200,6 +246,13 @@ export async function importFamilyRows(input: {
     const email = row.parentEmail.trim().toLowerCase()
     const relationship = row.relationship?.trim() || "Guardian"
 
+    const primaryAdminError = await validatePrimaryAdminParentImport(email, row.parentUsername)
+    if (primaryAdminError) {
+      result.skipped += 1
+      result.errors.push({ row: rowNumber, message: primaryAdminError })
+      continue
+    }
+
     const studentResult = await ensureStudent(row, input.schoolId, rowNumber)
     if ("error" in studentResult) {
       result.skipped += 1
@@ -215,23 +268,45 @@ export async function importFamilyRows(input: {
       result.skipped += 1
       result.errors.push({
         row: rowNumber,
-        message: `Email ${email} is already registered as ${existingUser.role.toLowerCase()}`,
+        message: `Email ${email} is already registered as ${existingUser.role.toLowerCase()}; admin accounts cannot be linked as parents`,
+      })
+      continue
+    }
+
+    if (
+      existingUser &&
+      (existingUser.username === PRIMARY_ADMIN_USERNAME ||
+        existingUser.email.toLowerCase() === PRIMARY_ADMIN_EMAIL)
+    ) {
+      result.skipped += 1
+      result.errors.push({
+        row: rowNumber,
+        message: `Account ${PRIMARY_ADMIN_USERNAME} is reserved for IT administration and cannot be modified by family import`,
       })
       continue
     }
 
     if (existingUser) {
-      const linkedIds = await linkParentToStudent({
-        parentUserId: existingUser.id,
-        parentEmail: email,
-        parentFirstName: row.parentFirstName.trim(),
-        parentLastName: row.parentLastName.trim(),
-        parentPhone: row.parentPhone,
-        studentId: studentResult.studentId,
-        studentExternalId: studentResult.externalId,
-        relationship,
-        existingLinkedIds: existingUser.linkedStudentIds ?? [],
-      })
+      try {
+        await linkParentToStudent({
+          parentUserId: existingUser.id,
+          parentEmail: email,
+          parentFirstName: row.parentFirstName.trim(),
+          parentLastName: row.parentLastName.trim(),
+          parentPhone: row.parentPhone,
+          studentId: studentResult.studentId,
+          studentExternalId: studentResult.externalId,
+          relationship,
+          existingLinkedIds: existingUser.linkedStudentIds ?? [],
+        })
+      } catch (error) {
+        result.skipped += 1
+        result.errors.push({
+          row: rowNumber,
+          message: error instanceof Error ? error.message : "Could not link parent account",
+        })
+        continue
+      }
 
       result.linked += 1
 
@@ -272,10 +347,21 @@ export async function importFamilyRows(input: {
 
     const password = row.password?.trim() || generateTempPassword()
     const passwordHash = await bcrypt.hash(password, 10)
-    const username = await resolveUniqueUsername(
-      defaultUsername(email, row.parentUsername),
-      input.schoolId
-    )
+
+    let username
+    try {
+      username = await resolveUniqueUsername(
+        defaultUsername(email, row.parentUsername),
+        input.schoolId
+      )
+    } catch (error) {
+      result.skipped += 1
+      result.errors.push({
+        row: rowNumber,
+        message: error instanceof Error ? error.message : "Reserved username conflict",
+      })
+      continue
+    }
 
     let user
     try {

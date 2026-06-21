@@ -27,34 +27,51 @@ async function main() {
 
   const passwordHash = await bcrypt.hash(DEFAULT_PASSWORD, 10)
 
-  const user = await prisma.user.upsert({
-    where: { email: LISA_EMAIL },
-    update: {
-      username: LISA_USERNAME,
-      firstName: "Lisa",
-      lastName: "Morris",
-      role: UserRole.ADMIN,
-      status: UserStatus.ACTIVE,
-      badgeId: "90010",
-      phone: "555-1010",
-      passwordHash,
-      mustChangePassword: false,
-      schoolId: school.id,
-    },
-    create: {
-      username: LISA_USERNAME,
-      email: LISA_EMAIL,
-      firstName: "Lisa",
-      lastName: "Morris",
-      role: UserRole.ADMIN,
-      status: UserStatus.ACTIVE,
-      badgeId: "90010",
-      phone: "555-1010",
-      passwordHash,
-      mustChangePassword: false,
-      schoolId: school.id,
-    },
+  const adminData = {
+    email: LISA_EMAIL,
+    firstName: "Lisa",
+    lastName: "Morris",
+    role: UserRole.ADMIN,
+    status: UserStatus.ACTIVE,
+    badgeId: "90010",
+    phone: "555-1010",
+    passwordHash,
+    mustChangePassword: false,
+    linkedStudentIds: [],
+    schoolId: school.id,
+  }
+
+  const existingByUsername = await prisma.user.findUnique({
+    where: { username: LISA_USERNAME },
   })
+  const existingByEmail = await prisma.user.findUnique({
+    where: { email: LISA_EMAIL },
+  })
+
+  let user
+
+  if (existingByUsername && existingByEmail && existingByUsername.id !== existingByEmail.id) {
+    await prisma.user.delete({ where: { id: existingByEmail.id } })
+
+    user = await prisma.user.update({
+      where: { id: existingByUsername.id },
+      data: adminData,
+    })
+  } else if (existingByUsername) {
+    user = await prisma.user.update({
+      where: { id: existingByUsername.id },
+      data: adminData,
+    })
+  } else if (existingByEmail) {
+    user = await prisma.user.update({
+      where: { id: existingByEmail.id },
+      data: { ...adminData, username: LISA_USERNAME },
+    })
+  } else {
+    user = await prisma.user.create({
+      data: { ...adminData, username: LISA_USERNAME },
+    })
+  }
 
   console.log("Lisa Morris admin account ready.")
   console.log("  User id:", user.id)

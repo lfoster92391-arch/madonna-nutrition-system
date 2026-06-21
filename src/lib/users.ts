@@ -21,6 +21,10 @@ export function formatRoleChangeReason(fromRole: UserRole, toRole: UserRole): st
 export const LAST_ADMIN_ERROR =
   "Cannot demote the last active administrator for this school."
 
+/** Canonical IT administrator — reserved from parent family imports. */
+export const PRIMARY_ADMIN_USERNAME = "itlisa"
+export const PRIMARY_ADMIN_EMAIL = "lisa.morris@madonnahs.org"
+
 export function countActiveAdmins(users: User[]): number {
   return users.filter((u) => u.role === "admin" && u.status === "active").length
 }
