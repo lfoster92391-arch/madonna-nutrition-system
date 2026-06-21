@@ -16,6 +16,7 @@ import { useDemo } from "@/components/providers/DemoProvider"
 import { Badge } from "@/components/ui/badge"
 import { api } from "@/lib/api/client"
 import { downloadImportTemplate, exportRowsToCsv } from "@/lib/import-export"
+import { PRIMARY_ADMIN_EMAIL, PRIMARY_ADMIN_USERNAME, ROLE_LABELS } from "@/lib/users"
 import { Button } from "@/components/ui/button"
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label, Select } from "@/components/ui/input"
@@ -214,9 +215,43 @@ export function FamilyImportWizard() {
       if (existingUser && existingUser.role !== "parent") {
         errors.push({
           row: index + 2,
-          errors: [`Email already registered as ${existingUser.role}`],
+          errors: [
+            `Email already registered as ${ROLE_LABELS[existingUser.role]}; administrator accounts cannot be imported as parents`,
+          ],
         })
         return
+      }
+
+      const normalizedEmail = data.parentEmail.trim().toLowerCase()
+      const explicitUsername = data.parentUsername?.trim().toLowerCase()
+      const derivedUsername =
+        explicitUsername ||
+        (normalizedEmail.split("@")[0] ?? "parent").toLowerCase().replace(/[^a-z0-9._-]/g, "") ||
+        "parent"
+
+      const primaryAdmin = users.find(
+        (entry) =>
+          entry.role === "admin" &&
+          (entry.username === PRIMARY_ADMIN_USERNAME || entry.email === PRIMARY_ADMIN_EMAIL)
+      )
+
+      if (primaryAdmin) {
+        if (normalizedEmail === PRIMARY_ADMIN_EMAIL) {
+          errors.push({
+            row: index + 2,
+            errors: [
+              `Email ${PRIMARY_ADMIN_EMAIL} is reserved for the IT administrator account`,
+            ],
+          })
+          return
+        }
+        if (derivedUsername === PRIMARY_ADMIN_USERNAME || explicitUsername === PRIMARY_ADMIN_USERNAME) {
+          errors.push({
+            row: index + 2,
+            errors: [`Username ${PRIMARY_ADMIN_USERNAME} is reserved for the IT administrator account`],
+          })
+          return
+        }
       }
 
       parsed.push(data)

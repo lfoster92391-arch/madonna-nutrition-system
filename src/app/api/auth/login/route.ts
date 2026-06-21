@@ -5,7 +5,7 @@ export const runtime = "nodejs"
 import { prisma } from "@/lib/prisma"
 import { mapUser } from "@/lib/db/mappers"
 import { resolveSchoolId } from "@/lib/db/school"
-import { findUserByLogin, normalizeUsername } from "@/lib/users"
+import { findUserByLogin, normalizeUsername, ROLE_LABELS } from "@/lib/users"
 import { loginSchema } from "@/lib/api/validation"
 import { badRequest, withDatabase } from "@/lib/api/response"
 import { isAllowedTeacherEmail, TEACHER_ACCESS_DENIED_MESSAGE } from "@/config/teacher-auth"
@@ -51,10 +51,15 @@ export async function POST(request: Request) {
     }
 
     if (!portalMatchesUserRole(role, user.role)) {
+      const roleLabel = ROLE_LABELS[user.role]
+      const portalHint =
+        role === "admin" && user.role === "parent"
+          ? " If this is your administrator account, contact IT or run the admin seed to restore access."
+          : ""
       return NextResponse.json(
         {
           success: false,
-          error: `This account is registered as ${user.role}. Use the correct portal to sign in.`,
+          error: `This account is registered as ${roleLabel}. Use the ${roleLabel} portal to sign in.${portalHint}`,
         },
         { status: 403 }
       )
