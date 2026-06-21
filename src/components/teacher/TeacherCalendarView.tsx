@@ -2,7 +2,8 @@
 
 import { useMemo, useState } from "react"
 import { ChevronLeft, ChevronRight, Download, Printer } from "lucide-react"
-import { CalendarMonthGrid, CategoryLegend } from "@/components/calendar/CalendarMonthGrid"
+import { CategoryLegend } from "@/components/calendar/CalendarMonthGrid"
+import { ResponsiveCalendar } from "@/components/calendar/ResponsiveCalendar"
 import { useDemo } from "@/components/providers/DemoProvider"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
@@ -15,7 +16,7 @@ import {
 } from "@/lib/calendar"
 
 export function TeacherCalendarView() {
-  const { calendarEvents, calendarSettings } = useDemo()
+  const { calendarEvents, calendarSettings, mealTemplates } = useDemo()
   const now = new Date()
   const [year, setYear] = useState(now.getFullYear())
   const [month, setMonth] = useState(now.getMonth())
@@ -23,6 +24,11 @@ export function TeacherCalendarView() {
   const [view, setView] = useState<"day" | "week" | "month">("month")
 
   const accentHex = getAccentHex(calendarSettings.accentColor)
+
+  const mealTemplatesById = useMemo(
+    () => new Map(mealTemplates.map((t) => [t.id, t])),
+    [mealTemplates]
+  )
 
   const monthEvents = useMemo(
     () =>
@@ -126,7 +132,7 @@ export function TeacherCalendarView() {
         </div>
 
         <div
-          className="flex items-center justify-between border-b px-4 py-3 sm:px-6 sm:py-4"
+          className="hidden items-center justify-between border-b px-4 py-3 sm:px-6 sm:py-4 md:flex"
           style={{ borderColor: TEACHER_SILVER }}
         >
           <Button variant="outline" size="sm" onClick={prevMonth}>
@@ -142,14 +148,19 @@ export function TeacherCalendarView() {
 
         <div className="p-4 sm:p-6">
           <CategoryLegend />
-          <CalendarMonthGrid
+          <ResponsiveCalendar
             year={year}
             month={month}
-            events={monthEvents}
+            onYearMonthChange={(y, m) => {
+              setYear(y)
+              setMonth(m)
+            }}
+            events={calendarEvents}
             accentHex={accentHex}
             selectedDate={selectedDate}
             onDayClick={setSelectedDate}
             readOnly
+            mealTemplatesById={mealTemplatesById}
           />
         </div>
       </Card>

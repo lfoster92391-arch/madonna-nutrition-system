@@ -12,7 +12,8 @@ import {
   Trash2,
   UtensilsCrossed,
 } from "lucide-react"
-import { CalendarMonthGrid, CategoryLegend } from "@/components/calendar/CalendarMonthGrid"
+import { CategoryLegend } from "@/components/calendar/CalendarMonthGrid"
+import { ResponsiveCalendar } from "@/components/calendar/ResponsiveCalendar"
 import { CookbookPicker } from "@/components/admin/cookbook/CookbookPicker"
 import { useDemo } from "@/components/providers/DemoProvider"
 import { Button } from "@/components/ui/button"
@@ -234,7 +235,7 @@ export function AdminCalendar() {
             <h2 className="mt-1 text-xl font-bold">{calendarSettings.headerTitle}</h2>
           </div>
           <div className="p-4 sm:p-6">
-            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <div className="mb-4 hidden flex-wrap items-center justify-between gap-3 md:flex">
               <h3 className="text-base font-bold text-primary sm:text-lg">{formatMonthYear(year, month)}</h3>
               <div className="flex shrink-0 gap-2">
                 <Button size="sm" variant="outline" onClick={prevMonth}>
@@ -245,9 +246,13 @@ export function AdminCalendar() {
                 </Button>
               </div>
             </div>
-            <CalendarMonthGrid
+            <ResponsiveCalendar
               year={year}
               month={month}
+              onYearMonthChange={(y, m) => {
+                setYear(y)
+                setMonth(m)
+              }}
               events={calendarEvents}
               accentHex={accentHex}
               selectedDate={selectedDate}

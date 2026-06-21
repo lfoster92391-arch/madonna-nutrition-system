@@ -2,7 +2,8 @@
 
 import { useMemo, useState } from "react"
 import { ChevronLeft, ChevronRight } from "lucide-react"
-import { CalendarMonthGrid, CATEGORY_ICONS, CategoryLegend } from "@/components/calendar/CalendarMonthGrid"
+import { CATEGORY_ICONS, CategoryLegend } from "@/components/calendar/CalendarMonthGrid"
+import { ResponsiveCalendar } from "@/components/calendar/ResponsiveCalendar"
 import { useDemo } from "@/components/providers/DemoProvider"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
@@ -13,15 +14,21 @@ import {
   getAccentHex,
   getEventColor,
 } from "@/lib/calendar"
+import { getEventCoverPhoto } from "@/components/calendar/calendar-event-media"
 
 export function ParentCalendarView() {
-  const { calendarEvents, calendarSettings } = useDemo()
+  const { calendarEvents, calendarSettings, mealTemplates } = useDemo()
   const now = new Date()
   const [year, setYear] = useState(now.getFullYear())
   const [month, setMonth] = useState(now.getMonth())
   const [selectedDate, setSelectedDate] = useState<string | null>(formatDateKey(now))
 
   const accentHex = getAccentHex(calendarSettings.accentColor)
+
+  const mealTemplatesById = useMemo(
+    () => new Map(mealTemplates.map((t) => [t.id, t])),
+    [mealTemplates]
+  )
 
   const monthEvents = useMemo(
     () =>
@@ -84,7 +91,7 @@ export function ParentCalendarView() {
           </div>
 
           <div className="p-4 sm:p-6 lg:p-8">
-            <div className="mb-4 flex flex-wrap items-center justify-between gap-3 sm:mb-6">
+            <div className="mb-4 hidden flex-wrap items-center justify-between gap-3 sm:mb-6 md:flex">
               <h3 className="text-lg font-bold text-primary sm:text-xl">{formatMonthYear(year, month)}</h3>
               <div className="flex shrink-0 gap-2">
                 <Button size="sm" variant="outline" onClick={prevMonth}>
@@ -107,14 +114,19 @@ export function ParentCalendarView() {
               </div>
             </div>
 
-            <CalendarMonthGrid
+            <ResponsiveCalendar
               year={year}
               month={month}
+              onYearMonthChange={(y, m) => {
+                setYear(y)
+                setMonth(m)
+              }}
               events={calendarEvents}
               accentHex={accentHex}
               selectedDate={selectedDate}
               onDayClick={setSelectedDate}
               readOnly
+              mealTemplatesById={mealTemplatesById}
             />
 
             <div className="mt-6">
@@ -138,6 +150,7 @@ export function ParentCalendarView() {
                   const Icon = CATEGORY_ICONS[event.category]
                   const color = getEventColor(event)
                   const cat = EVENT_CATEGORIES[event.category]
+                  const cover = getEventCoverPhoto(event, mealTemplatesById)
                   return (
                     <div
                       key={event.id}
@@ -145,12 +158,21 @@ export function ParentCalendarView() {
                       style={{ borderLeftWidth: 4, borderLeftColor: color }}
                     >
                       <div className="flex items-center gap-3">
-                        <span
-                          className="flex h-10 w-10 items-center justify-center rounded-xl"
-                          style={{ backgroundColor: `${color}18`, color }}
-                        >
-                          <Icon className="h-5 w-5" />
-                        </span>
+                        {cover ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={cover}
+                            alt=""
+                            className="h-14 w-14 shrink-0 rounded-xl object-cover"
+                          />
+                        ) : (
+                          <span
+                            className="flex h-10 w-10 items-center justify-center rounded-xl"
+                            style={{ backgroundColor: `${color}18`, color }}
+                          >
+                            <Icon className="h-5 w-5" />
+                          </span>
+                        )}
                         <div>
                           <p className="font-bold text-primary">{event.title}</p>
                           <p className="text-xs font-semibold uppercase tracking-wide" style={{ color }}>

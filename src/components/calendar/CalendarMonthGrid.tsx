@@ -20,8 +20,8 @@ import {
   getMonthGrid,
   groupEventsByDate,
 } from "@/lib/calendar"
+import { getEventCoverPhoto } from "@/components/calendar/calendar-event-media"
 import type { CalendarEvent, CalendarEventCategory, MealTemplate } from "@/lib/types"
-import { getMealCoverPhoto } from "@/lib/meal-templates"
 import { cn } from "@/lib/utils"
 
 export const CATEGORY_ICONS: Record<CalendarEventCategory, LucideIcon> = {
@@ -45,6 +45,8 @@ interface CalendarMonthGridProps {
   readOnly?: boolean
   /** When provided, menu_day events show cover photos from linked templates */
   mealTemplatesById?: Map<string, MealTemplate>
+  /** Mobile dot grid: show, or hide when a parent renders week outlook separately */
+  mobileLayout?: "dots" | "hidden"
 }
 
 function dayButtonClassName({
@@ -101,6 +103,7 @@ export function CalendarMonthGrid({
   onDayClick,
   readOnly = false,
   mealTemplatesById,
+  mobileLayout = "dots",
 }: CalendarMonthGridProps) {
   const weeks = useMemo(() => getMonthGrid(year, month), [year, month])
   const eventsByDate = useMemo(() => groupEventsByDate(events), [events])
@@ -108,7 +111,8 @@ export function CalendarMonthGrid({
 
   return (
     <div className="overflow-hidden rounded-[20px] border border-silver/60 bg-white">
-      {/* Mobile: compact dot calendar — scannable, 44px+ tap targets */}
+      {/* Mobile: compact dot calendar — optional secondary view on small screens */}
+      {mobileLayout === "dots" ? (
       <div className="md:hidden">
         <div className="grid grid-cols-7 border-b border-silver/60 bg-silver/10">
           {WEEKDAY_INITIALS.map((day, i) => (
@@ -172,9 +176,10 @@ export function CalendarMonthGrid({
           ))}
         </div>
       </div>
+      ) : null}
 
       {/* Desktop: full month grid with event previews */}
-      <div className="hidden md:block">
+      <div className={mobileLayout === "hidden" ? "block" : "hidden md:block"}>
         <div className="grid grid-cols-7 border-b border-silver/60 bg-silver/10">
           {WEEKDAYS.map((day) => (
             <div
@@ -226,10 +231,7 @@ export function CalendarMonthGrid({
                       {dayEvents.slice(0, readOnly ? 3 : 2).map((event) => {
                         const Icon = CATEGORY_ICONS[event.category]
                         const color = getEventColor(event)
-                        const template = event.mealTemplateId
-                          ? mealTemplatesById?.get(event.mealTemplateId)
-                          : undefined
-                        const cover = template ? getMealCoverPhoto(template.photos) : undefined
+                        const cover = getEventCoverPhoto(event, mealTemplatesById)
                         return (
                           <div
                             key={event.id}

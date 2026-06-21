@@ -114,4 +114,47 @@ export function groupEventsByDate(events: CalendarEvent[]): Map<string, Calendar
   return map
 }
 
+/** Sunday-start week containing the given date */
+export function getWeekStart(date: Date): Date {
+  const d = new Date(date.getFullYear(), date.getMonth(), date.getDate())
+  d.setDate(d.getDate() - d.getDay())
+  return d
+}
+
+export function getWeekDates(weekStart: Date): Date[] {
+  return Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(weekStart)
+    d.setDate(weekStart.getDate() + i)
+    return d
+  })
+}
+
+export function addDays(date: Date, days: number): Date {
+  const d = new Date(date.getFullYear(), date.getMonth(), date.getDate())
+  d.setDate(d.getDate() + days)
+  return d
+}
+
+export function isSameWeek(a: Date, b: Date): boolean {
+  return formatDateKey(getWeekStart(a)) === formatDateKey(getWeekStart(b))
+}
+
+export function formatWeekRange(weekStart: Date): string {
+  const weekEnd = addDays(weekStart, 6)
+  const sameMonth = weekStart.getMonth() === weekEnd.getMonth()
+  const sameYear = weekStart.getFullYear() === weekEnd.getFullYear()
+
+  if (sameMonth && sameYear) {
+    return `${weekStart.toLocaleDateString("en-US", { month: "short" })} ${weekStart.getDate()} – ${weekEnd.getDate()}, ${weekStart.getFullYear()}`
+  }
+
+  if (sameYear) {
+    const start = weekStart.toLocaleDateString("en-US", { month: "short", day: "numeric" })
+    const end = weekEnd.toLocaleDateString("en-US", { month: "short", day: "numeric" })
+    return `${start} – ${end}, ${weekStart.getFullYear()}`
+  }
+
+  return `${weekStart.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })} – ${weekEnd.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`
+}
+
 export { WEEKDAYS }
