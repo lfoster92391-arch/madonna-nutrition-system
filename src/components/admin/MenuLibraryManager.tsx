@@ -1,7 +1,6 @@
 "use client"
 
 import { useCallback, useMemo, useRef, useState } from "react"
-import Image from "next/image"
 import {
   Archive,
   ArrowDown,
@@ -362,21 +361,6 @@ export function MenuLibraryManager() {
                 </span>
               )}
             </button>
-            <div className="flex items-center gap-3 rounded-2xl border border-silver/60 px-3 py-2">
-              <Image
-                src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=80&auto=format&fit=crop"
-                alt="Angela D."
-                width={40}
-                height={40}
-                className="rounded-full object-cover"
-              />
-              <div className="text-left">
-                <p className="text-sm font-semibold" style={{ color: NAVY }}>
-                  Angela D.
-                </p>
-                <p className="text-xs text-silver-foreground">Nutrition Admin</p>
-              </div>
-            </div>
           </div>
         </div>
       </header>
@@ -522,14 +506,29 @@ export function MenuLibraryManager() {
           </div>
 
           {/* Meal cards */}
-          {viewMode === "grid" ? (
+          {filteredTemplates.length === 0 ? (
+            <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-silver/60 bg-silver/5 px-8 py-20 text-center">
+              <UtensilsCrossed className="mb-4 h-12 w-12 text-silver-foreground/40" />
+              <p className="text-lg font-semibold" style={{ color: NAVY }}>
+                {mealTemplates.length === 0 ? "No meals in your cookbook yet" : "No meals match your filters"}
+              </p>
+              <p className="mt-2 max-w-md text-sm text-silver-foreground">
+                {mealTemplates.length === 0
+                  ? "Create your first meal template with photos and pricing — then reuse it on the calendar anytime."
+                  : "Try a different category or search term, or create a new meal."}
+              </p>
+              <Button
+                onClick={handleCreate}
+                className="mt-6 rounded-2xl px-6 font-bold uppercase tracking-wide"
+                style={{ backgroundColor: NAVY }}
+              >
+                <Plus className="h-4 w-4" />
+                Create Meal
+              </Button>
+            </div>
+          ) : viewMode === "grid" ? (
             <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
-              {paginatedTemplates.length === 0 ? (
-                <p className="col-span-full py-16 text-center text-sm text-silver-foreground">
-                  No meals in this category. Create your first template.
-                </p>
-              ) : (
-                paginatedTemplates.map((template) => {
+              {paginatedTemplates.map((template) => {
                   const cover = getMealCoverPhoto(template.photos)
                   const selected = selectedId === template.id
                   return (
@@ -591,8 +590,7 @@ export function MenuLibraryManager() {
                       </div>
                     </button>
                   )
-                })
-              )}
+                })}
             </div>
           ) : (
             <div className="space-y-3">

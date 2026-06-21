@@ -1,12 +1,10 @@
 import type {
   AllergySubmission,
   AuditLogEntry,
-  CalendarEvent,
   CalendarSettings,
   ImportLog,
   InventoryItem,
   MedicalDocument,
-  MenuItem,
   Notification,
   Student,
   StudentProfile,
@@ -638,160 +636,12 @@ export const demoNotifications: Notification[] = [
   },
 ]
 
-export const demoMenus: MenuItem[] = [
-  { id: "m-1", name: "Scrambled Eggs & Toast", mealType: "breakfast", allergens: ["Eggs", "Gluten"], calories: 320, date: "2026-06-13" },
-  { id: "m-2", name: "Chicken Caesar Wrap", mealType: "lunch", allergens: ["Gluten", "Dairy"], calories: 480, date: "2026-06-13" },
-  { id: "m-3", name: "Veggie Burger", mealType: "lunch", allergens: ["Gluten"], calories: 410, date: "2026-06-13" },
-  { id: "m-4", name: "Fresh Fruit Cup", mealType: "ala_carte", allergens: [], calories: 90, date: "2026-06-13" },
-  { id: "m-5", name: "Chocolate Chip Cookie", mealType: "ala_carte", allergens: ["Gluten", "Dairy", "Eggs"], calories: 180, date: "2026-06-13" },
-]
-
 export const demoCalendarSettings: CalendarSettings = {
   headerTitle: "Madonna High School — Lunch Calendar",
   bannerMessage: "No school Friday, June 20 — Professional Development Day",
   accentColor: "navy",
   schoolName: "Madonna High School",
 }
-
-export const demoCalendarEvents: CalendarEvent[] = [
-  {
-    id: "cal-1",
-    title: "Grilled Chicken Plate",
-    date: "2026-06-02",
-    description: "Includes fruit, roll, and milk",
-    category: "menu_day",
-    mealTemplateId: "mt-001",
-    publishStatus: "published",
-    publishedAt: new Date("2026-05-25T13:00:00").toISOString(),
-  },
-  {
-    id: "cal-2",
-    title: "Taco Bar",
-    date: "2026-06-03",
-    description: "Seasoned beef or bean tacos, rice, refried beans, fruit cup",
-    category: "menu_day",
-    mealTemplateId: "mt-001",
-    publishStatus: "published",
-    publishedAt: new Date("2026-05-25T13:00:00").toISOString(),
-  },
-  {
-    id: "cal-3",
-    title: "Pizza Friday",
-    date: "2026-06-06",
-    description: "Special pizza lunch for spirit week",
-    category: "special_event",
-    publishStatus: "published",
-    publishedAt: new Date("2026-05-20T09:00:00").toISOString(),
-  },
-  {
-    id: "cal-4",
-    title: "Teacher Appreciation Lunch",
-    date: "2026-06-08",
-    description: "Citrus chicken salad with fruit, roll, and milk",
-    category: "teacher_meal",
-    mealTemplateId: "mt-001",
-    publishStatus: "published",
-    publishedAt: new Date("2026-06-01T09:00:00").toISOString(),
-    notes: "Thank you to all our teachers!",
-  },
-  {
-    id: "cal-5",
-    title: "Pasta Primavera",
-    date: "2026-06-09",
-    description: "Whole grain pasta, steamed vegetables, milk",
-    category: "menu_day",
-    publishStatus: "draft",
-  },
-  {
-    id: "cal-6",
-    title: "Appreciation Lunch",
-    date: "2026-06-10",
-    description: "Sub sandwich platter for staff",
-    category: "teacher_meal",
-    publishStatus: "scheduled",
-  },
-  {
-    id: "cal-7",
-    title: "Catholic Schools Week",
-    date: "2026-06-12",
-    description: "Special themed lunch all week",
-    category: "special_event",
-    publishStatus: "published",
-    publishedAt: new Date("2026-06-01T09:00:00").toISOString(),
-  },
-  {
-    id: "cal-8",
-    title: "Chef Salad",
-    date: "2026-06-13",
-    description: "Fresh greens with grilled chicken",
-    category: "teacher_meal",
-    mealTemplateId: "mt-001",
-    publishStatus: "published",
-    publishedAt: new Date("2026-06-05T09:00:00").toISOString(),
-  },
-  {
-    id: "cal-9",
-    title: "Spaghetti & Meat Sauce",
-    date: "2026-06-13",
-    description: "Garlic breadstick, steamed broccoli, mixed fruit, milk",
-    category: "menu_day",
-    publishStatus: "published",
-    publishedAt: new Date("2026-06-01T09:00:00").toISOString(),
-  },
-  {
-    id: "cal-10",
-    title: "Professional Development Day",
-    date: "2026-06-20",
-    description: "No classes — cafeteria closed",
-    category: "no_school",
-    publishStatus: "published",
-    publishedAt: new Date("2026-05-15T09:00:00").toISOString(),
-  },
-  {
-    id: "cal-11",
-    title: "Juneteenth (Observed)",
-    date: "2026-06-19",
-    description: "School closed in observance",
-    category: "holiday",
-    publishStatus: "published",
-    publishedAt: new Date("2026-05-15T09:00:00").toISOString(),
-  },
-  {
-    id: "cal-12",
-    title: "BBQ Chicken Bowl",
-    date: "2026-06-23",
-    description: "Mashed potatoes, corn, dinner roll, milk",
-    category: "menu_day",
-    publishStatus: "draft",
-  },
-  {
-    id: "cal-13",
-    title: "Early Dismissal — 12:30 PM",
-    date: "2026-06-27",
-    description: "Lunch served before dismissal. Grab-and-go options available.",
-    category: "early_dismissal",
-    publishStatus: "published",
-    publishedAt: new Date("2026-06-10T09:00:00").toISOString(),
-  },
-  {
-    id: "cal-14",
-    title: "Senior Awards Luncheon",
-    date: "2026-06-25",
-    description: "Special plated lunch for graduating seniors in the gymnasium",
-    category: "special_event",
-    publishStatus: "published",
-    publishedAt: new Date("2026-06-01T09:00:00").toISOString(),
-  },
-  {
-    id: "cal-15",
-    title: "Independence Day",
-    date: "2026-07-04",
-    description: "School closed — summer meal program at community center",
-    category: "holiday",
-    publishStatus: "published",
-    publishedAt: new Date("2026-06-01T09:00:00").toISOString(),
-  },
-]
 
 export const demoImportLogs: ImportLog[] = [
   {
@@ -857,7 +707,5 @@ export function getMedicalDocumentsForStudent(
     .filter((d) => d.studentId === studentId)
     .sort((a, b) => b.version - a.version)
 }
-
-export { demoMealTemplates } from "./meal-templates"
 
 export type { Student } from "@/lib/types"
