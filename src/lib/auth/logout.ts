@@ -8,6 +8,8 @@ export function portalLoginPath(role: Exclude<PortalRole, null>): string {
       return "/login/parent"
     case "teacher":
       return "/login/teacher"
+    case "staff":
+      return "/login/staff"
     case "cashier":
       return "/kiosk"
   }

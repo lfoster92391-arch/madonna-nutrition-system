@@ -22,7 +22,7 @@ export function TeacherDashboardAnnouncements() {
         </Button>
       </div>
       <Card
-        className="rounded-2xl border p-6 shadow-sm"
+        className="rounded-2xl border p-4 shadow-sm sm:p-6"
         style={{ borderColor: TEACHER_SILVER }}
       >
         <div className="space-y-4">

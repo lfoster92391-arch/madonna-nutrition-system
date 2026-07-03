@@ -14,7 +14,7 @@ import { clearLegacySessionCaches } from "@/lib/demo/session"
 import { formatUserName, normalizeUsername } from "@/lib/users"
 import type { UserRole } from "@/lib/types"
 
-export type PortalRole = "cashier" | "parent" | "admin" | "teacher" | null
+export type PortalRole = "cashier" | "parent" | "admin" | "staff" | "teacher" | null
 
 interface AuthUser {
   id: string
@@ -96,6 +96,7 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
           portalRole !== "admin" &&
           portalRole !== "cashier" &&
           portalRole !== "parent" &&
+          portalRole !== "staff" &&
           portalRole !== "teacher"
         ) {
           writeSession(null)

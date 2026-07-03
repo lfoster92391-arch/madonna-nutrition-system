@@ -9,7 +9,7 @@ export function TeacherSettingsView() {
   const { profile } = useTeacherData()
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-6 p-4 sm:p-6">
       <div>
         <h1 className="text-2xl font-bold" style={{ color: TEACHER_NAVY }}>
           Settings
@@ -20,7 +20,7 @@ export function TeacherSettingsView() {
       </div>
 
       <Card
-        className="max-w-xl rounded-2xl border p-6 shadow-sm"
+        className="w-full max-w-xl rounded-2xl border p-4 shadow-sm sm:p-6"
         style={{ borderColor: TEACHER_SILVER }}
       >
         <h2 className="flex items-center gap-2 text-lg font-bold" style={{ color: TEACHER_NAVY }}>

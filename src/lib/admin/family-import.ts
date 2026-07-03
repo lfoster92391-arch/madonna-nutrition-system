@@ -374,7 +374,7 @@ export async function importFamilyRows(input: {
           phone: row.parentPhone?.trim() || undefined,
           role: "PARENT",
           passwordHash,
-          mustChangePassword: !row.password?.trim(),
+          mustChangePassword: true,
           linkedStudentIds: [studentResult.externalId],
           schoolId: input.schoolId,
         },

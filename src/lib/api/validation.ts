@@ -127,7 +127,7 @@ export const updateUserRoleSchema = z.object({
 export const loginSchema = z.object({
   username: z.string().min(1),
   password: z.string(),
-  role: z.enum(["admin", "cashier", "parent", "teacher"]),
+  role: z.enum(["admin", "cashier", "parent", "staff", "teacher"]),
 })
 
 export const calendarEventSchema = z.object({
@@ -323,6 +323,45 @@ export const familyImportRequestSchema = z.object({
   adminUserId: z.string().min(1),
   performedBy: z.string().min(1),
   rows: z.array(familyImportRowSchema).min(1).max(500),
+})
+
+const STAFF_IMPORT_ROLE_ALIASES: Record<string, "admin" | "cashier" | "staff" | "teacher"> = {
+  admin: "admin",
+  administrator: "admin",
+  cashier: "cashier",
+  staff: "staff",
+  teacher: "teacher",
+  faculty: "teacher",
+}
+
+export const staffImportRoleSchema = z.preprocess(
+  (val) => {
+    if (typeof val !== "string") return val
+    const normalized = val.trim().toLowerCase().replace(/[\s-]+/g, "")
+    return STAFF_IMPORT_ROLE_ALIASES[normalized] ?? normalized
+  },
+  z.enum(["admin", "cashier", "staff", "teacher"], {
+    message: "Role must be admin, cashier, staff, or teacher",
+  })
+)
+
+export const staffImportRowSchema = z.object({
+  firstName: z.string().min(1),
+  lastName: z.string().min(1),
+  email: z.string().email(),
+  role: staffImportRoleSchema,
+  department: z.string().optional(),
+  username: z.string().optional(),
+  phone: z.string().optional(),
+  badgeId: z.string().optional(),
+  password: z.string().optional(),
+})
+
+export const staffImportRequestSchema = z.object({
+  adminUserId: z.string().min(1),
+  performedBy: z.string().min(1),
+  defaultPassword: z.string().min(8).optional(),
+  rows: z.array(staffImportRowSchema).min(1).max(500),
 })
 
 export const badgeStatusSchema = z.preprocess(

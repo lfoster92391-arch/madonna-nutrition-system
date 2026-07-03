@@ -12,12 +12,13 @@ import { isAllowedTeacherEmail, TEACHER_ACCESS_DENIED_MESSAGE } from "@/config/t
 import type { UserRole } from "@/lib/types"
 
 function portalMatchesUserRole(
-  portalRole: "admin" | "cashier" | "parent" | "teacher",
+  portalRole: "admin" | "cashier" | "parent" | "staff" | "teacher",
   userRole: UserRole
 ): boolean {
   if (portalRole === "admin") return userRole === "admin"
   if (portalRole === "cashier") return userRole === "cashier"
   if (portalRole === "parent") return userRole === "parent"
+  if (portalRole === "staff") return userRole === "staff"
   if (portalRole === "teacher") return userRole === "teacher"
   return false
 }

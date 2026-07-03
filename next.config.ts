@@ -20,6 +20,7 @@ const nextConfig: NextConfig = {
       { source: "/auth/parent", destination: "/login/parent", permanent: false },
       { source: "/auth/admin", destination: "/login/admin", permanent: false },
       { source: "/auth/teacher", destination: "/login/teacher", permanent: false },
+      { source: "/auth/staff", destination: "/login/staff", permanent: false },
       { source: "/auth/cashier", destination: "/kiosk", permanent: false },
       { source: "/admin/menu", destination: "/admin/menu-library", permanent: false },
       { source: "/admin/inventory", destination: "/inventory", permanent: false },

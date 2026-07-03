@@ -8,6 +8,7 @@ import { useDemo } from "@/components/providers/DemoProvider"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { TeacherDashboardAnnouncements } from "@/components/teacher/TeacherDashboardAnnouncements"
 import { TEACHER_BG, TEACHER_NAVY, TEACHER_SILVER } from "@/components/teacher/layout/teacher-theme"
 import {
   formatDateKey,
@@ -77,6 +78,24 @@ export function TeacherCalendarView() {
         </p>
       </div>
 
+      <div className="md:hidden">
+        <TeacherDashboardAnnouncements />
+      </div>
+
+      {calendarSettings.bannerMessage ? (
+        <div
+          className="rounded-2xl border px-4 py-3 md:hidden"
+          style={{ borderColor: TEACHER_SILVER, backgroundColor: "#FFFFFF" }}
+        >
+          <p className="text-xs font-bold uppercase tracking-wide text-silver-foreground">
+            Announcement
+          </p>
+          <p className="mt-1 text-sm" style={{ color: TEACHER_NAVY }}>
+            {calendarSettings.bannerMessage}
+          </p>
+        </div>
+      ) : null}
+
       <Card
         className="rounded-2xl border p-4 shadow-sm"
         style={{ borderColor: TEACHER_SILVER }}
@@ -125,7 +144,7 @@ export function TeacherCalendarView() {
           </p>
           <h2 className="mt-1 text-2xl font-bold">{calendarSettings.headerTitle}</h2>
           {calendarSettings.bannerMessage ? (
-            <div className="mt-4 rounded-2xl bg-white/15 px-5 py-3">
+            <div className="mt-4 hidden rounded-2xl bg-white/15 px-5 py-3 md:block">
               <p className="text-sm">{calendarSettings.bannerMessage}</p>
             </div>
           ) : null}

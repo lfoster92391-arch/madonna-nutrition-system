@@ -405,6 +405,7 @@ enum NotificationType {
 enum AnnouncementAudience {
   PARENTS
   TEACHERS
+  STAFF
   ALL
 }
 

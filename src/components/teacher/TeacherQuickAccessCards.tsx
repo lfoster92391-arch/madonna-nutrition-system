@@ -38,11 +38,11 @@ export function TeacherQuickAccessCards() {
       <h2 className="mb-4 text-lg font-bold" style={{ color: TEACHER_NAVY }}>
         Quick Access
       </h2>
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {cards.map(({ label, description, href, icon: Icon }) => (
           <Link key={label} href={href}>
             <Card
-              className="flex h-full flex-col rounded-2xl border p-6 shadow-sm transition hover:bg-[#0A1E3F]/5"
+              className="flex h-full flex-col rounded-2xl border p-4 shadow-sm transition hover:bg-[#0A1E3F]/5 sm:p-6"
               style={{ borderColor: TEACHER_SILVER }}
             >
               <Icon className="h-6 w-6" style={{ color: TEACHER_NAVY }} />

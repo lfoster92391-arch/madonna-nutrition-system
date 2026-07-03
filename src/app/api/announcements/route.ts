@@ -11,7 +11,7 @@ const createSchema = z.object({
   adminUserId: z.string().min(1),
   title: z.string().min(2),
   body: z.string().min(2),
-  audience: z.enum(["PARENTS", "TEACHERS", "ALL"]).default("ALL"),
+  audience: z.enum(["PARENTS", "TEACHERS", "STAFF", "ALL"]).default("ALL"),
   sendEmail: z.boolean().default(false),
 })
 
@@ -45,7 +45,9 @@ export async function GET(request: Request) {
         ? { in: ["PARENTS" as const, "ALL" as const] }
         : audience === "teachers"
           ? { in: ["TEACHERS" as const, "ALL" as const] }
-          : undefined
+          : audience === "staff"
+            ? { in: ["STAFF" as const, "ALL" as const] }
+            : undefined
 
     const announcements = await prisma.announcement.findMany({
       where: {
@@ -90,7 +92,9 @@ export async function POST(request: Request) {
           ? ["TEACHER"]
           : parsed.data.audience === "PARENTS"
             ? ["PARENT"]
-            : ["PARENT", "TEACHER"]
+            : parsed.data.audience === "STAFF"
+              ? ["STAFF"]
+              : ["PARENT", "TEACHER", "STAFF"]
 
       const recipients = await prisma.user.findMany({
         where: {

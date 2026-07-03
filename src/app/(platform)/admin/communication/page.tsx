@@ -22,7 +22,7 @@ export default function AdminCommunicationPage() {
   const [announcements, setAnnouncements] = useState<AnnouncementRow[]>([])
   const [title, setTitle] = useState("")
   const [body, setBody] = useState("")
-  const [audience, setAudience] = useState<"ALL" | "PARENTS" | "TEACHERS">("ALL")
+  const [audience, setAudience] = useState<"ALL" | "PARENTS" | "TEACHERS" | "STAFF">("ALL")
   const [sendEmail, setSendEmail] = useState(true)
   const [saving, setSaving] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
@@ -98,7 +98,7 @@ export default function AdminCommunicationPage() {
             Communications
           </h1>
           <p className="text-silver-foreground">
-            Broadcast menu changes and notices to parents and teachers.
+            Broadcast menu changes and notices to parents, teachers, and staff.
           </p>
         </div>
 
@@ -120,9 +120,10 @@ export default function AdminCommunicationPage() {
                 value={audience}
                 onChange={(e) => setAudience(e.target.value as typeof audience)}
               >
-                <option value="ALL">Parents &amp; Teachers</option>
+                <option value="ALL">Parents, Teachers &amp; Staff</option>
                 <option value="PARENTS">Parents only</option>
                 <option value="TEACHERS">Teachers only</option>
+                <option value="STAFF">Staff only</option>
               </select>
             </div>
             <div>

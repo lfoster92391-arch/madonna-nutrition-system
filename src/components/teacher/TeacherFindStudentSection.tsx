@@ -67,11 +67,11 @@ export function TeacherFindStudentSection() {
 
       <div className="grid gap-6 xl:grid-cols-2">
         <Card
-          className="rounded-2xl border p-6 shadow-sm"
+          className="rounded-2xl border p-4 shadow-sm sm:p-6"
           style={{ borderColor: TEACHER_SILVER }}
         >
-          <div className="grid gap-4 sm:grid-cols-[1fr_auto_auto]">
-            <div className="relative sm:col-span-3">
+          <div className="flex flex-col gap-4">
+            <div className="relative w-full">
               <Search
                 className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2"
                 style={{ color: TEACHER_SILVER }}
@@ -85,33 +85,35 @@ export function TeacherFindStudentSection() {
                 className="h-12 pl-11"
               />
             </div>
-            <select
-              value={grade}
-              onChange={(e) => setGrade(e.target.value)}
-              className="h-12 rounded-xl border bg-white px-4 text-sm"
-              style={{ borderColor: TEACHER_SILVER, color: TEACHER_NAVY }}
-              aria-label="Filter by grade"
-            >
-              {GRADES.map((g) => (
-                <option key={g} value={g}>
-                  {g === "All" ? "All Grades" : `Grade ${g}`}
-                </option>
-              ))}
-            </select>
-            <Button className="h-12" onClick={handleSearch}>
-              <Search className="mr-2 h-4 w-4" />
-              Search
-            </Button>
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <select
+                value={grade}
+                onChange={(e) => setGrade(e.target.value)}
+                className="h-12 min-w-0 flex-1 rounded-xl border bg-white px-4 text-sm"
+                style={{ borderColor: TEACHER_SILVER, color: TEACHER_NAVY }}
+                aria-label="Filter by grade"
+              >
+                {GRADES.map((g) => (
+                  <option key={g} value={g}>
+                    {g === "All" ? "All Grades" : `Grade ${g}`}
+                  </option>
+                ))}
+              </select>
+              <Button className="h-12 w-full shrink-0 sm:w-auto" onClick={handleSearch}>
+                <Search className="mr-2 h-4 w-4" />
+                Search
+              </Button>
+            </div>
           </div>
 
-          <div className="mt-4 flex flex-wrap gap-3">
-            <Button variant="outline" className="h-11" onClick={handleScan}>
+          <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+            <Button variant="outline" className="h-11 w-full sm:w-auto" onClick={handleScan}>
               <QrCode className="mr-2 h-4 w-4" />
               Scan Student ID
             </Button>
             <Button
               variant="outline"
-              className="h-11"
+              className="h-11 w-full sm:w-auto"
               onClick={() => {
                 searchRef.current?.focus()
                 setQuery("")

@@ -7,6 +7,7 @@ import { useDemo } from "@/components/providers/DemoProvider"
 import { buildAlertItems, countAttentionItems } from "@/components/parent/AlertCenter"
 import { ParentEmptyState } from "@/components/parent/ParentEmptyState"
 import { ParentHero } from "@/components/parent/ParentHero"
+import { ParentMobileAnnouncements } from "@/components/parent/ParentMobileAnnouncements"
 import { QuickActionsStrip } from "@/components/parent/QuickActionsStrip"
 import { StudentCardRow } from "@/components/parent/StudentCardRow"
 import { AddFundsDrawer } from "@/components/parent/v3/drawers/AddFundsDrawer"
@@ -106,6 +107,7 @@ function ParentCommandCenterContent() {
   return (
     <>
       <div className={`mx-auto w-full max-w-6xl ${PARENT_PAGE_PAD} ${PARENT_SECTION_GAP}`}>
+        <ParentMobileAnnouncements />
         <ParentHero
           parentName={firstName}
           studentsActive={linkedStudents.length}

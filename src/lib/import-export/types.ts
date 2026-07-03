@@ -2,6 +2,7 @@ export type ImportExportType =
   | "students"
   | "parents"
   | "families"
+  | "staff"
   | "badges"
   | "menu"
   | "inventory"

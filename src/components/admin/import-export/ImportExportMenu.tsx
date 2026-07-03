@@ -54,7 +54,7 @@ export function ImportExportMenu({
           <button
             type="button"
             onClick={handleImport}
-            className="inline-flex items-center gap-1 rounded-lg border px-2.5 py-1 text-xs font-medium transition hover:bg-[#0A1E3F]/5"
+            className="hidden items-center gap-1 rounded-lg border px-2.5 py-1 text-xs font-medium transition hover:bg-[#0A1E3F]/5 md:inline-flex"
             style={{ borderColor: "#C8CDD7", color: "#0A1E3F" }}
           >
             <FileUp className="h-3 w-3" />
@@ -102,7 +102,7 @@ export function ImportExportMenu({
               <button
                 type="button"
                 onClick={handleImport}
-                className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-primary hover:bg-silver/20"
+                className="hidden w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-primary hover:bg-silver/20 md:flex"
               >
                 <FileUp className="h-4 w-4" />
                 Import

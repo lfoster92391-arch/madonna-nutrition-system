@@ -2,15 +2,22 @@
 
 import { useRef } from "react"
 import { AdminStudentManager } from "@/components/admin/AdminStudentManager"
+import { DesktopOnly } from "@/components/admin/DesktopOnly"
 import { FamilyImportWizard } from "@/components/admin/FamilyImportWizard"
+import { StaffImportWizard } from "@/components/admin/StaffImportWizard"
 import { ImportExportMenu } from "@/components/admin/import-export/ImportExportMenu"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 export function AdminImportsHub() {
   const familyImportRef = useRef<HTMLDivElement>(null)
+  const staffImportRef = useRef<HTMLDivElement>(null)
 
   function scrollToFamilyImport() {
     familyImportRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
+  }
+
+  function scrollToStaffImport() {
+    staffImportRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
   }
 
   return (
@@ -22,7 +29,7 @@ export function AdminImportsHub() {
           </p>
           <h1 className="text-3xl font-bold text-primary">Imports</h1>
           <p className="text-silver-foreground">
-            Import students from SIS and create parent &amp; family accounts
+            Import students from SIS, create parent &amp; family accounts, and onboard staff
           </p>
         </div>
 
@@ -30,6 +37,7 @@ export function AdminImportsHub() {
           <TabsList>
             <TabsTrigger value="students">Students (SIS)</TabsTrigger>
             <TabsTrigger value="families">Parents &amp; Family Accounts</TabsTrigger>
+            <TabsTrigger value="staff">Staff Accounts</TabsTrigger>
           </TabsList>
 
           <TabsContent value="students" className="space-y-8">
@@ -37,12 +45,25 @@ export function AdminImportsHub() {
           </TabsContent>
 
           <TabsContent value="families" className="space-y-6">
-            <div className="flex justify-end">
+            <div className="hidden justify-end md:flex">
               <ImportExportMenu type="families" onImport={scrollToFamilyImport} />
             </div>
-            <div ref={familyImportRef}>
-              <FamilyImportWizard />
+            <DesktopOnly>
+              <div ref={familyImportRef}>
+                <FamilyImportWizard />
+              </div>
+            </DesktopOnly>
+          </TabsContent>
+
+          <TabsContent value="staff" className="space-y-6">
+            <div className="hidden justify-end md:flex">
+              <ImportExportMenu type="staff" onImport={scrollToStaffImport} />
             </div>
+            <DesktopOnly message="Staff bulk import is available on desktop. Open this page on a computer to upload CSV files.">
+              <div ref={staffImportRef}>
+                <StaffImportWizard />
+              </div>
+            </DesktopOnly>
           </TabsContent>
         </Tabs>
       </div>

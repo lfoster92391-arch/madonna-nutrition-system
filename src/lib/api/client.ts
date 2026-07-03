@@ -288,6 +288,28 @@ export const api = {
         method: "POST",
         body: JSON.stringify(input),
       }),
+  adminImportStaff: (input: {
+    adminUserId: string
+    performedBy: string
+    defaultPassword?: string
+    rows: Record<string, unknown>[]
+  }) =>
+    fetchJson<{
+      created: number
+      skipped: number
+      errors: Array<{ row: number; message: string }>
+      credentials: Array<{
+        email: string
+        username: string
+        role: string
+        department?: string
+        tempPassword?: string
+        created: boolean
+      }>
+    }>("/api/admin/users/staff-import", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
   adminImportBadges: (input: { adminUserId: string; rows: Record<string, unknown>[] }) =>
     fetchJson<{
       matched: number

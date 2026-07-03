@@ -1,0 +1,199 @@
+"use client"
+
+import { useMemo, useState } from "react"
+import { ChevronLeft, ChevronRight, Download, Printer } from "lucide-react"
+import { CategoryLegend } from "@/components/calendar/CalendarMonthGrid"
+import { ResponsiveCalendar } from "@/components/calendar/ResponsiveCalendar"
+import { useDemo } from "@/components/providers/DemoProvider"
+import { StaffDashboardAnnouncements } from "@/components/staff/StaffDashboardAnnouncements"
+import { Button } from "@/components/ui/button"
+import { Card } from "@/components/ui/card"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { STAFF_BG, STAFF_NAVY, STAFF_SILVER } from "@/components/staff/layout/staff-theme"
+import { formatDateKey, formatMonthYear, getAccentHex } from "@/lib/calendar"
+
+export function StaffCalendarView() {
+  const { calendarEvents, calendarSettings, mealTemplates } = useDemo()
+  const now = new Date()
+  const [year, setYear] = useState(now.getFullYear())
+  const [month, setMonth] = useState(now.getMonth())
+  const [selectedDate, setSelectedDate] = useState<string | null>(formatDateKey(now))
+  const [view, setView] = useState<"day" | "week" | "month">("month")
+
+  const accentHex = getAccentHex(calendarSettings.accentColor)
+
+  const mealTemplatesById = useMemo(
+    () => new Map(mealTemplates.map((t) => [t.id, t])),
+    [mealTemplates]
+  )
+
+  const selectedEvents = useMemo(() => {
+    if (!selectedDate) return []
+    return calendarEvents
+      .filter((e) => e.date === selectedDate)
+      .sort((a, b) => a.title.localeCompare(b.title))
+  }, [calendarEvents, selectedDate])
+
+  function prevMonth() {
+    if (month === 0) {
+      setMonth(11)
+      setYear((y) => y - 1)
+    } else {
+      setMonth((m) => m - 1)
+    }
+  }
+
+  function nextMonth() {
+    if (month === 11) {
+      setMonth(0)
+      setYear((y) => y + 1)
+    } else {
+      setMonth((m) => m + 1)
+    }
+  }
+
+  return (
+    <div className="space-y-6 p-4 sm:p-6" style={{ backgroundColor: STAFF_BG }}>
+      <div>
+        <h1 className="text-2xl font-bold" style={{ color: STAFF_NAVY }}>
+          Lunch Calendar
+        </h1>
+        <p className="mt-1 text-sm text-silver-foreground">
+          Read-only published menu calendar from admin
+        </p>
+      </div>
+
+      <div className="md:hidden">
+        <StaffDashboardAnnouncements />
+      </div>
+
+      {calendarSettings.bannerMessage ? (
+        <div
+          className="rounded-2xl border px-4 py-3 md:hidden"
+          style={{ borderColor: STAFF_SILVER, backgroundColor: "#FFFFFF" }}
+        >
+          <p className="text-xs font-bold uppercase tracking-wide text-silver-foreground">
+            Announcement
+          </p>
+          <p className="mt-1 text-sm" style={{ color: STAFF_NAVY }}>
+            {calendarSettings.bannerMessage}
+          </p>
+        </div>
+      ) : null}
+
+      <Card className="rounded-2xl border p-4 shadow-sm" style={{ borderColor: STAFF_SILVER }}>
+        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+          <Tabs value={view} onValueChange={(v) => setView(v as typeof view)}>
+            <TabsList>
+              <TabsTrigger value="day">Day</TabsTrigger>
+              <TabsTrigger value="week">Week</TabsTrigger>
+              <TabsTrigger value="month">Month</TabsTrigger>
+            </TabsList>
+          </Tabs>
+          <span
+            className="w-fit rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wide text-white"
+            style={{ backgroundColor: STAFF_NAVY }}
+          >
+            Published
+          </span>
+          <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:pb-0">
+            <Button variant="outline" size="sm" className="shrink-0" onClick={() => window.print()}>
+              <Printer className="mr-2 h-4 w-4" />
+              Print
+            </Button>
+            <Button variant="outline" size="sm" className="shrink-0">
+              <Download className="mr-2 h-4 w-4" />
+              Download PDF
+            </Button>
+          </div>
+        </div>
+      </Card>
+
+      <Card
+        className="overflow-hidden rounded-2xl border shadow-sm"
+        style={{ borderColor: STAFF_SILVER }}
+      >
+        <div
+          className="px-4 py-5 text-white sm:px-6 sm:py-6 md:px-8"
+          style={{ backgroundColor: accentHex }}
+        >
+          <p className="text-xs font-bold uppercase tracking-wider opacity-80">
+            {calendarSettings.schoolName}
+          </p>
+          <h2 className="mt-1 text-2xl font-bold">{calendarSettings.headerTitle}</h2>
+          {calendarSettings.bannerMessage ? (
+            <div className="mt-4 hidden rounded-2xl bg-white/15 px-5 py-3 md:block">
+              <p className="text-sm">{calendarSettings.bannerMessage}</p>
+            </div>
+          ) : null}
+        </div>
+
+        <div
+          className="hidden items-center justify-between border-b px-4 py-3 sm:px-6 sm:py-4 md:flex"
+          style={{ borderColor: STAFF_SILVER }}
+        >
+          <Button variant="outline" size="sm" onClick={prevMonth}>
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <h3 className="text-lg font-bold" style={{ color: STAFF_NAVY }}>
+            {formatMonthYear(year, month)}
+          </h3>
+          <Button variant="outline" size="sm" onClick={nextMonth}>
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
+
+        <div className="p-4 sm:p-6">
+          <CategoryLegend />
+          <ResponsiveCalendar
+            year={year}
+            month={month}
+            onYearMonthChange={(y, m) => {
+              setYear(y)
+              setMonth(m)
+            }}
+            events={calendarEvents}
+            accentHex={accentHex}
+            selectedDate={selectedDate}
+            onDayClick={setSelectedDate}
+            readOnly
+            mealTemplatesById={mealTemplatesById}
+          />
+        </div>
+      </Card>
+
+      {selectedDate ? (
+        <Card className="rounded-2xl border p-6 shadow-sm" style={{ borderColor: STAFF_SILVER }}>
+          <h3 className="text-lg font-bold" style={{ color: STAFF_NAVY }}>
+            {view === "day" ? "Day" : "Selected Date"} —{" "}
+            {new Date(selectedDate + "T12:00:00").toLocaleDateString("en-US", {
+              weekday: "long",
+              month: "long",
+              day: "numeric",
+            })}
+          </h3>
+          {selectedEvents.length === 0 ? (
+            <p className="mt-3 text-sm text-silver-foreground">No lunch events on this date.</p>
+          ) : (
+            <ul className="mt-4 space-y-3">
+              {selectedEvents.map((event) => (
+                <li
+                  key={event.id}
+                  className="rounded-2xl border px-4 py-3"
+                  style={{ borderColor: STAFF_SILVER }}
+                >
+                  <p className="font-semibold" style={{ color: STAFF_NAVY }}>
+                    {event.title}
+                  </p>
+                  {event.description ? (
+                    <p className="mt-1 text-sm text-silver-foreground">{event.description}</p>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          )}
+        </Card>
+      ) : null}
+    </div>
+  )
+}

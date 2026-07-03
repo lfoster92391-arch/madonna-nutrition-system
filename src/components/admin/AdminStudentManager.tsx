@@ -6,6 +6,7 @@ import Link from "next/link"
 import { useQueryClient } from "@tanstack/react-query"
 import { Camera, Plus, Search, UserX } from "lucide-react"
 import { CsvImportWizard } from "@/components/admin/CsvImportWizard"
+import { DesktopOnly } from "@/components/admin/DesktopOnly"
 import { ImportExportMenu } from "@/components/admin/import-export/ImportExportMenu"
 import { useDemo } from "@/components/providers/DemoProvider"
 import { useAuth } from "@/components/providers/AuthProvider"
@@ -383,9 +384,11 @@ export function AdminStudentManager({
         )}
 
         {showImportWizard && (
-          <div ref={importWizardRef}>
-            <CsvImportWizard />
-          </div>
+          <DesktopOnly>
+            <div ref={importWizardRef}>
+              <CsvImportWizard />
+            </div>
+          </DesktopOnly>
         )}
       </div>
     </div>

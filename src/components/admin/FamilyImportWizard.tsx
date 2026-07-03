@@ -19,7 +19,7 @@ import { downloadImportTemplate, exportRowsToCsv } from "@/lib/import-export"
 import { PRIMARY_ADMIN_EMAIL, PRIMARY_ADMIN_USERNAME, ROLE_LABELS } from "@/lib/users"
 import { Button } from "@/components/ui/button"
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Label, Select } from "@/components/ui/input"
+import { Input, Label, Select } from "@/components/ui/input"
 
 const familyRowSchema = z.object({
   parentEmail: z.string().email(),
@@ -146,6 +146,7 @@ export function FamilyImportWizard() {
   const [importResult, setImportResult] = useState<ImportResult | null>(null)
   const [importing, setImporting] = useState(false)
   const [dragOver, setDragOver] = useState(false)
+  const [bulkDefaultPassword, setBulkDefaultPassword] = useState("")
 
   const existingStudentIds = useMemo(() => new Set(students.map((student) => student.id)), [students])
 
@@ -280,10 +281,31 @@ export function FamilyImportWizard() {
         setStep("validation")
         return
       }
+
+      const trimmedDefault = bulkDefaultPassword.trim()
+      const rowsMissingPassword = validRows.filter((row) => !row.password?.trim())
+      if (rowsMissingPassword.length > 0 && trimmedDefault.length < 8) {
+        setErrorRows([
+          {
+            row: 0,
+            errors: [
+              "Set a default bulk password (8+ characters) for rows without a password column.",
+            ],
+          },
+        ])
+        setStep("validation")
+        return
+      }
+
+      const rows = validRows.map((row) => ({
+        ...row,
+        password: row.password?.trim() || trimmedDefault,
+      }))
+
       const result = await api.adminImportFamilies({
         adminUserId: authUser.id,
         performedBy: authUser.username,
-        rows: validRows,
+        rows,
       })
       setImportResult(result)
       setStep("complete")
@@ -324,6 +346,7 @@ export function FamilyImportWizard() {
     setValidRows([])
     setErrorRows([])
     setImportResult(null)
+    setBulkDefaultPassword("")
   }
 
   const steps: ImportStep[] = ["upload", "mapping", "validation", "preview", "complete"]
@@ -360,17 +383,35 @@ export function FamilyImportWizard() {
 
       <div className="px-6 pb-6">
         {step === "upload" && (
-          <div
-            onDragOver={(event) => {
-              event.preventDefault()
-              setDragOver(true)
-            }}
-            onDragLeave={() => setDragOver(false)}
-            onDrop={handleDrop}
-            className={`flex flex-col items-center justify-center rounded-[20px] border-2 border-dashed p-12 transition ${
-              dragOver ? "border-primary bg-primary/5" : "border-silver/80"
-            }`}
-          >
+          <div className="space-y-6">
+            <div className="rounded-2xl border border-silver/60 bg-silver/10 p-4">
+              <Label htmlFor="bulk-default-password">Default bulk password</Label>
+              <Input
+                id="bulk-default-password"
+                type="password"
+                autoComplete="new-password"
+                value={bulkDefaultPassword}
+                onChange={(event) => setBulkDefaultPassword(event.target.value)}
+                placeholder="At least 8 characters"
+                minLength={8}
+                className="mt-2"
+              />
+              <p className="mt-2 text-xs text-silver-foreground">
+                Applied to imported parent accounts when the CSV row has no password. All bulk-imported
+                users must change this password on first login.
+              </p>
+            </div>
+            <div
+              onDragOver={(event) => {
+                event.preventDefault()
+                setDragOver(true)
+              }}
+              onDragLeave={() => setDragOver(false)}
+              onDrop={handleDrop}
+              className={`flex flex-col items-center justify-center rounded-[20px] border-2 border-dashed p-8 transition sm:p-12 ${
+                dragOver ? "border-primary bg-primary/5" : "border-silver/80"
+              }`}
+            >
             <Upload className="h-10 w-10 text-silver-foreground" />
             <p className="mt-4 font-medium text-primary">Drag &amp; drop family import CSV here</p>
             <p className="mt-1 max-w-xl text-center text-sm text-silver-foreground">
@@ -383,6 +424,7 @@ export function FamilyImportWizard() {
               className="mt-4 text-sm"
               onChange={(event) => event.target.files?.[0] && processFile(event.target.files[0])}
             />
+          </div>
           </div>
         )}
 
