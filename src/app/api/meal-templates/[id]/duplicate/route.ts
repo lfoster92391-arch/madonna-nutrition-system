@@ -33,6 +33,7 @@ export async function POST(_request: Request, { params }: RouteParams) {
           nutritionNotes: source.nutritionNotes,
           portionNotes: source.portionNotes,
           gradeAvailability: source.gradeAvailability,
+          ingredients: source.ingredients ?? undefined,
           isFavorite: false,
           isPublished: false,
           isArchived: false,

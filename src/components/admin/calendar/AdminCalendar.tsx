@@ -6,9 +6,11 @@ import {
   CalendarDays,
   ChevronLeft,
   ChevronRight,
+  Globe,
   Pencil,
   Plus,
   Save,
+  Send,
   Trash2,
   UtensilsCrossed,
 } from "lucide-react"
@@ -28,9 +30,11 @@ import {
   getAccentHex,
   getEventColor,
 } from "@/lib/calendar"
-import type { CalendarEvent, CalendarEventCategory } from "@/lib/types"
+import type { CalendarEvent, CalendarEventCategory, CalendarPublishStatus } from "@/lib/types"
 import type { MealTemplate } from "@/lib/types"
+import { cn } from "@/lib/utils"
 import { getMealCoverPhoto } from "@/lib/meal-templates"
+import { publishStatusBadgeClass, publishStatusLabel } from "@/lib/calendar-publish"
 
 const CATEGORIES = Object.keys(EVENT_CATEGORIES) as CalendarEventCategory[]
 
@@ -41,6 +45,7 @@ interface EventFormState {
   category: CalendarEventCategory
   color: string
   mealTemplateId?: string
+  publishToCalendar: boolean
 }
 
 const emptyForm = (date: string): EventFormState => ({
@@ -50,6 +55,7 @@ const emptyForm = (date: string): EventFormState => ({
   category: "menu_day",
   color: "",
   mealTemplateId: undefined,
+  publishToCalendar: true,
 })
 
 export function AdminCalendar() {
@@ -60,6 +66,7 @@ export function AdminCalendar() {
     addCalendarEvent,
     updateCalendarEvent,
     deleteCalendarEvent,
+    publishCalendarEvents,
     updateMealTemplate,
   } = useDemo()
 
@@ -71,6 +78,7 @@ export function AdminCalendar() {
   const [showEventForm, setShowEventForm] = useState(false)
   const [eventForm, setEventForm] = useState<EventFormState>(emptyForm(formatDateKey(now)))
   const [savedFlash, setSavedFlash] = useState(false)
+  const [publishFlash, setPublishFlash] = useState<string | null>(null)
   const [showMealPicker, setShowMealPicker] = useState(false)
   const [showCookbookPicker, setShowCookbookPicker] = useState(false)
 
@@ -125,6 +133,11 @@ export function AdminCalendar() {
     setShowEventForm(true)
   }
 
+  function flashPublish(message: string) {
+    setPublishFlash(message)
+    setTimeout(() => setPublishFlash(null), 3000)
+  }
+
   function startEditEvent(event: CalendarEvent) {
     setEditingEvent(event)
     setEventForm({
@@ -134,6 +147,7 @@ export function AdminCalendar() {
       category: event.category,
       color: event.color ?? "",
       mealTemplateId: event.mealTemplateId,
+      publishToCalendar: event.publishStatus === "published",
     })
     setShowEventForm(true)
   }
@@ -151,7 +165,7 @@ export function AdminCalendar() {
     setShowCookbookPicker(false)
   }
 
-  async function quickAddFromCookbook(template: MealTemplate) {
+  async function quickAddFromCookbook(template: MealTemplate, publish = true) {
     if (!selectedDate) return
     const itemsList = template.items.map((i) => i.name).join(", ")
     await addCalendarEvent({
@@ -160,6 +174,8 @@ export function AdminCalendar() {
       description: template.description ?? itemsList,
       category: "menu_day",
       mealTemplateId: template.id,
+      publishStatus: publish ? "published" : "draft",
+      publishedAt: publish ? new Date().toISOString() : undefined,
     })
     await updateMealTemplate(template.id, {
       lastUsedAt: new Date().toISOString(),
@@ -170,6 +186,7 @@ export function AdminCalendar() {
 
   async function handleSaveEvent() {
     if (!eventForm.title.trim() || !eventForm.date) return
+    const publishStatus: CalendarPublishStatus = eventForm.publishToCalendar ? "published" : "draft"
     const payload = {
       title: eventForm.title.trim(),
       date: eventForm.date,
@@ -177,6 +194,8 @@ export function AdminCalendar() {
       category: eventForm.category,
       color: eventForm.color.trim() || undefined,
       mealTemplateId: eventForm.mealTemplateId,
+      publishStatus,
+      publishedAt: publishStatus === "published" ? new Date().toISOString() : undefined,
     }
     if (editingEvent) {
       await updateCalendarEvent(editingEvent.id, payload)
@@ -190,6 +209,35 @@ export function AdminCalendar() {
     }
     setShowEventForm(false)
     setEditingEvent(null)
+    flashSaved()
+  }
+
+  async function handlePublishEvent(id: string) {
+    await updateCalendarEvent(id, {
+      publishStatus: "published",
+      publishedAt: new Date().toISOString(),
+    })
+    flashPublish("Event published to parent & staff calendars")
+    flashSaved()
+  }
+
+  async function handlePublishDay() {
+    if (!selectedDate) return
+    const { count } = await publishCalendarEvents({
+      date: selectedDate,
+      publishStatus: "published",
+    })
+    flashPublish(`${count} event${count === 1 ? "" : "s"} published for this day`)
+    flashSaved()
+  }
+
+  async function handlePublishMonth() {
+    const { count } = await publishCalendarEvents({
+      month: month + 1,
+      year,
+      publishStatus: "published",
+    })
+    flashPublish(`${count} event${count === 1 ? "" : "s"} published for ${formatMonthYear(year, month)}`)
     flashSaved()
   }
 
@@ -208,16 +256,26 @@ export function AdminCalendar() {
             <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary">Operations</p>
             <h1 className="text-3xl font-bold text-primary">Lunch Calendar</h1>
             <p className="text-silver-foreground">
-              Schedule meals and operational events — no parent preview from this view
+              Schedule meals, publish to parent &amp; staff calendars, and manage operational events
             </p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             {savedFlash && (
               <span className="flex items-center gap-1.5 rounded-xl bg-success/10 px-3 py-2 text-sm font-semibold text-success">
                 <Save className="h-4 w-4" />
                 Saved
               </span>
             )}
+            {publishFlash && (
+              <span className="flex items-center gap-1.5 rounded-xl bg-primary/10 px-3 py-2 text-sm font-semibold text-primary">
+                <Globe className="h-4 w-4" />
+                {publishFlash}
+              </span>
+            )}
+            <Button variant="outline" onClick={handlePublishMonth}>
+              <Send className="h-4 w-4" />
+              Publish Month
+            </Button>
             <Button variant="outline" asChild>
               <Link href="/admin/calendar/design">
                 <CalendarDays className="h-4 w-4" />
@@ -283,6 +341,12 @@ export function AdminCalendar() {
                   <UtensilsCrossed className="h-4 w-4" />
                   Add from Cookbook
                 </Button>
+                {selectedEvents.length > 0 && (
+                  <Button size="sm" variant="outline" className="shrink-0" onClick={handlePublishDay}>
+                    <Globe className="h-4 w-4" />
+                    Publish Day
+                  </Button>
+                )}
                 <Button size="sm" className="shrink-0" onClick={startAddEvent}>
                   <Plus className="h-4 w-4" />
                   Add Event
@@ -315,12 +379,20 @@ export function AdminCalendar() {
                           />
                         )}
                         <div>
-                          <div className="flex items-center gap-2">
+                          <div className="flex flex-wrap items-center gap-2">
                             <span
                               className="rounded-lg px-2 py-0.5 text-xs font-bold uppercase"
                               style={{ backgroundColor: `${color}20`, color }}
                             >
                               {cat.label}
+                            </span>
+                            <span
+                              className={cn(
+                                "rounded-lg px-2 py-0.5 text-xs font-semibold",
+                                publishStatusBadgeClass(event.publishStatus)
+                              )}
+                            >
+                              {publishStatusLabel(event.publishStatus)}
                             </span>
                             <p className="font-semibold text-primary">{event.title}</p>
                           </div>
@@ -335,6 +407,11 @@ export function AdminCalendar() {
                         </div>
                       </div>
                       <div className="flex shrink-0 gap-2">
+                        {event.publishStatus !== "published" && (
+                          <Button size="sm" variant="outline" onClick={() => handlePublishEvent(event.id)}>
+                            <Globe className="h-4 w-4" />
+                          </Button>
+                        )}
                         <Button size="sm" variant="outline" onClick={() => startEditEvent(event)}>
                           <Pencil className="h-4 w-4" />
                         </Button>
@@ -408,13 +485,34 @@ export function AdminCalendar() {
                     className="w-full justify-start"
                   >
                     <UtensilsCrossed className="h-4 w-4" />
-                    Add from Cookbook
+                    {eventForm.mealTemplateId ? "Change Cookbook Meal" : "Add from Cookbook"}
                   </Button>
                 </div>
               )}
+              <div className="md:col-span-2">
+                <label className="flex cursor-pointer items-center gap-3 rounded-2xl border border-silver/60 px-4 py-3">
+                  <input
+                    type="checkbox"
+                    checked={eventForm.publishToCalendar}
+                    onChange={(e) =>
+                      setEventForm({ ...eventForm, publishToCalendar: e.target.checked })
+                    }
+                    className="h-4 w-4 rounded border-silver accent-primary"
+                  />
+                  <div>
+                    <p className="font-semibold text-primary">Publish to parent &amp; staff calendars</p>
+                    <p className="text-sm text-silver-foreground">
+                      When checked, this event appears on public-facing calendars immediately
+                    </p>
+                  </div>
+                </label>
+              </div>
             </div>
             <div className="mt-4 flex gap-3">
-              <Button onClick={handleSaveEvent}>{editingEvent ? "Update" : "Schedule"}</Button>
+              <Button onClick={handleSaveEvent}>
+                {editingEvent ? "Update" : "Schedule"}
+                {eventForm.publishToCalendar ? " & Publish" : ""}
+              </Button>
               <Button variant="outline" onClick={() => setShowEventForm(false)}>
                 Cancel
               </Button>
@@ -429,7 +527,7 @@ export function AdminCalendar() {
             <h3 className="text-lg font-bold text-primary">Add from Cookbook</h3>
             <p className="mb-4 text-sm text-silver-foreground">
               {selectedDate
-                ? `Click a saved meal to schedule on ${new Date(selectedDate + "T12:00:00").toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}.`
+                ? `Click a saved meal to schedule on ${new Date(selectedDate + "T12:00:00").toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}. Meals are published to calendars by default.`
                 : "Select a day on the calendar first."}
             </p>
             <CookbookPicker

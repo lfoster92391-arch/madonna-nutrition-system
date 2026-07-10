@@ -92,11 +92,12 @@ function createElementFromCatalog(type: DesignElementType): DesignElement {
 }
 
 export function CalendarDesignStudio() {
-  const { mealTemplates, addCalendarEvent, updateMealTemplate } = useDemo()
+  const { mealTemplates, addCalendarEvent, updateMealTemplate, publishCalendarEvents } = useDemo()
   const isMobileLayout = useIsMobileLayout()
   const [doc, setDoc] = useState<CalendarDesignDocument>(() => loadDesignDocument())
   const [selectedElementId, setSelectedElementId] = useState<string | null>(null)
   const [cookbookDay, setCookbookDay] = useState(1)
+  const [publishMessage, setPublishMessage] = useState<string | null>(null)
   const [zoom, setZoom] = useState(1)
   const [viewport, setViewport] = useState<ViewportMode>("desktop")
   const [showGrid, setShowGrid] = useState(false)
@@ -347,6 +348,8 @@ export function CalendarDesignStudio() {
         description: template.description ?? itemsList,
         category: "menu_day",
         mealTemplateId: template.id,
+        publishStatus: "published",
+        publishedAt: new Date().toISOString(),
       })
       await updateMealTemplate(template.id, {
         lastUsedAt: new Date().toISOString(),
@@ -398,8 +401,25 @@ export function CalendarDesignStudio() {
     onUpdateDailyBite: handleUpdateDailyBite,
   }
 
+  const handlePublish = useCallback(async () => {
+    const page = doc.pages.find((p) => p.id === doc.activePageId) ?? doc.pages[0]
+    if (!page) return
+    const { count } = await publishCalendarEvents({
+      month: page.month,
+      year: page.year,
+      publishStatus: "published",
+    })
+    setPublishMessage(`${count} event${count === 1 ? "" : "s"} published for ${page.title}`)
+    setTimeout(() => setPublishMessage(null), 3500)
+  }, [doc.pages, doc.activePageId, publishCalendarEvents])
+
   return (
     <div className="flex h-[calc(100vh-0px)] flex-col overflow-hidden">
+      {publishMessage && (
+        <div className="shrink-0 bg-success/10 px-4 py-2 text-center text-sm font-semibold text-success">
+          {publishMessage}
+        </div>
+      )}
       <DesignToolbar
         zoom={zoom}
         viewport={viewport}
@@ -421,7 +441,7 @@ export function CalendarDesignStudio() {
         onExport={() => setExportOpen(true)}
         onSave={handleSave}
         onPreview={() => setViewport("print")}
-        onPublish={() => alert("Calendar published successfully!")}
+        onPublish={handlePublish}
       />
 
       <div className="flex min-h-0 flex-1 overflow-hidden">

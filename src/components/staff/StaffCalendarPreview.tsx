@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { STAFF_NAVY, STAFF_SILVER } from "@/components/staff/layout/staff-theme"
 import { formatDateKey, formatMonthYear, getAccentHex } from "@/lib/calendar"
+import { filterPublicCalendarEvents } from "@/lib/calendar-publish"
 
 export function StaffCalendarPreview() {
   const { calendarEvents, calendarSettings } = useDemo()
@@ -19,15 +20,17 @@ export function StaffCalendarPreview() {
 
   const accentHex = getAccentHex(calendarSettings.accentColor)
 
+  const publicEvents = useMemo(() => filterPublicCalendarEvents(calendarEvents), [calendarEvents])
+
   const monthEvents = useMemo(
     () =>
-      calendarEvents
+      publicEvents
         .filter((e) => {
           const d = new Date(e.date + "T12:00:00")
           return d.getFullYear() === year && d.getMonth() === month
         })
         .sort((a, b) => a.date.localeCompare(b.date) || a.title.localeCompare(b.title)),
-    [calendarEvents, year, month]
+    [publicEvents, year, month]
   )
 
   function prevMonth() {

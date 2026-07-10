@@ -42,3 +42,22 @@ yarn-error.log*
 next-env.d.ts
 
 .vercel
+
+# Windows reserved device name (accidental creation breaks git add)
+/NUL
+
+# Agent / local debug artifacts
+/_*.txt
+/_*.log
+/_tmp*
+/analytics-dump.txt
+/build-*.log
+/build-*.txt
+/fix-encoding-result*.json
+/next-build*.log
+/scan-*.txt
+/scan-*.json
+/tsc*.txt
+/tsc*.log
+/tmp*.txt
+/verify-*.log

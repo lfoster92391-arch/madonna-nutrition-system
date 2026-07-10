@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Label, Select } from "@/components/ui/input"
 import { formatCurrency } from "@/lib/utils"
+import { filterPublicCalendarEvents } from "@/lib/calendar-publish"
 
 type MealType = "MAIN" | "SIDE" | "ALA_CARTE" | "MILK"
 
@@ -54,18 +55,20 @@ export default function ParentReserveLunchPage() {
 
   const statusByStudent = new Map(students.map((s) => [s.studentId, s]))
 
+  const publicEvents = useMemo(() => filterPublicCalendarEvents(calendarEvents), [calendarEvents])
+
   const menuDates = useMemo(() => {
     const today = new Date().toISOString().slice(0, 10)
-    return calendarEvents
+    return publicEvents
       .filter((e) => e.category === "menu_day" && e.date >= today)
       .map((e) => e.date)
       .filter((date, index, arr) => arr.indexOf(date) === index)
       .sort()
-  }, [calendarEvents])
+  }, [publicEvents])
 
   const selectedMenu = useMemo(
-    () => calendarEvents.find((e) => e.category === "menu_day" && e.date === selectedDate),
-    [calendarEvents, selectedDate]
+    () => publicEvents.find((e) => e.category === "menu_day" && e.date === selectedDate),
+    [publicEvents, selectedDate]
   )
 
   const loadReservations = useCallback(async () => {

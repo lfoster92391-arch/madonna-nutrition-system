@@ -28,6 +28,14 @@ export async function POST(request: Request) {
 
       const schoolId = await resolveSchoolId()
       const data = parsed.data
+      const publishStatus = data.publishStatus ?? "draft"
+      const publishedAt =
+        data.publishedAt != null
+          ? new Date(data.publishedAt)
+          : publishStatus === "published"
+            ? new Date()
+            : null
+
       const event = await prisma.calendarEvent.create({
         data: {
           title: data.title,
@@ -36,6 +44,9 @@ export async function POST(request: Request) {
           category: data.category,
           color: data.color,
           mealTemplateId: data.mealTemplateId,
+          publishStatus,
+          publishedAt,
+          notes: data.notes,
           schoolId,
         },
       })

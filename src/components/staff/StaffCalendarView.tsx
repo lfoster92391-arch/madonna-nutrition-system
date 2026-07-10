@@ -11,6 +11,7 @@ import { Card } from "@/components/ui/card"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { STAFF_BG, STAFF_NAVY, STAFF_SILVER } from "@/components/staff/layout/staff-theme"
 import { formatDateKey, formatMonthYear, getAccentHex } from "@/lib/calendar"
+import { filterPublicCalendarEvents } from "@/lib/calendar-publish"
 
 export function StaffCalendarView() {
   const { calendarEvents, calendarSettings, mealTemplates } = useDemo()
@@ -27,12 +28,14 @@ export function StaffCalendarView() {
     [mealTemplates]
   )
 
+  const publicEvents = useMemo(() => filterPublicCalendarEvents(calendarEvents), [calendarEvents])
+
   const selectedEvents = useMemo(() => {
     if (!selectedDate) return []
-    return calendarEvents
+    return publicEvents
       .filter((e) => e.date === selectedDate)
       .sort((a, b) => a.title.localeCompare(b.title))
-  }, [calendarEvents, selectedDate])
+  }, [publicEvents, selectedDate])
 
   function prevMonth() {
     if (month === 0) {
@@ -152,7 +155,7 @@ export function StaffCalendarView() {
               setYear(y)
               setMonth(m)
             }}
-            events={calendarEvents}
+            events={publicEvents}
             accentHex={accentHex}
             selectedDate={selectedDate}
             onDayClick={setSelectedDate}

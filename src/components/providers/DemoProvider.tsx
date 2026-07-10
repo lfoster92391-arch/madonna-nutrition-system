@@ -124,6 +124,13 @@ interface DemoContextValue {
   addCalendarEvent: (event: Omit<CalendarEvent, "id">) => CalendarEvent | Promise<CalendarEvent>
   updateCalendarEvent: (id: string, updates: Partial<CalendarEvent>) => void | Promise<void>
   deleteCalendarEvent: (id: string) => void | Promise<void>
+  publishCalendarEvents: (payload: {
+    publishStatus: import("@/lib/types").CalendarPublishStatus
+    date?: string
+    eventIds?: string[]
+    month?: number
+    year?: number
+  }) => Promise<{ count: number }>
   addMealTemplate: (
     template: Omit<MealTemplate, "id" | "createdAt" | "updatedAt">
   ) => MealTemplate | Promise<MealTemplate>
@@ -424,6 +431,22 @@ export function DemoProvider({ children }: { children: ReactNode }) {
     [dbEnabled, invalidate]
   )
 
+  const publishCalendarEvents = useCallback(
+    async (payload: {
+      publishStatus: import("@/lib/types").CalendarPublishStatus
+      date?: string
+      eventIds?: string[]
+      month?: number
+      year?: number
+    }) => {
+      requireDatabase(dbEnabled)
+      const result = await api.publishCalendarEvents(payload)
+      invalidate("calendar-events")
+      return { count: result.count }
+    },
+    [dbEnabled, invalidate]
+  )
+
   const addMealTemplate = useCallback(
     async (template: Omit<MealTemplate, "id" | "createdAt" | "updatedAt">) => {
       requireDatabase(dbEnabled)
@@ -587,6 +610,7 @@ export function DemoProvider({ children }: { children: ReactNode }) {
       addCalendarEvent,
       updateCalendarEvent,
       deleteCalendarEvent,
+      publishCalendarEvents,
       addMealTemplate,
       updateMealTemplate,
       duplicateMealTemplate,
@@ -635,6 +659,7 @@ export function DemoProvider({ children }: { children: ReactNode }) {
       addCalendarEvent,
       updateCalendarEvent,
       deleteCalendarEvent,
+      publishCalendarEvents,
       addMealTemplate,
       updateMealTemplate,
       duplicateMealTemplate,

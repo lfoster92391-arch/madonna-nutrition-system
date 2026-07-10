@@ -25,26 +25,27 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   metadataBase: new URL(appUrl),
   title: {
-    default: "Madonna Nutrition Management System",
+    default: "Fuel The Dons",
     template: "%s | Fuel The Dons",
   },
   description:
-    "Enterprise cafeteria operations platform — safer meals, faster service, better visibility.",
-  applicationName: "Madonna Nutrition Management System",
+    "School nutrition platform for Madonna High School — meals, balances, and cafeteria operations.",
+  applicationName: "Fuel The Dons",
   keywords: [
     "Fuel The Dons",
+    "Madonna High School",
     "school nutrition",
     "cafeteria management",
-    "Madonna Nutrition Management System",
+    "parent portal",
   ],
   alternates: {
     canonical: "/",
   },
   openGraph: {
     url: "/",
-    title: "Madonna Nutrition Management System",
+    title: "Fuel The Dons",
     description:
-      "Enterprise cafeteria operations platform — safer meals, faster service, better visibility.",
+      "School nutrition platform for Madonna High School — meals, balances, and cafeteria operations.",
     siteName: "Fuel The Dons",
     locale: "en_US",
     type: "website",
@@ -52,9 +53,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Madonna Nutrition Management System",
+    title: "Fuel The Dons",
     description:
-      "Enterprise cafeteria operations platform — safer meals, faster service, better visibility.",
+      "School nutrition platform for Madonna High School — meals, balances, and cafeteria operations.",
     images: ["/fuel-the-dons-logo.png"],
   },
   icons: {

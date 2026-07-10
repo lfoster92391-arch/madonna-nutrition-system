@@ -20,6 +20,7 @@ import {
   Leaf,
   Pencil,
   Plus,
+  Save,
   Search,
   Star,
   Sun,
@@ -121,6 +122,7 @@ export function MenuLibraryManager() {
     updateMealTemplate,
     duplicateMealTemplate,
     archiveMealTemplate,
+    addCalendarEvent,
   } = useDemo()
 
   const [activeCategory, setActiveCategory] = useState<MealCategory | "all">("all")
@@ -137,6 +139,11 @@ export function MenuLibraryManager() {
   const [previewTemplate, setPreviewTemplate] = useState<MealTemplate | null>(null)
   const [tagsByMeal, setTagsByMeal] = useState<Record<string, string[]>>({})
   const [dragSlot, setDragSlot] = useState<MealPhotoSlot | null>(null)
+  const [saveFlash, setSaveFlash] = useState(false)
+  const [showScheduleModal, setShowScheduleModal] = useState(false)
+  const [scheduleDate, setScheduleDate] = useState(() => new Date().toISOString().slice(0, 10))
+  const [schedulePublish, setSchedulePublish] = useState(true)
+  const [scheduleSaving, setScheduleSaving] = useState(false)
   const fileInputRefs = useRef<Partial<Record<MealPhotoSlot, HTMLInputElement | null>>>({})
 
   const unreadCount = notifications.filter((n) => !n.read).length
@@ -229,8 +236,70 @@ export function MenuLibraryManager() {
       setIsCreating(false)
     } else if (selectedId) {
       await updateMealTemplate(selectedId, payload)
-      const updated = mealTemplates.find((t) => t.id === selectedId)
-      if (updated) setDraft(templateToDraft({ ...updated, ...payload, id: selectedId }))
+      setDraft(
+        templateToDraft({
+          ...draft,
+          ...payload,
+          id: selectedId,
+          updatedAt: new Date().toISOString(),
+        })
+      )
+    }
+    setSaveFlash(true)
+    setTimeout(() => setSaveFlash(false), 2500)
+  }
+
+  const handleScheduleToCalendar = async () => {
+    if (!draft?.name.trim() || !scheduleDate) return
+    setScheduleSaving(true)
+    try {
+      let templateId = selectedId
+      if (isCreating || !templateId) {
+        const payload = {
+          name: draft.name.trim(),
+          description: draft.description?.trim() || undefined,
+          category: draft.category,
+          mealType: draft.mealType,
+          allergens: draft.allergens,
+          nutritionNotes: draft.nutritionNotes?.trim() || undefined,
+          portionNotes: draft.portionNotes?.trim() || undefined,
+          gradeAvailability: draft.gradeAvailability,
+          ingredients: draft.ingredients,
+          isReusable: draft.isReusable,
+          isFavorite: draft.isFavorite,
+          isPublished: true,
+          isArchived: draft.isArchived,
+          studentMealPrice: draft.studentMealPrice,
+          alaCartePrice: draft.alaCartePrice,
+          staffMealPrice: draft.staffMealPrice,
+          items: draft.items.map((item, i) => ({ ...item, sortOrder: i })),
+          photos: draft.photos,
+        }
+        const created = await addMealTemplate(payload)
+        templateId = created.id
+        setSelectedId(created.id)
+        setDraft(templateToDraft(created))
+        setIsCreating(false)
+      } else {
+        await handleSave()
+      }
+
+      const itemsList = draft.items.map((i) => i.name).join(", ")
+      await addCalendarEvent({
+        title: draft.name.trim(),
+        date: scheduleDate,
+        description: draft.description?.trim() || itemsList || undefined,
+        category: "menu_day",
+        mealTemplateId: templateId!,
+        publishStatus: schedulePublish ? "published" : "draft",
+        publishedAt: schedulePublish ? new Date().toISOString() : undefined,
+      })
+      await updateMealTemplate(templateId!, { lastUsedAt: new Date().toISOString() })
+      setShowScheduleModal(false)
+      setSaveFlash(true)
+      setTimeout(() => setSaveFlash(false), 2500)
+    } finally {
+      setScheduleSaving(false)
     }
   }
 
@@ -336,10 +405,15 @@ export function MenuLibraryManager() {
               Cookbook
             </h1>
             <p className="text-silver-foreground">
-              Save meals with photos once — reuse on the calendar anytime.
+              Create and customize meals — save to your library, then send to the lunch calendar.
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-4">
+            {saveFlash && (
+              <span className="rounded-xl bg-success/10 px-3 py-2 text-sm font-semibold text-success">
+                Meal saved
+              </span>
+            )}
             <ImportExportMenu type="menu" importDisabled />
             <Button
               onClick={handleCreate}
@@ -1209,7 +1283,7 @@ export function MenuLibraryManager() {
                 variant="outline"
                 size="sm"
                 className="flex-1 uppercase tracking-wide"
-                disabled={!selectedId && !isCreating}
+                disabled={!selectedId || isCreating}
                 onClick={handleDuplicate}
               >
                 <Copy className="h-4 w-4" />
@@ -1226,13 +1300,24 @@ export function MenuLibraryManager() {
                 Preview
               </Button>
               <Button
+                variant="outline"
+                size="sm"
+                className="flex-1 uppercase tracking-wide"
+                disabled={!draft?.name.trim()}
+                onClick={() => setShowScheduleModal(true)}
+              >
+                <Calendar className="h-4 w-4" />
+                Send to Calendar
+              </Button>
+              <Button
                 size="sm"
                 className="flex-1 uppercase tracking-wide"
                 style={{ backgroundColor: NAVY }}
+                disabled={!draft?.name.trim()}
                 onClick={handleSave}
               >
-                <Pencil className="h-4 w-4" />
-                Edit Meal
+                <Save className="h-4 w-4" />
+                {isCreating ? "Save Meal" : "Save Changes"}
               </Button>
             </div>
           </aside>
@@ -1291,6 +1376,52 @@ export function MenuLibraryManager() {
           coverUrl={getMealCoverPhoto(previewTemplate.photos)}
           onClose={() => setPreviewTemplate(null)}
         />
+      )}
+
+      {showScheduleModal && draft && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-primary/40 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-2xl border border-silver/60 bg-white p-6 shadow-2xl">
+            <h3 className="text-lg font-bold text-primary">Send to Calendar</h3>
+            <p className="mt-1 text-sm text-silver-foreground">
+              Schedule <strong>{draft.name || "this meal"}</strong> on the lunch calendar.
+            </p>
+            <div className="mt-4 space-y-4">
+              <div>
+                <Label>Date</Label>
+                <Input
+                  type="date"
+                  value={scheduleDate}
+                  onChange={(e) => setScheduleDate(e.target.value)}
+                />
+              </div>
+              <label className="flex cursor-pointer items-center gap-3 rounded-2xl border border-silver/60 px-4 py-3">
+                <input
+                  type="checkbox"
+                  checked={schedulePublish}
+                  onChange={(e) => setSchedulePublish(e.target.checked)}
+                  className="h-4 w-4 rounded border-silver accent-primary"
+                />
+                <div>
+                  <p className="font-semibold text-primary">Publish to parent &amp; staff calendars</p>
+                  <p className="text-sm text-silver-foreground">Visible immediately when checked</p>
+                </div>
+              </label>
+            </div>
+            <div className="mt-6 flex gap-3">
+              <Button
+                className="flex-1"
+                style={{ backgroundColor: NAVY }}
+                disabled={!scheduleDate || scheduleSaving}
+                onClick={handleScheduleToCalendar}
+              >
+                {scheduleSaving ? "Scheduling…" : schedulePublish ? "Schedule & Publish" : "Schedule"}
+              </Button>
+              <Button variant="outline" className="flex-1" onClick={() => setShowScheduleModal(false)}>
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )

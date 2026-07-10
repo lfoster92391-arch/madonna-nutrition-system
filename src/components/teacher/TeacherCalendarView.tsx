@@ -15,6 +15,7 @@ import {
   formatMonthYear,
   getAccentHex,
 } from "@/lib/calendar"
+import { filterPublicCalendarEvents } from "@/lib/calendar-publish"
 
 export function TeacherCalendarView() {
   const { calendarEvents, calendarSettings, mealTemplates } = useDemo()
@@ -31,23 +32,25 @@ export function TeacherCalendarView() {
     [mealTemplates]
   )
 
+  const publicEvents = useMemo(() => filterPublicCalendarEvents(calendarEvents), [calendarEvents])
+
   const monthEvents = useMemo(
     () =>
-      calendarEvents
+      publicEvents
         .filter((e) => {
           const d = new Date(e.date + "T12:00:00")
           return d.getFullYear() === year && d.getMonth() === month
         })
         .sort((a, b) => a.date.localeCompare(b.date) || a.title.localeCompare(b.title)),
-    [calendarEvents, year, month]
+    [publicEvents, year, month]
   )
 
   const selectedEvents = useMemo(() => {
     if (!selectedDate) return []
-    return calendarEvents
+    return publicEvents
       .filter((e) => e.date === selectedDate)
       .sort((a, b) => a.title.localeCompare(b.title))
-  }, [calendarEvents, selectedDate])
+  }, [publicEvents, selectedDate])
 
   function prevMonth() {
     if (month === 0) {
@@ -174,7 +177,7 @@ export function TeacherCalendarView() {
               setYear(y)
               setMonth(m)
             }}
-            events={calendarEvents}
+            events={publicEvents}
             accentHex={accentHex}
             selectedDate={selectedDate}
             onDayClick={setSelectedDate}

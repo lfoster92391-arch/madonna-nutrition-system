@@ -180,6 +180,17 @@ export const api = {
     }),
   deleteCalendarEvent: (id: string) =>
     fetchJson<{ success: boolean }>(`/api/calendar/events/${id}`, { method: "DELETE" }),
+  publishCalendarEvents: (payload: {
+    publishStatus: import("@/lib/types").CalendarPublishStatus
+    date?: string
+    eventIds?: string[]
+    month?: number
+    year?: number
+  }) =>
+    fetchJson<{ success: boolean; count: number; events: import("@/lib/types").CalendarEvent[] }>(
+      "/api/calendar/events/publish",
+      { method: "POST", body: JSON.stringify(payload) }
+    ),
   getCalendarSettings: () => fetchJson<import("@/lib/types").CalendarSettings>("/api/calendar/settings"),
   updateCalendarSettings: (updates: Partial<import("@/lib/types").CalendarSettings>) =>
     fetchJson<import("@/lib/types").CalendarSettings>("/api/calendar/settings", {
