@@ -22,6 +22,12 @@ export async function PATCH(request: Request, { params }: RouteParams) {
       if (!existing) return notFound("Calendar event not found")
 
       const data = parsed.data
+      const publishedAt =
+        data.publishStatus === undefined
+          ? undefined
+          : data.publishStatus === "published"
+            ? existing.publishedAt ?? new Date()
+            : null
       const event = await prisma.calendarEvent.update({
         where: { id },
         data: {
@@ -31,6 +37,8 @@ export async function PATCH(request: Request, { params }: RouteParams) {
           category: data.category,
           color: data.color,
           mealTemplateId: data.mealTemplateId,
+          publishStatus: data.publishStatus,
+          publishedAt,
         },
       })
 

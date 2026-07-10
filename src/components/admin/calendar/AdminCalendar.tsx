@@ -6,6 +6,8 @@ import {
   CalendarDays,
   ChevronLeft,
   ChevronRight,
+  Eye,
+  EyeOff,
   Pencil,
   Plus,
   Save,
@@ -28,7 +30,7 @@ import {
   getAccentHex,
   getEventColor,
 } from "@/lib/calendar"
-import type { CalendarEvent, CalendarEventCategory } from "@/lib/types"
+import type { CalendarEvent, CalendarEventCategory, CalendarPublishStatus } from "@/lib/types"
 import type { MealTemplate } from "@/lib/types"
 import { getMealCoverPhoto } from "@/lib/meal-templates"
 
@@ -41,6 +43,7 @@ interface EventFormState {
   category: CalendarEventCategory
   color: string
   mealTemplateId?: string
+  publishStatus: CalendarPublishStatus
 }
 
 const emptyForm = (date: string): EventFormState => ({
@@ -50,6 +53,7 @@ const emptyForm = (date: string): EventFormState => ({
   category: "menu_day",
   color: "",
   mealTemplateId: undefined,
+  publishStatus: "draft",
 })
 
 export function AdminCalendar() {
@@ -134,6 +138,7 @@ export function AdminCalendar() {
       category: event.category,
       color: event.color ?? "",
       mealTemplateId: event.mealTemplateId,
+      publishStatus: event.publishStatus ?? "draft",
     })
     setShowEventForm(true)
   }
@@ -160,6 +165,7 @@ export function AdminCalendar() {
       description: template.description ?? itemsList,
       category: "menu_day",
       mealTemplateId: template.id,
+      publishStatus: "draft",
     })
     await updateMealTemplate(template.id, {
       lastUsedAt: new Date().toISOString(),
@@ -177,6 +183,7 @@ export function AdminCalendar() {
       category: eventForm.category,
       color: eventForm.color.trim() || undefined,
       mealTemplateId: eventForm.mealTemplateId,
+      publishStatus: eventForm.publishStatus,
     }
     if (editingEvent) {
       await updateCalendarEvent(editingEvent.id, payload)
@@ -197,6 +204,13 @@ export function AdminCalendar() {
     await deleteCalendarEvent(id)
     setShowEventForm(false)
     setEditingEvent(null)
+    flashSaved()
+  }
+
+  async function togglePublish(event: CalendarEvent) {
+    const nextStatus: CalendarPublishStatus =
+      event.publishStatus === "published" ? "draft" : "published"
+    await updateCalendarEvent(event.id, { publishStatus: nextStatus })
     flashSaved()
   }
 
@@ -315,13 +329,22 @@ export function AdminCalendar() {
                           />
                         )}
                         <div>
-                          <div className="flex items-center gap-2">
+                          <div className="flex flex-wrap items-center gap-2">
                             <span
                               className="rounded-lg px-2 py-0.5 text-xs font-bold uppercase"
                               style={{ backgroundColor: `${color}20`, color }}
                             >
                               {cat.label}
                             </span>
+                            {event.publishStatus === "published" ? (
+                              <span className="rounded-lg bg-success/15 px-2 py-0.5 text-xs font-bold uppercase text-success">
+                                Published
+                              </span>
+                            ) : (
+                              <span className="rounded-lg bg-silver/30 px-2 py-0.5 text-xs font-bold uppercase text-silver-foreground">
+                                Draft
+                              </span>
+                            )}
                             <p className="font-semibold text-primary">{event.title}</p>
                           </div>
                           {event.description && (
@@ -335,6 +358,23 @@ export function AdminCalendar() {
                         </div>
                       </div>
                       <div className="flex shrink-0 gap-2">
+                        <Button
+                          size="sm"
+                          variant={event.publishStatus === "published" ? "outline" : "default"}
+                          onClick={() => togglePublish(event)}
+                        >
+                          {event.publishStatus === "published" ? (
+                            <>
+                              <EyeOff className="h-4 w-4" />
+                              Unpublish
+                            </>
+                          ) : (
+                            <>
+                              <Eye className="h-4 w-4" />
+                              Publish
+                            </>
+                          )}
+                        </Button>
                         <Button size="sm" variant="outline" onClick={() => startEditEvent(event)}>
                           <Pencil className="h-4 w-4" />
                         </Button>
@@ -389,6 +429,22 @@ export function AdminCalendar() {
                       {EVENT_CATEGORIES[cat].label}
                     </option>
                   ))}
+                </select>
+              </div>
+              <div>
+                <Label>Visibility</Label>
+                <select
+                  value={eventForm.publishStatus}
+                  onChange={(e) =>
+                    setEventForm({
+                      ...eventForm,
+                      publishStatus: e.target.value as CalendarPublishStatus,
+                    })
+                  }
+                  className="flex h-14 w-full rounded-2xl border border-silver/80 bg-white px-4 text-base text-primary outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                >
+                  <option value="draft">Draft — admin only</option>
+                  <option value="published">Published — visible to families</option>
                 </select>
               </div>
               <div className="md:col-span-2">

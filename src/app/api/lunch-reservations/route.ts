@@ -149,6 +149,7 @@ export async function POST(request: Request) {
           schoolId: student.schoolId,
           date: eventDate,
           category: "menu_day",
+          publishStatus: "published",
         },
       })
       if (!menuEvent) {

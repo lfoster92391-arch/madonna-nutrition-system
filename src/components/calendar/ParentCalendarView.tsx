@@ -30,23 +30,29 @@ export function ParentCalendarView() {
     [mealTemplates]
   )
 
+  // Families only see events an admin has published.
+  const publishedEvents = useMemo(
+    () => calendarEvents.filter((e) => e.publishStatus === "published"),
+    [calendarEvents]
+  )
+
   const monthEvents = useMemo(
     () =>
-      calendarEvents
+      publishedEvents
         .filter((e) => {
           const d = new Date(e.date + "T12:00:00")
           return d.getFullYear() === year && d.getMonth() === month
         })
         .sort((a, b) => a.date.localeCompare(b.date) || a.title.localeCompare(b.title)),
-    [calendarEvents, year, month]
+    [publishedEvents, year, month]
   )
 
   const selectedEvents = useMemo(() => {
     if (!selectedDate) return []
-    return calendarEvents
+    return publishedEvents
       .filter((e) => e.date === selectedDate)
       .sort((a, b) => a.title.localeCompare(b.title))
-  }, [calendarEvents, selectedDate])
+  }, [publishedEvents, selectedDate])
 
   function prevMonth() {
     if (month === 0) {
@@ -121,7 +127,7 @@ export function ParentCalendarView() {
                 setYear(y)
                 setMonth(m)
               }}
-              events={calendarEvents}
+              events={publishedEvents}
               accentHex={accentHex}
               selectedDate={selectedDate}
               onDayClick={setSelectedDate}

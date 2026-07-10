@@ -25,6 +25,7 @@ import {
   Wine,
 } from "lucide-react"
 import { useDemo } from "@/components/providers/DemoProvider"
+import { KIOSK_API_KEY_STORAGE } from "@/lib/api/client"
 import { getAllergyBannerStyle, getHighestAllergySeverity } from "@/lib/allergy-display"
 import { ScanKeypad } from "@/components/scan/ScanKeypad"
 import { OfflineBanner } from "@/components/scan/OfflineBanner"
@@ -185,6 +186,25 @@ export default function ScanStationPage() {
 
   const primaryMeals = MEAL_PRICES.filter((m) => m.type === "student_meal" || m.type === "ala_carte")
   const secondaryMeals = MEAL_PRICES.filter((m) => m.type === "staff_meal" || m.type === "milk")
+
+  // One-time kiosk provisioning: visiting /kiosk?kioskKey=SECRET stores the
+  // device API key (matching server MNMS_API_KEY) so this station can record
+  // meals without a logged-in cashier. Pass an empty value to clear it.
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    const params = new URLSearchParams(window.location.search)
+    if (!params.has("kioskKey")) return
+    const key = params.get("kioskKey") ?? ""
+    try {
+      if (key) window.localStorage.setItem(KIOSK_API_KEY_STORAGE, key)
+      else window.localStorage.removeItem(KIOSK_API_KEY_STORAGE)
+    } catch {
+      // ignore storage errors (private mode, etc.)
+    }
+    params.delete("kioskKey")
+    const qs = params.toString()
+    window.history.replaceState({}, "", window.location.pathname + (qs ? `?${qs}` : ""))
+  }, [])
 
   useEffect(() => {
     const updateClock = () => {

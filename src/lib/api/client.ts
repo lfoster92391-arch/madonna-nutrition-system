@@ -1,3 +1,24 @@
+/** Device-scoped key for unattended kiosks. Set once per kiosk via `/kiosk?kioskKey=...`. */
+export const KIOSK_API_KEY_STORAGE = "mnms-kiosk-api-key"
+
+/**
+ * Resolves the kiosk API key for authenticating cashier-less meal/sync requests.
+ * Prefers a per-device key in localStorage (provisioned only on kiosk devices);
+ * falls back to NEXT_PUBLIC_KIOSK_API_KEY for fully locked-down deployments.
+ * Must match the server-side MNMS_API_KEY.
+ */
+function getKioskApiKey(): string | null {
+  if (typeof window !== "undefined") {
+    try {
+      const stored = window.localStorage.getItem(KIOSK_API_KEY_STORAGE)
+      if (stored) return stored
+    } catch {
+      // localStorage may be unavailable; fall back to env
+    }
+  }
+  return process.env.NEXT_PUBLIC_KIOSK_API_KEY?.trim() || null
+}
+
 async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
   const sessionHeaders: Record<string, string> = {}
   if (typeof window !== "undefined") {
@@ -11,6 +32,9 @@ async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
       // ignore invalid session payload
     }
   }
+
+  const kioskApiKey = getKioskApiKey()
+  if (kioskApiKey) sessionHeaders["x-api-key"] = kioskApiKey
 
   const res = await fetch(url, {
     ...init,

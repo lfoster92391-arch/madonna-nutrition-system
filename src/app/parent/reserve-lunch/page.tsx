@@ -57,14 +57,23 @@ export default function ParentReserveLunchPage() {
   const menuDates = useMemo(() => {
     const today = new Date().toISOString().slice(0, 10)
     return calendarEvents
-      .filter((e) => e.category === "menu_day" && e.date >= today)
+      .filter(
+        (e) =>
+          e.category === "menu_day" && e.publishStatus === "published" && e.date >= today
+      )
       .map((e) => e.date)
       .filter((date, index, arr) => arr.indexOf(date) === index)
       .sort()
   }, [calendarEvents])
 
   const selectedMenu = useMemo(
-    () => calendarEvents.find((e) => e.category === "menu_day" && e.date === selectedDate),
+    () =>
+      calendarEvents.find(
+        (e) =>
+          e.category === "menu_day" &&
+          e.publishStatus === "published" &&
+          e.date === selectedDate
+      ),
     [calendarEvents, selectedDate]
   )
 
