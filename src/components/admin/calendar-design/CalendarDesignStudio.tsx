@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { LayoutGrid, SlidersHorizontal } from "lucide-react"
+import { LayoutGrid, SlidersHorizontal, X } from "lucide-react"
 import { DesignToolbar } from "@/components/admin/calendar-design/DesignToolbar"
 import { ElementsPanel } from "@/components/admin/calendar-design/ElementsPanel"
 import { DesignCanvas } from "@/components/admin/calendar-design/DesignCanvas"
@@ -92,7 +92,13 @@ function createElementFromCatalog(type: DesignElementType): DesignElement {
 }
 
 export function CalendarDesignStudio() {
-  const { mealTemplates, addCalendarEvent, updateMealTemplate } = useDemo()
+  const {
+    mealTemplates,
+    calendarEvents,
+    addCalendarEvent,
+    updateCalendarEvent,
+    updateMealTemplate,
+  } = useDemo()
   const isMobileLayout = useIsMobileLayout()
   const [doc, setDoc] = useState<CalendarDesignDocument>(() => loadDesignDocument())
   const [selectedElementId, setSelectedElementId] = useState<string | null>(null)
@@ -107,6 +113,9 @@ export function CalendarDesignStudio() {
   const [propertiesOpen, setPropertiesOpen] = useState(false)
   const [history, setHistory] = useState<CalendarDesignDocument[]>([])
   const [future, setFuture] = useState<CalendarDesignDocument[]>([])
+  const [publishConfirmOpen, setPublishConfirmOpen] = useState(false)
+  const [publishing, setPublishing] = useState(false)
+  const [publishNotice, setPublishNotice] = useState<string | null>(null)
   const initialized = useRef(false)
 
   const debouncedSave = useMemo(
@@ -122,6 +131,31 @@ export function CalendarDesignStudio() {
   const selectedElement = useMemo(
     () => activePage?.elements.find((el) => el.id === selectedElementId) ?? null,
     [activePage, selectedElementId]
+  )
+
+  const monthLabel = useMemo(
+    () =>
+      activePage
+        ? new Date(activePage.year, activePage.month - 1, 1).toLocaleDateString("en-US", {
+            month: "long",
+            year: "numeric",
+          })
+        : "",
+    [activePage]
+  )
+
+  // Menu events scheduled in the page's month (calendar events live in the DB).
+  const monthMenuEvents = useMemo(() => {
+    if (!activePage) return []
+    const prefix = `${activePage.year}-${String(activePage.month).padStart(2, "0")}-`
+    return calendarEvents.filter(
+      (e) => e.category === "menu_day" && e.date.startsWith(prefix)
+    )
+  }, [calendarEvents, activePage])
+
+  const monthDraftCount = useMemo(
+    () => monthMenuEvents.filter((e) => e.publishStatus !== "published").length,
+    [monthMenuEvents]
   )
 
   const pushHistory = useCallback((prev: CalendarDesignDocument) => {
@@ -347,6 +381,7 @@ export function CalendarDesignStudio() {
         description: template.description ?? itemsList,
         category: "menu_day",
         mealTemplateId: template.id,
+        publishStatus: "draft",
       })
       await updateMealTemplate(template.id, {
         lastUsedAt: new Date().toISOString(),
@@ -375,6 +410,48 @@ export function CalendarDesignStudio() {
   const handleSave = useCallback(() => {
     saveDesignDocument(doc)
   }, [doc])
+
+  const handlePublishMonth = useCallback(() => {
+    setPublishNotice(null)
+    if (monthMenuEvents.length === 0) {
+      setPublishNotice(
+        `No menus are scheduled for ${monthLabel} yet. Add meals from the cookbook first.`
+      )
+      return
+    }
+    if (monthDraftCount === 0) {
+      setPublishNotice(`All ${monthMenuEvents.length} menus for ${monthLabel} are already published.`)
+      return
+    }
+    setPublishConfirmOpen(true)
+  }, [monthMenuEvents, monthDraftCount, monthLabel])
+
+  const confirmPublishMonth = useCallback(async () => {
+    const drafts = monthMenuEvents.filter((e) => e.publishStatus !== "published")
+    setPublishing(true)
+    let published = 0
+    for (const event of drafts) {
+      try {
+        await updateCalendarEvent(event.id, { publishStatus: "published" })
+        published += 1
+      } catch {
+        // Continue publishing the rest; report a partial result below.
+      }
+    }
+    setPublishing(false)
+    setPublishConfirmOpen(false)
+    setPublishNotice(
+      published === drafts.length
+        ? `Published ${published} menu${published === 1 ? "" : "s"} for ${monthLabel}. Families can now see ${published === 1 ? "it" : "them"} and reserve lunches.`
+        : `Published ${published} of ${drafts.length} menus for ${monthLabel}. Some could not be published — please try again.`
+    )
+  }, [monthMenuEvents, updateCalendarEvent, monthLabel])
+
+  useEffect(() => {
+    if (!publishNotice) return
+    const timer = setTimeout(() => setPublishNotice(null), 6000)
+    return () => clearTimeout(timer)
+  }, [publishNotice])
 
   if (!activePage) return null
 
@@ -421,7 +498,7 @@ export function CalendarDesignStudio() {
         onExport={() => setExportOpen(true)}
         onSave={handleSave}
         onPreview={() => setViewport("print")}
-        onPublish={() => alert("Calendar published successfully!")}
+        onPublish={handlePublishMonth}
       />
 
       <div className="flex min-h-0 flex-1 overflow-hidden">
@@ -497,6 +574,47 @@ export function CalendarDesignStudio() {
       </Sheet>
 
       <ExportDesignModal open={exportOpen} onClose={() => setExportOpen(false)} />
+
+      {publishConfirmOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-primary/40 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-2xl border border-silver/60 bg-white p-6 shadow-2xl">
+            <h3 className="text-lg font-bold text-primary">Publish {monthLabel}?</h3>
+            <p className="mt-2 text-sm text-silver-foreground">
+              This publishes {monthDraftCount} menu{monthDraftCount === 1 ? "" : "s"} for {monthLabel}.
+              Families will be able to see {monthDraftCount === 1 ? "it" : "them"} and reserve lunches
+              immediately.
+            </p>
+            <div className="mt-5 flex justify-end gap-3">
+              <Button
+                variant="outline"
+                onClick={() => setPublishConfirmOpen(false)}
+                disabled={publishing}
+              >
+                Cancel
+              </Button>
+              <Button onClick={confirmPublishMonth} disabled={publishing}>
+                {publishing
+                  ? "Publishing…"
+                  : `Publish ${monthDraftCount} menu${monthDraftCount === 1 ? "" : "s"}`}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {publishNotice && (
+        <div className="fixed bottom-4 left-1/2 z-50 flex -translate-x-1/2 items-center gap-3 rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-white shadow-lg">
+          <span>{publishNotice}</span>
+          <button
+            type="button"
+            onClick={() => setPublishNotice(null)}
+            className="text-white/70 transition hover:text-white"
+            aria-label="Dismiss"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
     </div>
   )
 }
