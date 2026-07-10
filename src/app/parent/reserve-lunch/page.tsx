@@ -22,10 +22,10 @@ import { formatCurrency } from "@/lib/utils"
 type MealType = "MAIN" | "SIDE" | "ALA_CARTE" | "MILK"
 
 const MEAL_OPTIONS: { value: MealType; label: string; defaultPrice: number }[] = [
-  { value: "MAIN", label: "Main Meal", defaultPrice: 3 },
-  { value: "SIDE", label: "Side", defaultPrice: 2 },
-  { value: "ALA_CARTE", label: "A La Carte", defaultPrice: 4.5 },
-  { value: "MILK", label: "Milk", defaultPrice: 0.75 },
+  { value: "MAIN", label: "Lunch", defaultPrice: 7 },
+  { value: "SIDE", label: "Side", defaultPrice: 3 },
+  { value: "ALA_CARTE", label: "Fruit / Yogurt / Dessert", defaultPrice: 1 },
+  { value: "MILK", label: "Milk / Juice", defaultPrice: 1 },
 ]
 
 interface ReservationRow {
@@ -99,7 +99,7 @@ export default function ParentReserveLunchPage() {
 
     setSubmitting(true)
     try {
-      const price = MEAL_OPTIONS.find((m) => m.value === mealType)?.defaultPrice ?? 3
+      const price = MEAL_OPTIONS.find((m) => m.value === mealType)?.defaultPrice ?? 7
       const res = await fetch("/api/lunch-reservations", {
         method: "POST",
         headers: {

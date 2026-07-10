@@ -96,7 +96,7 @@ export const teacherPortalStudents: Student[] = [
 export const demoTeacherLunchReservation: TeacherLunchReservation = {
   id: "tlr-demo-001",
   mealName: "Grilled Chicken Plate",
-  mealPrice: 5.25,
+  mealPrice: 7,
   mealPhotoUrl:
     "https://images.unsplash.com/photo-1604908176997-431cef8a0b38?q=80&w=400&auto=format&fit=crop",
   paymentMethod: "account",

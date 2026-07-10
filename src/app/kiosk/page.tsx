@@ -22,7 +22,6 @@ import {
   Utensils,
   Users,
   Wallet,
-  Wine,
 } from "lucide-react"
 import { useDemo } from "@/components/providers/DemoProvider"
 import { getAllergyBannerStyle, getHighestAllergySeverity } from "@/lib/allergy-display"
@@ -52,10 +51,10 @@ const ERROR_RESET_MS = 2000
 const FLASH_DISMISS_MS = 2000
 
 const MEAL_ICONS: Record<string, typeof Utensils> = {
-  student_meal: Utensils,
-  staff_meal: Users,
-  ala_carte: ShoppingBag,
-  milk: Wine,
+  lunch: Utensils,
+  side: ShoppingBag,
+  snack: Users,
+  drink: CupSoda,
 }
 
 type ScanPhase = "ready" | "scanning" | "found" | "complete" | "error"
@@ -183,8 +182,8 @@ export default function ScanStationPage() {
     return Math.max(0, (countdownEnd - Date.now()) / 1000)
   }, [countdownEnd, tick])
 
-  const primaryMeals = MEAL_PRICES.filter((m) => m.type === "student_meal" || m.type === "ala_carte")
-  const secondaryMeals = MEAL_PRICES.filter((m) => m.type === "staff_meal" || m.type === "milk")
+  const primaryMeals = MEAL_PRICES.filter((m) => m.type === "lunch" || m.type === "side")
+  const secondaryMeals = MEAL_PRICES.filter((m) => m.type === "snack" || m.type === "drink")
 
   useEffect(() => {
     const updateClock = () => {
@@ -519,17 +518,17 @@ export default function ScanStationPage() {
           : "Scan badge or enter ID"
 
   const studentMealAvailable =
-    student && !mealBlocked && primaryMeals.find((m) => m.type === "student_meal")
+    student && !mealBlocked && primaryMeals.find((m) => m.type === "lunch")
 
   function renderMealButton(meal: (typeof MEAL_PRICES)[number], compact = false) {
     const Icon = MEAL_ICONS[meal.type] ?? Utensils
     const gradeRestricted = meal.grades && student && !meal.grades.includes(student.grade)
     const blocked = mealBlocked
     const disabled = !student || !!gradeRestricted || blocked
-    const isStudentMeal = meal.type === "student_meal"
+    const isStudentMeal = meal.type === "lunch"
     const isSelected = !!student && isStudentMeal && !disabled && scanStatus !== "complete"
 
-    if (gradeRestricted && meal.type === "ala_carte") return null
+    if (gradeRestricted) return null
 
     return (
       <button
@@ -544,7 +543,7 @@ export default function ScanStationPage() {
             : "min-h-[65px] flex-1 gap-1 px-2 py-2.5 sm:min-h-[79px] sm:gap-1 sm:px-3 sm:py-3 md:min-h-[90px] lg:min-h-[108px] lg:gap-1.5 lg:px-3 lg:py-4 xl:min-h-[126px]",
           isSelected
             ? "border-[#00A83E] bg-[#00A83E] text-white"
-            : meal.type === "ala_carte"
+            : meal.type === "side"
               ? "border-[#AEB6C2] bg-white text-[#041B52]"
               : blocked
                 ? "border-[#D62828] bg-[#D62828] text-white"
@@ -564,7 +563,7 @@ export default function ScanStationPage() {
             )}
             aria-hidden
           />
-          {meal.type === "student_meal" && !compact && (
+          {meal.type === "lunch" && !compact && (
             <CupSoda
               className={cn(
                 "h-4 w-4 sm:h-5 sm:w-5 md:h-6 md:w-6 lg:h-7 lg:w-7",
@@ -572,9 +571,6 @@ export default function ScanStationPage() {
               )}
               aria-hidden
             />
-          )}
-          {meal.type === "ala_carte" && !compact && (
-            <Wine className="h-4 w-4 text-[#041B52] sm:h-5 sm:w-5 md:h-6 md:w-6 lg:h-7 lg:w-7" aria-hidden />
           )}
         </div>
         <span
@@ -585,9 +581,6 @@ export default function ScanStationPage() {
         >
           {blocked && isStudentMeal ? "BLOCKED" : meal.label.toUpperCase()}
         </span>
-        {meal.type === "ala_carte" && !compact && (
-          <span className="hidden text-xs font-medium text-[#64748B] sm:block">Available Grades 9ΓÇô12</span>
-        )}
       </button>
     )
   }

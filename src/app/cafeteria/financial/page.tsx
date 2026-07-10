@@ -18,7 +18,7 @@ export default function FinancialPage() {
   )
 
   const estimatedDailyRevenue =
-    students.length * 3.25
+    students.length * 7
 
   return (
     <main className="min-h-screen bg-slate-950 text-white p-8">

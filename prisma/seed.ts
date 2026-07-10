@@ -579,7 +579,7 @@ async function main() {
         schoolId: school.id,
         date: today,
         mealName: "Grilled Chicken Plate",
-        mealPrice: 5.25,
+        mealPrice: 7,
         mealPhotoUrl:
           "https://images.unsplash.com/photo-1604908176997-431cef8a0b38?q=80&w=400&auto=format&fit=crop",
         paymentMethod: "ACCOUNT",
@@ -590,13 +590,18 @@ async function main() {
 
   await prisma.onboardingPricing.upsert({
     where: { schoolId: school.id },
-    update: {},
+    update: {
+      mainMealPrice: 7.0,
+      sideMealPrice: 3.0,
+      alaCartePrice: 1.0,
+      milkPrice: 1.0,
+    },
     create: {
       schoolId: school.id,
-      mainMealPrice: 3.0,
-      sideMealPrice: 2.0,
-      alaCartePrice: 4.5,
-      milkPrice: 0.75,
+      mainMealPrice: 7.0,
+      sideMealPrice: 3.0,
+      alaCartePrice: 1.0,
+      milkPrice: 1.0,
       agreementText:
         "Madonna High School Food Services Agreement — parents maintain accurate dietary info and current cafeteria balances.",
       emergencyPolicyText:

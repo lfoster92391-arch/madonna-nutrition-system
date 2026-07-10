@@ -30,8 +30,8 @@ By enrolling in cafeteria services, you acknowledge and agree to the following:
 
 • Failure to maintain a signed agreement, current balance, or accurate student profile may result in suspension of cafeteria privileges until resolved.`,
   pricing: {
-    mainMeal: 3,
-    premiumSides: 2,
+    mainMeal: 7,
+    premiumSides: 3,
     lightMeal: 1,
     drinks: 1,
   },

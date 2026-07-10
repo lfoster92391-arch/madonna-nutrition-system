@@ -188,7 +188,7 @@ export async function computeReconciliation(): Promise<ReconciliationData> {
   })
 
   const mealCosts = templates.slice(0, 6).map((t) => {
-    const price = Number(t.studentMealPrice ?? t.alaCartePrice ?? 4)
+    const price = Number(t.studentMealPrice ?? t.alaCartePrice ?? 7)
     const ingredientCost = price * 0.55
     const mealCost = ingredientCost * 1.15
     const count = mealCounts[t.name] ?? 0

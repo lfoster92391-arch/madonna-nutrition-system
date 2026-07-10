@@ -1,8 +1,8 @@
 export const DEFAULT_ONBOARDING_PRICING = {
-  mainMealPrice: 3.0,
-  sideMealPrice: 2.0,
-  alaCartePrice: 4.5,
-  milkPrice: 0.75,
+  mainMealPrice: 7.0,
+  sideMealPrice: 3.0,
+  alaCartePrice: 1.0,
+  milkPrice: 1.0,
   agreementText:
     "Madonna High School Food Services Agreement - Parents maintain accurate dietary info and current cafeteria balances.",
   emergencyPolicyText:

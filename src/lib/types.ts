@@ -219,10 +219,10 @@ export interface MealPrice {
 }
 
 export const MEAL_PRICES: MealPrice[] = [
-  { type: "student_meal", label: "Student Meal", price: 3.25 },
-  { type: "staff_meal", label: "Staff Meal", price: 2.0 },
-  { type: "ala_carte", label: "À La Carte", price: 4.5, grades: ["9", "10", "11", "12"] },
-  { type: "milk", label: "Milk Only", price: 0.75 },
+  { type: "lunch", label: "Lunch", price: 7 },
+  { type: "side", label: "Side", price: 3 },
+  { type: "snack", label: "Fruit / Yogurt / Dessert", price: 1 },
+  { type: "drink", label: "Milk / Juice", price: 1 },
 ]
 
 export type CalendarEventCategory =

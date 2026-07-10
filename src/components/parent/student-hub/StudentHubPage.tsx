@@ -49,7 +49,7 @@ export function StudentHubPage() {
   }, 0)
 
   const mealParticipation = Math.round(
-    (students.filter((s) => s.balance >= 3.25).length / Math.max(students.length, 1)) * 100
+    (students.filter((s) => s.balance >= 7).length / Math.max(students.length, 1)) * 100
   )
 
   const filteredStudents = useMemo(() => {
