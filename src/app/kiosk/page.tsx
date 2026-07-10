@@ -6,6 +6,7 @@ import Link from "next/link"
 import { useQueryClient } from "@tanstack/react-query"
 import {
   AlertTriangle,
+  Apple,
   BadgeCheck,
   Check,
   CheckCircle2,
@@ -20,7 +21,6 @@ import {
   Settings,
   ShoppingBag,
   Utensils,
-  Users,
   Wallet,
 } from "lucide-react"
 import { useDemo } from "@/components/providers/DemoProvider"
@@ -53,7 +53,7 @@ const FLASH_DISMISS_MS = 2000
 const MEAL_ICONS: Record<string, typeof Utensils> = {
   lunch: Utensils,
   side: ShoppingBag,
-  snack: Users,
+  snack: Apple,
   drink: CupSoda,
 }
 
