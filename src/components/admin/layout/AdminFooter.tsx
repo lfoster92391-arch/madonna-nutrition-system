@@ -1,6 +1,7 @@
 "use client"
 
 import Image from "next/image"
+import { BRAND } from "@/config/brand"
 import { ADMIN_NAVY, ADMIN_SILVER } from "@/components/admin/layout/admin-theme"
 
 export function AdminFooter() {
@@ -10,9 +11,9 @@ export function AdminFooter() {
       style={{ backgroundColor: ADMIN_NAVY, borderColor: "rgba(255,255,255,0.1)" }}
     >
       <div>
-        <p className="text-sm font-semibold text-white">Madonna Nutrition Management System</p>
+        <p className="text-sm font-semibold text-white">{BRAND.productName}</p>
         <p className="mt-0.5 text-xs" style={{ color: ADMIN_SILVER }}>
-          Smarter Meals. Stronger Students.
+          {BRAND.tagline}
         </p>
       </div>
       <Image

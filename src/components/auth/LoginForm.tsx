@@ -3,11 +3,21 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Eye, EyeOff, HelpCircle, Lock, User } from "lucide-react"
+import Image from "next/image"
 import { useAuth, type PortalRole } from "@/components/providers/AuthProvider"
+import { BRAND } from "@/config/brand"
 import { Button } from "@/components/ui/button"
 import { Input, Label } from "@/components/ui/input"
 
 const NAVY = "#001E62"
+
+const PORTAL_LABELS: Record<Exclude<PortalRole, null>, string> = {
+  parent: "Parent Portal",
+  teacher: "Teacher Portal",
+  staff: "Staff Portal",
+  admin: "Admin Portal",
+  cashier: "Scanner / Kiosk",
+}
 
 interface LoginFormProps {
   role: Exclude<PortalRole, null>
@@ -43,17 +53,19 @@ export function LoginForm({ role, redirectTo }: LoginFormProps) {
   return (
     <div className="w-full max-w-lg rounded-[20px] border border-[#C8CDD7]/60 bg-white p-8 shadow-lg shadow-[#001E62]/5">
       <div className="mb-6 text-center">
-        <div
-          className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full"
-          style={{ backgroundColor: `${NAVY}15` }}
-        >
-          <Lock className="h-6 w-6" style={{ color: NAVY }} />
-        </div>
+        <Image
+          src="/brand-logo.png"
+          alt={BRAND.productName}
+          width={160}
+          height={42}
+          priority
+          className="mx-auto mb-4 h-10 w-auto object-contain"
+        />
         <h1 className="text-2xl font-bold" style={{ color: NAVY }}>
           Welcome Back
         </h1>
         <p className="mt-1 text-sm text-[#64748B]">
-          Sign in to continue to the Madonna Nutrition Management System
+          Sign in to the {PORTAL_LABELS[role]}
         </p>
       </div>
 

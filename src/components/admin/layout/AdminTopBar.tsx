@@ -12,6 +12,7 @@ import {
   User,
 } from "lucide-react"
 import { useAuth } from "@/components/providers/AuthProvider"
+import { BRAND } from "@/config/brand"
 import { SCHOOL } from "@/config/school"
 import { mockNotifications } from "@/data/mockNotifications"
 import { useAdminLayout } from "@/components/admin/layout/admin-layout-context"
@@ -85,7 +86,7 @@ export function AdminTopBar() {
             Fuel The Dons
           </p>
           <p className="hidden truncate text-[11px] font-medium sm:block" style={{ color: ADMIN_SILVER }}>
-            Madonna Nutrition Management System
+            {BRAND.schoolNutrition}
           </p>
         </div>
       </div>
