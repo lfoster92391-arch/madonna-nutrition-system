@@ -11,6 +11,7 @@ import {
   Save,
   Trash2,
   UtensilsCrossed,
+  X,
 } from "lucide-react"
 import { CalendarMonthGrid, CategoryLegend } from "@/components/calendar/CalendarMonthGrid"
 import { useDemo } from "@/components/providers/DemoProvider"
@@ -71,6 +72,8 @@ export function AdminCalendarDesigner() {
   const [month, setMonth] = useState(now.getMonth())
   const [selectedDate, setSelectedDate] = useState<string | null>(formatDateKey(now))
   const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null)
+  const [actionEvent, setActionEvent] = useState<CalendarEvent | null>(null)
+  const [focusedEventId, setFocusedEventId] = useState<string | null>(null)
   const [showEventForm, setShowEventForm] = useState(false)
   const [eventForm, setEventForm] = useState<EventFormState>(emptyForm(formatDateKey(now)))
   const [savedFlash, setSavedFlash] = useState(false)
@@ -119,18 +122,34 @@ export function AdminCalendarDesigner() {
     setSelectedDate(dateKey)
     setEventForm(emptyForm(dateKey))
     setEditingEvent(null)
+    setActionEvent(null)
+    setFocusedEventId(null)
     setShowEventForm(false)
+  }
+
+  function handleEventClick(event: CalendarEvent) {
+    setSelectedDate(event.date)
+    setFocusedEventId(event.id)
+    setActionEvent(event)
+    setShowEventForm(false)
+    setEditingEvent(null)
+    setEventForm(emptyForm(event.date))
   }
 
   function startAddEvent() {
     if (!selectedDate) return
     setEditingEvent(null)
+    setActionEvent(null)
+    setFocusedEventId(null)
     setEventForm(emptyForm(selectedDate))
     setShowEventForm(true)
   }
 
   function startEditEvent(event: CalendarEvent) {
     setEditingEvent(event)
+    setFocusedEventId(event.id)
+    setActionEvent(null)
+    setSelectedDate(event.date)
     setEventForm({
       title: event.title,
       date: event.date,
@@ -189,6 +208,8 @@ export function AdminCalendarDesigner() {
     await deleteCalendarEvent(id)
     setShowEventForm(false)
     setEditingEvent(null)
+    setActionEvent(null)
+    setFocusedEventId(null)
     flashSaved()
   }
 
@@ -262,6 +283,8 @@ export function AdminCalendarDesigner() {
                   accentHex={accentHex}
                   selectedDate={selectedDate}
                   onDayClick={handleDayClick}
+                  onEventClick={handleEventClick}
+                  selectedEventId={focusedEventId}
                 />
                 <div className="mt-4">
                   <CategoryLegend />
@@ -301,10 +324,16 @@ export function AdminCalendarDesigner() {
                     {selectedEvents.map((event) => {
                       const color = getEventColor(event)
                       const cat = EVENT_CATEGORIES[event.category]
+                      const isFocused = focusedEventId === event.id
                       return (
                         <div
                           key={event.id}
-                          className="flex flex-col gap-3 rounded-2xl border border-silver/40 p-4 sm:flex-row sm:items-start sm:justify-between sm:gap-4"
+                          className={cn(
+                            "flex flex-col gap-3 rounded-2xl border p-4 sm:flex-row sm:items-start sm:justify-between sm:gap-4",
+                            isFocused
+                              ? "border-primary bg-primary/5 ring-2 ring-primary/30"
+                              : "border-silver/40"
+                          )}
                         >
                           <div className="min-w-0">
                             <div className="flex flex-wrap items-center gap-2">
@@ -320,10 +349,11 @@ export function AdminCalendarDesigner() {
                               <p className="mt-1 text-sm text-silver-foreground">{event.description}</p>
                             )}
                           </div>
-                          <div className="flex shrink-0 flex-wrap items-center gap-2">
+                          <div className="flex w-full shrink-0 flex-wrap items-center gap-2 sm:w-auto sm:justify-end">
                             <Button
                               size="sm"
                               variant="outline"
+                              className="min-h-10 flex-1 sm:flex-none"
                               onClick={() => startEditEvent(event)}
                               aria-label={`Edit ${event.title}`}
                             >
@@ -333,7 +363,7 @@ export function AdminCalendarDesigner() {
                             <Button
                               size="sm"
                               variant="outline"
-                              className="text-danger hover:bg-danger/10"
+                              className="min-h-10 flex-1 text-danger hover:bg-danger/10 sm:flex-none"
                               onClick={() => handleDeleteEvent(event.id)}
                               aria-label={`Delete ${event.title}`}
                             >
@@ -534,6 +564,57 @@ export function AdminCalendarDesigner() {
           </aside>
         </div>
       </div>
+
+      {actionEvent && (
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center bg-primary/40 p-4 backdrop-blur-sm sm:items-center"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="designer-event-actions-title"
+          onClick={() => setActionEvent(null)}
+        >
+          <div
+            className="w-full max-w-md rounded-2xl border border-silver/60 bg-white p-5 shadow-2xl sm:p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-4 flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-xs font-bold uppercase tracking-wider text-primary/60">
+                  {EVENT_CATEGORIES[actionEvent.category].label}
+                </p>
+                <h3
+                  id="designer-event-actions-title"
+                  className="mt-1 truncate text-lg font-bold text-primary"
+                >
+                  {actionEvent.title}
+                </h3>
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                aria-label="Close"
+                onClick={() => setActionEvent(null)}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <Button className="min-h-12 flex-1" onClick={() => startEditEvent(actionEvent)}>
+                <Pencil className="h-4 w-4" />
+                Edit
+              </Button>
+              <Button
+                variant="danger"
+                className="min-h-12 flex-1"
+                onClick={() => handleDeleteEvent(actionEvent.id)}
+              >
+                <Trash2 className="h-4 w-4" />
+                Delete
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showMealPicker && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-primary/40 p-4 backdrop-blur-sm">

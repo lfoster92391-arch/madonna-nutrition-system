@@ -28,6 +28,9 @@ interface ResponsiveCalendarProps {
   accentHex: string
   selectedDate: string | null
   onDayClick: (dateKey: string) => void
+  /** Admin: clicking a menu/event chip opens Edit/Delete for that event */
+  onEventClick?: (event: CalendarEvent) => void
+  selectedEventId?: string | null
   readOnly?: boolean
   mealTemplatesById?: Map<string, MealTemplate>
   /** Show Week | Month toggle on mobile (default true) */
@@ -43,6 +46,8 @@ export function ResponsiveCalendar({
   accentHex,
   selectedDate,
   onDayClick,
+  onEventClick,
+  selectedEventId,
   readOnly = false,
   mealTemplatesById,
   showMobileLayoutToggle = true,
@@ -159,6 +164,8 @@ export function ResponsiveCalendar({
             accentHex={accentHex}
             selectedDate={selectedDate}
             onDayClick={handleDayClick}
+            onEventClick={onEventClick}
+            selectedEventId={selectedEventId}
             readOnly={readOnly}
             mealTemplatesById={mealTemplatesById}
           />
@@ -170,6 +177,8 @@ export function ResponsiveCalendar({
             accentHex={accentHex}
             selectedDate={selectedDate}
             onDayClick={handleDayClick}
+            onEventClick={onEventClick}
+            selectedEventId={selectedEventId}
             readOnly={readOnly}
             mealTemplatesById={mealTemplatesById}
             mobileLayout="dots"
@@ -186,6 +195,8 @@ export function ResponsiveCalendar({
           accentHex={accentHex}
           selectedDate={selectedDate}
           onDayClick={handleDayClick}
+          onEventClick={onEventClick}
+          selectedEventId={selectedEventId}
           readOnly={readOnly}
           mealTemplatesById={mealTemplatesById}
           mobileLayout="hidden"

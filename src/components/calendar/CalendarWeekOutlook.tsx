@@ -24,6 +24,9 @@ interface CalendarWeekOutlookProps {
   accentHex: string
   selectedDate?: string | null
   onDayClick?: (dateKey: string) => void
+  /** When set (admin), tapping a day with a menu opens that event for Edit/Delete */
+  onEventClick?: (event: CalendarEvent) => void
+  selectedEventId?: string | null
   readOnly?: boolean
   mealTemplatesById?: Map<string, MealTemplate>
 }
@@ -34,6 +37,8 @@ export function CalendarWeekOutlook({
   accentHex,
   selectedDate,
   onDayClick,
+  onEventClick,
+  selectedEventId,
   readOnly = false,
   mealTemplatesById,
 }: CalendarWeekOutlookProps) {
@@ -67,25 +72,43 @@ export function CalendarWeekOutlook({
             const color = primaryEvent ? getEventColor(primaryEvent) : accentHex
             const overflow = dayEvents.length > 1 ? dayEvents.length - 1 : 0
 
+            const eventFocused = Boolean(primaryEvent && selectedEventId === primaryEvent.id)
+            const canOpenEvent = Boolean(onEventClick) && !readOnly && Boolean(primaryEvent)
+
             return (
               <button
                 key={dateKey}
                 type="button"
                 disabled={readOnly && !onDayClick}
-                onClick={() => onDayClick?.(dateKey)}
+                onClick={() => {
+                  if (canOpenEvent && primaryEvent) {
+                    onEventClick?.(primaryEvent)
+                    return
+                  }
+                  onDayClick?.(dateKey)
+                }}
                 aria-pressed={isSelected}
-                aria-label={date.toLocaleDateString("en-US", {
-                  weekday: "long",
-                  month: "long",
-                  day: "numeric",
-                })}
+                aria-label={
+                  canOpenEvent && primaryEvent
+                    ? `${date.toLocaleDateString("en-US", {
+                        weekday: "long",
+                        month: "long",
+                        day: "numeric",
+                      })}, ${primaryEvent.title}, open Edit or Delete`
+                    : date.toLocaleDateString("en-US", {
+                        weekday: "long",
+                        month: "long",
+                        day: "numeric",
+                      })
+                }
                 className={cn(
                   "flex min-h-[11.5rem] w-[7.5rem] shrink-0 flex-col items-center gap-2.5 rounded-2xl border border-silver/50 bg-white p-3.5 text-left transition min-[420px]:w-[7.75rem]",
                   readOnly ? "cursor-default" : "cursor-pointer hover:border-primary/30 hover:bg-primary/5",
                   isSelected && "border-primary/40 bg-primary/5 ring-2 ring-inset ring-primary/25",
+                  eventFocused && "border-primary bg-primary/10 ring-2 ring-inset ring-primary/40",
                   isToday && !isSelected && "border-primary/20 bg-success/5"
                 )}
-                style={isSelected ? { boxShadow: `inset 0 0 0 1px ${accentHex}` } : undefined}
+                style={isSelected || eventFocused ? { boxShadow: `inset 0 0 0 1px ${accentHex}` } : undefined}
               >
                 <div className="text-center">
                   <p className="text-xs font-bold uppercase tracking-wide text-primary/60">

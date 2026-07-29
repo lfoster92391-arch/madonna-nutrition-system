@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo } from "react"
+import { useMemo, type KeyboardEvent } from "react"
 import Image from "next/image"
 import {
   Ban,
@@ -42,6 +42,9 @@ interface CalendarMonthGridProps {
   accentHex: string
   selectedDate?: string | null
   onDayClick?: (dateKey: string) => void
+  /** When set (admin), clicking a menu/event chip selects that event for Edit/Delete */
+  onEventClick?: (event: CalendarEvent) => void
+  selectedEventId?: string | null
   readOnly?: boolean
   /** When provided, menu_day events show cover photos from linked templates */
   mealTemplatesById?: Map<string, MealTemplate>
@@ -101,6 +104,8 @@ export function CalendarMonthGrid({
   accentHex,
   selectedDate,
   onDayClick,
+  onEventClick,
+  selectedEventId,
   readOnly = false,
   mealTemplatesById,
   mobileLayout = "dots",
@@ -108,6 +113,14 @@ export function CalendarMonthGrid({
   const weeks = useMemo(() => getMonthGrid(year, month), [year, month])
   const eventsByDate = useMemo(() => groupEventsByDate(events), [events])
   const todayKey = formatDateKey(new Date())
+  const eventChipsInteractive = Boolean(onEventClick) && !readOnly
+
+  function handleDayKeyDown(dateKey: string, e: KeyboardEvent) {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault()
+      onDayClick?.(dateKey)
+    }
+  }
 
   return (
     <div className="overflow-hidden rounded-[20px] border border-silver/60 bg-white">
@@ -137,12 +150,13 @@ export function CalendarMonthGrid({
                 const isSelected = selectedDate === dateKey
                 const isCurrentMonth = date.getMonth() === month
                 const eventCount = dayEvents.length
+                const disabled = readOnly && !onDayClick
 
                 return (
                   <button
                     key={di}
                     type="button"
-                    disabled={readOnly && !onDayClick}
+                    disabled={disabled}
                     onClick={() => onDayClick?.(dateKey)}
                     aria-label={
                       eventCount > 0
@@ -202,13 +216,27 @@ export function CalendarMonthGrid({
                 const isToday = dateKey === todayKey
                 const isSelected = selectedDate === dateKey
                 const isCurrentMonth = date.getMonth() === month
+                const disabled = readOnly && !onDayClick
+                // Nested event buttons require a non-button day cell
+                const DayTag = eventChipsInteractive ? "div" : "button"
 
                 return (
-                  <button
+                  <DayTag
                     key={di}
-                    type="button"
-                    disabled={readOnly && !onDayClick}
-                    onClick={() => onDayClick?.(dateKey)}
+                    {...(eventChipsInteractive
+                      ? {
+                          role: "button" as const,
+                          tabIndex: disabled ? -1 : 0,
+                          "aria-disabled": disabled || undefined,
+                          onKeyDown: disabled
+                            ? undefined
+                            : (e: KeyboardEvent) => handleDayKeyDown(dateKey, e),
+                        }
+                      : {
+                          type: "button" as const,
+                          disabled,
+                        })}
+                    onClick={disabled ? undefined : () => onDayClick?.(dateKey)}
                     aria-pressed={isSelected}
                     className={dayButtonClassName({
                       readOnly,
@@ -232,13 +260,18 @@ export function CalendarMonthGrid({
                         const Icon = CATEGORY_ICONS[event.category]
                         const color = getEventColor(event)
                         const cover = getEventCoverPhoto(event, mealTemplatesById)
-                        return (
-                          <div
-                            key={event.id}
-                            className="flex items-center gap-1 truncate rounded-lg px-1.5 py-0.5 text-[10px] font-semibold leading-tight"
-                            style={{ backgroundColor: `${color}18`, color }}
-                            title={event.title}
-                          >
+                        const isEventSelected = selectedEventId === event.id
+                        const chipClass = cn(
+                          "flex w-full items-center gap-1 truncate rounded-lg px-1.5 py-0.5 text-left text-[10px] font-semibold leading-tight transition",
+                          eventChipsInteractive && "hover:ring-2 hover:ring-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50",
+                          isEventSelected && "ring-2 ring-primary"
+                        )
+                        const chipStyle = {
+                          backgroundColor: `${color}18`,
+                          color,
+                        } as const
+                        const chipInner = (
+                          <>
                             {cover ? (
                               <span className="relative h-4 w-4 shrink-0 overflow-hidden rounded">
                                 <Image
@@ -254,6 +287,36 @@ export function CalendarMonthGrid({
                               <Icon className="h-3 w-3 shrink-0" />
                             )}
                             <span className="truncate">{event.title}</span>
+                          </>
+                        )
+
+                        if (eventChipsInteractive) {
+                          return (
+                            <button
+                              key={event.id}
+                              type="button"
+                              className={chipClass}
+                              style={chipStyle}
+                              title={`${event.title} — Edit or Delete`}
+                              aria-label={`${event.title}, open Edit or Delete`}
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                onEventClick?.(event)
+                              }}
+                            >
+                              {chipInner}
+                            </button>
+                          )
+                        }
+
+                        return (
+                          <div
+                            key={event.id}
+                            className={chipClass}
+                            style={chipStyle}
+                            title={event.title}
+                          >
+                            {chipInner}
                           </div>
                         )
                       })}
@@ -263,7 +326,7 @@ export function CalendarMonthGrid({
                         </p>
                       )}
                     </div>
-                  </button>
+                  </DayTag>
                 )
               })}
             </div>
