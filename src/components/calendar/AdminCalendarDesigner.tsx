@@ -25,6 +25,9 @@ import {
   formatMonthYear,
   getAccentHex,
   getEventColor,
+  isSchoolLunchDateKey,
+  isWeekendDateKey,
+  WEEKEND_MENU_DAY_MESSAGE,
 } from "@/lib/calendar"
 import type { CalendarAccentColor, CalendarEvent, CalendarEventCategory } from "@/lib/types"
 import { cn } from "@/lib/utils"
@@ -153,6 +156,9 @@ export function AdminCalendarDesigner() {
 
   async function handleSaveEvent() {
     if (!eventForm.title.trim() || !eventForm.date) return
+    if (eventForm.category === "menu_day" && !isSchoolLunchDateKey(eventForm.date)) {
+      return
+    }
     const payload = {
       title: eventForm.title.trim(),
       date: eventForm.date,
@@ -278,6 +284,11 @@ export function AdminCalendarDesigner() {
                     Add Event
                   </Button>
                 </div>
+                {isWeekendDateKey(selectedDate) && (
+                  <p className="mb-4 rounded-xl border border-warning/30 bg-warning/10 px-3 py-2 text-sm text-primary">
+                    {WEEKEND_MENU_DAY_MESSAGE} You can still add holidays or no-school notes.
+                  </p>
+                )}
                 {selectedEvents.length === 0 ? (
                   <p className="text-sm text-silver-foreground">
                     No events on this day. Click &quot;Add Event&quot; to create one.
@@ -347,6 +358,9 @@ export function AdminCalendarDesigner() {
                       value={eventForm.date}
                       onChange={(e) => setEventForm({ ...eventForm, date: e.target.value })}
                     />
+                    {eventForm.category === "menu_day" && isWeekendDateKey(eventForm.date) && (
+                      <p className="mt-1.5 text-sm text-danger">{WEEKEND_MENU_DAY_MESSAGE}</p>
+                    )}
                   </div>
                   <div>
                     <Label>Category</Label>
@@ -406,7 +420,12 @@ export function AdminCalendarDesigner() {
                   )}
                 </div>
                 <div className="mt-4 flex gap-3">
-                  <Button onClick={handleSaveEvent}>
+                  <Button
+                    onClick={handleSaveEvent}
+                    disabled={
+                      eventForm.category === "menu_day" && !isSchoolLunchDateKey(eventForm.date)
+                    }
+                  >
                     {editingEvent ? "Update Event" : "Add Event"}
                   </Button>
                   <Button variant="outline" onClick={() => setShowEventForm(false)}>

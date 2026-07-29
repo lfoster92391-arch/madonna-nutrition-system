@@ -17,7 +17,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet"
-import { createDefaultPage } from "@/lib/calendar-design/defaults"
+import { createDefaultPage, firstSchoolDayOfMonth } from "@/lib/calendar-design/defaults"
 import {
   debounce,
   loadDesignDocument,
@@ -30,6 +30,7 @@ import {
   ELEMENT_CATALOG,
 } from "@/lib/calendar-design/types"
 import { getMealCoverPhoto } from "@/lib/meal-templates"
+import { isWeekendDate, WEEKEND_MENU_DAY_MESSAGE } from "@/lib/calendar"
 import type { MealTemplate } from "@/lib/types"
 import type {
   CalendarDesignDocument,
@@ -119,7 +120,12 @@ export function CalendarDesignStudio() {
   const isCompactLayout = useIsCompactLayout()
   const [doc, setDoc] = useState<CalendarDesignDocument>(() => loadDesignDocument())
   const [selectedElementId, setSelectedElementId] = useState<string | null>(null)
-  const [cookbookDay, setCookbookDay] = useState(1)
+  const [cookbookDay, setCookbookDay] = useState(() => {
+    const initial = loadDesignDocument()
+    const page = initial.pages.find((p) => p.id === initial.activePageId) ?? initial.pages[0]
+    return page ? firstSchoolDayOfMonth(page.year, page.month) : 1
+  })
+  const [cookbookDayError, setCookbookDayError] = useState<string | null>(null)
   const [publishMessage, setPublishMessage] = useState<string | null>(null)
   const [zoom, setZoom] = useState(1)
   const [viewport, setViewport] = useState<ViewportMode>("desktop")
@@ -368,13 +374,25 @@ export function CalendarDesignStudio() {
 
   const handleSelectPage = useCallback((pageId: string) => {
     setSelectedElementId(null)
+    setCookbookDayError(null)
+    const page = doc.pages.find((p) => p.id === pageId)
+    if (page) {
+      setCookbookDay(firstSchoolDayOfMonth(page.year, page.month))
+    }
     updateDoc((prev) => ({ ...prev, activePageId: pageId }))
-  }, [updateDoc])
+  }, [doc.pages, updateDoc])
 
   const handleAddFromCookbook = useCallback(
     async (template: MealTemplate, day: number) => {
       const page = doc.pages.find((p) => p.id === doc.activePageId) ?? doc.pages[0]
       if (!page) return
+
+      const dateKey = `${page.year}-${String(page.month).padStart(2, "0")}-${String(day).padStart(2, "0")}`
+      if (isWeekendDate(new Date(page.year, page.month - 1, day))) {
+        setCookbookDayError(WEEKEND_MENU_DAY_MESSAGE)
+        return
+      }
+      setCookbookDayError(null)
 
       const cover = getMealCoverPhoto(template.photos)
       const el: DesignElement = {
@@ -407,7 +425,6 @@ export function CalendarDesignStudio() {
       }))
       setSelectedElementId(el.id)
 
-      const dateKey = `${page.year}-${String(page.month).padStart(2, "0")}-${String(day).padStart(2, "0")}`
       const itemsList = template.items.map((i) => i.name).join(", ")
       await addCalendarEvent({
         title: template.name,
@@ -465,6 +482,8 @@ export function CalendarDesignStudio() {
       activePageId: newPage.id,
     }))
     setSelectedElementId(null)
+    setCookbookDay(firstSchoolDayOfMonth(nextMonth, nextYear))
+    setCookbookDayError(null)
   }, [doc.pages, updateDoc])
 
   const handleSave = useCallback(() => {
@@ -475,12 +494,18 @@ export function CalendarDesignStudio() {
 
   const elementsPanelProps = {
     activeThemeId: activePage.themeId,
+    pageYear: activePage.year,
+    pageMonth: activePage.month,
     onAddElement: handleAddElement,
     onApplyTheme: handleApplyTheme,
     mealTemplates,
     onAddFromCookbook: handleAddFromCookbook,
     cookbookDay,
-    onCookbookDayChange: setCookbookDay,
+    cookbookDayError,
+    onCookbookDayChange: (day: number) => {
+      setCookbookDay(day)
+      setCookbookDayError(null)
+    },
   }
 
   const propertiesPanelProps = {

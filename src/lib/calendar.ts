@@ -98,6 +98,25 @@ export function parseDateKey(key: string): Date {
   return new Date(y, m - 1, d)
 }
 
+/** Saturday (6) or Sunday (0) — never school lunch days. */
+export function isWeekendDateKey(dateKey: string): boolean {
+  const day = parseDateKey(dateKey).getDay()
+  return day === 0 || day === 6
+}
+
+export function isWeekendDate(date: Date): boolean {
+  const day = date.getDay()
+  return day === 0 || day === 6
+}
+
+/** True when a lunch menu (menu_day) may be scheduled on this date. */
+export function isSchoolLunchDateKey(dateKey: string): boolean {
+  return Boolean(dateKey) && !isWeekendDateKey(dateKey)
+}
+
+export const WEEKEND_MENU_DAY_MESSAGE =
+  "Lunch menus cannot be scheduled on Saturday or Sunday. School is Mon–Fri only."
+
 export function formatMonthYear(year: number, month: number): string {
   return new Date(year, month, 1).toLocaleDateString("en-US", {
     month: "long",

@@ -77,3 +77,33 @@ export const DEMO_CALENDAR_DAYS = [
   { day: 19, weekday: "Thu", meals: [{ name: "Chicken Quesadilla", label: "lunch" }] },
   { day: 20, weekday: "Fri", meals: [{ name: "Hamburger & Tater Tots", label: "lunch" }] },
 ] as const
+
+type DemoCalendarDay = (typeof DEMO_CALENDAR_DAYS)[number]
+
+/**
+ * Map demo lunch entries onto Mon–Fri days of the given month.
+ * Fixed day numbers in DEMO_CALENDAR_DAYS assumed a Sunday-start month and
+ * landed on weekends for real school-year months (e.g. Aug 2026).
+ */
+export function buildDemoDayMap(year: number, month: number): Map<number, DemoCalendarDay> {
+  const map = new Map<number, DemoCalendarDay>()
+  const daysInMonth = new Date(year, month, 0).getDate()
+  let mealIdx = 0
+  for (let d = 1; d <= daysInMonth && mealIdx < DEMO_CALENDAR_DAYS.length; d++) {
+    const dow = new Date(year, month - 1, d).getDay()
+    if (dow === 0 || dow === 6) continue
+    map.set(d, DEMO_CALENDAR_DAYS[mealIdx]!)
+    mealIdx += 1
+  }
+  return map
+}
+
+/** First Mon–Fri day number in the month (defaults to 1). */
+export function firstSchoolDayOfMonth(year: number, month: number): number {
+  const daysInMonth = new Date(year, month, 0).getDate()
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dow = new Date(year, month - 1, d).getDay()
+    if (dow !== 0 && dow !== 6) return d
+  }
+  return 1
+}

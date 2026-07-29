@@ -8,30 +8,42 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { cn } from "@/lib/utils"
 import { CALENDAR_THEMES } from "@/data/calendar-themes"
 import { BASIC_ELEMENT_CATALOG } from "@/lib/calendar-design/types"
+import { isWeekendDate } from "@/lib/calendar"
 import type { DesignElementType } from "@/lib/calendar-design/types"
 import type { MealTemplate } from "@/lib/types"
 
 interface ElementsPanelProps {
   activeThemeId: string
+  pageYear?: number
+  pageMonth?: number
   onAddElement: (type: DesignElementType) => void
   onApplyTheme: (themeId: string) => void
   mealTemplates?: MealTemplate[]
   onAddFromCookbook?: (template: MealTemplate, day: number) => void
   cookbookDay?: number
+  cookbookDayError?: string | null
   onCookbookDayChange?: (day: number) => void
   className?: string
 }
 
 export function ElementsPanel({
   activeThemeId,
+  pageYear,
+  pageMonth,
   onAddElement,
   onApplyTheme,
   mealTemplates = [],
   onAddFromCookbook,
   cookbookDay = 1,
+  cookbookDayError,
   onCookbookDayChange,
   className,
 }: ElementsPanelProps) {
+  const dayIsWeekend =
+    pageYear != null &&
+    pageMonth != null &&
+    isWeekendDate(new Date(pageYear, pageMonth - 1, cookbookDay))
+
   return (
     <aside
       className={cn(
@@ -108,7 +120,7 @@ export function ElementsPanel({
 
         <TabsContent value="meals" className="mt-3 flex flex-1 flex-col overflow-hidden">
           <div className="mb-3 shrink-0 space-y-2">
-            <Label className="text-xs font-semibold text-primary">Add to day</Label>
+            <Label className="text-xs font-semibold text-primary">Add to day (Mon–Fri)</Label>
             <Input
               type="number"
               min={1}
@@ -118,8 +130,14 @@ export function ElementsPanel({
               className="h-10"
             />
             <p className="text-[11px] text-primary/60">
-              Choose a day number, then click a saved meal to place it on the calendar.
+              Choose a school day (Mon–Fri), then click a saved meal to place it on the calendar.
             </p>
+            {(cookbookDayError || dayIsWeekend) && (
+              <p className="text-[11px] font-medium text-danger">
+                {cookbookDayError ??
+                  "Saturday and Sunday are not school lunch days. Pick a weekday."}
+              </p>
+            )}
           </div>
           <div className="flex-1 overflow-y-auto pb-3">
             <CookbookPicker

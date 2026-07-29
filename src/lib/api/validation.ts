@@ -1,4 +1,5 @@
 import { z } from "zod"
+import { isWeekendDateKey, WEEKEND_MENU_DAY_MESSAGE } from "@/lib/calendar"
 
 export const allergySchema = z.object({
   name: z.string().min(1),
@@ -130,24 +131,39 @@ export const loginSchema = z.object({
   role: z.enum(["admin", "cashier", "parent", "staff", "teacher"]),
 })
 
-export const calendarEventSchema = z.object({
-  title: z.string().min(1),
-  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  description: z.string().optional(),
-  category: z.enum([
-    "menu_day",
-    "holiday",
-    "early_dismissal",
-    "special_event",
-    "no_school",
-    "teacher_meal",
-  ]),
-  color: z.string().optional(),
-  mealTemplateId: z.string().optional(),
-  publishStatus: z.enum(["draft", "published", "scheduled", "archived"]).optional(),
-  publishedAt: z.string().optional(),
-  notes: z.string().optional(),
-})
+export const calendarEventSchema = z
+  .object({
+    title: z.string().min(1),
+    date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    description: z.string().optional(),
+    category: z.enum([
+      "menu_day",
+      "holiday",
+      "early_dismissal",
+      "special_event",
+      "no_school",
+      "teacher_meal",
+    ]),
+    color: z.string().optional(),
+    mealTemplateId: z.string().optional(),
+    publishStatus: z.enum(["draft", "published", "scheduled", "archived"]).optional(),
+    publishedAt: z.string().optional(),
+    notes: z.string().optional(),
+  })
+  .superRefine((data, ctx) => {
+    // School lunch menus are Mon–Fri only; holidays/no_school may still use weekends.
+    if (
+      data.category === "menu_day" &&
+      data.date &&
+      isWeekendDateKey(data.date)
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: WEEKEND_MENU_DAY_MESSAGE,
+        path: ["date"],
+      })
+    }
+  })
 
 const mealPhotoSlotSchema = z.enum(["entree", "side", "dessert", "drink", "additional"])
 const mealCategorySchema = z.enum([

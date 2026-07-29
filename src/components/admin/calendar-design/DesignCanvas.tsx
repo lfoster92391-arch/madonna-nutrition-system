@@ -5,7 +5,7 @@ import { X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { getThemeById } from "@/data/calendar-themes"
 import { getFactsForTheme } from "@/data/daily-bite-facts"
-import { DEMO_CALENDAR_DAYS } from "@/lib/calendar-design/defaults"
+import { buildDemoDayMap } from "@/lib/calendar-design/defaults"
 import { CORE_ELEMENT_TYPES, VIEWPORT_WIDTHS } from "@/lib/calendar-design/types"
 import type { DesignElement, DesignPage, ViewportMode } from "@/lib/calendar-design/types"
 
@@ -71,11 +71,10 @@ export function DesignCanvas({
     [page.year, page.month]
   )
 
-  const dayMap = useMemo(() => {
-    const map = new Map<number, (typeof DEMO_CALENDAR_DAYS)[number]>()
-    for (const day of DEMO_CALENDAR_DAYS) map.set(day.day, day)
-    return map
-  }, [])
+  const dayMap = useMemo(
+    () => buildDemoDayMap(page.year, page.month),
+    [page.year, page.month]
+  )
 
   /** Extra blocks sit in normal document flow below the calendar — never as absolute overlays. */
   const extraElements = useMemo(() => {
@@ -180,7 +179,10 @@ export function DesignCanvas({
                         key={idx}
                         className={cn(
                           "min-h-[56px] border-b border-r p-1 text-[10px] sm:min-h-[72px] sm:p-1.5 sm:text-xs",
-                          !dayNum && "bg-silver/10"
+                          !dayNum && "bg-silver/10",
+                          dayNum &&
+                            (idx % 7 === 0 || idx % 7 === 6) &&
+                            "bg-silver/15 text-primary/40"
                         )}
                         style={{
                           borderColor: `${theme.colors.border}40`,

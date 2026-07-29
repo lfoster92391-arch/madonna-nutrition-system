@@ -1,8 +1,12 @@
+import { isWeekendDateKey } from "@/lib/calendar"
 import type { CalendarEvent, CalendarPublishStatus } from "@/lib/types"
 
 /** Events visible on parent, staff, and teacher portals. */
 export function isPublicCalendarEvent(event: CalendarEvent): boolean {
-  return (event.publishStatus ?? "draft") === "published"
+  if ((event.publishStatus ?? "draft") !== "published") return false
+  // Never surface school lunch menus on weekends, even if mis-scheduled in admin.
+  if (event.category === "menu_day" && isWeekendDateKey(event.date)) return false
+  return true
 }
 
 export function filterPublicCalendarEvents(events: CalendarEvent[]): CalendarEvent[] {

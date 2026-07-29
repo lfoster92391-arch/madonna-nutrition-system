@@ -19,6 +19,7 @@ import { Card } from "@/components/ui/card"
 import { Label, Select } from "@/components/ui/input"
 import { formatCurrency } from "@/lib/utils"
 import { filterPublicCalendarEvents } from "@/lib/calendar-publish"
+import { isSchoolLunchDateKey } from "@/lib/calendar"
 
 type MealType = "MAIN" | "SIDE" | "ALA_CARTE" | "MILK"
 
@@ -60,7 +61,10 @@ export default function ParentReserveLunchPage() {
   const menuDates = useMemo(() => {
     const today = new Date().toISOString().slice(0, 10)
     return publicEvents
-      .filter((e) => e.category === "menu_day" && e.date >= today)
+      .filter(
+        (e) =>
+          e.category === "menu_day" && e.date >= today && isSchoolLunchDateKey(e.date)
+      )
       .map((e) => e.date)
       .filter((date, index, arr) => arr.indexOf(date) === index)
       .sort()

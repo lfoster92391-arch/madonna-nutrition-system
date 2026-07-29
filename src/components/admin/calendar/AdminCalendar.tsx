@@ -29,6 +29,9 @@ import {
   formatMonthYear,
   getAccentHex,
   getEventColor,
+  isSchoolLunchDateKey,
+  isWeekendDateKey,
+  WEEKEND_MENU_DAY_MESSAGE,
 } from "@/lib/calendar"
 import type { CalendarEvent, CalendarEventCategory, CalendarPublishStatus } from "@/lib/types"
 import type { MealTemplate } from "@/lib/types"
@@ -167,6 +170,10 @@ export function AdminCalendar() {
 
   async function quickAddFromCookbook(template: MealTemplate, publish = true) {
     if (!selectedDate) return
+    if (!isSchoolLunchDateKey(selectedDate)) {
+      flashPublish(WEEKEND_MENU_DAY_MESSAGE)
+      return
+    }
     const itemsList = template.items.map((i) => i.name).join(", ")
     await addCalendarEvent({
       title: template.name,
@@ -186,6 +193,10 @@ export function AdminCalendar() {
 
   async function handleSaveEvent() {
     if (!eventForm.title.trim() || !eventForm.date) return
+    if (eventForm.category === "menu_day" && !isSchoolLunchDateKey(eventForm.date)) {
+      flashPublish(WEEKEND_MENU_DAY_MESSAGE)
+      return
+    }
     const publishStatus: CalendarPublishStatus = eventForm.publishToCalendar ? "published" : "draft"
     const payload = {
       title: eventForm.title.trim(),
@@ -337,7 +348,16 @@ export function AdminCalendar() {
                 </CardTitle>
               </CardHeader>
               <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 sm:mx-0 sm:overflow-visible sm:pb-0">
-                <Button size="sm" variant="outline" className="shrink-0" onClick={() => setShowCookbookPicker(true)}>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="shrink-0"
+                  disabled={isWeekendDateKey(selectedDate)}
+                  title={
+                    isWeekendDateKey(selectedDate) ? WEEKEND_MENU_DAY_MESSAGE : undefined
+                  }
+                  onClick={() => setShowCookbookPicker(true)}
+                >
                   <UtensilsCrossed className="h-4 w-4" />
                   Add from Cookbook
                 </Button>
@@ -353,6 +373,11 @@ export function AdminCalendar() {
                 </Button>
               </div>
             </div>
+            {isWeekendDateKey(selectedDate) && (
+              <p className="mb-4 rounded-xl border border-warning/30 bg-warning/10 px-3 py-2 text-sm text-primary">
+                {WEEKEND_MENU_DAY_MESSAGE} You can still add holidays or no-school notes.
+              </p>
+            )}
             {selectedEvents.length === 0 ? (
               <p className="text-sm text-silver-foreground">No events scheduled for this day.</p>
             ) : (
@@ -448,6 +473,9 @@ export function AdminCalendar() {
                   value={eventForm.date}
                   onChange={(e) => setEventForm({ ...eventForm, date: e.target.value })}
                 />
+                {eventForm.category === "menu_day" && isWeekendDateKey(eventForm.date) && (
+                  <p className="mt-1.5 text-sm text-danger">{WEEKEND_MENU_DAY_MESSAGE}</p>
+                )}
               </div>
               <div>
                 <Label>Category</Label>
@@ -509,7 +537,12 @@ export function AdminCalendar() {
               </div>
             </div>
             <div className="mt-4 flex gap-3">
-              <Button onClick={handleSaveEvent}>
+              <Button
+                onClick={handleSaveEvent}
+                disabled={
+                  eventForm.category === "menu_day" && !isSchoolLunchDateKey(eventForm.date)
+                }
+              >
                 {editingEvent ? "Update" : "Schedule"}
                 {eventForm.publishToCalendar ? " & Publish" : ""}
               </Button>

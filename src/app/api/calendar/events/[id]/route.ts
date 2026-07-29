@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma"
 import { mapCalendarEvent } from "@/lib/db/mappers"
 import { resolveSchoolId } from "@/lib/db/school"
 import { calendarEventSchema } from "@/lib/api/validation"
+import { isWeekendDateKey, WEEKEND_MENU_DAY_MESSAGE } from "@/lib/calendar"
 import { badRequest, notFound, serverError, withDatabase } from "@/lib/api/response"
 
 type RouteParams = { params: Promise<{ id: string }> }
@@ -22,6 +23,12 @@ export async function PATCH(request: Request, { params }: RouteParams) {
       if (!existing) return notFound("Calendar event not found")
 
       const data = parsed.data
+      const nextCategory = data.category ?? existing.category
+      const nextDateKey = data.date ?? existing.date.toISOString().slice(0, 10)
+      if (nextCategory === "menu_day" && isWeekendDateKey(nextDateKey)) {
+        return badRequest(WEEKEND_MENU_DAY_MESSAGE)
+      }
+
       const nextPublishStatus = data.publishStatus
       const publishedAt =
         data.publishedAt != null

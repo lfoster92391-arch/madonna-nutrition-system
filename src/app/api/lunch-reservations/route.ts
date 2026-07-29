@@ -8,6 +8,7 @@ import { resolveSchoolId } from "@/lib/db/school"
 import { prisma } from "@/lib/prisma"
 import { badRequest, forbidden, notFound, serverError, withDatabase } from "@/lib/api/response"
 import { getSessionUserId } from "@/lib/api/session-auth"
+import { isWeekendDateKey, WEEKEND_MENU_DAY_MESSAGE } from "@/lib/calendar"
 
 const createReservationSchema = z.object({
   parentUserId: z.string().min(1),
@@ -144,6 +145,10 @@ export async function POST(request: Request) {
       }
 
       const eventDate = new Date(`${date}T12:00:00.000Z`)
+      if (isWeekendDateKey(date)) {
+        return badRequest(WEEKEND_MENU_DAY_MESSAGE)
+      }
+
       const menuEvent = await prisma.calendarEvent.findFirst({
         where: {
           schoolId: student.schoolId,
