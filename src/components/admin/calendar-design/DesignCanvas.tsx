@@ -141,7 +141,7 @@ export function DesignCanvas({
               </p>
               <h1 className="relative mt-1 text-xl font-bold sm:text-2xl">{page.title}</h1>
               <p className="relative mt-1 text-xs opacity-90 sm:text-sm">
-                {theme.emoji} {theme.name} Theme
+                {theme.emoji} {theme.name}
               </p>
             </div>
 
