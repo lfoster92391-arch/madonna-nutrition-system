@@ -57,6 +57,7 @@ import {
   sortMealTemplates,
 } from "@/lib/meal-templates"
 import { uploadMealPhoto } from "@/lib/meal-photo-upload"
+import { isSchoolLunchDateKey, isWeekendDateKey, WEEKEND_MENU_DAY_MESSAGE } from "@/lib/calendar"
 import type {
   GradeAvailability,
   MealCategory,
@@ -141,9 +142,14 @@ export function MenuLibraryManager() {
   const [dragSlot, setDragSlot] = useState<MealPhotoSlot | null>(null)
   const [saveFlash, setSaveFlash] = useState(false)
   const [showScheduleModal, setShowScheduleModal] = useState(false)
-  const [scheduleDate, setScheduleDate] = useState(() => new Date().toISOString().slice(0, 10))
+  const [scheduleDate, setScheduleDate] = useState(() => {
+    const d = new Date()
+    while (d.getDay() === 0 || d.getDay() === 6) d.setDate(d.getDate() + 1)
+    return d.toISOString().slice(0, 10)
+  })
   const [schedulePublish, setSchedulePublish] = useState(true)
   const [scheduleSaving, setScheduleSaving] = useState(false)
+  const [sideInput, setSideInput] = useState("")
   const fileInputRefs = useRef<Partial<Record<MealPhotoSlot, HTMLInputElement | null>>>({})
 
   const unreadCount = notifications.filter((n) => !n.read).length
@@ -185,6 +191,7 @@ export function MenuLibraryManager() {
   const selectTemplate = useCallback((template: MealTemplate) => {
     setSelectedId(template.id)
     setDraft(templateToDraft(template))
+    setSideInput("")
     setIsCreating(false)
     setEditorTab("details")
   }, [])
@@ -192,6 +199,7 @@ export function MenuLibraryManager() {
   const closePanel = () => {
     setSelectedId(null)
     setDraft(null)
+    setSideInput("")
     setIsCreating(false)
   }
 
@@ -202,6 +210,7 @@ export function MenuLibraryManager() {
     const temp: MealTemplate = { ...blank, id: "new", createdAt: now, updatedAt: now }
     setDraft(temp)
     setSelectedId(null)
+    setSideInput("")
     setIsCreating(true)
     setEditorTab("details")
   }
@@ -251,6 +260,7 @@ export function MenuLibraryManager() {
 
   const handleScheduleToCalendar = async () => {
     if (!draft?.name.trim() || !scheduleDate) return
+    if (!isSchoolLunchDateKey(scheduleDate)) return
     setScheduleSaving(true)
     try {
       let templateId = selectedId
@@ -352,14 +362,27 @@ export function MenuLibraryManager() {
     setDraft({ ...draft, items: next.map((item, i) => ({ ...item, sortOrder: i })) })
   }
 
-  const addCompositionItem = () => {
+  const addSide = (rawName?: string) => {
     if (!draft) return
+    const name = (rawName ?? sideInput).trim()
+    if (!name) return
     const item: MealTemplateItem = {
       id: `mti-local-${Date.now()}`,
-      name: "New Item",
+      name,
       sortOrder: draft.items.length,
     }
     setDraft({ ...draft, items: [...draft.items, item] })
+    setSideInput("")
+  }
+
+  const removeItem = (id: string) => {
+    if (!draft) return
+    setDraft({
+      ...draft,
+      items: draft.items
+        .filter((item) => item.id !== id)
+        .map((item, i) => ({ ...item, sortOrder: i })),
+    })
   }
 
   const toggleAllergen = (allergen: string) => {
@@ -941,7 +964,11 @@ export function MenuLibraryManager() {
                       <p className="text-xs font-bold uppercase tracking-wider text-silver-foreground">
                         Photos & Composition
                       </p>
-                      <button type="button" className="text-xs font-semibold text-primary hover:underline">
+                      <button
+                        type="button"
+                        onClick={() => setEditorTab("photos")}
+                        className="text-xs font-semibold text-primary hover:underline"
+                      >
                         Edit Order
                       </button>
                     </div>
@@ -982,6 +1009,83 @@ export function MenuLibraryManager() {
                         <span className="mt-1 text-[10px] font-semibold">Add Item</span>
                       </button>
                     </div>
+                  </div>
+
+                  <div>
+                    <Label>Sides</Label>
+                    <p className="mb-2 text-xs text-silver-foreground">
+                      Type a side dish and press Add or Enter.
+                    </p>
+                    <div className="flex gap-2">
+                      <Input
+                        value={sideInput}
+                        onChange={(e) => setSideInput(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault()
+                            addSide()
+                          }
+                        }}
+                        placeholder="e.g. Green beans, Dinner roll…"
+                        className="h-11 flex-1"
+                      />
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={() => addSide()}
+                        disabled={!sideInput.trim()}
+                        className="h-11 shrink-0 rounded-2xl px-4 font-semibold"
+                        style={{ backgroundColor: NAVY }}
+                      >
+                        <Plus className="h-4 w-4" />
+                        Add
+                      </Button>
+                    </div>
+                    {draft.items.length > 0 ? (
+                      <ul className="mt-3 space-y-2">
+                        {draft.items.map((item, index) => (
+                          <li
+                            key={item.id}
+                            className="flex items-center gap-2 rounded-2xl border border-silver/60 bg-silver/5 px-3 py-2"
+                          >
+                            <Leaf className="h-3.5 w-3.5 shrink-0" style={{ color: NAVY }} />
+                            <span className="min-w-0 flex-1 truncate text-sm font-medium text-primary">
+                              {item.name}
+                            </span>
+                            <div className="flex shrink-0 items-center gap-0.5">
+                              <button
+                                type="button"
+                                disabled={index === 0}
+                                onClick={() => moveItem(index, -1)}
+                                className="rounded-lg p-1 text-silver-foreground hover:bg-white hover:text-primary disabled:opacity-30"
+                                aria-label="Move side up"
+                              >
+                                <ArrowUp className="h-3.5 w-3.5" />
+                              </button>
+                              <button
+                                type="button"
+                                disabled={index === draft.items.length - 1}
+                                onClick={() => moveItem(index, 1)}
+                                className="rounded-lg p-1 text-silver-foreground hover:bg-white hover:text-primary disabled:opacity-30"
+                                aria-label="Move side down"
+                              >
+                                <ArrowDown className="h-3.5 w-3.5" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => removeItem(item.id)}
+                                className="rounded-lg p-1 text-silver-foreground hover:bg-white hover:text-danger"
+                                aria-label={`Remove ${item.name}`}
+                              >
+                                <X className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="mt-2 text-xs text-silver-foreground">No sides added yet.</p>
+                    )}
                   </div>
 
                   <div>
@@ -1087,14 +1191,41 @@ export function MenuLibraryManager() {
                   </div>
 
                   <div>
-                    <div className="mb-2 flex items-center justify-between">
-                      <Label>Meal Composition</Label>
-                      <Button size="sm" variant="outline" onClick={addCompositionItem}>
-                        <Plus className="h-3 w-3" />
+                    <Label>Sides</Label>
+                    <p className="mb-2 text-xs text-silver-foreground">
+                      Type a side dish name, then Add or press Enter. Reorder with the arrows.
+                    </p>
+                    <div className="mb-3 flex gap-2">
+                      <Input
+                        value={sideInput}
+                        onChange={(e) => setSideInput(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault()
+                            addSide()
+                          }
+                        }}
+                        placeholder="e.g. Corn, Fruit cup, Salad…"
+                        className="h-11 flex-1"
+                      />
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={() => addSide()}
+                        disabled={!sideInput.trim()}
+                        className="h-11 shrink-0 rounded-2xl px-4 font-semibold"
+                        style={{ backgroundColor: NAVY }}
+                      >
+                        <Plus className="h-4 w-4" />
                         Add
                       </Button>
                     </div>
                     <div className="space-y-2">
+                      {draft.items.length === 0 && (
+                        <p className="rounded-2xl border border-dashed border-silver/60 px-4 py-6 text-center text-sm text-silver-foreground">
+                          No sides yet — add one above.
+                        </p>
+                      )}
                       {draft.items.map((item, index) => (
                         <Card
                           key={item.id}
@@ -1106,6 +1237,7 @@ export function MenuLibraryManager() {
                               disabled={index === 0}
                               onClick={() => moveItem(index, -1)}
                               className="text-silver-foreground hover:text-primary disabled:opacity-30"
+                              aria-label="Move side up"
                             >
                               <ArrowUp className="h-4 w-4" />
                             </button>
@@ -1114,6 +1246,7 @@ export function MenuLibraryManager() {
                               disabled={index === draft.items.length - 1}
                               onClick={() => moveItem(index, 1)}
                               className="text-silver-foreground hover:text-primary disabled:opacity-30"
+                              aria-label="Move side down"
                             >
                               <ArrowDown className="h-4 w-4" />
                             </button>
@@ -1127,7 +1260,16 @@ export function MenuLibraryManager() {
                               setDraft({ ...draft, items })
                             }}
                             className="h-10 flex-1"
+                            aria-label="Side name"
                           />
+                          <button
+                            type="button"
+                            onClick={() => removeItem(item.id)}
+                            className="rounded-xl p-2 text-silver-foreground transition hover:bg-danger/10 hover:text-danger"
+                            aria-label={`Remove ${item.name}`}
+                          >
+                            <X className="h-4 w-4" />
+                          </button>
                         </Card>
                       ))}
                     </div>
@@ -1393,6 +1535,9 @@ export function MenuLibraryManager() {
                   value={scheduleDate}
                   onChange={(e) => setScheduleDate(e.target.value)}
                 />
+                {isWeekendDateKey(scheduleDate) && (
+                  <p className="mt-1.5 text-sm text-danger">{WEEKEND_MENU_DAY_MESSAGE}</p>
+                )}
               </div>
               <label className="flex cursor-pointer items-center gap-3 rounded-2xl border border-silver/60 px-4 py-3">
                 <input
@@ -1411,7 +1556,7 @@ export function MenuLibraryManager() {
               <Button
                 className="flex-1"
                 style={{ backgroundColor: NAVY }}
-                disabled={!scheduleDate || scheduleSaving}
+                disabled={!scheduleDate || scheduleSaving || !isSchoolLunchDateKey(scheduleDate)}
                 onClick={handleScheduleToCalendar}
               >
                 {scheduleSaving ? "Scheduling…" : schedulePublish ? "Schedule & Publish" : "Schedule"}
