@@ -183,6 +183,9 @@ export function AdminCalendarDesigner() {
   }
 
   async function handleDeleteEvent(id: string) {
+    const event = calendarEvents.find((e) => e.id === id)
+    const label = event?.title?.trim() || "this event"
+    if (!window.confirm(`Delete "${label}"? This cannot be undone.`)) return
     await deleteCalendarEvent(id)
     setShowEventForm(false)
     setEditingEvent(null)
@@ -301,10 +304,10 @@ export function AdminCalendarDesigner() {
                       return (
                         <div
                           key={event.id}
-                          className="flex items-start justify-between gap-4 rounded-2xl border border-silver/40 p-4"
+                          className="flex flex-col gap-3 rounded-2xl border border-silver/40 p-4 sm:flex-row sm:items-start sm:justify-between sm:gap-4"
                         >
-                          <div>
-                            <div className="flex items-center gap-2">
+                          <div className="min-w-0">
+                            <div className="flex flex-wrap items-center gap-2">
                               <span
                                 className="rounded-lg px-2 py-0.5 text-xs font-bold uppercase"
                                 style={{ backgroundColor: `${color}20`, color }}
@@ -317,16 +320,25 @@ export function AdminCalendarDesigner() {
                               <p className="mt-1 text-sm text-silver-foreground">{event.description}</p>
                             )}
                           </div>
-                          <div className="flex shrink-0 gap-2">
-                            <Button size="sm" variant="outline" onClick={() => startEditEvent(event)}>
+                          <div className="flex shrink-0 flex-wrap items-center gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => startEditEvent(event)}
+                              aria-label={`Edit ${event.title}`}
+                            >
                               <Pencil className="h-4 w-4" />
+                              Edit
                             </Button>
                             <Button
                               size="sm"
-                              variant="ghost"
+                              variant="outline"
+                              className="text-danger hover:bg-danger/10"
                               onClick={() => handleDeleteEvent(event.id)}
+                              aria-label={`Delete ${event.title}`}
                             >
-                              <Trash2 className="h-4 w-4 text-danger" />
+                              <Trash2 className="h-4 w-4" />
+                              Delete
                             </Button>
                           </div>
                         </div>

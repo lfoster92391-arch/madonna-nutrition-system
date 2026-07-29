@@ -253,6 +253,9 @@ export function AdminCalendar() {
   }
 
   async function handleDeleteEvent(id: string) {
+    const event = calendarEvents.find((e) => e.id === id)
+    const label = event?.title?.trim() || "this event"
+    if (!window.confirm(`Delete "${label}"? This cannot be undone.`)) return
     await deleteCalendarEvent(id)
     setShowEventForm(false)
     setEditingEvent(null)
@@ -392,9 +395,9 @@ export function AdminCalendar() {
                   return (
                     <div
                       key={event.id}
-                      className="flex items-start justify-between gap-4 rounded-2xl border border-silver/40 p-4"
+                      className="flex flex-col gap-3 rounded-2xl border border-silver/40 p-4 sm:flex-row sm:items-start sm:justify-between sm:gap-4"
                     >
-                      <div className="flex gap-3">
+                      <div className="flex min-w-0 gap-3">
                         {cover && (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img
@@ -403,7 +406,7 @@ export function AdminCalendar() {
                             className="h-16 w-16 shrink-0 rounded-xl object-cover"
                           />
                         )}
-                        <div>
+                        <div className="min-w-0">
                           <div className="flex flex-wrap items-center gap-2">
                             <span
                               className="rounded-lg px-2 py-0.5 text-xs font-bold uppercase"
@@ -431,17 +434,36 @@ export function AdminCalendar() {
                           )}
                         </div>
                       </div>
-                      <div className="flex shrink-0 gap-2">
+                      <div className="flex shrink-0 flex-wrap items-center gap-2">
                         {event.publishStatus !== "published" && (
-                          <Button size="sm" variant="outline" onClick={() => handlePublishEvent(event.id)}>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handlePublishEvent(event.id)}
+                            aria-label={`Publish ${event.title}`}
+                          >
                             <Globe className="h-4 w-4" />
+                            Publish
                           </Button>
                         )}
-                        <Button size="sm" variant="outline" onClick={() => startEditEvent(event)}>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => startEditEvent(event)}
+                          aria-label={`Edit ${event.title}`}
+                        >
                           <Pencil className="h-4 w-4" />
+                          Edit
                         </Button>
-                        <Button size="sm" variant="ghost" onClick={() => handleDeleteEvent(event.id)}>
-                          <Trash2 className="h-4 w-4 text-danger" />
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-danger hover:bg-danger/10"
+                          onClick={() => handleDeleteEvent(event.id)}
+                          aria-label={`Delete ${event.title}`}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                          Delete
                         </Button>
                       </div>
                     </div>
@@ -536,7 +558,7 @@ export function AdminCalendar() {
                 </label>
               </div>
             </div>
-            <div className="mt-4 flex gap-3">
+            <div className="mt-4 flex flex-wrap gap-3">
               <Button
                 onClick={handleSaveEvent}
                 disabled={
@@ -549,6 +571,12 @@ export function AdminCalendar() {
               <Button variant="outline" onClick={() => setShowEventForm(false)}>
                 Cancel
               </Button>
+              {editingEvent && (
+                <Button variant="danger" onClick={() => handleDeleteEvent(editingEvent.id)}>
+                  <Trash2 className="h-4 w-4" />
+                  Delete
+                </Button>
+              )}
             </div>
           </Card>
         )}
