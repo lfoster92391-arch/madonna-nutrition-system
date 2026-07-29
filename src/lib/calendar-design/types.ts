@@ -70,7 +70,8 @@ export interface CalendarDesignDocument {
   updatedAt: string
 }
 
-export const ELEMENT_CATALOG: { type: DesignElementType; label: string; icon: string }[] = [
+/** Full catalog kept for type coverage; UI uses BASIC_ELEMENT_CATALOG. */
+export const ELEMENT_CATALOG: { type: DesignElementType; label: string; icon: string; hint?: string }[] = [
   { type: "calendar_grid", label: "Calendar Grid", icon: "📅" },
   { type: "event_box", label: "Event Box", icon: "📋" },
   { type: "meal_card", label: "Meal Card", icon: "🍽️" },
@@ -88,6 +89,28 @@ export const ELEMENT_CATALOG: { type: DesignElementType; label: string; icon: st
   { type: "countdown", label: "Countdown", icon: "⏳" },
   { type: "seasonal_banner", label: "Seasonal Banner", icon: "🎉" },
   { type: "nutrition_box", label: "Nutrition Box", icon: "🥗" },
+]
+
+/** Approachable subset shown in the Elements panel. */
+export const BASIC_ELEMENT_CATALOG: {
+  type: DesignElementType
+  label: string
+  icon: string
+  hint: string
+}[] = [
+  { type: "announcement", label: "Announcement", icon: "📢", hint: "School note or reminder" },
+  { type: "meal_card", label: "Meal highlight", icon: "🍽️", hint: "Feature a lunch item" },
+  { type: "did_you_know", label: "Did You Know", icon: "💡", hint: "Fun nutrition fact" },
+  { type: "staff_pick", label: "Staff Pick", icon: "👩‍🏫", hint: "Favorite meal shout-out" },
+  { type: "nutrition_box", label: "Nutrition tip", icon: "🥗", hint: "Healthy eating tip" },
+  { type: "text_box", label: "Text note", icon: "📝", hint: "Custom message" },
+]
+
+/** Built-in page blocks that live in the main canvas layout (not free-floating overlays). */
+export const CORE_ELEMENT_TYPES: DesignElementType[] = [
+  "calendar_grid",
+  "did_you_know",
+  "staff_pick",
 ]
 
 export const VIEWPORT_WIDTHS: Record<ViewportMode, string> = {

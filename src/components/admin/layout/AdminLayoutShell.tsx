@@ -1,5 +1,6 @@
 "use client"
 
+import { usePathname } from "next/navigation"
 import { AdminFooter } from "@/components/admin/layout/AdminFooter"
 import { AdminLayoutProvider } from "@/components/admin/layout/admin-layout-context"
 import { AdminQuickActionBar } from "@/components/admin/layout/AdminQuickActionBar"
@@ -7,8 +8,12 @@ import { AdminSidebar } from "@/components/admin/layout/AdminSidebar"
 import { AdminTopBar } from "@/components/admin/layout/AdminTopBar"
 import { AdminUtilityRail } from "@/components/admin/layout/AdminUtilityRail"
 import { ADMIN_BG } from "@/components/admin/layout/admin-theme"
+import { cn } from "@/lib/utils"
 
 export function AdminLayoutShell({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname()
+  const isDesignStudio = pathname?.startsWith("/admin/calendar/design") ?? false
+
   return (
     <AdminLayoutProvider>
       <div
@@ -21,12 +26,19 @@ export function AdminLayoutShell({ children }: { children: React.ReactNode }) {
             <AdminTopBar />
             <AdminQuickActionBar />
             <div className="flex min-h-0 min-w-0 flex-1">
-              <main className="min-w-0 flex-1 overflow-y-auto">
+              <main
+                className={cn(
+                  "min-w-0 flex-1",
+                  isDesignStudio
+                    ? "flex min-h-0 flex-col overflow-hidden"
+                    : "overflow-y-auto"
+                )}
+              >
                 {children}
               </main>
-              <AdminUtilityRail />
+              {!isDesignStudio ? <AdminUtilityRail /> : null}
             </div>
-            <AdminFooter />
+            {!isDesignStudio ? <AdminFooter /> : null}
           </div>
         </div>
       </div>

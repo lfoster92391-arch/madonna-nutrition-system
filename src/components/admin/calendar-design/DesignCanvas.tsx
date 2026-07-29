@@ -1,11 +1,12 @@
 "use client"
 
 import { useMemo } from "react"
+import { X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { getThemeById } from "@/data/calendar-themes"
 import { getFactsForTheme } from "@/data/daily-bite-facts"
 import { DEMO_CALENDAR_DAYS } from "@/lib/calendar-design/defaults"
-import { VIEWPORT_WIDTHS } from "@/lib/calendar-design/types"
+import { CORE_ELEMENT_TYPES, VIEWPORT_WIDTHS } from "@/lib/calendar-design/types"
 import type { DesignElement, DesignPage, ViewportMode } from "@/lib/calendar-design/types"
 
 interface DesignCanvasProps {
@@ -15,6 +16,7 @@ interface DesignCanvasProps {
   showGrid: boolean
   selectedElementId: string | null
   onSelectElement: (id: string | null) => void
+  onRemoveElement?: (id: string) => void
 }
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
@@ -35,14 +37,21 @@ function getLabelColor(
   }
 }
 
-function buildFebruaryGrid(year: number) {
-  const firstDay = new Date(year, 1, 1).getDay()
-  const daysInMonth = new Date(year, 2, 0).getDate()
+function buildMonthGrid(year: number, month: number) {
+  const monthIndex = month - 1
+  const firstDay = new Date(year, monthIndex, 1).getDay()
+  const daysInMonth = new Date(year, monthIndex + 1, 0).getDate()
   const cells: (number | null)[] = []
   for (let i = 0; i < firstDay; i++) cells.push(null)
   for (let d = 1; d <= daysInMonth; d++) cells.push(d)
   while (cells.length % 7 !== 0) cells.push(null)
   return cells
+}
+
+function blockPreviewLabel(el: DesignElement): string {
+  if (el.mealRef?.name) return el.mealRef.name
+  if (el.content?.trim()) return el.content.trim()
+  return el.label
 }
 
 export function DesignCanvas({
@@ -52,11 +61,15 @@ export function DesignCanvas({
   showGrid,
   selectedElementId,
   onSelectElement,
+  onRemoveElement,
 }: DesignCanvasProps) {
   const theme = getThemeById(page.themeId)
   const fact = getFactsForTheme(page.themeId)[0]
   const staffPick = page.elements.find((el) => el.type === "staff_pick")?.staffPick
-  const gridCells = useMemo(() => buildFebruaryGrid(page.year), [page.year])
+  const gridCells = useMemo(
+    () => buildMonthGrid(page.year, page.month),
+    [page.year, page.month]
+  )
 
   const dayMap = useMemo(() => {
     const map = new Map<number, (typeof DEMO_CALENDAR_DAYS)[number]>()
@@ -64,16 +77,35 @@ export function DesignCanvas({
     return map
   }, [])
 
+  /** Extra blocks sit in normal document flow below the calendar — never as absolute overlays. */
+  const extraElements = useMemo(() => {
+    const seenCore = new Set<string>()
+    return page.elements.filter((el) => {
+      if (CORE_ELEMENT_TYPES.includes(el.type)) {
+        if (seenCore.has(el.type)) return true
+        seenCore.add(el.type)
+        return false
+      }
+      return true
+    })
+  }, [page.elements])
+
   const canvasWidth = VIEWPORT_WIDTHS[viewport]
 
   return (
-    <div className="relative flex min-w-0 flex-1 flex-col overflow-hidden bg-silver/20">
-      <div className="flex flex-1 items-start justify-center overflow-auto p-2 sm:p-4 lg:p-6">
+    <div className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-silver/20">
+      <div className="flex min-h-0 flex-1 items-start justify-center overflow-auto overscroll-contain p-2 sm:p-3 lg:p-4 xl:p-6">
         <div
           className="relative origin-top transition-transform duration-200"
-          style={{ transform: `scale(${zoom})`, width: canvasWidth, maxWidth: "100%" }}
+          style={{
+            transform: `scale(${zoom})`,
+            width: canvasWidth,
+            maxWidth: "100%",
+            marginBottom: zoom < 1 ? undefined : `${Math.max(0, (zoom - 1) * 40)}px`,
+          }}
         >
           <div
+            role="presentation"
             className={cn(
               "relative overflow-hidden rounded-[20px] border-2 shadow-xl",
               showGrid && "bg-grid-pattern"
@@ -82,10 +114,11 @@ export function DesignCanvas({
               backgroundColor: theme.colors.background,
               borderColor: theme.colors.border,
             }}
+            onClick={() => onSelectElement(null)}
           >
             {showGrid && (
               <div
-                className="pointer-events-none absolute inset-0 opacity-20"
+                className="pointer-events-none absolute inset-0 z-0 opacity-20"
                 style={{
                   backgroundImage:
                     "linear-gradient(to right, #041B52 1px, transparent 1px), linear-gradient(to bottom, #041B52 1px, transparent 1px)",
@@ -94,33 +127,38 @@ export function DesignCanvas({
               />
             )}
 
-            {/* Theme header */}
             <div
-              className="relative px-6 py-5 text-center"
+              className="relative z-[1] px-4 py-4 text-center sm:px-6 sm:py-5"
               style={{ background: theme.colors.headerBg, color: theme.colors.headerText }}
             >
-              <div className="absolute inset-0 flex items-center justify-between px-4 text-2xl opacity-40">
+              <div className="pointer-events-none absolute inset-0 flex items-center justify-between px-3 text-xl opacity-40 sm:px-4 sm:text-2xl">
                 {theme.decorations.map((d, i) => (
                   <span key={i}>{d}</span>
                 ))}
               </div>
-              <p className="relative text-xs font-bold uppercase tracking-[0.25em] opacity-90">
+              <p className="relative text-[10px] font-bold uppercase tracking-[0.25em] opacity-90 sm:text-xs">
                 Madonna Nutrition Services
               </p>
-              <h1 className="relative mt-1 text-2xl font-bold">{page.title}</h1>
-              <p className="relative mt-1 text-sm opacity-90">
+              <h1 className="relative mt-1 text-xl font-bold sm:text-2xl">{page.title}</h1>
+              <p className="relative mt-1 text-xs opacity-90 sm:text-sm">
                 {theme.emoji} {theme.name} Theme
               </p>
             </div>
 
-            <div className="p-4">
-              {/* Calendar grid */}
+            <div className="relative z-[1] p-3 sm:p-4">
               <div
                 className="mb-4 overflow-hidden rounded-2xl border"
                 style={{ borderColor: theme.colors.border }}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onSelectElement("el-calendar-grid")
+                }}
               >
                 <div
-                  className="grid grid-cols-7 border-b text-center text-xs font-bold uppercase tracking-wide"
+                  className={cn(
+                    "grid grid-cols-7 border-b text-center text-[10px] font-bold uppercase tracking-wide sm:text-xs",
+                    selectedElementId === "el-calendar-grid" && "ring-2 ring-inset ring-primary"
+                  )}
                   style={{
                     borderColor: theme.colors.border,
                     backgroundColor: theme.colors.secondary,
@@ -141,7 +179,7 @@ export function DesignCanvas({
                       <div
                         key={idx}
                         className={cn(
-                          "min-h-[72px] border-b border-r p-1.5 text-xs",
+                          "min-h-[56px] border-b border-r p-1 text-[10px] sm:min-h-[72px] sm:p-1.5 sm:text-xs",
                           !dayNum && "bg-silver/10"
                         )}
                         style={{
@@ -154,7 +192,7 @@ export function DesignCanvas({
                             <span className="font-bold">{dayNum}</span>
                             {meal && (
                               <div
-                                className="mt-1 rounded-md px-1 py-0.5 text-[9px] font-semibold leading-tight text-white"
+                                className="mt-1 rounded-md px-1 py-0.5 text-[8px] font-semibold leading-tight text-white sm:text-[9px]"
                                 style={{
                                   backgroundColor: getLabelColor(meal.label, theme.colors),
                                 }}
@@ -170,14 +208,15 @@ export function DesignCanvas({
                 </div>
               </div>
 
-              {/* Bottom widgets row */}
-              <div className="grid grid-cols-2 gap-3">
-                {/* Did You Know */}
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <button
                   type="button"
-                  onClick={() => onSelectElement("el-did-you-know")}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onSelectElement("el-did-you-know")
+                  }}
                   className={cn(
-                    "rounded-2xl border-2 p-4 text-left transition",
+                    "rounded-2xl border-2 p-3 text-left transition sm:p-4",
                     selectedElementId === "el-did-you-know" && "ring-2 ring-primary ring-offset-2"
                   )}
                   style={{
@@ -194,12 +233,14 @@ export function DesignCanvas({
                   </p>
                 </button>
 
-                {/* Staff Pick */}
                 <button
                   type="button"
-                  onClick={() => onSelectElement("el-staff-pick")}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onSelectElement("el-staff-pick")
+                  }}
                   className={cn(
-                    "rounded-2xl border-2 p-4 text-left transition",
+                    "rounded-2xl border-2 p-3 text-left transition sm:p-4",
                     selectedElementId === "el-staff-pick" && "ring-2 ring-primary ring-offset-2"
                   )}
                   style={{
@@ -211,7 +252,9 @@ export function DesignCanvas({
                   <p className="text-[10px] font-bold uppercase tracking-wider opacity-90">
                     👩‍🏫 {staffPick?.title ?? "Staff Pick of the Week"}
                   </p>
-                  <p className="mt-1 text-lg font-bold">{staffPick?.mealName ?? "Buffalo Chicken Wrap"}</p>
+                  <p className="mt-1 text-lg font-bold">
+                    {staffPick?.mealName ?? "Buffalo Chicken Wrap"}
+                  </p>
                   <p className="mt-1 text-xs opacity-90">
                     {staffPick?.subtitle ?? "This week's favorite from our team"}
                   </p>
@@ -221,53 +264,69 @@ export function DesignCanvas({
                 </button>
               </div>
 
-              {/* Rendered design elements overlay labels */}
-              {page.elements
-                .filter((el) => !["calendar_grid", "did_you_know", "staff_pick"].includes(el.type))
-                .map((el) => (
-                  <ElementOverlay
-                    key={el.id}
-                    element={el}
-                    selected={selectedElementId === el.id}
-                    onSelect={() => onSelectElement(el.id)}
-                    themeText={theme.colors.text}
-                  />
-                ))}
+              {extraElements.length > 0 ? (
+                <div className="relative z-[1] mt-4 space-y-2" onClick={(e) => e.stopPropagation()}>
+                  <p
+                    className="text-[10px] font-bold uppercase tracking-wider"
+                    style={{ color: theme.colors.text }}
+                  >
+                    Added blocks
+                  </p>
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    {extraElements.map((el) => {
+                      const selected = selectedElementId === el.id
+                      return (
+                        <div
+                          key={el.id}
+                          className={cn(
+                            "relative rounded-xl border-2 p-3 text-left transition",
+                            selected && "ring-2 ring-primary ring-offset-2"
+                          )}
+                          style={{
+                            backgroundColor: el.appearance.backgroundColor || theme.colors.secondary,
+                            borderColor: selected
+                              ? theme.colors.accent
+                              : el.appearance.borderColor || theme.colors.border,
+                            color: el.appearance.textColor || theme.colors.text,
+                          }}
+                        >
+                          <button
+                            type="button"
+                            className="w-full text-left"
+                            onClick={() => onSelectElement(selected ? null : el.id)}
+                          >
+                            <p className="text-[10px] font-bold uppercase tracking-wider opacity-70">
+                              {el.label}
+                            </p>
+                            <p className="mt-1 text-sm font-semibold leading-snug">
+                              {blockPreviewLabel(el)}
+                            </p>
+                          </button>
+                          {onRemoveElement ? (
+                            <button
+                              type="button"
+                              className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-lg bg-white/80 text-primary/70 transition hover:bg-white hover:text-primary"
+                              title="Remove block"
+                              aria-label={`Remove ${el.label}`}
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                onRemoveElement(el.id)
+                                if (selected) onSelectElement(null)
+                              }}
+                            >
+                              <X className="h-3.5 w-3.5" />
+                            </button>
+                          ) : null}
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              ) : null}
             </div>
           </div>
         </div>
       </div>
     </div>
-  )
-}
-
-function ElementOverlay({
-  element,
-  selected,
-  onSelect,
-  themeText,
-}: {
-  element: DesignElement
-  selected: boolean
-  onSelect: () => void
-  themeText: string
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onSelect}
-      className={cn(
-        "absolute rounded-xl border-2 border-dashed px-3 py-2 text-xs font-semibold transition",
-        selected ? "border-primary bg-primary/10 ring-2 ring-primary" : "border-primary/30 bg-white/80"
-      )}
-      style={{
-        left: `${element.x}%`,
-        top: `${element.y}%`,
-        width: `${element.width}%`,
-        color: themeText,
-      }}
-    >
-      {element.mealRef?.name ?? element.label}
-    </button>
   )
 }

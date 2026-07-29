@@ -1,5 +1,10 @@
 import type { DesignElement, DesignPage, ElementAppearance } from "@/lib/calendar-design/types"
 
+/** Madonna lunch calendars follow the academic year (Aug–Jun). */
+export const SCHOOL_YEAR_START = 2026
+export const SCHOOL_YEAR_END = 2027
+export const SCHOOL_YEAR_LABEL = `${SCHOOL_YEAR_START}–${SCHOOL_YEAR_END}`
+
 export const DEFAULT_APPEARANCE: ElementAppearance = {
   backgroundColor: "#FFF2F6",
   borderColor: "#F28CB8",
@@ -17,7 +22,7 @@ function createElement(partial: Partial<DesignElement> & Pick<DesignElement, "id
   return { x: 0, y: 0, width: 100, height: 100, appearance: { ...DEFAULT_APPEARANCE }, ...partial }
 }
 
-export function createDefaultPage(month: number, year: number, themeId = "valentines-day"): DesignPage {
+export function createDefaultPage(month: number, year: number, themeId = "back-to-school"): DesignPage {
   const monthNames = ["January","February","March","April","May","June","July","August","September","October","November","December"]
   return {
     id: `page-${year}-${month}`,
@@ -31,9 +36,28 @@ export function createDefaultPage(month: number, year: number, themeId = "valent
   }
 }
 
+/** Default studio document: Aug 2026 → Jun 2027 with seasonal themes. */
 export function createDefaultDocument() {
-  const pages = [createDefaultPage(2, 2026, "valentines-day"), createDefaultPage(3, 2026, "spring-celebration"), createDefaultPage(4, 2026, "spring-celebration"), createDefaultPage(5, 2026, "teacher-appreciation"), createDefaultPage(6, 2026, "pizza-day")]
-  return { id: "design-default", name: "February 2026 Lunch Calendar", pages, activePageId: pages[0].id, updatedAt: new Date().toISOString() }
+  const pages = [
+    createDefaultPage(8, SCHOOL_YEAR_START, "back-to-school"),
+    createDefaultPage(9, SCHOOL_YEAR_START, "back-to-school"),
+    createDefaultPage(10, SCHOOL_YEAR_START, "halloween"),
+    createDefaultPage(11, SCHOOL_YEAR_START, "thanksgiving"),
+    createDefaultPage(12, SCHOOL_YEAR_START, "christmas-lunch"),
+    createDefaultPage(1, SCHOOL_YEAR_END, "new-years"),
+    createDefaultPage(2, SCHOOL_YEAR_END, "valentines-day"),
+    createDefaultPage(3, SCHOOL_YEAR_END, "st-patricks-day"),
+    createDefaultPage(4, SCHOOL_YEAR_END, "easter"),
+    createDefaultPage(5, SCHOOL_YEAR_END, "teacher-appreciation"),
+    createDefaultPage(6, SCHOOL_YEAR_END, "graduation"),
+  ]
+  return {
+    id: "design-default",
+    name: `${SCHOOL_YEAR_LABEL} Lunch Calendar`,
+    pages,
+    activePageId: pages[0].id,
+    updatedAt: new Date().toISOString(),
+  }
 }
 
 export const DEMO_CALENDAR_DAYS = [

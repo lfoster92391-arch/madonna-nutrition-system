@@ -131,7 +131,7 @@ export function PropertiesPanel({
   const appearance = selectedElement?.appearance
 
   return (
-    <aside className={cn("flex h-full w-80 shrink-0 flex-col border-l border-silver bg-white", className)}>
+    <aside className={cn("flex h-full w-72 shrink-0 flex-col border-l border-silver bg-white xl:w-80", className)}>
       <div className="border-b border-silver px-4 py-3">
         <h2 className="text-sm font-bold text-primary">Properties</h2>
         <p className="text-xs text-primary/60">
@@ -294,34 +294,30 @@ export function PropertiesPanel({
           <TabsContent value="layout" className="mt-3 space-y-4">
             {selectedElement ? (
               <>
-                <SliderControl
-                  label="X Position (%)"
-                  value={selectedElement.x}
-                  min={0}
-                  max={100}
-                  onChange={(v) => onUpdateElement(selectedElement.id, { x: v })}
-                />
-                <SliderControl
-                  label="Y Position (%)"
-                  value={selectedElement.y}
-                  min={0}
-                  max={100}
-                  onChange={(v) => onUpdateElement(selectedElement.id, { y: v })}
-                />
-                <SliderControl
-                  label="Width (%)"
-                  value={selectedElement.width}
-                  min={10}
-                  max={100}
-                  onChange={(v) => onUpdateElement(selectedElement.id, { width: v })}
-                />
-                <SliderControl
-                  label="Height (%)"
-                  value={selectedElement.height}
-                  min={5}
-                  max={100}
-                  onChange={(v) => onUpdateElement(selectedElement.id, { height: v })}
-                />
+                <p className="text-[11px] leading-relaxed text-primary/60">
+                  Extra blocks stack below the calendar so they never cover the meal grid.
+                  Adjust colors on the Design tab.
+                </p>
+                {selectedElement.content !== undefined ||
+                ["announcement", "text_box", "nutrition_box", "meal_card"].includes(
+                  selectedElement.type
+                ) ? (
+                  <div>
+                    <Label>Block text</Label>
+                    <Textarea
+                      value={selectedElement.content ?? ""}
+                      onChange={(e) =>
+                        onUpdateElement(selectedElement.id, { content: e.target.value })
+                      }
+                      placeholder="What should this block say?"
+                      className="min-h-[80px] text-sm"
+                    />
+                  </div>
+                ) : (
+                  <p className="py-4 text-center text-sm text-primary/50">
+                    This block uses the Design and Page tabs for its settings.
+                  </p>
+                )}
                 <SliderControl
                   label="Spacing"
                   value={selectedElement.appearance.spacing}

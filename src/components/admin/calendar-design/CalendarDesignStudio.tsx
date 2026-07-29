@@ -24,7 +24,11 @@ import {
   saveDesignDocument,
 } from "@/lib/calendar-design/storage"
 import { DEFAULT_APPEARANCE } from "@/lib/calendar-design/defaults"
-import { ELEMENT_CATALOG } from "@/lib/calendar-design/types"
+import {
+  BASIC_ELEMENT_CATALOG,
+  CORE_ELEMENT_TYPES,
+  ELEMENT_CATALOG,
+} from "@/lib/calendar-design/types"
 import { getMealCoverPhoto } from "@/lib/meal-templates"
 import type { MealTemplate } from "@/lib/types"
 import type {
@@ -36,20 +40,21 @@ import type {
 } from "@/lib/calendar-design/types"
 
 const MAX_HISTORY = 50
-const MOBILE_LAYOUT_QUERY = "(max-width: 1023px)"
+/** Side panels dock inline from xl; below that they open as sheets. */
+const COMPACT_LAYOUT_QUERY = "(max-width: 1279px)"
 
-function useIsMobileLayout() {
-  const [isMobile, setIsMobile] = useState(false)
+function useIsCompactLayout() {
+  const [isCompact, setIsCompact] = useState(false)
 
   useEffect(() => {
-    const media = window.matchMedia(MOBILE_LAYOUT_QUERY)
-    const sync = () => setIsMobile(media.matches)
+    const media = window.matchMedia(COMPACT_LAYOUT_QUERY)
+    const sync = () => setIsCompact(media.matches)
     sync()
     media.addEventListener("change", sync)
     return () => media.removeEventListener("change", sync)
   }, [])
 
-  return isMobile
+  return isCompact
 }
 
 function cloneDoc(doc: CalendarDesignDocument): CalendarDesignDocument {
@@ -57,17 +62,25 @@ function cloneDoc(doc: CalendarDesignDocument): CalendarDesignDocument {
 }
 
 function createElementFromCatalog(type: DesignElementType): DesignElement {
-  const catalog = ELEMENT_CATALOG.find((c) => c.type === type)
+  const catalog =
+    BASIC_ELEMENT_CATALOG.find((c) => c.type === type) ??
+    ELEMENT_CATALOG.find((c) => c.type === type)
   const id = `el-${type}-${Date.now()}`
   return {
     id,
     type,
     label: catalog?.label ?? type,
-    x: 10,
-    y: 10,
-    width: 30,
-    height: 15,
-    appearance: { ...DEFAULT_APPEARANCE },
+    // Flow layout below calendar — these coords are unused for rendering.
+    x: 0,
+    y: 0,
+    width: 100,
+    height: 20,
+    appearance: {
+      ...DEFAULT_APPEARANCE,
+      backgroundColor: "#F8FAFF",
+      borderColor: "#041B52",
+      textColor: "#0A1E3F",
+    },
     ...(type === "staff_pick"
       ? {
           staffPick: {
@@ -88,12 +101,22 @@ function createElementFromCatalog(type: DesignElementType): DesignElement {
           },
         }
       : {}),
+    ...(type === "announcement"
+      ? { content: "Reminder: Please remember your lunch account PIN." }
+      : {}),
+    ...(type === "text_box" ? { content: "Add a short note for families." } : {}),
+    ...(type === "nutrition_box"
+      ? { content: "Pair protein with colorful veggies for lasting energy." }
+      : {}),
+    ...(type === "meal_card"
+      ? { content: "Featured lunch item" }
+      : {}),
   }
 }
 
 export function CalendarDesignStudio() {
   const { mealTemplates, addCalendarEvent, updateMealTemplate, publishCalendarEvents } = useDemo()
-  const isMobileLayout = useIsMobileLayout()
+  const isCompactLayout = useIsCompactLayout()
   const [doc, setDoc] = useState<CalendarDesignDocument>(() => loadDesignDocument())
   const [selectedElementId, setSelectedElementId] = useState<string | null>(null)
   const [cookbookDay, setCookbookDay] = useState(1)
@@ -145,18 +168,24 @@ export function CalendarDesignStudio() {
   useEffect(() => {
     if (!initialized.current) {
       initialized.current = true
-      if (window.matchMedia(MOBILE_LAYOUT_QUERY).matches) {
+      if (window.matchMedia(COMPACT_LAYOUT_QUERY).matches) {
+        setViewport("tablet")
+      }
+      if (window.matchMedia("(max-width: 639px)").matches) {
         setViewport("mobile")
+        setZoom(0.85)
       }
       return
     }
   }, [])
 
   useEffect(() => {
-    if (isMobileLayout) {
-      setViewport((current) => (current === "desktop" || current === "tablet" ? "mobile" : current))
+    if (isCompactLayout) {
+      setViewport((current) =>
+        current === "desktop" ? "tablet" : current
+      )
     }
-  }, [isMobileLayout])
+  }, [isCompactLayout])
 
   const handleUndo = useCallback(() => {
     setHistory((h) => {
@@ -186,6 +215,21 @@ export function CalendarDesignStudio() {
 
   const handleAddElement = useCallback(
     (type: DesignElementType) => {
+      // Core page blocks already exist — select them instead of stacking overlays.
+      if (CORE_ELEMENT_TYPES.includes(type)) {
+        const existing = doc.pages
+          .find((p) => p.id === doc.activePageId)
+          ?.elements.find((el) => el.type === type)
+        if (existing) {
+          setSelectedElementId(existing.id)
+          if (isCompactLayout) {
+            setElementsOpen(false)
+            setPropertiesOpen(true)
+          }
+          return
+        }
+      }
+
       const el = createElementFromCatalog(type)
       updateDoc((prev) => ({
         ...prev,
@@ -194,12 +238,30 @@ export function CalendarDesignStudio() {
         ),
       }))
       setSelectedElementId(el.id)
-      if (isMobileLayout) {
+      if (isCompactLayout) {
         setElementsOpen(false)
         setPropertiesOpen(true)
       }
     },
-    [isMobileLayout, updateDoc]
+    [doc.activePageId, doc.pages, isCompactLayout, updateDoc]
+  )
+
+  const handleRemoveElement = useCallback(
+    (id: string) => {
+      if (id === "el-calendar-grid" || id === "el-did-you-know" || id === "el-staff-pick") {
+        return
+      }
+      updateDoc((prev) => ({
+        ...prev,
+        pages: prev.pages.map((p) =>
+          p.id === prev.activePageId
+            ? { ...p, elements: p.elements.filter((el) => el.id !== id) }
+            : p
+        ),
+      }))
+      setSelectedElementId((current) => (current === id ? null : current))
+    },
+    [updateDoc]
   )
 
   const handleApplyTheme = useCallback(
@@ -318,12 +380,17 @@ export function CalendarDesignStudio() {
       const el: DesignElement = {
         id: `el-meal-${Date.now()}`,
         type: "meal_card",
-        label: template.name,
-        x: 5,
-        y: 55,
-        width: 28,
-        height: 18,
-        appearance: { ...DEFAULT_APPEARANCE },
+        label: "Meal highlight",
+        x: 0,
+        y: 0,
+        width: 100,
+        height: 20,
+        appearance: {
+          ...DEFAULT_APPEARANCE,
+          backgroundColor: "#F8FAFF",
+          borderColor: "#041B52",
+          textColor: "#0A1E3F",
+        },
         mealRef: {
           templateId: template.id,
           name: template.name,
@@ -366,7 +433,32 @@ export function CalendarDesignStudio() {
       nextMonth = 1
       nextYear += 1
     }
-    const newPage = createDefaultPage(nextMonth, nextYear)
+    // Prefer seasonal themes when extending into the next school-year month
+    const seasonalTheme =
+      nextMonth === 7
+        ? "patriotic"
+        : nextMonth === 8 || nextMonth === 9
+          ? "back-to-school"
+          : nextMonth === 10
+            ? "halloween"
+            : nextMonth === 11
+              ? "thanksgiving"
+              : nextMonth === 12
+                ? "christmas-lunch"
+                : nextMonth === 1
+                  ? "new-years"
+                  : nextMonth === 2
+                    ? "valentines-day"
+                    : nextMonth === 3
+                      ? "st-patricks-day"
+                      : nextMonth === 4
+                        ? "easter"
+                        : nextMonth === 5
+                          ? "teacher-appreciation"
+                          : nextMonth === 6
+                            ? "graduation"
+                            : last.themeId
+    const newPage = createDefaultPage(nextMonth, nextYear, seasonalTheme)
     updateDoc((prev) => ({
       ...prev,
       pages: [...prev.pages, newPage],
@@ -414,7 +506,7 @@ export function CalendarDesignStudio() {
   }, [doc.pages, doc.activePageId, publishCalendarEvents])
 
   return (
-    <div className="flex h-[calc(100vh-0px)] flex-col overflow-hidden">
+    <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
       {publishMessage && (
         <div className="shrink-0 bg-success/10 px-4 py-2 text-center text-sm font-semibold text-success">
           {publishMessage}
@@ -426,7 +518,7 @@ export function CalendarDesignStudio() {
         showGrid={showGrid}
         snapToGrid={snapToGrid}
         showLayers={showLayers}
-        compact={isMobileLayout}
+        compact={isCompactLayout}
         canUndo={history.length > 0}
         canRedo={future.length > 0}
         onUndo={handleUndo}
@@ -444,8 +536,8 @@ export function CalendarDesignStudio() {
         onPublish={handlePublish}
       />
 
-      <div className="flex min-h-0 flex-1 overflow-hidden">
-        <ElementsPanel {...elementsPanelProps} className="hidden lg:flex" />
+      <div className="flex min-h-0 min-w-0 flex-1 overflow-hidden">
+        <ElementsPanel {...elementsPanelProps} className="hidden xl:flex" />
         <DesignCanvas
           page={activePage}
           zoom={zoom}
@@ -454,15 +546,16 @@ export function CalendarDesignStudio() {
           selectedElementId={selectedElementId}
           onSelectElement={(id) => {
             setSelectedElementId(id)
-            if (id && isMobileLayout) {
+            if (id && isCompactLayout) {
               setPropertiesOpen(true)
             }
           }}
+          onRemoveElement={handleRemoveElement}
         />
-        <PropertiesPanel {...propertiesPanelProps} className="hidden lg:flex" />
+        <PropertiesPanel {...propertiesPanelProps} className="hidden xl:flex" />
       </div>
 
-      <div className="flex shrink-0 items-center gap-2 border-t border-silver bg-white px-3 py-2 lg:hidden">
+      <div className="flex shrink-0 items-center gap-2 border-t border-silver bg-white px-3 py-2 xl:hidden">
         <Button
           type="button"
           variant="outline"

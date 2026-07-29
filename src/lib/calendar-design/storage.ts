@@ -1,7 +1,7 @@
 import { createDefaultDocument } from "@/lib/calendar-design/defaults"
 import type { CalendarDesignDocument } from "@/lib/calendar-design/types"
 
-const STORAGE_KEY = "madonna-calendar-design-v1"
+const STORAGE_KEY = "madonna-calendar-design-v2"
 
 export function loadDesignDocument(): CalendarDesignDocument {
   if (typeof window === "undefined") return createDefaultDocument()
