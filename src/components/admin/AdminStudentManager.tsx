@@ -4,10 +4,11 @@ import { useMemo, useRef, useState } from "react"
 import Image from "next/image"
 import Link from "next/link"
 import { useQueryClient } from "@tanstack/react-query"
-import { Camera, Plus, Search, UserX } from "lucide-react"
+import { Camera, DollarSign, Pencil, Plus, Search, Upload, UserX } from "lucide-react"
 import { CsvImportWizard } from "@/components/admin/CsvImportWizard"
 import { DesktopOnly } from "@/components/admin/DesktopOnly"
 import { ImportExportMenu } from "@/components/admin/import-export/ImportExportMenu"
+import { RecordOfficePayment } from "@/components/admin/RecordOfficePayment"
 import { useDemo } from "@/components/providers/DemoProvider"
 import { useAuth } from "@/components/providers/AuthProvider"
 import { isDemoStudentExternalId } from "@/config/demo-students"
@@ -41,6 +42,11 @@ export function AdminStudentManager({
   const [search, setSearch] = useState("")
   const [editing, setEditing] = useState<Student | null>(null)
   const [showAdd, setShowAdd] = useState(false)
+  const [justAddedId, setJustAddedId] = useState<string | null>(null)
+  const [paymentStudentId, setPaymentStudentId] = useState<string | null>(null)
+  const [showOfficePaymentPanel, setShowOfficePaymentPanel] = useState(false)
+  const [photoBusy, setPhotoBusy] = useState(false)
+  const [photoMessage, setPhotoMessage] = useState<string | null>(null)
   const [form, setForm] = useState({
     id: "",
     firstName: "",
@@ -50,7 +56,9 @@ export function AdminStudentManager({
     balance: "0",
   })
   const photoInputRef = useRef<HTMLInputElement>(null)
+  const cameraInputRef = useRef<HTMLInputElement>(null)
   const importWizardRef = useRef<HTMLDivElement>(null)
+  const editFormRef = useRef<HTMLDivElement>(null)
   const [photoTargetId, setPhotoTargetId] = useState<string | null>(null)
 
   const filtered = useMemo(() => {
@@ -106,9 +114,11 @@ export function AdminStudentManager({
         balance: parseFloat(form.balance),
       })
       setEditing(null)
+      setJustAddedId(null)
     } else {
+      const newId = form.id.trim()
       await addStudent({
-        id: form.id,
+        id: newId,
         firstName: form.firstName,
         lastName: form.lastName,
         grade: form.grade,
@@ -120,12 +130,32 @@ export function AdminStudentManager({
         parentContacts: [],
       })
       setShowAdd(false)
+      setJustAddedId(newId)
+      setEditing({
+        id: newId,
+        firstName: form.firstName,
+        lastName: form.lastName,
+        grade: form.grade,
+        homeroom: form.homeroom,
+        balance: parseFloat(form.balance) || 0,
+        photo: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=400&auto=format&fit=crop",
+        allergies: [],
+        dietaryRestrictions: [],
+        parentContacts: [],
+      })
+      setPhotoMessage("Student saved. Now add a photo for the lunch line (optional but helpful).")
+      requestAnimationFrame(() => {
+        editFormRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
+      })
     }
     setForm({ id: "", firstName: "", lastName: "", grade: "", homeroom: "", balance: "0" })
   }
 
   function startEdit(student: Student) {
+    setShowAdd(false)
     setEditing(student)
+    setJustAddedId(null)
+    setPhotoMessage(null)
     setForm({
       id: student.id,
       firstName: student.firstName,
@@ -134,6 +164,44 @@ export function AdminStudentManager({
       homeroom: student.homeroom ?? "",
       balance: student.balance.toString(),
     })
+    requestAnimationFrame(() => {
+      editFormRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
+    })
+  }
+
+  async function savePhotoForStudent(targetId: string, dataUrl: string) {
+    setPhotoBusy(true)
+    setPhotoMessage(null)
+    try {
+      if (databaseEnabled) {
+        const headers: Record<string, string> = {
+          "Content-Type": "application/json",
+        }
+        if (user?.id) headers["x-session-user-id"] = user.id
+
+        const res = await fetch(`/api/students/${encodeURIComponent(targetId)}/photo`, {
+          method: "POST",
+          headers,
+          body: JSON.stringify({ photo: dataUrl }),
+        })
+        if (!res.ok) {
+          await updateStudent(targetId, { photo: dataUrl })
+        } else {
+          void queryClient.invalidateQueries({ queryKey: ["students"] })
+        }
+      } else {
+        await updateStudent(targetId, { photo: dataUrl })
+      }
+      setPhotoMessage("Photo saved. It will show at checkout when this student is scanned.")
+      if (editing?.id === targetId) {
+        setEditing((prev) => (prev ? { ...prev, photo: dataUrl } : prev))
+      }
+    } catch {
+      setPhotoMessage("Could not save the photo. Try again with a smaller image.")
+    } finally {
+      setPhotoBusy(false)
+      setPhotoTargetId(null)
+    }
   }
 
   async function handlePhotoUpload(e: React.ChangeEvent<HTMLInputElement>) {
@@ -141,39 +209,22 @@ export function AdminStudentManager({
     const targetId = photoTargetId
     if (!file || !targetId) return
     const dataUrl = await readFileAsDataUrl(file)
-
-    if (databaseEnabled) {
-      const headers: Record<string, string> = {
-        "Content-Type": "application/json",
-      }
-      if (user?.id) headers["x-session-user-id"] = user.id
-
-      const res = await fetch(`/api/students/${encodeURIComponent(targetId)}/photo`, {
-        method: "POST",
-        headers,
-        body: JSON.stringify({ photo: dataUrl }),
-      })
-      if (!res.ok) {
-        await updateStudent(targetId, { photo: dataUrl })
-      } else {
-        void queryClient.invalidateQueries({ queryKey: ["students"] })
-      }
-    } else {
-      await updateStudent(targetId, { photo: dataUrl })
-    }
-
-    setPhotoTargetId(null)
+    await savePhotoForStudent(targetId, dataUrl)
     e.target.value = ""
   }
 
-  function triggerPhotoUpload(studentId: string) {
+  function triggerPhotoUpload(studentId: string, mode: "file" | "camera" = "file") {
     setPhotoTargetId(studentId)
-    photoInputRef.current?.click()
+    const ref = mode === "camera" ? cameraInputRef : photoInputRef
+    ref.current?.click()
   }
 
   const showPageHeader = !embedded && !importsTab
   const showImportWizard = !embedded || importsTab
   const showImportExportMenu = !embedded || importsTab
+  const editingPhoto = editing
+    ? students.find((s) => s.id === editing.id)?.photo ?? editing.photo
+    : null
 
   return (
     <div className={showPageHeader ? "w-full px-6 py-8 md:px-8" : "w-full"}>
@@ -182,7 +233,15 @@ export function AdminStudentManager({
         type="file"
         accept="image/*"
         className="hidden"
-        onChange={handlePhotoUpload}
+        onChange={(e) => void handlePhotoUpload(e)}
+      />
+      <input
+        ref={cameraInputRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        className="hidden"
+        onChange={(e) => void handlePhotoUpload(e)}
       />
 
       <div className="mx-auto max-w-full space-y-8">
@@ -192,9 +251,9 @@ export function AdminStudentManager({
               <p className="text-xs font-bold uppercase tracking-[0.2em] text-silver-foreground">
                 Setup
               </p>
-              <h1 className="text-3xl font-bold text-primary">Parent Imports</h1>
+              <h1 className="text-3xl font-bold text-primary">Students</h1>
               <p className="text-silver-foreground">
-                Student management, SIS import, and photo upload
+                Add students, edit details, upload photos, and record office payments
               </p>
             </div>
             <div className="flex flex-wrap gap-3">
@@ -208,7 +267,24 @@ export function AdminStudentManager({
               <Button variant="outline" asChild>
                 <Link href="/admin/allergy-review">Allergy Review Queue</Link>
               </Button>
-              <Button onClick={() => { setShowAdd(true); setEditing(null) }}>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowOfficePaymentPanel(true)
+                  setPaymentStudentId(null)
+                }}
+              >
+                <DollarSign className="h-4 w-4" />
+                Record office payment
+              </Button>
+              <Button
+                onClick={() => {
+                  setShowAdd(true)
+                  setEditing(null)
+                  setJustAddedId(null)
+                  setPhotoMessage(null)
+                }}
+              >
                 <Plus className="h-4 w-4" />
                 Add Student
               </Button>
@@ -221,7 +297,7 @@ export function AdminStudentManager({
             <div>
               <h2 className="text-xl font-semibold text-primary">Student Manager</h2>
               <p className="text-sm text-silver-foreground">
-                Manage students before linking parent accounts
+                After you add a student, tap Edit to add a photo and more info
               </p>
             </div>
             <div className="flex flex-wrap gap-3">
@@ -235,11 +311,35 @@ export function AdminStudentManager({
               <Button variant="outline" asChild>
                 <Link href="/admin/allergy-review">Allergy Review Queue</Link>
               </Button>
-              <Button onClick={() => { setShowAdd(true); setEditing(null) }}>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowOfficePaymentPanel(true)
+                  setPaymentStudentId(null)
+                }}
+              >
+                <DollarSign className="h-4 w-4" />
+                Record office payment
+              </Button>
+              <Button
+                onClick={() => {
+                  setShowAdd(true)
+                  setEditing(null)
+                  setJustAddedId(null)
+                  setPhotoMessage(null)
+                }}
+              >
                 <Plus className="h-4 w-4" />
                 Add Student
               </Button>
             </div>
+          </div>
+        )}
+
+        {justAddedId && (
+          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-4 text-sm text-emerald-900">
+            Student saved. Use <strong>Edit</strong> below to add a photo for the lunch line, or
+            record an office payment if they paid today.
           </div>
         )}
 
@@ -252,7 +352,7 @@ export function AdminStudentManager({
               <Search className="absolute left-10 top-1/2 h-5 w-5 -translate-y-1/2 text-silver-foreground" />
               <Input
                 className="pl-12"
-                placeholder="Search students..."
+                placeholder="Search by name or student ID…"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
@@ -273,7 +373,8 @@ export function AdminStudentManager({
                   {filtered.length === 0 ? (
                     <tr>
                       <td colSpan={6} className="py-10 text-center text-silver-foreground">
-                        No students yet — Import students via Family Import or SIS CSV.
+                        No students yet. Tap <strong>Add Student</strong> or import a spreadsheet
+                        below.
                       </td>
                     </tr>
                   ) : null}
@@ -282,9 +383,10 @@ export function AdminStudentManager({
                       <td className="py-3 pr-4">
                         <button
                           type="button"
-                          onClick={() => triggerPhotoUpload(s.id)}
+                          onClick={() => triggerPhotoUpload(s.id, "file")}
                           className="group relative"
-                          title="Upload photo"
+                          title="Upload or change photo"
+                          disabled={photoBusy}
                         >
                           <Image
                             src={s.photo}
@@ -309,9 +411,27 @@ export function AdminStudentManager({
                       <td className="py-3 pr-4">{s.grade}</td>
                       <td className="py-3 pr-4 text-right tabular-nums">{formatCurrency(s.balance)}</td>
                       <td className="py-3 text-right">
-                        <div className="flex justify-end gap-2">
-                          <Button size="sm" variant="outline" onClick={() => startEdit(s)} disabled={s.disabled}>
+                        <div className="flex flex-wrap justify-end gap-2">
+                          <Button
+                            size="sm"
+                            onClick={() => startEdit(s)}
+                            disabled={s.disabled}
+                            className="min-h-10 gap-1.5 font-semibold"
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
                             Edit
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={s.disabled}
+                            onClick={() => {
+                              setPaymentStudentId(s.id)
+                              setShowOfficePaymentPanel(true)
+                            }}
+                          >
+                            <DollarSign className="h-3.5 w-3.5" />
+                            Payment
                           </Button>
                           {!s.disabled && (
                             <Button size="sm" variant="ghost" onClick={() => void disableStudent(s.id)}>
@@ -340,6 +460,9 @@ export function AdminStudentManager({
                     <span className="text-2xl font-bold text-primary">{count}</span>
                   </div>
                 ))}
+              {Object.keys(signupTotals).length === 0 && (
+                <p className="text-sm text-silver-foreground">No active students yet.</p>
+              )}
               <div className="mt-4 border-t border-silver/60 pt-4">
                 <div className="flex justify-between font-semibold text-primary">
                   <span>Total Active</span>
@@ -351,9 +474,15 @@ export function AdminStudentManager({
         </div>
 
         {(showAdd || editing) && (
+          <div ref={editFormRef}>
           <Card>
             <CardHeader>
               <CardTitle>{editing ? "Edit Student" : "Add Student"}</CardTitle>
+              {editing && (
+                <p className="text-sm text-silver-foreground">
+                  Change details below. Add a photo so cashiers recognize this student at lunch.
+                </p>
+              )}
             </CardHeader>
             <div className="grid gap-4 px-6 md:grid-cols-2 lg:grid-cols-3">
               {!editing && (
@@ -381,13 +510,122 @@ export function AdminStudentManager({
               <div>
                 <Label>Balance</Label>
                 <Input value={form.balance} onChange={(e) => setForm({ ...form, balance: e.target.value })} />
+                <p className="mt-1 text-xs text-silver-foreground">
+                  Prefer &quot;Record office payment&quot; when money is received in the office.
+                </p>
               </div>
             </div>
-            <div className="mt-4 flex gap-3 px-6 pb-6">
-              <Button onClick={handleSave}>Save</Button>
-              <Button variant="outline" onClick={() => { setShowAdd(false); setEditing(null) }}>Cancel</Button>
+
+            {editing && (
+              <div className="mt-6 space-y-4 border-t border-silver/40 px-6 pt-6">
+                <div>
+                  <h3 className="text-base font-semibold text-primary">Student photo</h3>
+                  <p className="text-sm text-silver-foreground">
+                    Upload a picture or take one with your phone camera. Used at the lunch line.
+                  </p>
+                </div>
+                <div className="flex flex-wrap items-center gap-4">
+                  {editingPhoto && (
+                    <Image
+                      src={editingPhoto}
+                      alt={`${editing.firstName} ${editing.lastName}`}
+                      width={96}
+                      height={96}
+                      className="rounded-2xl object-cover"
+                      unoptimized={editingPhoto.startsWith("data:")}
+                    />
+                  )}
+                  <div className="flex flex-wrap gap-3">
+                    <Button
+                      type="button"
+                      size="lg"
+                      variant="outline"
+                      className="min-h-12"
+                      disabled={photoBusy}
+                      onClick={() => triggerPhotoUpload(editing.id, "file")}
+                    >
+                      <Upload className="h-4 w-4" />
+                      Upload photo
+                    </Button>
+                    <Button
+                      type="button"
+                      size="lg"
+                      className="min-h-12"
+                      disabled={photoBusy}
+                      onClick={() => triggerPhotoUpload(editing.id, "camera")}
+                    >
+                      <Camera className="h-4 w-4" />
+                      Take photo
+                    </Button>
+                  </div>
+                </div>
+                {photoMessage && (
+                  <p className="rounded-xl bg-silver/20 px-4 py-3 text-sm text-primary" role="status">
+                    {photoMessage}
+                  </p>
+                )}
+                <div className="pt-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="lg"
+                    className="min-h-12"
+                    onClick={() => {
+                      setPaymentStudentId(editing.id)
+                      setShowOfficePaymentPanel(true)
+                    }}
+                  >
+                    <DollarSign className="h-4 w-4" />
+                    Record office payment
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            <div className="mt-4 flex flex-wrap gap-3 px-6 pb-6">
+              <Button size="lg" className="min-h-12" onClick={() => void handleSave()}>
+                {editing ? "Save changes" : "Save student"}
+              </Button>
+              <Button
+                size="lg"
+                variant="outline"
+                className="min-h-12"
+                onClick={() => {
+                  setShowAdd(false)
+                  setEditing(null)
+                  setJustAddedId(null)
+                  setPhotoMessage(null)
+                }}
+              >
+                Cancel
+              </Button>
             </div>
           </Card>
+          </div>
+        )}
+
+        {showOfficePaymentPanel && (
+          <div className="space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <h2 className="text-lg font-semibold text-primary">Record office payment</h2>
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  setShowOfficePaymentPanel(false)
+                  setPaymentStudentId(null)
+                }}
+              >
+                Close
+              </Button>
+            </div>
+            <RecordOfficePayment
+              students={students.filter((s) => !isDemoStudentExternalId(s.id))}
+              initialStudentId={paymentStudentId ?? undefined}
+              onDone={() => {
+                void queryClient.invalidateQueries({ queryKey: ["students"] })
+              }}
+            />
+          </div>
         )}
 
         {showImportWizard && (

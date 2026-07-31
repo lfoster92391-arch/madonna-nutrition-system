@@ -27,9 +27,10 @@ export function AdminImportsHub() {
           <p className="text-xs font-bold uppercase tracking-[0.2em] text-silver-foreground">
             Setup
           </p>
-          <h1 className="text-3xl font-bold text-primary">Imports</h1>
+          <h1 className="text-3xl font-bold text-primary">Students &amp; Imports</h1>
           <p className="text-silver-foreground">
-            Import students from SIS, create parent &amp; family accounts, and onboard staff
+            Add or import students, edit details and photos, record office payments, and create
+            parent or staff accounts
           </p>
         </div>
 

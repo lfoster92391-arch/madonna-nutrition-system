@@ -59,18 +59,18 @@ const SECTIONS: LauncherSection[] = [
     title: "Get Started",
     cards: [
       {
-        title: "Setup Wizard",
-        description: "Configure users, roles, and portal access.",
+        title: "How to Use Fuel The Dons",
+        description: "Step-by-step guide for cafeteria workers — Menu, students, lunch line, and payments.",
         href: "/admin/setup",
         icon: Wand2,
       },
       {
-        title: "Parent Imports",
-        description: "Import student records and parent contacts from SIS.",
+        title: "Students & Imports",
+        description: "Add students, edit info, upload photos, and record office payments.",
         href: "/admin/imports",
         icon: Upload,
-        statusLabel: "2 pending",
-        statusColor: "warning",
+        statusLabel: "Students",
+        statusColor: "neutral",
         importExportType: "students",
       },
       {

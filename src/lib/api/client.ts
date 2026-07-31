@@ -67,6 +67,19 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ studentId, meal, amount, processedByUserId }),
     }),
+  recordOfficePayment: (input: {
+    studentId: string
+    amount: number
+    method?: "cash" | "check" | "card" | "other"
+    note?: string
+  }) =>
+    fetchJson<import("@/lib/types").Transaction & { balanceAfter?: number }>(
+      "/api/transactions/office-deposit",
+      {
+        method: "POST",
+        body: JSON.stringify(input),
+      }
+    ),
   syncBatch: (
     transactions: Array<{
       clientTxId: string
