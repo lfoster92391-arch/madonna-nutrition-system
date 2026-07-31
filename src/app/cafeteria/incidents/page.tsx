@@ -1,47 +1,14 @@
 "use client"
 
 export default function IncidentsPage() {
-  const incidents = [
-    {
-      id: 1,
-      title: "Milk Cooler Temperature Violation",
-      severity: "Critical",
-      status: "Active",
-      description:
-        "Milk cooler exceeded safe temperature threshold for 18 minutes.",
-      timestamp: "Today • 9:42 AM",
-    },
-
-    {
-      id: 2,
-      title: "Student Allergy Alert Review",
-      severity: "High",
-      status: "Resolved",
-      description:
-        "Potential peanut exposure reviewed by cafeteria staff.",
-      timestamp: "Today • 11:18 AM",
-    },
-
-    {
-      id: 3,
-      title: "Inventory Delivery Delay",
-      severity: "Medium",
-      status: "Monitoring",
-      description:
-        "Frozen inventory shipment delayed by supplier.",
-      timestamp: "Yesterday • 2:12 PM",
-    },
-
-    {
-      id: 4,
-      title: "Lunch Line Congestion",
-      severity: "Low",
-      status: "Resolved",
-      description:
-        "Temporary lunch throughput slowdown during Grade 10 period.",
-      timestamp: "Yesterday • 11:36 AM",
-    },
-  ]
+  const incidents: Array<{
+    id: number
+    title: string
+    severity: string
+    status: string
+    description: string
+    timestamp: string
+  }> = []
 
   function getSeverityStyles(severity: string) {
     switch (severity) {
@@ -89,8 +56,8 @@ export default function IncidentsPage() {
             </p>
           </div>
 
-          <div className="rounded-full border border-red-700 bg-red-950 px-4 py-2 text-sm font-semibold text-red-300">
-            1 Active Critical Incident
+          <div className="rounded-full border border-slate-700 bg-slate-900 px-4 py-2 text-sm font-semibold text-slate-300">
+            {incidents.length} Incidents
           </div>
 
         </div>

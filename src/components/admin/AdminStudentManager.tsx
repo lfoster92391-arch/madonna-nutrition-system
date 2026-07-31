@@ -270,6 +270,13 @@ export function AdminStudentManager({
                   </tr>
                 </thead>
                 <tbody>
+                  {filtered.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="py-10 text-center text-silver-foreground">
+                        No students yet — Import students via Family Import or SIS CSV.
+                      </td>
+                    </tr>
+                  ) : null}
                   {filtered.map((s) => (
                     <tr key={s.id} className={`border-b border-silver/30 ${s.disabled ? "opacity-50" : ""}`}>
                       <td className="py-3 pr-4">

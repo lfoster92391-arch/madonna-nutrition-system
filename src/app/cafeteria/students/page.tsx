@@ -58,6 +58,15 @@ export default function StudentsPage() {
 
         <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
 
+          {filteredStudents.length === 0 ? (
+            <div className="col-span-full rounded-2xl border border-dashed border-slate-700 bg-slate-900 p-10 text-center">
+              <p className="text-lg font-semibold text-white">No students yet</p>
+              <p className="mt-2 text-slate-400">
+                Import students from Admin → Family Import or SIS CSV to populate this list.
+              </p>
+            </div>
+          ) : null}
+
           {filteredStudents.map((student: any) => {
             const hasLowBalance = student.balance < 5
 

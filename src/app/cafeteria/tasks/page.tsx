@@ -3,35 +3,9 @@
 import { useState } from "react"
 
 export default function TasksPage() {
-  const [tasks, setTasks] = useState([
-    {
-      id: 1,
-      task: "Restock Chocolate Milk Cooler",
-      priority: "High",
-      completed: false,
-    },
-
-    {
-      id: 2,
-      task: "Review Negative Balance Accounts",
-      priority: "Medium",
-      completed: false,
-    },
-
-    {
-      id: 3,
-      task: "Verify Walk-In Freezer Temperature",
-      priority: "Critical",
-      completed: false,
-    },
-
-    {
-      id: 4,
-      task: "Inspect Inventory Shipment Delivery",
-      priority: "Medium",
-      completed: true,
-    },
-  ])
+  const [tasks, setTasks] = useState<
+    Array<{ id: number; task: string; priority: string; completed: boolean }>
+  >([])
 
   function toggleTask(id: number) {
     setTasks((prev) =>
@@ -87,6 +61,12 @@ export default function TasksPage() {
         </div>
 
         <div className="space-y-4">
+
+          {tasks.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-slate-700 bg-slate-900 p-10 text-center text-slate-400">
+              No tasks yet.
+            </div>
+          ) : null}
 
           {tasks.map((task) => (
             <div

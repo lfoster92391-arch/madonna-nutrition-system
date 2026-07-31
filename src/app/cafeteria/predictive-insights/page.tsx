@@ -1,39 +1,12 @@
 "use client"
 
 export default function PredictiveInsightsPage() {
-  const insights = [
-    {
-      id: 1,
-      title: "Projected Inventory Shortage",
-      prediction:
-        "Chicken Patties expected to fall below operational threshold within 2 lunch periods.",
-      severity: "warning",
-    },
-
-    {
-      id: 2,
-      title: "High Lunch Traffic Forecast",
-      prediction:
-        "Friday lunch participation expected to increase by 18% based on menu popularity trends.",
-      severity: "info",
-    },
-
-    {
-      id: 3,
-      title: "Waste Trend Warning",
-      prediction:
-        "Green Beans continue exceeding recommended waste tolerance thresholds.",
-      severity: "warning",
-    },
-
-    {
-      id: 4,
-      title: "Balance Alert Projection",
-      prediction:
-        "5 additional student accounts expected to enter low balance status within 48 hours.",
-      severity: "critical",
-    },
-  ]
+  const insights: Array<{
+    id: number
+    title: string
+    prediction: string
+    severity: string
+  }> = []
 
   function getStyles(severity: string) {
     switch (severity) {
@@ -66,12 +39,18 @@ export default function PredictiveInsightsPage() {
           </div>
 
           <div className="rounded-full border border-blue-700 bg-blue-950 px-4 py-2 text-sm font-semibold text-blue-300">
-            AI Forecast Engine Active
+            No forecasts yet
           </div>
 
         </div>
 
         <div className="grid gap-6">
+
+          {insights.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-slate-700 bg-slate-900 p-10 text-center text-slate-400">
+              No predictive insights yet — data appears after real cafeteria activity is recorded.
+            </div>
+          ) : null}
 
           {insights.map((insight) => (
             <div

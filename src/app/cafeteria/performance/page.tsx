@@ -13,49 +13,9 @@ import {
 } from "recharts"
 
 export default function PerformancePage() {
-  const mealData = [
-    {
-      meal: "Pizza Day",
-      popularity: 94,
-    },
+  const mealData: Array<{ meal: string; popularity: number }> = []
 
-    {
-      meal: "Cheeseburger",
-      popularity: 81,
-    },
-
-    {
-      meal: "Walking Tacos",
-      popularity: 73,
-    },
-
-    {
-      meal: "Chicken Patty",
-      popularity: 67,
-    },
-  ]
-
-  const wasteData = [
-    {
-      name: "Vegetables",
-      value: 38,
-    },
-
-    {
-      name: "Milk",
-      value: 24,
-    },
-
-    {
-      name: "Fruit",
-      value: 18,
-    },
-
-    {
-      name: "Other",
-      value: 20,
-    },
-  ]
+  const wasteData: Array<{ name: string; value: number }> = []
 
   const COLORS = [
     "#ef4444",

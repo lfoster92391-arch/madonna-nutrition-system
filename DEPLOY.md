@@ -1,19 +1,19 @@
 ﻿# Deploy to Vercel — fuelthedons.com
 
-Deploy the Madonna Nutrition Management System (MNMS) demo to **https://fuelthedons.com** using the Vercel CLI (primary) or Git + Dashboard.
+Deploy the Madonna Nutrition Management System (MNMS) to **https://fuelthedons.com** using the Vercel CLI (primary) or Git + Dashboard.
 
 ## Pre-flight (local)
 
 | Check | Status |
 |-------|--------|
 | `npm run build` | Must pass before deploying |
-| Demo mode | Works without `DATABASE_URL` (in-memory demo data) |
+| Empty start | Without `DATABASE_URL`, portals show empty states (no invented roster) |
 | `vercel.json` | Next.js framework preset; www → apex redirect via Vercel Domains (not in `vercel.json`) |
 | Vercel project | **madonna-nutrition-system** (team: lfoster92391-archs-projects) |
 
 If a local build fails with a missing file under `.next/`, delete `.next` and run `npm run build` again.
 
-Do **not** commit `.env` files. Demo mode needs no secrets on Vercel beyond optional public URL.
+Do **not** commit `.env` files. Production needs `DATABASE_URL` (and related secrets) on Vercel.
 
 ---
 
@@ -126,7 +126,7 @@ git push -u origin main
 1. Go to [vercel.com/dashboard](https://vercel.com/dashboard).
 2. **Add New…** → **Project** → import your repo.
 3. Framework: **Next.js** (defaults: `npm run build`, `.next`, `npm install`).
-4. Environment variables: none required for demo; add `NEXT_PUBLIC_APP_URL=https://fuelthedons.com` in Production if needed.
+4. Environment variables: set `DATABASE_URL` for Production; add `NEXT_PUBLIC_APP_URL=https://fuelthedons.com` if needed.
 5. **Deploy**.
 
 ### Step 3 — Domains & DNS
@@ -149,7 +149,7 @@ Optional future vars: `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`.
 
 ## Stripe setup (parent prepay)
 
-Parents add cafeteria funds at **`/parent/add-funds`** via Stripe Checkout. Without Stripe keys, the app shows a clearly labeled **demo deposit** for local development.
+Parents add cafeteria funds at **`/parent/add-funds`** via Stripe Checkout. Without Stripe keys, card payments are unavailable until configured.
 
 ### Environment variables (Vercel Production)
 
@@ -189,8 +189,8 @@ Use the CLI signing secret as `STRIPE_WEBHOOK_SECRET` in `.env.local`.
 
 ### Test flow
 
-1. Log in to the parent portal (`parent` / any password in demo auth).
-2. Go to **Add Funds** → select an Anderson student → choose $10 / $25 / $50 or custom ($5–$500).
+1. Log in to the parent portal with a real parent account (after Family Import).
+2. Go to **Add Funds** → select a linked student → choose $10 / $25 / $50 or custom ($5–$500).
 3. Click **Pay with Card** → complete Stripe Checkout (test card `4242 4242 4242 4242`).
 4. Return URL shows success; webhook credits `students.balance`, creates a `deposit` transaction, and writes an audit log entry.
 5. Confirm on **Transactions** and the parent dashboard balance.
@@ -213,19 +213,19 @@ npm run db:seed
 
 5. Redeploy: `npx vercel --prod --yes`
 
-Seed prints `SCHOOL_ID` — optionally add to Vercel. Seeded portal password: `FuelTheDons2026!`
+Seed prints `SCHOOL_ID` — optionally add to Vercel. Bootstrap admin username: `itlisa` (password from `ADMIN_SEED_PASSWORD` or default `FuelTheDons2026!`).
 
 ### Production student roster (Lisa Morris / Madonna HS)
 
-**Real students come only from SIS and family CSV imports** — not from `npm run db:seed`.
+**Real students come only from SIS and family CSV imports** — `npm run db:seed` only creates the school, calendar defaults, agreement, and **itlisa** admin.
 
 On a fresh production database:
 
 1. Run schema push/migrate.
-2. Run **`npm run db:seed-lisa`** (or full seed once) to create the **itlisa** admin account only — demo Anderson/Martinez students are seeded as **disabled** and filtered out of badge roster and admin lists.
+2. Run **`npm run db:seed`** (or **`npm run db:seed-lisa`** if the school already exists) to create the **itlisa** admin account.
 3. Import real students via **Admin → Family Import** (SIS export).
 
-Seed/demo MD IDs (`10501`–`10504`, `99999`, `9999`, Anderson/Martinez IDs, etc.) are listed in `src/config/demo-students.ts`. They are excluded from `/api/badges` and the default admin student list.
+Legacy demo MD IDs (if any remain from older seeds) are listed in `src/config/demo-students.ts` and excluded from `/api/badges` and the default admin student list.
 
 **If demo students already exist in Supabase** (e.g. from an earlier seed), disable them once:
 
@@ -356,7 +356,7 @@ Or push to `main` if Git integration is enabled. Vercel runs `postinstall` → `
 - [ ] `npx prisma migrate deploy` or `db push` succeeded against Supabase
 - [ ] `npm run db:seed` completed
 - [ ] Production redeploy shows **Ready**
-- [ ] App routes that use Prisma return data (not demo fallback)
+- [ ] App routes that use Prisma return real data or empty states (not invented people)
 
 ---
 
@@ -389,7 +389,7 @@ When WiFi returns:
 
 **Limitations:** Allergy data is only as current as the last online cache. Requires at least one online session to populate the student cache.
 
-**Smoke test:** Open `/scan` while online, toggle DevTools → Network → Offline, scan demo ID `10457`, tap a meal, restore network — confirm sync banner, reconciled balance, and transaction in admin log.
+**Smoke test:** Open `/scan` while online, toggle DevTools → Network → Offline, scan a real imported student ID, tap a meal, restore network — confirm sync banner, reconciled balance, and transaction in admin log.
 
 ---
 

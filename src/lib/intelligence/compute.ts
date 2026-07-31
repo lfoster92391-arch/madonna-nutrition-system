@@ -23,7 +23,7 @@ export async function tryCompute<T>(fn: () => Promise<T>, fallback: T): Promise<
   try {
     return await fn()
   } catch (error) {
-    console.error("Intelligence compute failed, using fallback:", error)
+    console.error("Intelligence compute failed, using empty fallback:", error)
     return fallback
   }
 }
@@ -50,13 +50,12 @@ export async function computeDashboard(): Promise<DashboardData> {
   const weekAgo = new Date(today)
   weekAgo.setDate(weekAgo.getDate() - 7)
 
-  const [transactions, inventory, students, signups] = await Promise.all([
+  const [transactions, inventory, signups] = await Promise.all([
     prisma.transaction.findMany({
       where: { schoolId, createdAt: { gte: weekAgo } },
       select: { amount: true, mealType: true, createdAt: true },
     }),
     prisma.inventoryItem.findMany({ where: { schoolId } }),
-    prisma.student.count({ where: { schoolId, disabled: false } }),
     prisma.studentLunchSignup.count({
       where: { schoolId, date: { gte: today } },
     }),
@@ -90,18 +89,21 @@ export async function computeDashboard(): Promise<DashboardData> {
     metrics: {
       revenueToday,
       inventoryHealth,
-      forecastSummary: `${signups + todayTx.length} meals projected from signups + today`,
-      wastePercent: mockDashboard.metrics.wastePercent,
+      forecastSummary:
+        signups + todayTx.length > 0
+          ? `${signups + todayTx.length} meals projected from signups + today`
+          : "No meal data yet",
+      wastePercent: 0,
       participationCount: todayTx.length,
       lowStockCount,
       totalInventoryItems: inventory.length,
     },
     revenueTrend: { labels: dayLabels(7), values: revenueByDay },
     mealsByType: {
-      labels: Object.keys(mealCounts).length ? Object.keys(mealCounts) : ["Lunch"],
-      values: Object.keys(mealCounts).length ? Object.values(mealCounts) : [0],
+      labels: Object.keys(mealCounts),
+      values: Object.values(mealCounts),
     },
-    participationTrend: mockDashboard.participationTrend,
+    participationTrend: { labels: [], values: [] },
     refreshedAt: new Date().toISOString(),
   }
 }
@@ -125,38 +127,46 @@ export async function computeForecast(): Promise<ForecastData> {
     }),
   ])
 
-  const avgDailyMeals = transactions.length / 14 || 150
+  const avgDailyMeals = transactions.length > 0 ? transactions.length / 14 : 0
   const depletion = inventory
     .filter((i) => i.qty <= i.lowStockThreshold * 2)
     .slice(0, 5)
     .map((i) => ({
       itemName: i.name,
-      daysUntilThreshold: Math.max(1, Math.round(i.qty / Math.max(avgDailyMeals / 50, 1))),
+      daysUntilThreshold: Math.max(
+        1,
+        Math.round(i.qty / Math.max(avgDailyMeals / 50, 1))
+      ),
       currentQty: i.qty,
       threshold: i.lowStockThreshold,
     }))
 
   const demandByDay: Record<string, number> = {}
-  events.forEach((e) => {
-    const key = e.date.toLocaleDateString("en-US", { weekday: "short" })
-    demandByDay[key] = (demandByDay[key] ?? 0) + Math.round(avgDailyMeals)
-  })
+  if (avgDailyMeals > 0) {
+    events.forEach((e) => {
+      const key = e.date.toLocaleDateString("en-US", { weekday: "short" })
+      demandByDay[key] = (demandByDay[key] ?? 0) + Math.round(avgDailyMeals)
+    })
+  }
   signups.forEach((s) => {
     const key = s.date.toLocaleDateString("en-US", { weekday: "short" })
     demandByDay[key] = (demandByDay[key] ?? 0) + 1
   })
 
   const labels = ["Mon", "Tue", "Wed", "Thu", "Fri"]
-  const values = labels.map((l) => demandByDay[l] ?? Math.round(avgDailyMeals))
+  const values = labels.map((l) => demandByDay[l] ?? 0)
 
   return {
     source: "database",
     nextWeekMeals: values.reduce((a, b) => a + b, 0),
-    confidence: Math.min(95, 70 + events.length * 3),
+    confidence: events.length || signups.length ? Math.min(95, 70 + events.length * 3) : 0,
     depletion,
     demandByDay: { labels, values },
-    participationTrend: { labels, values: values.map((v) => Math.min(100, Math.round((v / 200) * 100))) },
-    wasteForecastPercent: mockForecast.wasteForecastPercent,
+    participationTrend: {
+      labels,
+      values: values.map((v) => (v > 0 ? Math.min(100, Math.round((v / 200) * 100)) : 0)),
+    },
+    wasteForecastPercent: 0,
     orderSuggestions: depletion.map((d) => ({
       item: d.itemName,
       reason: `${d.daysUntilThreshold} days until par at current usage`,
@@ -206,7 +216,7 @@ export async function computeReconciliation(): Promise<ReconciliationData> {
 
   return {
     source: "database",
-    rows: mockReconciliation.rows,
+    rows: [],
     mealCosts,
     totalRevenue: Math.round(totalRevenue * 100) / 100,
     totalExpenses: Math.round(totalExpenses * 100) / 100,
@@ -216,7 +226,13 @@ export async function computeReconciliation(): Promise<ReconciliationData> {
 }
 
 export async function computeWaste(): Promise<WasteData> {
-  return { ...mockWaste, source: "database", refreshedAt: new Date().toISOString() }
+  return {
+    source: "database",
+    breakdown: { prepared: 0, served: 0, saved: 0, expired: 0, discarded: 0 },
+    trend: { labels: [], values: [] },
+    topItems: [],
+    refreshedAt: new Date().toISOString(),
+  }
 }
 
 export async function computeAnalytics(): Promise<AnalyticsData> {
@@ -245,8 +261,8 @@ export async function computeAnalytics(): Promise<AnalyticsData> {
   return {
     source: "database",
     waste: await computeWaste(),
-    vendors: mockAnalytics.vendors,
-    nutrition: nutrition.length ? nutrition : mockAnalytics.nutrition,
+    vendors: [],
+    nutrition,
     participationRate: students ? Math.round((todayMeals / students) * 100) : 0,
     refreshedAt: new Date().toISOString(),
   }
@@ -278,9 +294,9 @@ export async function computeSuggestions(): Promise<SuggestionsData> {
   })
   const topMeal = Object.entries(mealCounts).sort(([, a], [, b]) => b - a)[0]
 
-  const suggestions = [...mockSuggestions.suggestions]
+  const suggestions: SuggestionsData["suggestions"] = []
   if (topMeal) {
-    suggestions.unshift({
+    suggestions.push({
       id: "db-top-meal",
       category: "meals",
       title: `Feature ${topMeal[0]}`,
@@ -318,12 +334,24 @@ export async function computeSeasonalMemory(): Promise<SeasonalMemoryData> {
   const schoolId = await resolveSchoolId()
   const archived = await prisma.mealTemplate.findMany({
     where: { schoolId, isArchived: true },
-    select: { id: true, name: true, category: true, updatedAt: true, photos: { take: 1, select: { url: true } } },
+    select: {
+      id: true,
+      name: true,
+      category: true,
+      updatedAt: true,
+      photos: { take: 1, select: { url: true } },
+    },
     orderBy: { updatedAt: "desc" },
     take: 8,
   })
 
-  if (!archived.length) return mockSeasonalMemory
+  if (!archived.length) {
+    return {
+      source: "database",
+      items: [],
+      refreshedAt: new Date().toISOString(),
+    }
+  }
 
   return {
     source: "database",
