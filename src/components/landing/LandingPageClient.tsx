@@ -51,7 +51,7 @@ const PORTALS: PortalCardProps[] = [
 
 export function LandingPageClient() {
   return (
-    <div className="relative min-h-screen min-h-[100dvh] w-full max-md:overflow-x-hidden md:overflow-hidden">
+    <div className="relative min-h-screen min-h-[100dvh] w-full overflow-x-hidden">
       <div
         aria-hidden
         className="pointer-events-none fixed inset-0 z-0 bg-cover bg-center bg-no-repeat max-md:scale-105 max-md:opacity-35 md:opacity-100"
@@ -63,9 +63,9 @@ export function LandingPageClient() {
         className="pointer-events-none fixed inset-0 z-0 max-md:bg-white/55 max-md:backdrop-blur-md md:hidden"
       />
 
-      <main className="relative z-10 flex min-h-screen min-h-[100dvh] w-full flex-col items-center justify-end px-6 pb-[10vh] max-md:justify-start max-md:px-4 max-md:pb-[max(env(safe-area-inset-bottom),1.25rem)] max-md:pt-[max(env(safe-area-inset-top),1rem)] sm:pb-[12vh] lg:pb-[14vh]">
-        <div className="flex w-full max-w-[1128px] flex-col items-center text-center">
-          <header className="mb-6 w-full md:mb-8">
+      <main className="relative z-10 flex min-h-screen min-h-[100dvh] w-full max-w-[100vw] flex-col items-center justify-end px-4 pb-[10vh] max-md:justify-start max-md:pb-[max(env(safe-area-inset-bottom),1.25rem)] max-md:pt-[max(env(safe-area-inset-top),1rem)] sm:px-6 sm:pb-[12vh] lg:pb-[14vh]">
+        <div className="flex w-full min-w-0 max-w-[1128px] flex-col items-center text-center">
+          <header className="mb-6 w-full min-w-0 md:mb-8">
             <p
               className="text-sm font-bold uppercase tracking-[0.2em] sm:text-base"
               style={{ color: NAVY, textShadow: "0 1px 3px rgba(255,255,255,0.5)" }}
@@ -86,7 +86,7 @@ export function LandingPageClient() {
             </p>
           </header>
 
-          <div className="mx-auto grid w-full grid-cols-1 gap-3 min-[400px]:grid-cols-2 md:flex md:flex-row md:flex-wrap md:justify-center md:gap-6 lg:flex-nowrap lg:justify-center">
+          <div className="mx-auto grid w-full min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 md:flex md:flex-row md:flex-wrap md:justify-center md:gap-4 lg:gap-5">
             {PORTALS.map((portal, index) => (
               <PortalCard key={portal.route} {...portal} index={index} />
             ))}
