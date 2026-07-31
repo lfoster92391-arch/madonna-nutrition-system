@@ -1,5 +1,6 @@
-import { MenuLibraryManager } from "@/components/admin/MenuLibraryManager"
+import { redirect } from "next/navigation"
 
+/** Launch Controls live on the dashboard Get Started section — not the cookbook. */
 export default function AdminLaunchPage() {
-  return <MenuLibraryManager />
+  redirect("/admin#get-started")
 }

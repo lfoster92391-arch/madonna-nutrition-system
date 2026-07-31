@@ -288,7 +288,13 @@ export function AdminCalendar() {
   async function handleDeleteEvent(id: string) {
     const event = calendarEvents.find((e) => e.id === id)
     const label = event?.title?.trim() || "this event"
-    if (!window.confirm(`Delete "${label}"? This cannot be undone.`)) return
+    if (
+      !window.confirm(
+        `Remove "${label}" from this day's menu?\n\nThis cannot be undone. The meal stays in your cookbook.`
+      )
+    ) {
+      return
+    }
     await deleteCalendarEvent(id)
     setShowEventForm(false)
     setEditingEvent(null)
@@ -302,10 +308,10 @@ export function AdminCalendar() {
       <div className="mx-auto max-w-7xl space-y-8">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary">Operations</p>
-            <h1 className="text-3xl font-bold text-primary">Lunch Calendar</h1>
-            <p className="text-silver-foreground">
-              Schedule meals, publish to parent &amp; staff calendars, and manage operational events
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary">Menu</p>
+            <h1 className="text-3xl font-bold text-primary">Lunch menu</h1>
+            <p className="max-w-2xl text-silver-foreground">
+              Click a day, then add a meal from your cookbook. When ready, publish so parents can see it.
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
@@ -321,14 +327,20 @@ export function AdminCalendar() {
                 {publishFlash}
               </span>
             )}
-            <Button variant="outline" onClick={handlePublishMonth}>
+            <Button variant="outline" asChild>
+              <Link href="/admin/cookbook">
+                <UtensilsCrossed className="h-4 w-4" />
+                Open cookbook
+              </Link>
+            </Button>
+            <Button onClick={handlePublishMonth}>
               <Send className="h-4 w-4" />
-              Publish Month
+              Share this month
             </Button>
             <Button variant="outline" asChild>
               <Link href="/admin/calendar/design">
                 <CalendarDays className="h-4 w-4" />
-                Design Studio
+                Printable menus
               </Link>
             </Button>
           </div>
@@ -380,7 +392,7 @@ export function AdminCalendar() {
             <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <CardHeader className="p-0">
                 <CardTitle className="text-base sm:text-lg">
-                  Schedule for{" "}
+                  Menu for{" "}
                   {new Date(selectedDate + "T12:00:00").toLocaleDateString("en-US", {
                     weekday: "long",
                     month: "long",
@@ -391,7 +403,6 @@ export function AdminCalendar() {
               <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 sm:mx-0 sm:overflow-visible sm:pb-0">
                 <Button
                   size="sm"
-                  variant="outline"
                   className="shrink-0"
                   disabled={isWeekendDateKey(selectedDate)}
                   title={
@@ -400,17 +411,17 @@ export function AdminCalendar() {
                   onClick={() => setShowCookbookPicker(true)}
                 >
                   <UtensilsCrossed className="h-4 w-4" />
-                  Add from Cookbook
+                  Add meal from cookbook
                 </Button>
                 {selectedEvents.length > 0 && (
                   <Button size="sm" variant="outline" className="shrink-0" onClick={handlePublishDay}>
                     <Globe className="h-4 w-4" />
-                    Publish Day
+                    Share this day
                   </Button>
                 )}
-                <Button size="sm" className="shrink-0" onClick={startAddEvent}>
+                <Button size="sm" variant="outline" className="shrink-0" onClick={startAddEvent}>
                   <Plus className="h-4 w-4" />
-                  Add Event
+                  Add a note
                 </Button>
               </div>
             </div>
@@ -420,7 +431,17 @@ export function AdminCalendar() {
               </p>
             )}
             {selectedEvents.length === 0 ? (
-              <p className="text-sm text-silver-foreground">No events scheduled for this day.</p>
+              <div className="rounded-2xl border border-dashed border-silver/60 bg-silver/5 px-4 py-8 text-center">
+                <p className="text-sm font-semibold text-primary">Nothing on the menu for this day yet</p>
+                <p className="mt-1 text-sm text-silver-foreground">
+                  Next step: tap <span className="font-semibold">Add meal from cookbook</span> above.
+                  If the cookbook is empty,{" "}
+                  <Link href="/admin/cookbook" className="font-semibold text-primary underline">
+                    create a meal first
+                  </Link>
+                  .
+                </p>
+              </div>
             ) : (
               <div className="space-y-3">
                 {selectedEvents.map((event) => {
@@ -507,10 +528,10 @@ export function AdminCalendar() {
                           variant="outline"
                           className="min-h-10 flex-1 text-danger hover:bg-danger/10 sm:flex-none"
                           onClick={() => handleDeleteEvent(event.id)}
-                          aria-label={`Delete ${event.title}`}
+                          aria-label={`Remove ${event.title} from menu`}
                         >
                           <Trash2 className="h-4 w-4" />
-                          Delete
+                          Remove
                         </Button>
                       </div>
                     </div>
@@ -686,7 +707,7 @@ export function AdminCalendar() {
                 onClick={() => handleDeleteEvent(actionEvent.id)}
               >
                 <Trash2 className="h-4 w-4" />
-                Delete
+                Remove from menu
               </Button>
             </div>
             <Button

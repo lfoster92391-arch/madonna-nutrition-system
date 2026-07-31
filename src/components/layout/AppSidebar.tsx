@@ -28,8 +28,8 @@ const NAV_SECTIONS = [
     links: [
       { label: "Scan Station", href: "/scan", icon: ScanLine },
       { label: "Admin Portal", href: "/admin", icon: Users },
-      { label: "Cookbook", href: "/admin/cookbook", icon: UtensilsCrossed },
-      { label: "Menu Library", href: "/admin/menu-library", icon: UtensilsCrossed },
+      { label: "Lunch menu", href: "/admin/calendar", icon: UtensilsCrossed },
+      { label: "Cookbook", href: "/admin/cookbook", icon: ChefHat },
       { label: "Allergy Review", href: "/admin/allergy-review", icon: ShieldAlert },
       { label: "Transactions", href: "/transactions", icon: Wallet },
       { label: "Inventory", href: "/inventory", icon: Package },

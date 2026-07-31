@@ -25,19 +25,19 @@ export function AdminImportsHub() {
       <div className="mx-auto max-w-full space-y-8">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.2em] text-silver-foreground">
-            Launch
+            Students
           </p>
-          <h1 className="text-3xl font-bold text-primary">Imports</h1>
-          <p className="text-silver-foreground">
-            Import students from SIS, create parent &amp; family accounts, and onboard staff
+          <h1 className="text-3xl font-bold text-primary">Import students &amp; accounts</h1>
+          <p className="max-w-2xl text-silver-foreground">
+            Simple steps: pick a file → check the rows → import. Start with students, then parents, then staff.
           </p>
         </div>
 
         <Tabs defaultValue="students" className="space-y-6">
           <TabsList>
-            <TabsTrigger value="students">Students (SIS)</TabsTrigger>
-            <TabsTrigger value="families">Parents &amp; Family Accounts</TabsTrigger>
-            <TabsTrigger value="staff">Staff Accounts</TabsTrigger>
+            <TabsTrigger value="students">1. Students</TabsTrigger>
+            <TabsTrigger value="families">2. Parents</TabsTrigger>
+            <TabsTrigger value="staff">3. Staff</TabsTrigger>
           </TabsList>
 
           <TabsContent value="students" className="space-y-8">

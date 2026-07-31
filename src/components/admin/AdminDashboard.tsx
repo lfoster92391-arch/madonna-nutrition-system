@@ -17,7 +17,6 @@ import {
   PackageCheck,
   Palette,
   Receipt,
-  Rocket,
   Truck,
   Upload,
   UtensilsCrossed,
@@ -51,138 +50,134 @@ interface LauncherSection {
   number: number
   id: string
   title: string
+  hint?: string
   cards: LauncherCard[]
 }
+
+const DAILY_ACTIONS: LauncherCard[] = [
+  {
+    title: "Open today's menu",
+    description:
+      "See and change what is being served. Pick a day, then add meals from your cookbook.",
+    href: "/admin/calendar",
+    icon: UtensilsCrossed,
+  },
+  {
+    title: "Open cookbook",
+    description:
+      "Your saved meals with photos and prices. Create meals here, then put them on the menu.",
+    href: "/admin/cookbook",
+    icon: ChefHat,
+  },
+  {
+    title: "Import students",
+    description:
+      "Pick a spreadsheet file, check the rows, then import. Also used for parent accounts.",
+    href: "/admin/imports",
+    icon: Upload,
+    importExportType: "students",
+  },
+  {
+    title: "Student badges",
+    description: "Set up scan badges and ID photos for the lunch line.",
+    href: "/admin/badges",
+    icon: IdCard,
+    importExportType: "badges",
+  },
+]
 
 const SECTIONS: LauncherSection[] = [
   {
     number: 1,
     id: "get-started",
-    title: "Get Started",
+    title: "First-time setup",
+    hint: "Do these once when you are getting the system ready.",
     cards: [
       {
-        title: "Setup Wizard",
-        description: "Configure users, roles, and portal access.",
+        title: "Setup checklist",
+        description: "Users, roles, and who can sign in.",
         href: "/admin/setup",
         icon: Wand2,
       },
       {
-        title: "Parent Imports",
-        description: "Import student records and parent contacts from SIS.",
-        href: "/admin/imports",
-        icon: Upload,
-        statusLabel: "2 pending",
-        statusColor: "warning",
-        importExportType: "students",
-      },
-      {
-        title: "Badge Setup",
-        description: "Configure scan badges and student ID photos.",
-        href: "/admin/badges",
-        icon: IdCard,
-        importExportType: "badges",
-      },
-      {
-        title: "Pricing Setup",
-        description: "Set meal prices, subsidies, and account rules.",
+        title: "Meal prices",
+        description: "Set lunch prices and account rules.",
         href: "/admin/pricing",
         icon: BadgeDollarSign,
-      },
-      {
-        title: "Launch Controls",
-        description: "Go-live checklist and menu library readiness.",
-        href: "/admin/launch",
-        icon: Rocket,
-        statusLabel: "Review needed",
-        statusColor: "warning",
       },
     ],
   },
   {
     number: 2,
     id: "menu",
-    title: "Menu Management",
+    title: "Menus",
+    hint: "Cookbook = saved meals. Menu = what is served each day.",
     cards: [
       {
         title: "Cookbook",
-        description: "Saved meals with photos — Recipes, Lunches, Sides, and more.",
+        description: "Save reusable meals with photos — then add them to any day.",
         href: "/admin/cookbook",
         icon: ChefHat,
-        statusLabel: "Reusable library",
-        statusColor: "neutral",
         importExportType: "menu",
       },
       {
-        title: "Menu Builder",
-        description: "Create and manage weekly meal templates.",
-        href: "/admin/menu",
-        icon: UtensilsCrossed,
-        statusLabel: "12 templates",
-        statusColor: "neutral",
-        importExportType: "menu",
-      },
-      {
-        title: "Calendar",
-        description: "Schedule meals and publish service dates.",
+        title: "Lunch menu",
+        description: "Choose a day and put meals on the calendar for students and parents.",
         href: "/admin/calendar",
         icon: Calendar,
-        statusLabel: "Draft week",
-        statusColor: "warning",
       },
       {
-        title: "Calendar Design Studio",
-        description: "Design printable menu boards and signage.",
+        title: "Printable menus",
+        description: "Design menu boards and signs to print.",
         href: "/admin/calendar/design",
         icon: Palette,
-        statusLabel: "3 designs",
-        statusColor: "neutral",
       },
     ],
   },
   {
     number: 3,
     id: "operations",
-    title: "Operations",
+    title: "Kitchen & ordering",
     cards: [
       {
-        title: "Receiving Studio",
-        description: "Log deliveries and verify purchase orders.",
+        title: "Receiving",
+        description: "Log deliveries when food arrives.",
         href: "/admin/receiving",
         icon: PackageCheck,
         openTasks: 2,
       },
       {
         title: "Inventory",
-        description: "Track stock levels, par counts, and transfers.",
+        description: "Track what you have in stock.",
         href: "/admin/inventory",
         icon: Package,
         openTasks: 3,
         importExportType: "inventory",
       },
       {
-        title: "Production Center",
-        description: "Daily prep sheets and kitchen workflow.",
+        title: "Kitchen prep",
+        description: "Daily prep sheets for the kitchen.",
         href: "/admin/production",
         icon: ChefHat,
         openTasks: 1,
       },
       {
         title: "Receipts",
-        description: "Reconcile vendor receipts and invoices.",
+        description: "Match vendor receipts and invoices.",
         href: "/admin/receipts",
         icon: Receipt,
         openTasks: 4,
       },
       {
-        title: "Procurement",
-        description: "Purchase orders and reorder workflows.",
+        title: "Purchase orders",
+        description: "Order food and supplies from vendors.",
         href: "/admin/procurement",
         icon: ClipboardList,
         openTasks: 2,
       },
       {
         title: "Vendors",
-        description: "Manage supplier contacts and contracts.",
+        description: "Supplier contacts and contracts.",
         href: "/admin/vendors",
         icon: Truck,
         openTasks: 1,
@@ -193,11 +188,11 @@ const SECTIONS: LauncherSection[] = [
   {
     number: 4,
     id: "financials",
-    title: "Financials",
+    title: "Money",
     cards: [
       {
-        title: "Financial Center",
-        description: "Revenue, deposits, reconciliation, and reporting.",
+        title: "Financial center",
+        description: "Deposits, balances, and money reports.",
         href: "/admin/finance",
         icon: DollarSign,
         statusLabel: "Balanced",
@@ -208,14 +203,14 @@ const SECTIONS: LauncherSection[] = [
   {
     number: 5,
     id: "intelligence",
-    title: "Intelligence",
+    title: "Insights",
     cards: [
       {
-        title: "Intelligence Engine",
-        description: "Demand projections, AI suggestions, and operational insights.",
+        title: "Demand insights",
+        description: "Read-only suggestions about demand and operations.",
         href: "/admin/intelligence",
         icon: Brain,
-        statusLabel: "Read Only",
+        statusLabel: "Read only",
         statusColor: "neutral",
       },
     ],
@@ -223,10 +218,10 @@ const SECTIONS: LauncherSection[] = [
   {
     number: 6,
     id: "communication",
-    title: "Communication",
+    title: "Messages",
     cards: [
       {
-        title: "Communication Center",
+        title: "Notices & alerts",
         description: "Parent notices, allergy reviews, and announcements.",
         href: "/admin/communication",
         icon: Megaphone,
@@ -238,11 +233,11 @@ const SECTIONS: LauncherSection[] = [
   {
     number: 7,
     id: "reporting",
-    title: "Reporting",
+    title: "Reports",
     cards: [
       {
-        title: "Reporting Center",
-        description: "Export operational and financial reports.",
+        title: "Download reports",
+        description: "Export kitchen and money reports.",
         href: "/admin/reporting",
         icon: BarChart3,
         statusLabel: "Available",
@@ -266,22 +261,34 @@ export function AdminDashboard() {
   return (
     <div className="w-full px-6 py-8 md:px-8">
       <div className="mx-auto max-w-full space-y-10">
-        <div className="space-y-4">
+        <div className="space-y-2">
           <h1 className="text-2xl font-bold md:text-3xl" style={{ color: ADMIN_NAVY }}>
-            Welcome back, {adminName}!
+            Welcome, {adminName}
           </h1>
-          <div
-            className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold"
-            style={{ backgroundColor: `${ADMIN_SUCCESS}18`, color: ADMIN_SUCCESS }}
-          >
-            <span className="h-2 w-2 rounded-full" style={{ backgroundColor: ADMIN_SUCCESS }} />
-            All systems operational
-          </div>
+          <p className="max-w-2xl text-sm md:text-base" style={{ color: ADMIN_SILVER }}>
+            Start with a daily task below. Use the side menu anytime to jump to Menu, Cookbook, or
+            Students.
+          </p>
         </div>
+
+        <section aria-labelledby="daily-tasks-heading">
+          <h2
+            id="daily-tasks-heading"
+            className="mb-4 text-lg font-bold md:text-xl"
+            style={{ color: ADMIN_NAVY }}
+          >
+            What do you want to do?
+          </h2>
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            {DAILY_ACTIONS.map((card) => (
+              <LauncherCardItem key={card.title} card={card} emphasize />
+            ))}
+          </div>
+        </section>
 
         {SECTIONS.map((section) => (
           <section key={section.id} id={section.id}>
-            <div className="mb-5 flex flex-wrap items-center gap-3">
+            <div className="mb-2 flex flex-wrap items-center gap-3">
               <span
                 className="flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold text-white"
                 style={{ backgroundColor: ADMIN_NAVY }}
@@ -299,10 +306,17 @@ export function AdminDashboard() {
                   className="rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-wide"
                   style={{ backgroundColor: `${ADMIN_NAVY}12`, color: ADMIN_NAVY }}
                 >
-                  Read Only
+                  Read only
                 </span>
               )}
             </div>
+            {section.hint ? (
+              <p className="mb-5 text-sm" style={{ color: ADMIN_SILVER }}>
+                {section.hint}
+              </p>
+            ) : (
+              <div className="mb-5" />
+            )}
 
             <div
               className={
@@ -322,14 +336,24 @@ export function AdminDashboard() {
   )
 }
 
-function LauncherCardItem({ card }: { card: LauncherCard }) {
+function LauncherCardItem({
+  card,
+  emphasize = false,
+}: {
+  card: LauncherCard
+  emphasize?: boolean
+}) {
   const Icon = card.icon
   const statusStyle = card.statusColor ? STATUS_COLORS[card.statusColor] : null
 
   return (
     <div
       className="group flex flex-col rounded-2xl border p-6 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
-      style={{ borderColor: ADMIN_SILVER, backgroundColor: ADMIN_WHITE }}
+      style={{
+        borderColor: emphasize ? ADMIN_NAVY : ADMIN_SILVER,
+        backgroundColor: ADMIN_WHITE,
+        borderWidth: emphasize ? 2 : 1,
+      }}
     >
       <Link href={card.href} className="flex flex-1 flex-col">
         <div
@@ -348,7 +372,7 @@ function LauncherCardItem({ card }: { card: LauncherCard }) {
 
         {card.openTasks !== undefined && (
           <p className="mt-3 text-sm font-semibold" style={{ color: ADMIN_WARNING }}>
-            {card.openTasks} Open Task{card.openTasks !== 1 ? "s" : ""}
+            {card.openTasks} open task{card.openTasks !== 1 ? "s" : ""}
           </p>
         )}
 
@@ -365,7 +389,7 @@ function LauncherCardItem({ card }: { card: LauncherCard }) {
           className="mt-5 flex items-center gap-1 text-sm font-semibold transition group-hover:gap-2"
           style={{ color: ADMIN_NAVY }}
         >
-          Open
+          {emphasize ? "Go" : "Open"}
           <ArrowRight className="h-4 w-4" />
         </div>
       </Link>

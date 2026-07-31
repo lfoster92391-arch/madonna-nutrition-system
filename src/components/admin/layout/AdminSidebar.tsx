@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation"
 import {
   BarChart3,
   Brain,
-  Calendar,
+  ChefHat,
   ChevronLeft,
   Headphones,
   LayoutDashboard,
@@ -31,24 +31,55 @@ import {
   ADMIN_SIDEBAR_STORAGE_KEY,
 } from "@/components/admin/layout/admin-theme"
 
-const NAV_ITEMS = [
-  { label: "Dashboard", href: "/admin", icon: LayoutDashboard, exact: true },
-  { label: "Launch", href: "/admin#get-started", icon: Rocket },
-  { label: "Menu", href: "/admin/menu", icon: UtensilsCrossed },
-  { label: "Calendar", href: "/admin/calendar", icon: Calendar },
-  { label: "Operations", href: "/admin/receiving", icon: Wrench },
-  { label: "Procurement", href: "/admin/procurement", icon: Truck },
-  { label: "Financials", href: "/admin/finance", icon: Wallet },
-  { label: "Intelligence", href: "/admin/intelligence", icon: Brain, readOnly: true },
-  { label: "Allergy Review", href: "/admin/allergy-review", icon: ShieldAlert },
-  { label: "Communication", href: "/admin/communication", icon: Megaphone },
-  { label: "Reporting", href: "/admin/reporting", icon: BarChart3 },
+const NAV_ITEMS: Array<{
+  label: string
+  href: string
+  icon: typeof LayoutDashboard
+  exact?: boolean
+  readOnly?: boolean
+  matchPrefixes?: string[]
+}> = [
+  { label: "Home", href: "/admin", icon: LayoutDashboard, exact: true },
+  { label: "Get started", href: "/admin#get-started", icon: Rocket },
+  {
+    label: "Menu",
+    href: "/admin/calendar",
+    icon: UtensilsCrossed,
+    matchPrefixes: ["/admin/calendar", "/admin/menu"],
+  },
+  {
+    label: "Cookbook",
+    href: "/admin/cookbook",
+    icon: ChefHat,
+    matchPrefixes: ["/admin/cookbook", "/admin/menu-library"],
+  },
+  {
+    label: "Students & badges",
+    href: "/admin/imports",
+    icon: User,
+    matchPrefixes: ["/admin/imports", "/admin/badges", "/admin/users"],
+  },
+  { label: "Kitchen", href: "/admin/receiving", icon: Wrench },
+  { label: "Ordering", href: "/admin/procurement", icon: Truck },
+  { label: "Money", href: "/admin/finance", icon: Wallet },
+  { label: "Insights", href: "/admin/intelligence", icon: Brain, readOnly: true },
+  { label: "Allergy alerts", href: "/admin/allergy-review", icon: ShieldAlert },
+  { label: "Messages", href: "/admin/communication", icon: Megaphone },
+  { label: "Reports", href: "/admin/reporting", icon: BarChart3 },
   { label: "Settings", href: "/admin/settings", icon: Settings },
-  { label: "Support", href: "/admin/support", icon: Headphones },
+  { label: "Help", href: "/admin/support", icon: Headphones },
 ]
 
-function isActive(pathname: string, href: string, exact?: boolean) {
+function isActive(
+  pathname: string,
+  href: string,
+  exact?: boolean,
+  matchPrefixes?: string[]
+) {
   if (exact) return pathname === href
+  if (matchPrefixes?.some((p) => pathname === p || pathname.startsWith(`${p}/`))) {
+    return true
+  }
   const base = href.split("#")[0]
   return pathname === base || pathname.startsWith(`${base}/`)
 }
@@ -99,8 +130,8 @@ export function AdminSidebar() {
         style={{ backgroundColor: ADMIN_SIDEBAR_DARK }}
       >
         <nav className="flex-1 space-y-0.5 overflow-y-auto px-2 py-4">
-          {NAV_ITEMS.map(({ label, href, icon: Icon, exact, readOnly }) => {
-            const active = isActive(pathname, href, exact)
+          {NAV_ITEMS.map(({ label, href, icon: Icon, exact, readOnly, matchPrefixes }) => {
+            const active = isActive(pathname, href, exact, matchPrefixes)
             return (
               <Link
                 key={label}

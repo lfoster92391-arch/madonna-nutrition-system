@@ -190,11 +190,11 @@ export function AdminStudentManager({
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
               <p className="text-xs font-bold uppercase tracking-[0.2em] text-silver-foreground">
-                Launch
+                Students
               </p>
-              <h1 className="text-3xl font-bold text-primary">Parent Imports</h1>
+              <h1 className="text-3xl font-bold text-primary">Students</h1>
               <p className="text-silver-foreground">
-                Student management, SIS import, and photo upload
+                Add students one at a time, or import a spreadsheet below.
               </p>
             </div>
             <div className="flex flex-wrap gap-3">
@@ -206,11 +206,11 @@ export function AdminStudentManager({
                 />
               )}
               <Button variant="outline" asChild>
-                <Link href="/admin/allergy-review">Allergy Review Queue</Link>
+                <Link href="/admin/allergy-review">Allergy alerts</Link>
               </Button>
               <Button onClick={() => { setShowAdd(true); setEditing(null) }}>
                 <Plus className="h-4 w-4" />
-                Add Student
+                Add a student
               </Button>
             </div>
           </div>
@@ -219,9 +219,9 @@ export function AdminStudentManager({
         {(embedded || importsTab) && (
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
-              <h2 className="text-xl font-semibold text-primary">Student Manager</h2>
+              <h2 className="text-xl font-semibold text-primary">Your students</h2>
               <p className="text-sm text-silver-foreground">
-                Manage students before linking parent accounts
+                Review the list, then use Import students below if you have a spreadsheet.
               </p>
             </div>
             <div className="flex flex-wrap gap-3">
@@ -233,11 +233,11 @@ export function AdminStudentManager({
                 />
               )}
               <Button variant="outline" asChild>
-                <Link href="/admin/allergy-review">Allergy Review Queue</Link>
+                <Link href="/admin/allergy-review">Allergy alerts</Link>
               </Button>
               <Button onClick={() => { setShowAdd(true); setEditing(null) }}>
                 <Plus className="h-4 w-4" />
-                Add Student
+                Add a student
               </Button>
             </div>
           </div>

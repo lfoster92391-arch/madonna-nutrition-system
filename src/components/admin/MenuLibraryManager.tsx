@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useMemo, useRef, useState } from "react"
+import Link from "next/link"
 import {
   Archive,
   ArrowDown,
@@ -321,6 +322,14 @@ export function MenuLibraryManager() {
 
   const handleArchive = async () => {
     if (!selectedId) return
+    const name = draft?.name?.trim() || "this meal"
+    if (
+      !window.confirm(
+        `Hide "${name}" from the cookbook?\n\nYou can find it later under Archived. It will not be removed from days already on the menu.`
+      )
+    ) {
+      return
+    }
     await archiveMealTemplate(selectedId)
     const next = filteredTemplates.find((t) => t.id !== selectedId)
     if (next) selectTemplate(next)
@@ -427,8 +436,8 @@ export function MenuLibraryManager() {
             <h1 className="text-3xl font-bold" style={{ color: NAVY }}>
               Cookbook
             </h1>
-            <p className="text-silver-foreground">
-              Create and customize meals — save to your library, then send to the lunch calendar.
+            <p className="max-w-2xl text-silver-foreground">
+              Save meals here (with photos and prices). Then open the lunch menu and put them on a day.
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-4">
@@ -438,13 +447,19 @@ export function MenuLibraryManager() {
               </span>
             )}
             <ImportExportMenu type="menu" importDisabled />
+            <Button variant="outline" asChild className="rounded-2xl px-6 font-bold">
+              <Link href="/admin/calendar">
+                <Calendar className="h-4 w-4" />
+                Open today&apos;s menu
+              </Link>
+            </Button>
             <Button
               onClick={handleCreate}
-              className="rounded-2xl px-6 font-bold uppercase tracking-wide"
+              className="rounded-2xl px-6 font-bold"
               style={{ backgroundColor: NAVY }}
             >
               <Plus className="h-4 w-4" />
-              Create Meal
+              Add a meal
             </Button>
             <button
               type="button"
@@ -607,20 +622,20 @@ export function MenuLibraryManager() {
             <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-silver/60 bg-silver/5 px-8 py-20 text-center">
               <UtensilsCrossed className="mb-4 h-12 w-12 text-silver-foreground/40" />
               <p className="text-lg font-semibold" style={{ color: NAVY }}>
-                {mealTemplates.length === 0 ? "No meals in your cookbook yet" : "No meals match your filters"}
+                {mealTemplates.length === 0 ? "Your cookbook is empty" : "No meals match what you searched"}
               </p>
               <p className="mt-2 max-w-md text-sm text-silver-foreground">
                 {mealTemplates.length === 0
-                  ? "Create your first meal template with photos and pricing — then reuse it on the calendar anytime."
-                  : "Try a different category or search term, or create a new meal."}
+                  ? "Next step: add your first meal. After that, open the lunch menu and place it on a school day."
+                  : "Try a different category or search, or add a new meal."}
               </p>
               <Button
                 onClick={handleCreate}
-                className="mt-6 rounded-2xl px-6 font-bold uppercase tracking-wide"
+                className="mt-6 rounded-2xl px-6 font-bold"
                 style={{ backgroundColor: NAVY }}
               >
                 <Plus className="h-4 w-4" />
-                Create Meal
+                Add a meal
               </Button>
             </div>
           ) : viewMode === "grid" ? (
@@ -1411,7 +1426,7 @@ export function MenuLibraryManager() {
                     {selectedId && !isCreating && (
                       <Button variant="outline" className="w-full" onClick={handleArchive}>
                         <Archive className="h-4 w-4" />
-                        Archive Meal
+                        Hide this meal
                       </Button>
                     )}
                   </div>
