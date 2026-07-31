@@ -190,7 +190,7 @@ export function AdminStudentManager({
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
               <p className="text-xs font-bold uppercase tracking-[0.2em] text-silver-foreground">
-                Launch
+                Setup
               </p>
               <h1 className="text-3xl font-bold text-primary">Parent Imports</h1>
               <p className="text-silver-foreground">

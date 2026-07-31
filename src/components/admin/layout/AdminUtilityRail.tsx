@@ -177,7 +177,7 @@ function AdminUtilityRailBody() {
         </ul>
       </RailSection>
 
-      <RailSection icon={CheckSquare} title="Assigned Tasks" viewAllHref="/admin/launch">
+      <RailSection icon={CheckSquare} title="Assigned Tasks" viewAllHref="/admin">
         <ul className="space-y-2">
           {ASSIGNED_TASKS.map((task) => {
             const priority = PRIORITY_STYLES[task.priority]

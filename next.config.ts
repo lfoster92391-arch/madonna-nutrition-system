@@ -23,6 +23,8 @@ const nextConfig: NextConfig = {
       { source: "/auth/staff", destination: "/login/staff", permanent: false },
       { source: "/auth/cashier", destination: "/kiosk", permanent: false },
       { source: "/admin/menu", destination: "/admin/menu-library", permanent: false },
+      { source: "/admin/launch", destination: "/admin", permanent: false },
+      { source: "/admin/launch/:path*", destination: "/admin", permanent: false },
       { source: "/admin/calendar/design", destination: "/admin/calendar", permanent: false },
       { source: "/admin/calendar/design/:path*", destination: "/admin/calendar", permanent: false },
       { source: "/admin/inventory", destination: "/inventory", permanent: false },

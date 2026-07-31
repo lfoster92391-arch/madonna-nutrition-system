@@ -12,7 +12,6 @@ import {
   LayoutDashboard,
   LogOut,
   Megaphone,
-  Rocket,
   Settings,
   ShieldAlert,
   Truck,
@@ -33,7 +32,6 @@ import {
 
 const NAV_ITEMS = [
   { label: "Dashboard", href: "/admin", icon: LayoutDashboard, exact: true },
-  { label: "Launch", href: "/admin#get-started", icon: Rocket },
   { label: "Menu", href: "/admin/menu", icon: UtensilsCrossed },
   { label: "Calendar", href: "/admin/calendar", icon: Calendar },
   { label: "Operations", href: "/admin/receiving", icon: Wrench },

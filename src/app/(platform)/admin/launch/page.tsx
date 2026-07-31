@@ -1,5 +1,5 @@
-import { MenuLibraryManager } from "@/components/admin/MenuLibraryManager"
+import { redirect } from "next/navigation"
 
 export default function AdminLaunchPage() {
-  return <MenuLibraryManager />
+  redirect("/admin")
 }
