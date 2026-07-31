@@ -16,8 +16,8 @@ export function ParentEmptyState() {
       </p>
       <p className="mt-4 text-xs text-slate-500">
         School staff: import students in{" "}
-        <Link href="/admin" className="font-medium text-[#001E62] underline-offset-2 hover:underline">
-          Admin → Launch
+        <Link href="/admin/imports" className="font-medium text-[#001E62] underline-offset-2 hover:underline">
+          Admin → Imports
         </Link>{" "}
         or contact your nutrition program administrator.
       </p>

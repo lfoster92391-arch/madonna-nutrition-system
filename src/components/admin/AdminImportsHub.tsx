@@ -25,7 +25,7 @@ export function AdminImportsHub() {
       <div className="mx-auto max-w-full space-y-8">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.2em] text-silver-foreground">
-            Launch
+            Setup
           </p>
           <h1 className="text-3xl font-bold text-primary">Imports</h1>
           <p className="text-silver-foreground">
