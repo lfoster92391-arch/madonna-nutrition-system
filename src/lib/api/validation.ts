@@ -404,11 +404,12 @@ export const badgeAssignSchema = z.object({
   photo: z.string().optional(),
 })
 
+/** Loose row shape for bulk upload — incomplete rows are handled per-row, not rejected as a batch. */
 export const badgeImportRowSchema = z.object({
   mdId: z.string().min(1),
-  firstName: z.string().min(1),
-  lastName: z.string().min(1),
-  grade: z.string().min(1),
+  firstName: z.string().optional().default(""),
+  lastName: z.string().optional().default(""),
+  grade: z.string().optional().default(""),
   photoUrl: z.string().optional(),
   badgeStatus: optionalBadgeStatusSchema,
   barcode: z.string().optional(),
@@ -417,6 +418,8 @@ export const badgeImportRowSchema = z.object({
 export const badgeImportRequestSchema = z.object({
   adminUserId: z.string().min(1),
   rows: z.array(badgeImportRowSchema).min(1).max(1000),
+  /** When true, create stub students for incomplete rows so they can be edited individually. */
+  createIncompleteStubs: z.boolean().optional(),
 })
 
 export const studentImportRowSchema = z.object({
@@ -425,7 +428,7 @@ export const studentImportRowSchema = z.object({
   lastName: z.string().min(1),
   grade: z.string().min(1),
   homeroom: z.string().optional(),
-  balance: z.coerce.number(),
+  balance: z.coerce.number().optional().default(0),
   photoUrl: z.string().optional(),
   parentEmail: z.string().email().optional().or(z.literal("")),
   parentPhone: z.string().optional(),

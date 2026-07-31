@@ -19,6 +19,7 @@ export async function POST(request: Request) {
       const summary = await importBadgeRows({
         rows: parsed.data.rows,
         schoolId: auth.schoolId,
+        createIncompleteStubs: parsed.data.createIncompleteStubs,
       })
 
       return NextResponse.json(summary)

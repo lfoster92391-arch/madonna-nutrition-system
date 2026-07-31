@@ -19,7 +19,7 @@ import { Badge } from "@/components/ui/badge"
 import { downloadImportTemplate, exportRowsToCsv } from "@/lib/import-export"
 import { Button } from "@/components/ui/button"
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Label, Select } from "@/components/ui/input"
+import { Input, Label, Select } from "@/components/ui/input"
 import type { ImportLog, ParentContact, Student } from "@/lib/types"
 
 const studentSchema = z.object({
@@ -29,7 +29,10 @@ const studentSchema = z.object({
   lastName: z.string().min(1),
   grade: z.string().min(1),
   homeroom: z.string().optional(),
-  balance: z.coerce.number(),
+  balance: z.preprocess(
+    (value) => (value === "" || value === null || value === undefined ? 0 : value),
+    z.coerce.number()
+  ),
   parentEmail: z.union([z.string().email(), z.literal("")]).optional(),
   parentPhone: z.string().optional(),
   photo: z.string().optional(),
@@ -41,10 +44,12 @@ const studentSchema = z.object({
 type ImportStep = "upload" | "mapping" | "validation" | "preview" | "complete"
 type FieldKey = "id" | "mdId" | "firstName" | "lastName" | "grade" | "homeroom" | "balance" | "parentEmail" | "parentPhone" | "photo" | "photoUrl" | "allergies" | "dietaryRestrictions"
 
-const REQUIRED_FIELDS: FieldKey[] = ["mdId", "firstName", "lastName", "grade", "balance"]
+/** Minimum fields to import; balance/photo/parent are optional and can be filled later. */
+const REQUIRED_FIELDS: FieldKey[] = ["mdId", "firstName", "lastName", "grade"]
 const OPTIONAL_FIELDS: FieldKey[] = [
   "id",
   "homeroom",
+  "balance",
   "parentEmail",
   "parentPhone",
   "photo",
@@ -109,10 +114,18 @@ export function CsvImportWizard() {
   const [headers, setHeaders] = useState<string[]>([])
   const [mapping, setMapping] = useState<Partial<Record<FieldKey, string>>>({})
   const [validRows, setValidRows] = useState<Student[]>([])
-  const [errorRows, setErrorRows] = useState<{ row: number; errors: string[] }[]>([])
+  const [errorRows, setErrorRows] = useState<{ row: number; errors: string[]; mdId?: string }[]>([])
   const [duplicateRows, setDuplicateRows] = useState<number[]>([])
+  const [updateExistingRows, setUpdateExistingRows] = useState<Student[]>([])
   const [lastImportId, setLastImportId] = useState<string | null>(null)
   const [dragOver, setDragOver] = useState(false)
+  const [editingIncomplete, setEditingIncomplete] = useState<{
+    row: number
+    mdId: string
+    firstName: string
+    lastName: string
+    grade: string
+  } | null>(null)
 
   const existingIds = useMemo(() => new Set(students.map((s) => s.id)), [students])
 
@@ -145,7 +158,8 @@ export function CsvImportWizard() {
 
   function runValidation() {
     const parsed: Student[] = []
-    const errors: { row: number; errors: string[] }[] = []
+    const updates: Student[] = []
+    const errors: { row: number; errors: string[]; mdId?: string }[] = []
     const duplicates: number[] = []
 
     rawRows.forEach((row, index) => {
@@ -154,22 +168,20 @@ export function CsvImportWizard() {
         if (col) mapped[field] = row[col] ?? ""
       }
 
+      // Empty optional balance → 0 so badge enrollment CSVs without Balance still import
+      if (!mapped.balance?.trim()) mapped.balance = "0"
+
       const result = studentSchema.safeParse(mapped)
       if (!result.success) {
         errors.push({
           row: index + 2,
+          mdId: mapped.mdId || mapped.id || undefined,
           errors: result.error.issues.map((i) => i.message),
         })
         return
       }
 
       const studentId = result.data.id || result.data.mdId!
-      if (existingIds.has(studentId)) {
-        duplicates.push(index + 2)
-        errors.push({ row: index + 2, errors: ["Duplicate student ID"] })
-        return
-      }
-
       const parentContacts: ParentContact[] = []
       if (result.data.parentEmail) {
         parentContacts.push({
@@ -180,41 +192,52 @@ export function CsvImportWizard() {
         })
       }
 
-      parsed.push({
+      const student: Student = {
         id: studentId,
         firstName: result.data.firstName,
         lastName: result.data.lastName,
         grade: result.data.grade,
         homeroom: result.data.homeroom,
-        balance: result.data.balance,
+        balance: result.data.balance ?? 0,
         photo:
           result.data.photoUrl ||
           result.data.photo ||
-          "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=400&auto=format&fit=crop",
+          "",
         allergies: parseAllergies(result.data.allergies),
         dietaryRestrictions: result.data.dietaryRestrictions
           ? result.data.dietaryRestrictions.split(/[,;]/).map((d) => d.trim()).filter(Boolean)
           : [],
         parentContacts,
-      })
+      }
+
+      if (existingIds.has(studentId)) {
+        duplicates.push(index + 2)
+        updates.push(student)
+        return
+      }
+
+      parsed.push(student)
     })
 
     setValidRows(parsed)
+    setUpdateExistingRows(updates)
     setErrorRows(errors)
     setDuplicateRows(duplicates)
-    setStep(errors.length > 0 && parsed.length === 0 ? "validation" : "preview")
+    // Always advance when anything can import — incomplete rows listed separately
+    setStep(parsed.length + updates.length > 0 ? "preview" : "validation")
   }
 
   async function executeImport() {
     if (!user?.id) return
-    const rows = validRows.map((student) => ({
+    const rowsToImport = [...validRows, ...updateExistingRows]
+    const rows = rowsToImport.map((student) => ({
       mdId: student.id,
       firstName: student.firstName,
       lastName: student.lastName,
       grade: student.grade,
       homeroom: student.homeroom ?? "",
       balance: student.balance,
-      photoUrl: student.photo,
+      photoUrl: student.photo || undefined,
       parentEmail: student.parentContacts[0]?.email ?? "",
       parentPhone: student.parentContacts[0]?.phone ?? "",
       allergies: student.allergies.map((a) => a.name).join(", "),
@@ -236,13 +259,38 @@ export function CsvImportWizard() {
       importedAt: new Date().toISOString(),
       totalRows: rawRows.length,
       successRows: report.created + report.updated,
-      errorRows: report.errors.length,
+      errorRows: report.errors.length + errorRows.length,
       status: "completed",
-      importedStudentIds: validRows.map((r) => r.id),
+      importedStudentIds: rowsToImport.map((r) => r.id),
     }
     addImportLog(log)
     setLastImportId(log.id)
     setStep("complete")
+  }
+
+  async function saveIncompleteIndividually() {
+    if (!user?.id || !editingIncomplete) return
+    const draft = editingIncomplete
+    if (!draft.mdId.trim() || !draft.firstName.trim() || !draft.lastName.trim() || !draft.grade.trim()) {
+      return
+    }
+    await api.adminImportStudents({
+      adminUserId: user.id,
+      performedBy: user.username ?? user.id,
+      updateExisting: true,
+      rows: [
+        {
+          mdId: draft.mdId.trim(),
+          firstName: draft.firstName.trim(),
+          lastName: draft.lastName.trim(),
+          grade: draft.grade.trim(),
+          balance: 0,
+        },
+      ],
+    })
+    setErrorRows((rows) => rows.filter((r) => r.row !== draft.row))
+    setEditingIncomplete(null)
+    void queryClient.invalidateQueries({ queryKey: ["students"] })
   }
 
   function exportReconciliationCsv() {
@@ -279,8 +327,10 @@ export function CsvImportWizard() {
     if (lastImportId) rollbackImport(lastImportId)
     setStep("upload")
     setValidRows([])
+    setUpdateExistingRows([])
     setErrorRows([])
     setDuplicateRows([])
+    setEditingIncomplete(null)
   }
 
   const steps: ImportStep[] = ["upload", "mapping", "validation", "preview", "complete"]
@@ -327,7 +377,8 @@ export function CsvImportWizard() {
           <Upload className="h-10 w-10 text-silver-foreground" />
           <p className="mt-4 font-medium text-primary">Drag & drop SIS export CSV here</p>
           <p className="mt-1 text-sm text-silver-foreground">
-            Supports: mdId, firstName, lastName, grade, homeroom, balance, photoUrl, parentEmail, parentPhone, allergies
+            Supports badge enrollment CSVs (mdId, firstName, lastName, grade, photoUrl, barcode).
+            Balance and photo are optional — fill gaps later per student.
           </p>
           <input
             type="file"
@@ -366,29 +417,107 @@ export function CsvImportWizard() {
 
       {(step === "validation" || step === "preview") && (
         <div className="space-y-4">
+          <p className="text-sm text-silver-foreground">
+            Photo, balance, and parent contact are optional. You can import complete rows now and
+            finish incomplete ones one at a time below.
+          </p>
           {duplicateRows.length > 0 && (
             <div className="rounded-2xl border border-warning/40 bg-warning/5 p-4 text-sm text-warning">
-              {duplicateRows.length} duplicate ID(s) detected — existing students will not be overwritten.
+              {duplicateRows.length} existing student ID(s) will be <strong>updated</strong> (not blocked).
             </div>
           )}
           {errorRows.length > 0 && (
             <div className="rounded-2xl border border-danger/40 bg-danger/5 p-4">
               <div className="flex items-center gap-2 font-semibold text-danger">
                 <AlertCircle className="h-5 w-5" />
-                {errorRows.length} error row(s)
+                {errorRows.length} incomplete row(s) — bypass and edit individually
               </div>
-              <ul className="mt-2 max-h-32 overflow-y-auto text-sm text-danger">
-                {errorRows.slice(0, 10).map((e) => (
-                  <li key={e.row}>Row {e.row}: {e.errors.join(", ")}</li>
+              <ul className="mt-2 max-h-40 space-y-2 overflow-y-auto text-sm text-danger">
+                {errorRows.slice(0, 20).map((e) => (
+                  <li key={e.row} className="flex flex-wrap items-center justify-between gap-2">
+                    <span>
+                      Row {e.row}
+                      {e.mdId ? ` (MD ${e.mdId})` : ""}: {e.errors.join(", ")}
+                    </span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        const raw = rawRows[e.row - 2] ?? {}
+                        const get = (field: FieldKey) => {
+                          const col = mapping[field]
+                          return col ? raw[col] ?? "" : ""
+                        }
+                        setEditingIncomplete({
+                          row: e.row,
+                          mdId: e.mdId || get("mdId") || get("id"),
+                          firstName: get("firstName"),
+                          lastName: get("lastName"),
+                          grade: get("grade"),
+                        })
+                      }}
+                    >
+                      Edit individually
+                    </Button>
+                  </li>
                 ))}
               </ul>
+              {editingIncomplete && (
+                <div className="mt-4 space-y-3 rounded-xl border border-silver/60 bg-white p-4 text-left text-primary">
+                  <p className="font-semibold">Edit row {editingIncomplete.row}</p>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div>
+                      <Label>MD ID *</Label>
+                      <Input
+                        value={editingIncomplete.mdId}
+                        onChange={(e) =>
+                          setEditingIncomplete({ ...editingIncomplete, mdId: e.target.value })
+                        }
+                      />
+                    </div>
+                    <div>
+                      <Label>Grade *</Label>
+                      <Input
+                        value={editingIncomplete.grade}
+                        onChange={(e) =>
+                          setEditingIncomplete({ ...editingIncomplete, grade: e.target.value })
+                        }
+                      />
+                    </div>
+                    <div>
+                      <Label>First name *</Label>
+                      <Input
+                        value={editingIncomplete.firstName}
+                        onChange={(e) =>
+                          setEditingIncomplete({ ...editingIncomplete, firstName: e.target.value })
+                        }
+                      />
+                    </div>
+                    <div>
+                      <Label>Last name *</Label>
+                      <Input
+                        value={editingIncomplete.lastName}
+                        onChange={(e) =>
+                          setEditingIncomplete({ ...editingIncomplete, lastName: e.target.value })
+                        }
+                      />
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button onClick={() => void saveIncompleteIndividually()}>Save this student</Button>
+                    <Button variant="ghost" onClick={() => setEditingIncomplete(null)}>
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
-          {validRows.length > 0 && (
+          {(validRows.length > 0 || updateExistingRows.length > 0) && (
             <div className="rounded-2xl border border-success/40 bg-success/5 p-4">
               <div className="flex items-center gap-2 font-semibold text-success">
                 <CheckCircle2 className="h-5 w-5" />
-                {validRows.length} valid row(s) ready to import
+                {validRows.length} new + {updateExistingRows.length} update(s) ready to import
               </div>
               <div className="mt-3 max-h-48 overflow-y-auto">
                 <table className="w-full text-sm">
@@ -402,10 +531,12 @@ export function CsvImportWizard() {
                     </tr>
                   </thead>
                   <tbody>
-                    {validRows.slice(0, 10).map((r) => (
+                    {[...validRows, ...updateExistingRows].slice(0, 10).map((r) => (
                       <tr key={r.id} className="border-t border-silver/30">
                         <td className="py-2">{r.id}</td>
-                        <td className="py-2">{r.firstName} {r.lastName}</td>
+                        <td className="py-2">
+                          {r.firstName} {r.lastName}
+                        </td>
                         <td className="py-2">{r.grade}</td>
                         <td className="py-2">{r.homeroom ?? "—"}</td>
                         <td className="py-2 text-right">${r.balance.toFixed(2)}</td>
@@ -416,8 +547,17 @@ export function CsvImportWizard() {
               </div>
             </div>
           )}
-          {validRows.length > 0 && (
-            <Button onClick={executeImport}>Import {validRows.length} Students</Button>
+          {(validRows.length > 0 || updateExistingRows.length > 0) && (
+            <Button onClick={() => void executeImport()}>
+              Import {validRows.length + updateExistingRows.length} Students
+              {errorRows.length > 0 ? ` (skip ${errorRows.length} incomplete)` : ""}
+            </Button>
+          )}
+          {validRows.length === 0 && updateExistingRows.length === 0 && errorRows.length > 0 && (
+            <p className="text-sm text-silver-foreground">
+              No complete rows yet — use <strong>Edit individually</strong> above to fill missing
+              fields and save one student at a time.
+            </p>
           )}
         </div>
       )}

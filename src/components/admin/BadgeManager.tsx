@@ -78,7 +78,18 @@ export function BadgeManager() {
   const [barcodeInput, setBarcodeInput] = useState("")
   const [statusInput, setStatusInput] = useState<Student["badgeStatus"]>("active")
   const [importSummary, setImportSummary] = useState<string | null>(null)
-  const [importErrors, setImportErrors] = useState<Array<{ row: number; message: string }>>([])
+  const [importErrors, setImportErrors] = useState<Array<{ row: number; message: string; incomplete?: boolean }>>([])
+  const [incompleteRows, setIncompleteRows] = useState<
+    Array<{
+      row: number
+      mdId: string
+      firstName: string
+      lastName: string
+      grade: string
+      missing: string[]
+    }>
+  >([])
+  const [createIncompleteStubs, setCreateIncompleteStubs] = useState(true)
 
   const { data: badges = [], isLoading } = useQuery({
     queryKey: ["badges"],
@@ -155,6 +166,7 @@ export function BadgeManager() {
     }
     setImportSummary(null)
     setImportErrors([])
+    setIncompleteRows([])
 
     Papa.parse<Record<string, string>>(file, {
       header: true,
@@ -186,11 +198,17 @@ export function BadgeManager() {
           const summary = await api.adminImportBadges({
             adminUserId: user.id,
             rows,
+            createIncompleteStubs,
           })
+          const incompleteCount = summary.incomplete?.length ?? 0
           setImportSummary(
-            `Matched ${summary.matched}, updated ${summary.updated}, created ${summary.created}, skipped ${summary.skipped}.`
+            `Matched ${summary.matched}, updated ${summary.updated}, created ${summary.created}, skipped ${summary.skipped}` +
+              (incompleteCount > 0
+                ? `. ${incompleteCount} incomplete — edit individually below or in the list above.`
+                : ".")
           )
           setImportErrors(summary.errors)
+          setIncompleteRows(summary.incomplete ?? [])
           void queryClient.invalidateQueries({ queryKey: ["badges"] })
           void queryClient.invalidateQueries({ queryKey: ["students"] })
         } catch (error) {
@@ -347,15 +365,28 @@ export function BadgeManager() {
           <div>
             <h3 className="font-semibold text-primary">Bulk badge import</h3>
             <p className="text-sm text-silver-foreground">
-              Upload the badge enrollment CSV template to link barcodes and set status.
+              Upload the badge enrollment CSV. Complete rows import immediately; incomplete rows
+              (missing name/grade/photo) can be skipped or created as stubs for individual edit.
             </p>
           </div>
           <ImportExportMenu type="badges" onImport={scrollToImport} exportRows={exportRows} />
         </div>
+        <label className="mt-4 flex items-start gap-2 text-sm text-primary">
+          <input
+            type="checkbox"
+            className="mt-1"
+            checked={createIncompleteStubs}
+            onChange={(e) => setCreateIncompleteStubs(e.target.checked)}
+          />
+          <span>
+            Create incomplete students as stubs so I can edit them individually after import
+            (recommended). Uncheck to skip incomplete rows entirely.
+          </span>
+        </label>
         <input
           ref={fileRef}
           type="file"
-          accept=".csv"
+          accept=".csv,.xlsx,.xls"
           className="hidden"
           onChange={(e) => {
             const file = e.target.files?.[0]
@@ -371,25 +402,59 @@ export function BadgeManager() {
           <div
             className={cn(
               "mt-4 flex items-start gap-2 rounded-xl border p-3 text-sm",
-              importErrors.length > 0
+              importErrors.length > 0 || incompleteRows.length > 0
                 ? "border-warning/40 bg-warning/5"
                 : "border-success/40 bg-success/5"
             )}
           >
-            {importErrors.length > 0 ? (
+            {importErrors.length > 0 || incompleteRows.length > 0 ? (
               <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
             ) : (
               <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-success" />
             )}
-            <div>
+            <div className="w-full space-y-3">
               <p>{importSummary}</p>
-              {importErrors.length > 0 && (
-                <ul className="mt-2 list-disc pl-4 text-silver-foreground">
-                  {importErrors.slice(0, 10).map((err) => (
-                    <li key={`${err.row}-${err.message}`}>
-                      Row {err.row}: {err.message}
-                    </li>
-                  ))}
+              {incompleteRows.length > 0 && (
+                <div>
+                  <p className="font-medium text-primary">
+                    Incomplete — finish these individually (search MD ID above, then Assign / edit)
+                  </p>
+                  <ul className="mt-2 max-h-40 list-disc overflow-y-auto pl-4 text-silver-foreground">
+                    {incompleteRows.map((row) => (
+                      <li key={`${row.row}-${row.mdId}`}>
+                        Row {row.row}: MD {row.mdId}
+                        {row.firstName || row.lastName
+                          ? ` — ${row.firstName} ${row.lastName}`.trim()
+                          : ""}{" "}
+                        (missing {row.missing.join(", ")})
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="ml-2 h-auto px-2 py-0 text-primary"
+                          onClick={() => {
+                            setSearch(row.mdId)
+                            setStatusFilter("all")
+                            const match = badges.find((s) => s.id === row.mdId)
+                            if (match) openAssign(match)
+                          }}
+                        >
+                          Edit
+                        </Button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {importErrors.filter((e) => !e.incomplete).length > 0 && (
+                <ul className="list-disc pl-4 text-silver-foreground">
+                  {importErrors
+                    .filter((e) => !e.incomplete)
+                    .slice(0, 10)
+                    .map((err) => (
+                      <li key={`${err.row}-${err.message}`}>
+                        Row {err.row}: {err.message}
+                      </li>
+                    ))}
                 </ul>
               )}
             </div>
