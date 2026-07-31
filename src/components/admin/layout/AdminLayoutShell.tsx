@@ -17,11 +17,11 @@ export function AdminLayoutShell({ children }: { children: React.ReactNode }) {
       >
         <div className="flex min-h-0 min-w-0 flex-1">
           <AdminSidebar />
-          <div className="flex min-w-0 flex-1 flex-col">
+          <div className="flex min-w-0 flex-1 flex-col overflow-x-hidden">
             <AdminTopBar />
             <AdminQuickActionBar />
             <div className="flex min-h-0 min-w-0 flex-1">
-              <main className="min-w-0 flex-1 overflow-y-auto">
+              <main className="min-w-0 flex-1 overflow-x-hidden overflow-y-auto">
                 {children}
               </main>
               <AdminUtilityRail />

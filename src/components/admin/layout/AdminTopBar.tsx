@@ -39,6 +39,7 @@ export function AdminTopBar() {
   const adminName = user?.displayName ?? "Admin User"
   const today = useMemo(() => formatToday(), [])
   const {
+    mobileSidebarOpen,
     setMobileSidebarOpen,
     setMobileRailOpen,
     utilityRailExpanded,
@@ -65,8 +66,9 @@ export function AdminTopBar() {
         type="button"
         className="flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-xl border shadow-sm transition hover:bg-[#0A1E3F]/5 md:hidden"
         style={{ borderColor: ADMIN_SILVER, color: ADMIN_NAVY }}
-        aria-label="Open menu"
-        onClick={() => setMobileSidebarOpen(true)}
+        aria-label={mobileSidebarOpen ? "Close menu" : "Open menu"}
+        aria-expanded={mobileSidebarOpen}
+        onClick={() => setMobileSidebarOpen(!mobileSidebarOpen)}
       >
         <Menu className="h-5 w-5" />
       </button>

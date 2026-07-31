@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useMemo, useRef, useState } from "react"
+import { useOverlayLock } from "@/hooks/useOverlayLock"
 import {
   Archive,
   ArrowDown,
@@ -131,10 +132,8 @@ export function MenuLibraryManager() {
   const [sortBy, setSortBy] = useState<MealSortOption>("recent")
   const [viewMode, setViewMode] = useState<ViewMode>("grid")
   const [page, setPage] = useState(1)
-  const [selectedId, setSelectedId] = useState<string | null>(mealTemplates[0]?.id ?? null)
-  const [draft, setDraft] = useState<MealTemplate | null>(
-    mealTemplates[0] ? templateToDraft(mealTemplates[0]) : null
-  )
+  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [draft, setDraft] = useState<MealTemplate | null>(null)
   const [editorTab, setEditorTab] = useState<EditorTab>("details")
   const [isCreating, setIsCreating] = useState(false)
   const [previewTemplate, setPreviewTemplate] = useState<MealTemplate | null>(null)
@@ -196,12 +195,20 @@ export function MenuLibraryManager() {
     setEditorTab("details")
   }, [])
 
-  const closePanel = () => {
+  const closePanel = useCallback(() => {
     setSelectedId(null)
     setDraft(null)
     setSideInput("")
     setIsCreating(false)
-  }
+  }, [])
+
+  const closeScheduleModal = useCallback(() => setShowScheduleModal(false), [])
+  const closePreview = useCallback(() => setPreviewTemplate(null), [])
+
+  // Nested overlays: only the topmost should own Escape / scroll lock.
+  useOverlayLock(!!previewTemplate, closePreview)
+  useOverlayLock(showScheduleModal && !previewTemplate, closeScheduleModal)
+  useOverlayLock(!!draft && !showScheduleModal && !previewTemplate, closePanel)
 
   const handleCreate = () => {
     const cat = activeCategory !== "all" && activeCategory !== "archived" ? activeCategory : "lunch"
@@ -421,17 +428,17 @@ export function MenuLibraryManager() {
   return (
     <div className="flex min-h-full flex-col bg-white">
       {/* Header */}
-      <header className="border-b border-silver/60 px-8 py-6">
+      <header className="border-b border-silver/60 px-4 py-5 sm:px-6 sm:py-6 lg:px-8">
         <div className="flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-bold" style={{ color: NAVY }}>
+          <div className="min-w-0">
+            <h1 className="text-2xl font-bold sm:text-3xl" style={{ color: NAVY }}>
               Cookbook
             </h1>
-            <p className="text-silver-foreground">
+            <p className="text-sm text-silver-foreground sm:text-base">
               Create and customize meals — save to your library, then send to the lunch calendar.
             </p>
           </div>
-          <div className="flex flex-wrap items-center gap-4">
+          <div className="flex flex-wrap items-center gap-3 sm:gap-4">
             {saveFlash && (
               <span className="rounded-xl bg-success/10 px-3 py-2 text-sm font-semibold text-success">
                 Meal saved
@@ -440,7 +447,7 @@ export function MenuLibraryManager() {
             <ImportExportMenu type="menu" importDisabled />
             <Button
               onClick={handleCreate}
-              className="rounded-2xl px-6 font-bold uppercase tracking-wide"
+              className="min-h-11 rounded-2xl px-5 font-bold uppercase tracking-wide sm:px-6"
               style={{ backgroundColor: NAVY }}
             >
               <Plus className="h-4 w-4" />
@@ -448,7 +455,7 @@ export function MenuLibraryManager() {
             </Button>
             <button
               type="button"
-              className="relative rounded-2xl p-3 text-primary transition hover:bg-silver/20"
+              className="relative hidden rounded-2xl p-3 text-primary transition hover:bg-silver/20 sm:block"
               aria-label="Notifications"
             >
               <Bell className="h-5 w-5" style={{ color: NAVY }} />
@@ -465,10 +472,10 @@ export function MenuLibraryManager() {
       {/* Main content */}
       <div className="flex flex-1 overflow-hidden">
         {/* Center grid */}
-        <section className="flex-1 overflow-y-auto px-8 py-6">
+        <section className="min-w-0 flex-1 overflow-y-auto px-4 py-5 sm:px-6 sm:py-6 lg:px-8">
           {/* Search & category dropdown */}
-          <div className="mb-4 flex flex-wrap items-center gap-3">
-            <div className="relative min-w-[240px] flex-1">
+          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+            <div className="relative min-w-0 flex-1 sm:min-w-[240px]">
               <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-silver-foreground" />
               <Input
                 value={search}
@@ -480,7 +487,7 @@ export function MenuLibraryManager() {
                 className="rounded-2xl border-silver/60 pl-11"
               />
             </div>
-            <div className="relative">
+            <div className="relative w-full sm:w-auto">
               <Filter className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-silver-foreground" />
               <select
                 value={activeCategory}
@@ -488,7 +495,7 @@ export function MenuLibraryManager() {
                   setActiveCategory(e.target.value as MealCategory | "all")
                   setPage(1)
                 }}
-                className="h-14 min-w-[180px] appearance-none rounded-2xl border border-silver/60 bg-white pl-11 pr-10 text-sm font-medium outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                className="h-14 w-full min-w-0 appearance-none rounded-2xl border border-silver/60 bg-white pl-11 pr-10 text-sm font-medium outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 sm:min-w-[180px]"
                 style={{ color: NAVY }}
               >
                 <option value="all">All Categories</option>
@@ -502,7 +509,7 @@ export function MenuLibraryManager() {
           </div>
 
           {/* Cookbook tabs */}
-          <div className="mb-4 flex flex-wrap gap-2">
+          <div className="-mx-1 mb-4 flex gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {COOKBOOK_TABS.map((tab) => (
               <button
                 key={tab.id}
@@ -512,7 +519,7 @@ export function MenuLibraryManager() {
                   setPage(1)
                 }}
                 className={cn(
-                  "rounded-full border px-4 py-2 text-sm font-semibold transition",
+                  "shrink-0 rounded-full border px-4 py-2 text-sm font-semibold transition",
                   activeCategory === tab.id
                     ? "border-transparent text-white shadow-sm"
                     : "border-silver/60 bg-white text-primary hover:border-primary/30"
@@ -525,7 +532,7 @@ export function MenuLibraryManager() {
           </div>
 
           {/* Category pills */}
-          <div className="mb-5 flex flex-wrap gap-2">
+          <div className="-mx-1 mb-5 flex gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {CATEGORY_FILTER_PILLS.map((pill) => {
               const Icon = PILL_ICONS[pill.id]
               const active = activeCategory === pill.id
@@ -538,7 +545,7 @@ export function MenuLibraryManager() {
                     setPage(1)
                   }}
                   className={cn(
-                    "inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition",
+                    "inline-flex shrink-0 items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition",
                     active
                       ? "border-transparent text-white shadow-sm"
                       : "border-silver/60 bg-white text-primary hover:border-primary/30 hover:bg-silver/10"
@@ -787,12 +794,28 @@ export function MenuLibraryManager() {
           )}
         </section>
 
-        {/* Right editor panel */}
+        {/* Right editor panel — full-screen sheet on mobile so Close stays on-screen */}
         {draft && (
-          <aside className="flex w-[420px] shrink-0 flex-col border-l border-silver/60 bg-white">
-            <div className="flex items-start justify-between border-b border-silver/40 px-6 py-5">
-              <div>
-                <h2 className="text-xl font-bold" style={{ color: NAVY }}>
+          <>
+            <button
+              type="button"
+              className="fixed inset-0 z-[55] bg-black/50 lg:hidden"
+              aria-label="Close meal editor"
+              onClick={closePanel}
+            />
+            <aside
+              role="dialog"
+              aria-modal="true"
+              aria-label={isCreating ? "Create meal" : "Edit meal"}
+              className={cn(
+                "flex flex-col border-silver/60 bg-white",
+                "fixed inset-x-0 bottom-0 top-0 z-[60] w-full max-w-none border-0",
+                "lg:static lg:inset-auto lg:z-auto lg:w-[420px] lg:shrink-0 lg:border-l"
+              )}
+            >
+            <div className="flex items-start justify-between gap-3 border-b border-silver/40 px-4 py-4 sm:px-6 sm:py-5">
+              <div className="min-w-0">
+                <h2 className="truncate text-lg font-bold sm:text-xl" style={{ color: NAVY }}>
                   {draft.name || "New Meal"}
                 </h2>
                 {draft.isPublished && (
@@ -804,7 +827,7 @@ export function MenuLibraryManager() {
               <button
                 type="button"
                 onClick={closePanel}
-                className="rounded-xl p-2 text-silver-foreground transition hover:bg-silver/20 hover:text-primary"
+                className="flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-xl text-silver-foreground transition hover:bg-silver/20 hover:text-primary"
                 aria-label="Close panel"
               >
                 <X className="h-5 w-5" />
@@ -812,7 +835,7 @@ export function MenuLibraryManager() {
             </div>
 
             {/* Tabs */}
-            <div className="flex border-b border-silver/40 px-6">
+            <div className="-mx-0 flex overflow-x-auto border-b border-silver/40 px-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:px-6">
               {(
                 [
                   { id: "details", label: "Details" },
@@ -826,7 +849,7 @@ export function MenuLibraryManager() {
                   type="button"
                   onClick={() => setEditorTab(tab.id)}
                   className={cn(
-                    "border-b-2 px-3 py-3 text-sm font-semibold transition",
+                    "shrink-0 border-b-2 px-3 py-3 text-sm font-semibold transition",
                     editorTab === tab.id
                       ? "border-primary text-primary"
                       : "border-transparent text-silver-foreground hover:text-primary"
@@ -838,7 +861,7 @@ export function MenuLibraryManager() {
               ))}
             </div>
 
-            <div className="flex-1 overflow-y-auto px-6 py-5">
+            <div className="flex-1 overflow-y-auto px-4 py-5 sm:px-6">
               {editorTab === "details" && (
                 <div className="space-y-5">
                   <div>
@@ -1420,11 +1443,11 @@ export function MenuLibraryManager() {
             </div>
 
             {/* Footer actions */}
-            <div className="flex gap-2 border-t border-silver/40 px-6 py-4">
+            <div className="flex flex-wrap gap-2 border-t border-silver/40 px-4 py-4 sm:px-6">
               <Button
                 variant="outline"
                 size="sm"
-                className="flex-1 uppercase tracking-wide"
+                className="min-h-11 min-w-[calc(50%-0.25rem)] flex-1 uppercase tracking-wide sm:min-w-0"
                 disabled={!selectedId || isCreating}
                 onClick={handleDuplicate}
               >
@@ -1434,7 +1457,7 @@ export function MenuLibraryManager() {
               <Button
                 variant="outline"
                 size="sm"
-                className="flex-1 uppercase tracking-wide"
+                className="min-h-11 min-w-[calc(50%-0.25rem)] flex-1 uppercase tracking-wide sm:min-w-0"
                 disabled={!draft}
                 onClick={() => draft && setPreviewTemplate(draft)}
               >
@@ -1444,7 +1467,7 @@ export function MenuLibraryManager() {
               <Button
                 variant="outline"
                 size="sm"
-                className="flex-1 uppercase tracking-wide"
+                className="min-h-11 min-w-[calc(50%-0.25rem)] flex-1 uppercase tracking-wide sm:min-w-0"
                 disabled={!draft?.name.trim()}
                 onClick={() => setShowScheduleModal(true)}
               >
@@ -1453,7 +1476,7 @@ export function MenuLibraryManager() {
               </Button>
               <Button
                 size="sm"
-                className="flex-1 uppercase tracking-wide"
+                className="min-h-11 min-w-[calc(50%-0.25rem)] flex-1 uppercase tracking-wide sm:min-w-0"
                 style={{ backgroundColor: NAVY }}
                 disabled={!draft?.name.trim()}
                 onClick={handleSave}
@@ -1462,45 +1485,46 @@ export function MenuLibraryManager() {
                 {isCreating ? "Save Meal" : "Save Changes"}
               </Button>
             </div>
-          </aside>
+            </aside>
+          </>
         )}
       </div>
 
       {/* Status bar */}
-      <footer className="flex flex-wrap items-center gap-6 border-t border-silver/60 bg-white px-8 py-3 text-xs text-silver-foreground">
+      <footer className="flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-silver/60 bg-white px-4 py-3 text-xs text-silver-foreground sm:gap-6 sm:px-8">
         <div className="flex items-center gap-2">
           <BarChart3 className="h-4 w-4" style={{ color: NAVY }} />
           <span>
             <strong style={{ color: NAVY }}>Total Meals:</strong> {activeTemplates.length}
           </span>
         </div>
-        <div className="h-4 w-px bg-silver/60" />
+        <div className="hidden h-4 w-px bg-silver/60 sm:block" />
         <div className="flex items-center gap-2">
           <UtensilsCrossed className="h-4 w-4" style={{ color: NAVY }} />
           <span>
             <strong style={{ color: NAVY }}>Most Used:</strong> {mostUsed?.name ?? "—"}
           </span>
         </div>
-        <div className="h-4 w-px bg-silver/60" />
+        <div className="hidden h-4 w-px bg-silver/60 sm:block" />
         <div className="flex items-center gap-2">
           <Calendar className="h-4 w-4" style={{ color: NAVY }} />
           <span>
             <strong style={{ color: NAVY }}>Last Updated:</strong> {lastUpdated}
           </span>
         </div>
-        <div className="h-4 w-px bg-silver/60" />
+        <div className="hidden h-4 w-px bg-silver/60 sm:block" />
         <div className="flex items-center gap-2">
           <ImageIcon className="h-4 w-4" style={{ color: NAVY }} />
           <span>
             <strong style={{ color: NAVY }}>Photo Library:</strong> {photoCount} Images
           </span>
         </div>
-        <div className="h-4 w-px bg-silver/60" />
-        <div className="flex min-w-[200px] flex-1 items-center gap-3">
-          <span>
+        <div className="hidden h-4 w-px bg-silver/60 sm:block" />
+        <div className="flex min-w-0 flex-1 basis-full items-center gap-3 sm:basis-auto sm:min-w-[200px]">
+          <span className="shrink-0">
             <strong style={{ color: NAVY }}>Storage Used:</strong> {storageUsedGb} GB / 10 GB
           </span>
-          <div className="h-2 flex-1 overflow-hidden rounded-full bg-silver/30">
+          <div className="h-2 min-w-0 flex-1 overflow-hidden rounded-full bg-silver/30">
             <div
               className="h-full rounded-full transition-all"
               style={{
@@ -1516,14 +1540,35 @@ export function MenuLibraryManager() {
         <MealPreviewModal
           template={previewTemplate}
           coverUrl={getMealCoverPhoto(previewTemplate.photos)}
-          onClose={() => setPreviewTemplate(null)}
+          onClose={closePreview}
         />
       )}
 
       {showScheduleModal && draft && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-primary/40 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-2xl border border-silver/60 bg-white p-6 shadow-2xl">
-            <h3 className="text-lg font-bold text-primary">Send to Calendar</h3>
+        <div
+          className="fixed inset-0 z-[70] flex items-end justify-center bg-primary/40 p-4 backdrop-blur-sm sm:items-center"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="schedule-meal-title"
+          onClick={closeScheduleModal}
+        >
+          <div
+            className="w-full max-w-md rounded-2xl border border-silver/60 bg-white p-5 shadow-2xl sm:p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-2 flex items-start justify-between gap-3">
+              <h3 id="schedule-meal-title" className="text-lg font-bold text-primary">
+                Send to Calendar
+              </h3>
+              <button
+                type="button"
+                onClick={closeScheduleModal}
+                className="flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-xl text-silver-foreground transition hover:bg-silver/20 hover:text-primary"
+                aria-label="Close"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
             <p className="mt-1 text-sm text-silver-foreground">
               Schedule <strong>{draft.name || "this meal"}</strong> on the lunch calendar.
             </p>
@@ -1554,14 +1599,14 @@ export function MenuLibraryManager() {
             </div>
             <div className="mt-6 flex gap-3">
               <Button
-                className="flex-1"
+                className="min-h-11 flex-1"
                 style={{ backgroundColor: NAVY }}
                 disabled={!scheduleDate || scheduleSaving || !isSchoolLunchDateKey(scheduleDate)}
                 onClick={handleScheduleToCalendar}
               >
                 {scheduleSaving ? "Scheduling…" : schedulePublish ? "Schedule & Publish" : "Schedule"}
               </Button>
-              <Button variant="outline" className="flex-1" onClick={() => setShowScheduleModal(false)}>
+              <Button variant="outline" className="min-h-11 flex-1" onClick={closeScheduleModal}>
                 Cancel
               </Button>
             </div>

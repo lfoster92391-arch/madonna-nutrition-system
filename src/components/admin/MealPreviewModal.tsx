@@ -79,48 +79,67 @@ function MealCardPreview({
 
 export function MealPreviewModal({ template, coverUrl, onClose }: MealPreviewModalProps) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-primary/40 p-4 backdrop-blur-sm">
-      <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl border border-silver/60 bg-white p-6 shadow-2xl">
-        <div className="mb-6 flex items-start justify-between gap-4">
-          <div>
+    <div
+      className="fixed inset-0 z-[70] flex items-end justify-center bg-primary/40 p-3 backdrop-blur-sm sm:items-center sm:p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="meal-preview-title"
+      onClick={onClose}
+    >
+      <div
+        className="max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-2xl border border-silver/60 bg-white p-4 shadow-2xl sm:p-6"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="mb-4 flex items-start justify-between gap-3 sm:mb-6 sm:gap-4">
+          <div className="min-w-0">
             <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary">Preview</p>
-            <h2 className="text-2xl font-bold text-primary">{template.name}</h2>
+            <h2 id="meal-preview-title" className="truncate text-xl font-bold text-primary sm:text-2xl">
+              {template.name}
+            </h2>
             <p className="text-sm text-silver-foreground">
               How this meal appears across portals
             </p>
           </div>
-          <Button variant="ghost" size="sm" onClick={onClose} aria-label="Close preview">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onClose}
+            aria-label="Close preview"
+            className="min-h-11 min-w-11 shrink-0"
+          >
             <X className="h-5 w-5" />
           </Button>
         </div>
 
         <Tabs defaultValue="desktop">
-          <TabsList>
-            <TabsTrigger value="desktop">
+          <TabsList className="h-auto w-full flex-wrap justify-start gap-1">
+            <TabsTrigger value="desktop" className="min-h-10">
               <Monitor className="mr-2 h-4 w-4" />
               Desktop
             </TabsTrigger>
-            <TabsTrigger value="tablet">
+            <TabsTrigger value="tablet" className="min-h-10">
               <Tablet className="mr-2 h-4 w-4" />
               Tablet
             </TabsTrigger>
-            <TabsTrigger value="mobile">
+            <TabsTrigger value="mobile" className="min-h-10">
               <Smartphone className="mr-2 h-4 w-4" />
               Mobile
             </TabsTrigger>
-            <TabsTrigger value="parent">Parent Portal</TabsTrigger>
+            <TabsTrigger value="parent" className="min-h-10">
+              Parent Portal
+            </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="desktop" className="rounded-2xl bg-silver/10 p-8">
+          <TabsContent value="desktop" className="rounded-2xl bg-silver/10 p-4 sm:p-8">
             <MealCardPreview template={template} coverUrl={coverUrl} size="desktop" />
           </TabsContent>
-          <TabsContent value="tablet" className="rounded-2xl bg-silver/10 p-8">
+          <TabsContent value="tablet" className="rounded-2xl bg-silver/10 p-4 sm:p-8">
             <MealCardPreview template={template} coverUrl={coverUrl} size="tablet" />
           </TabsContent>
-          <TabsContent value="mobile" className="rounded-2xl bg-silver/10 p-8">
+          <TabsContent value="mobile" className="rounded-2xl bg-silver/10 p-4 sm:p-8">
             <MealCardPreview template={template} coverUrl={coverUrl} size="mobile" />
           </TabsContent>
-          <TabsContent value="parent" className="rounded-2xl bg-silver/10 p-8">
+          <TabsContent value="parent" className="rounded-2xl bg-silver/10 p-4 sm:p-8">
             <div className="mx-auto max-w-md space-y-4">
               <div className="rounded-2xl border border-silver/60 bg-white p-4">
                 <p className="text-xs font-bold uppercase text-success">Madonna High School</p>
