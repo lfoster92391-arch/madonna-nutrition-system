@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import {
@@ -19,6 +19,7 @@ import {
   User,
   Wallet,
   Wrench,
+  X,
 } from "lucide-react"
 import { useAuth } from "@/components/providers/AuthProvider"
 import { SCHOOL } from "@/config/school"
@@ -29,6 +30,7 @@ import {
   ADMIN_SIDEBAR_DARK,
   ADMIN_SIDEBAR_STORAGE_KEY,
 } from "@/components/admin/layout/admin-theme"
+import { useOverlayLock } from "@/hooks/useOverlayLock"
 
 const NAV_ITEMS = [
   { label: "Dashboard", href: "/admin", icon: LayoutDashboard, exact: true },
@@ -58,6 +60,10 @@ export function AdminSidebar() {
   const { mobileSidebarOpen, setMobileSidebarOpen } = useAdminLayout()
   const [expanded, setExpanded] = useState(true)
 
+  const closeMobile = useCallback(() => setMobileSidebarOpen(false), [setMobileSidebarOpen])
+
+  useOverlayLock(mobileSidebarOpen, closeMobile)
+
   useEffect(() => {
     const stored = localStorage.getItem(ADMIN_SIDEBAR_STORAGE_KEY)
     if (stored !== null) setExpanded(stored === "true")
@@ -75,14 +81,12 @@ export function AdminSidebar() {
     })
   }
 
-  const closeMobile = () => setMobileSidebarOpen(false)
-
   return (
     <>
       {mobileSidebarOpen ? (
         <button
           type="button"
-          className="fixed inset-0 z-30 bg-black/50 md:hidden"
+          className="fixed inset-0 z-40 bg-black/50 md:hidden"
           aria-label="Close menu"
           onClick={closeMobile}
         />
@@ -90,12 +94,24 @@ export function AdminSidebar() {
 
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-40 flex w-60 flex-col text-white transition-[transform,width] duration-200 md:relative md:z-20 md:shrink-0 md:translate-x-0",
+          "fixed inset-y-0 left-0 z-50 flex w-[min(16.5rem,88vw)] flex-col text-white transition-[transform,width] duration-200 md:relative md:z-20 md:w-60 md:shrink-0 md:translate-x-0",
           mobileSidebarOpen ? "translate-x-0" : "-translate-x-full",
           expanded ? "md:w-60" : "md:w-[72px]"
         )}
         style={{ backgroundColor: ADMIN_SIDEBAR_DARK }}
       >
+        <div className="flex items-center justify-between border-b border-white/10 px-3 py-3 md:hidden">
+          <p className="truncate text-sm font-semibold text-white">Menu</p>
+          <button
+            type="button"
+            onClick={closeMobile}
+            className="flex min-h-11 min-w-11 items-center justify-center rounded-lg text-white/80 transition hover:bg-white/10 hover:text-white"
+            aria-label="Close menu"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
         <nav className="flex-1 space-y-0.5 overflow-y-auto px-2 py-4">
           {NAV_ITEMS.map(({ label, href, icon: Icon, exact, readOnly }) => {
             const active = isActive(pathname, href, exact)

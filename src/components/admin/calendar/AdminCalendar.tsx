@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   ChevronLeft,
   ChevronRight,
@@ -21,6 +21,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input, Label } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
+import { useOverlayLock } from "@/hooks/useOverlayLock"
 import {
   ADMIN_LEGEND_CATEGORIES,
   EVENT_CATEGORIES,
@@ -87,6 +88,14 @@ export function AdminCalendar() {
   const [showCookbookPicker, setShowCookbookPicker] = useState(false)
   const dayScheduleRef = useRef<HTMLDivElement>(null)
   const eventFormRef = useRef<HTMLDivElement>(null)
+
+  const closeActionEvent = useCallback(() => setActionEvent(null), [])
+  const closeCookbookPicker = useCallback(() => setShowCookbookPicker(false), [])
+  const closeMealPicker = useCallback(() => setShowMealPicker(false), [])
+
+  useOverlayLock(!!actionEvent && !showCookbookPicker && !showMealPicker, closeActionEvent)
+  useOverlayLock(showCookbookPicker, closeCookbookPicker)
+  useOverlayLock(showMealPicker && !showCookbookPicker, closeMealPicker)
 
   const accentHex = getAccentHex(calendarSettings.accentColor)
 
@@ -301,8 +310,8 @@ export function AdminCalendar() {
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary">Operations</p>
-            <h1 className="text-3xl font-bold text-primary">Lunch Calendar</h1>
-            <p className="text-silver-foreground">
+            <h1 className="text-2xl font-bold text-primary sm:text-3xl">Lunch Calendar</h1>
+            <p className="text-sm text-silver-foreground sm:text-base">
               Schedule meals, publish to parent &amp; staff calendars, and manage operational events
             </p>
           </div>
@@ -630,7 +639,7 @@ export function AdminCalendar() {
           role="dialog"
           aria-modal="true"
           aria-labelledby="calendar-event-actions-title"
-          onClick={() => setActionEvent(null)}
+          onClick={closeActionEvent}
         >
           <div
             className="w-full max-w-md rounded-2xl border border-silver/60 bg-white p-5 shadow-2xl sm:p-6"
@@ -659,7 +668,8 @@ export function AdminCalendar() {
                 size="sm"
                 variant="outline"
                 aria-label="Close"
-                onClick={() => setActionEvent(null)}
+                className="min-h-11 min-w-11 shrink-0"
+                onClick={closeActionEvent}
               >
                 <X className="h-4 w-4" />
               </Button>
@@ -696,9 +706,30 @@ export function AdminCalendar() {
       )}
 
       {showCookbookPicker && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-primary/40 p-4 backdrop-blur-sm">
-          <div className="max-h-[85vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-silver/60 bg-white p-6 shadow-2xl">
-            <h3 className="text-lg font-bold text-primary">Add from Cookbook</h3>
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center bg-primary/40 p-3 backdrop-blur-sm sm:items-center sm:p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="cookbook-picker-title"
+          onClick={closeCookbookPicker}
+        >
+          <div
+            className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-silver/60 bg-white p-4 shadow-2xl sm:p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-2 flex items-start justify-between gap-3">
+              <h3 id="cookbook-picker-title" className="text-lg font-bold text-primary">
+                Add from Cookbook
+              </h3>
+              <button
+                type="button"
+                onClick={closeCookbookPicker}
+                className="flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-xl text-silver-foreground transition hover:bg-silver/20 hover:text-primary"
+                aria-label="Close"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
             <p className="mb-4 text-sm text-silver-foreground">
               {selectedDate
                 ? `Click a saved meal to schedule on ${new Date(selectedDate + "T12:00:00").toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}. Meals are published to calendars by default.`
@@ -708,7 +739,11 @@ export function AdminCalendar() {
               templates={mealTemplates}
               onSelect={showEventForm ? applyMealTemplate : quickAddFromCookbook}
             />
-            <Button variant="outline" className="mt-4 w-full" onClick={() => setShowCookbookPicker(false)}>
+            <Button
+              variant="outline"
+              className="mt-4 min-h-11 w-full"
+              onClick={closeCookbookPicker}
+            >
               Cancel
             </Button>
           </div>
@@ -716,9 +751,30 @@ export function AdminCalendar() {
       )}
 
       {showMealPicker && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-primary/40 p-4 backdrop-blur-sm">
-          <div className="max-h-[80vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-silver/60 bg-white p-6 shadow-2xl">
-            <h3 className="text-lg font-bold text-primary">Assign Meal Template</h3>
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center bg-primary/40 p-3 backdrop-blur-sm sm:items-center sm:p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="meal-picker-title"
+          onClick={closeMealPicker}
+        >
+          <div
+            className="max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-silver/60 bg-white p-4 shadow-2xl sm:p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-2 flex items-start justify-between gap-3">
+              <h3 id="meal-picker-title" className="text-lg font-bold text-primary">
+                Assign Meal Template
+              </h3>
+              <button
+                type="button"
+                onClick={closeMealPicker}
+                className="flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-xl text-silver-foreground transition hover:bg-silver/20 hover:text-primary"
+                aria-label="Close"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
             <div className="mt-4 space-y-2">
               {mealTemplates
                 .filter((t) => !t.isArchived)
@@ -727,13 +783,13 @@ export function AdminCalendar() {
                     key={template.id}
                     type="button"
                     onClick={() => applyMealTemplate(template)}
-                    className="flex w-full rounded-2xl border border-silver/60 p-3 text-left transition hover:border-success"
+                    className="flex min-h-11 w-full rounded-2xl border border-silver/60 p-3 text-left transition hover:border-success"
                   >
                     <p className="font-semibold text-primary">{template.name}</p>
                   </button>
                 ))}
             </div>
-            <Button variant="outline" className="mt-4 w-full" onClick={() => setShowMealPicker(false)}>
+            <Button variant="outline" className="mt-4 min-h-11 w-full" onClick={closeMealPicker}>
               Cancel
             </Button>
           </div>
