@@ -2,12 +2,34 @@ import { Prisma, TransactionType } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import { isDatabaseEnabled } from "@/lib/db/config"
 
+export type OfficePaymentMethod = "cash" | "check" | "card" | "other"
+
 export interface CreditDepositInput {
   studentId: string
   schoolId: string
   amountDollars: number
-  stripeSessionId: string
+  /** Stripe Checkout session id — required for online deposits; omit for office payments. */
+  stripeSessionId?: string
   performedBy?: string
+  processedByUserId?: string
+  method?: OfficePaymentMethod
+  note?: string
+  source?: "stripe_checkout" | "office"
+}
+
+function mealTypeForDeposit(input: CreditDepositInput): string {
+  if (input.source === "office" || (!input.stripeSessionId && input.method)) {
+    const methodLabel =
+      input.method === "cash"
+        ? "Cash"
+        : input.method === "check"
+          ? "Check"
+          : input.method === "card"
+            ? "Card"
+            : "Other"
+    return `Office Deposit (${methodLabel})`
+  }
+  return "Card Deposit"
 }
 
 export async function creditStudentDeposit(
@@ -17,19 +39,23 @@ export async function creditStudentDeposit(
     throw new Error("DATABASE_URL is not configured")
   }
 
-  const existing = await prisma.transaction.findUnique({
-    where: { stripeSessionId: input.stripeSessionId },
-    select: { id: true, balanceAfter: true },
-  })
+  if (input.stripeSessionId) {
+    const existing = await prisma.transaction.findUnique({
+      where: { stripeSessionId: input.stripeSessionId },
+      select: { id: true, balanceAfter: true },
+    })
 
-  if (existing) {
-    return {
-      transactionId: existing.id,
-      balanceAfter: Number(existing.balanceAfter),
+    if (existing) {
+      return {
+        transactionId: existing.id,
+        balanceAfter: Number(existing.balanceAfter),
+      }
     }
   }
 
   const amount = new Prisma.Decimal(input.amountDollars.toFixed(2))
+  const source = input.source ?? (input.stripeSessionId ? "stripe_checkout" : "office")
+  const mealType = mealTypeForDeposit({ ...input, source })
 
   return prisma.$transaction(async (tx) => {
     const student = await tx.student.findUnique({
@@ -57,10 +83,11 @@ export async function creditStudentDeposit(
         studentId: input.studentId,
         schoolId: input.schoolId,
         type: TransactionType.DEPOSIT,
-        mealType: "Card Deposit",
+        mealType,
         amount,
         balanceAfter,
-        stripeSessionId: input.stripeSessionId,
+        stripeSessionId: input.stripeSessionId ?? null,
+        processedByUserId: input.processedByUserId ?? null,
       },
     })
 
@@ -70,12 +97,14 @@ export async function creditStudentDeposit(
         entity: "student_balance",
         entityType: "student",
         entityId: input.studentId,
-        performedBy: input.performedBy ?? "stripe_webhook",
+        performedBy: input.performedBy ?? (source === "office" ? "office_staff" : "stripe_webhook"),
         schoolId: input.schoolId,
         metadata: {
           amount: input.amountDollars,
-          stripeSessionId: input.stripeSessionId,
-          source: "stripe_checkout",
+          stripeSessionId: input.stripeSessionId ?? null,
+          source,
+          method: input.method ?? null,
+          note: input.note?.trim() || null,
         },
         newValue: { balance: Number(balanceAfter) },
       },

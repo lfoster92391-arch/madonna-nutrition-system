@@ -2,7 +2,9 @@
 
 import Link from "next/link"
 import {
+  BookOpen,
   Calendar,
+  DollarSign,
   FileDown,
   PackageCheck,
   Plus,
@@ -18,6 +20,8 @@ const ACTIONS = [
   { label: "Send Notice", href: "/admin/communication", icon: Send },
   { label: "Export Report", href: "/admin/reporting", icon: FileDown },
   { label: "Open Cashier", href: "/scan", icon: ScanLine },
+  { label: "Office Payment", href: "/admin/imports", icon: DollarSign },
+  { label: "Worker Guide", href: "/admin/setup", icon: BookOpen },
 ]
 
 export function AdminQuickActionBar() {

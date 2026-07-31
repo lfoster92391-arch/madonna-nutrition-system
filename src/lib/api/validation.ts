@@ -38,6 +38,13 @@ export const mealTransactionSchema = z.object({
   processedByUserId: z.string().min(1).optional(),
 })
 
+export const officeDepositSchema = z.object({
+  studentId: z.string().min(1),
+  amount: z.number().positive().max(2000),
+  method: z.enum(["cash", "check", "card", "other"]).default("cash"),
+  note: z.string().max(500).optional(),
+})
+
 export const queuedTransactionSchema = z.object({
   clientTxId: z.string().uuid(),
   studentId: z.string().min(1),

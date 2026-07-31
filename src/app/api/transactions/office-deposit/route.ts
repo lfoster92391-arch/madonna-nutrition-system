@@ -1,0 +1,71 @@
+import { NextResponse } from "next/server"
+import { creditStudentDeposit } from "@/lib/db/deposits"
+import { findStudentByExternalId } from "@/lib/db/students"
+import { mapTransaction } from "@/lib/db/mappers"
+import { officeDepositSchema } from "@/lib/api/validation"
+import { badRequest, notFound, serverError, withDatabase } from "@/lib/api/response"
+import { requireMutatingSession } from "@/lib/api/session-auth"
+import { prisma } from "@/lib/prisma"
+
+export async function POST(request: Request) {
+  const result = await withDatabase(async () => {
+    try {
+      const auth = await requireMutatingSession(request, ["ADMIN", "CASHIER"])
+      if ("error" in auth) return auth.error
+
+      const body = await request.json()
+      const parsed = officeDepositSchema.safeParse(body)
+      if (!parsed.success) {
+        return badRequest("Invalid office payment", parsed.error.flatten())
+      }
+
+      const { studentId, amount, method, note } = parsed.data
+      const student = await findStudentByExternalId(studentId)
+      if (!student || student.disabled) {
+        return notFound("Student not found or disabled")
+      }
+
+      if (student.schoolId !== auth.schoolId) {
+        return badRequest("Student does not belong to this school")
+      }
+
+      const credit = await creditStudentDeposit({
+        studentId: student.id,
+        schoolId: auth.schoolId,
+        amountDollars: amount,
+        performedBy: auth.user.id,
+        processedByUserId: auth.user.id,
+        method,
+        note,
+        source: "office",
+      })
+
+      const transaction = await prisma.transaction.findUnique({
+        where: { id: credit.transactionId },
+        include: {
+          student: { select: { externalId: true, firstName: true, lastName: true } },
+          processedBy: { select: { firstName: true, lastName: true, badgeId: true } },
+        },
+      })
+
+      if (!transaction) {
+        return NextResponse.json(
+          { transactionId: credit.transactionId, balanceAfter: credit.balanceAfter },
+          { status: 201 }
+        )
+      }
+
+      return NextResponse.json(
+        {
+          ...mapTransaction(transaction),
+          balanceAfter: credit.balanceAfter,
+        },
+        { status: 201 }
+      )
+    } catch (error) {
+      console.error("POST /api/transactions/office-deposit", error)
+      return serverError()
+    }
+  })
+  return result instanceof NextResponse ? result : result
+}
