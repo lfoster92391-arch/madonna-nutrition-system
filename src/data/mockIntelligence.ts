@@ -5,129 +5,76 @@ import type {
   ReconciliationData,
   SeasonalMemoryData,
   SuggestionsData,
+  WasteData,
 } from "@/lib/intelligence/types"
 
-const refreshedAt = new Date().toISOString()
+const refreshedAt = () => new Date().toISOString()
 
+/** Empty intelligence payloads — used when DB is off or compute fails (no invented metrics). */
 export const mockDashboard: DashboardData = {
-  source: "demo",
+  source: "database",
   metrics: {
-    revenueToday: 847.5,
-    inventoryHealth: 72,
-    forecastSummary: "920 meals projected Mon-Fri",
-    wastePercent: 4.2,
-    participationCount: 186,
-    lowStockCount: 3,
-    totalInventoryItems: 7,
+    revenueToday: 0,
+    inventoryHealth: 100,
+    forecastSummary: "No meal data yet",
+    wastePercent: 0,
+    participationCount: 0,
+    lowStockCount: 0,
+    totalInventoryItems: 0,
   },
-  revenueTrend: {
-    labels: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
-    values: [612, 734, 698, 812, 847, 0, 0],
-  },
-  mealsByType: {
-    labels: ["Lunch", "Breakfast", "A La Carte", "Milk"],
-    values: [128, 34, 18, 26],
-  },
-  participationTrend: {
-    labels: ["Wk 1", "Wk 2", "Wk 3", "Wk 4"],
-    values: [82, 85, 88, 91],
-  },
-  refreshedAt,
+  revenueTrend: { labels: [], values: [] },
+  mealsByType: { labels: [], values: [] },
+  participationTrend: { labels: [], values: [] },
+  refreshedAt: refreshedAt(),
 }
 
 export const mockForecast: ForecastData = {
-  source: "demo",
-  nextWeekMeals: 920,
-  confidence: 87,
-  depletion: [
-    { itemName: "Chicken Breast", daysUntilThreshold: 3, currentQty: 18, threshold: 20 },
-    { itemName: "Whole Wheat Buns", daysUntilThreshold: 5, currentQty: 45, threshold: 50 },
-    { itemName: "Romaine Lettuce", daysUntilThreshold: 2, currentQty: 8, threshold: 12 },
-  ],
-  demandByDay: {
-    labels: ["Mon", "Tue", "Wed", "Thu", "Fri"],
-    values: [178, 192, 185, 188, 177],
-  },
-  participationTrend: {
-    labels: ["Mon", "Tue", "Wed", "Thu", "Fri"],
-    values: [91, 93, 89, 92, 88],
-  },
-  wasteForecastPercent: 4.5,
-  orderSuggestions: [
-    { item: "Chicken Breast", reason: "Below par - 3 days until threshold at current usage" },
-    { item: "Cherry Tomatoes", reason: "Expiration within 4 days with high menu demand" },
-  ],
-  refreshedAt,
+  source: "database",
+  nextWeekMeals: 0,
+  confidence: 0,
+  depletion: [],
+  demandByDay: { labels: [], values: [] },
+  participationTrend: { labels: [], values: [] },
+  wasteForecastPercent: 0,
+  orderSuggestions: [],
+  refreshedAt: refreshedAt(),
 }
 
 export const mockReconciliation: ReconciliationData = {
-  source: "demo",
-  rows: [
-    { id: "rec-1", label: "Jun 13 - Sysco delivery", cardAmount: 1240, receiptAmount: 1240, inventoryAmount: 1240, status: "matched" },
-    { id: "rec-2", label: "Jun 12 - Local Produce", cardAmount: 385, receiptAmount: 385, inventoryAmount: 380, status: "unmatched" },
-    { id: "rec-3", label: "Jun 11 - Kiosk deposits", cardAmount: 2150, receiptAmount: 0, inventoryAmount: 0, status: "pending" },
-  ],
-  mealCosts: [
-    { mealName: "Chicken Wrap", ingredientCost: 2.15, mealCost: 2.85, revenue: 4.5, margin: 1.65 },
-    { mealName: "Salad Bar", ingredientCost: 1.8, mealCost: 2.4, revenue: 4.0, margin: 1.6 },
-    { mealName: "Breakfast Plate", ingredientCost: 1.2, mealCost: 1.65, revenue: 3.0, margin: 1.35 },
-  ],
-  totalRevenue: 42850,
-  totalExpenses: 31200,
-  netMargin: 11650,
-  refreshedAt,
+  source: "database",
+  rows: [],
+  mealCosts: [],
+  totalRevenue: 0,
+  totalExpenses: 0,
+  netMargin: 0,
+  refreshedAt: refreshedAt(),
 }
 
-export const mockWaste = {
-  source: "demo" as const,
-  breakdown: { prepared: 420, served: 386, saved: 18, expired: 9, discarded: 7 },
-  trend: {
-    labels: ["Wk 1", "Wk 2", "Wk 3", "Wk 4"],
-    values: [5.1, 4.8, 4.2, 3.9],
-  },
-  topItems: [
-    { name: "Romaine Lettuce", qty: 4, reason: "Expired before service" },
-    { name: "Whole Wheat Buns", qty: 3, reason: "Over-prepped vs forecast" },
-  ],
-  refreshedAt,
+export const mockWaste: WasteData = {
+  source: "database",
+  breakdown: { prepared: 0, served: 0, saved: 0, expired: 0, discarded: 0 },
+  trend: { labels: [], values: [] },
+  topItems: [],
+  refreshedAt: refreshedAt(),
 }
 
 export const mockAnalytics: AnalyticsData = {
-  source: "demo",
+  source: "database",
   waste: mockWaste,
-  vendors: [
-    { vendor: "Sysco Foods", spend: 18420, orderCount: 12, avgLeadDays: 2, trend: "stable" },
-    { vendor: "Local Produce Co.", spend: 6240, orderCount: 18, avgLeadDays: 1, trend: "up" },
-    { vendor: "Dairy Direct", spend: 3890, orderCount: 8, avgLeadDays: 3, trend: "down" },
-  ],
-  nutrition: [
-    { mealName: "Chicken Wrap", calories: 520, allergens: ["Wheat", "Soy"], compliant: true, notes: "Within calorie target" },
-    { mealName: "Salad Bar", calories: 380, allergens: [], compliant: true, notes: "Vegetarian option available" },
-    { mealName: "Pizza Slice", calories: 610, allergens: ["Wheat", "Dairy"], compliant: false, notes: "Exceeds secondary sodium guideline" },
-  ],
-  participationRate: 89,
-  refreshedAt,
+  vendors: [],
+  nutrition: [],
+  participationRate: 0,
+  refreshedAt: refreshedAt(),
 }
 
 export const mockSuggestions: SuggestionsData = {
-  source: "demo",
-  suggestions: [
-    { id: "s1", category: "meals", title: "Promote Chicken Wrap", detail: "Served 12x this week - highest participation. Consider repeating next Tuesday.", priority: "high" },
-    { id: "s2", category: "purchases", title: "Reorder chicken breast", detail: "Inventory at 18 lb vs 20 lb par with wrap on calendar Wed.", priority: "high" },
-    { id: "s3", category: "inventory", title: "Use surplus buns", detail: "45 buns on hand - pair with soup special before expiration.", priority: "medium" },
-    { id: "s4", category: "seasonal", title: "End-of-year picnic theme", detail: "Last June used outdoor BBQ theme with 94% participation.", priority: "low" },
-    { id: "s5", category: "themes", title: "Wellness week alignment", detail: "Calendar has health fair - align salad bar and fruit sides.", priority: "medium" },
-  ],
-  refreshedAt,
+  source: "database",
+  suggestions: [],
+  refreshedAt: refreshedAt(),
 }
 
 export const mockSeasonalMemory: SeasonalMemoryData = {
-  source: "demo",
-  items: [
-    { id: "sm1", title: "Spring Wellness Week Menu", season: "Spring", year: 2025, type: "menu", archivedAt: "2025-05-15T00:00:00.000Z" },
-    { id: "sm2", title: "Homecoming BBQ Theme", season: "Fall", year: 2025, type: "theme", archivedAt: "2025-10-01T00:00:00.000Z" },
-    { id: "sm3", title: "Holiday Feast Photos", season: "Winter", year: 2024, type: "photo", previewUrl: "/logo.png", archivedAt: "2024-12-18T00:00:00.000Z" },
-    { id: "sm4", title: "June Calendar Export PDF", season: "Summer", year: 2025, type: "pdf", archivedAt: "2025-06-01T00:00:00.000Z" },
-  ],
-  refreshedAt,
+  source: "database",
+  items: [],
+  refreshedAt: refreshedAt(),
 }

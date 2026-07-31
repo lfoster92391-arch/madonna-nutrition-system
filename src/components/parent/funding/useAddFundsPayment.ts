@@ -9,7 +9,6 @@ import {
   ADD_FUNDS_MAX,
   ADD_FUNDS_MIN,
 } from "@/lib/payments/schemas"
-import { simulateSavedMethodFromCheckout } from "@/lib/parent-billing-prefs"
 
 const LOW_BALANCE_TARGET = 25
 
@@ -107,11 +106,12 @@ export function useAddFundsPayment(initialStudentId?: string) {
 
       const tx = await addFunds(selectedStudentId, amountDollars, user.displayName)
       if (!tx) {
-        setError("Unable to add funds for this student.")
+        setError(
+          stripeConfigured
+            ? "Unable to add funds for this student."
+            : "Card payments are not configured. Contact your school administrator."
+        )
         return
-      }
-      if (savePaymentMethod) {
-        simulateSavedMethodFromCheckout()
       }
       setDemoSuccess(true)
     } catch (err) {

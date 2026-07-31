@@ -1,22 +1,10 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useState } from "react"
 
 export default function LiveMonitorPage() {
-  const [mealsServed, setMealsServed] = useState(184)
-  const [activeLineCount, setActiveLineCount] = useState(26)
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setMealsServed((prev) => prev + 1)
-
-      setActiveLineCount(
-        Math.floor(Math.random() * 35) + 5
-      )
-    }, 4000)
-
-    return () => clearInterval(interval)
-  }, [])
+  const [mealsServed] = useState(0)
+  const [activeLineCount] = useState(0)
 
   const estimatedWait =
     activeLineCount > 25

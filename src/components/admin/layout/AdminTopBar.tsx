@@ -14,7 +14,6 @@ import {
 import { useAuth } from "@/components/providers/AuthProvider"
 import { BRAND } from "@/config/brand"
 import { SCHOOL } from "@/config/school"
-import { mockNotifications } from "@/data/mockNotifications"
 import { useAdminLayout } from "@/components/admin/layout/admin-layout-context"
 import {
   ADMIN_DANGER,
@@ -45,7 +44,7 @@ export function AdminTopBar() {
     utilityRailExpanded,
     setUtilityRailExpanded,
   } = useAdminLayout()
-  const notificationCount = mockNotifications.length
+  const notificationCount = 0
 
   const openAlertsRail = useCallback(() => {
     if (window.matchMedia("(min-width: 1024px)").matches) {

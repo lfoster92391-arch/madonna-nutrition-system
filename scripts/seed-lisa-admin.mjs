@@ -22,7 +22,7 @@ async function main() {
     (await prisma.school.findFirst({ orderBy: { createdAt: "asc" } }))
 
   if (!school) {
-    throw new Error("No school found. Run full seed or create a school first.")
+    throw new Error("No school found. Run npm run db:seed first to create the school.")
   }
 
   const passwordHash = await bcrypt.hash(DEFAULT_PASSWORD, 10)

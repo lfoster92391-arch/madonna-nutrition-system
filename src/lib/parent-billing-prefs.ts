@@ -82,14 +82,3 @@ export function setDefaultPaymentMethod(id: string) {
   writeJson(SAVED_METHODS_KEY, next)
 }
 
-/** Demo helper — simulates a masked card after opt-in checkout. */
-export function simulateSavedMethodFromCheckout() {
-  const existing = getSavedPaymentMethods()
-  const alreadyHasDemo = existing.some((m) => m.last4 === "4242")
-  if (alreadyHasDemo) return
-  addSavedPaymentMethod({
-    brand: "Visa",
-    last4: "4242",
-    isDefault: existing.length === 0,
-  })
-}

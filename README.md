@@ -10,39 +10,32 @@ Enterprise cafeteria operations platform for school nutrition services — scan 
 - **React Query**, **Zod**, **Chart.js**, **PapaParse**
 - Stripe-ready, Clerk-ready, Vercel-ready
 
-## Quick Start (Demo Mode)
+## Quick Start
 
-Demo mode works **without a database** using seeded in-memory data. Parent submissions, admin approvals, and scan station alerts share a single demo state.
-
-### Demo Workflow (Food Safety)
-
-1. Log in to **Parent Portal** (`/parent`) as Sarah Anderson
-2. Open **Food Safety Center** → select Emma Anderson
-3. Submit allergy/dietary changes (or review pending submission on dashboard)
-4. Go to **Admin → Allergy Review Queue** (`/admin/allergy-review`) and **Approve**
-5. Scan James (ID `10457`) at `/scan` to see severe allergy banner and meal compatibility
+Requires a PostgreSQL database. Without `DATABASE_URL`, lists and portals start empty (no invented students, menus, or staff).
 
 ```bash
 npm install
+cp .env.example .env
+# Set DATABASE_URL, then:
+npm run db:push
+npm run db:seed
 npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000)
 
 - **Landing:** `/`
-- **Scan Station:** `/scan` (primary demo entry — no login required)
-- **Admin Portal:** `/admin`
-- **Transactions:** `/transactions`
-- **Inventory:** `/inventory`
-- **Analytics:** `/analytics`
+- **Scan Station:** `/scan` (kiosk)
+- **Admin Portal:** `/admin` — import students via Family Import / SIS CSV
 - **Parent Portal:** `/parent`
-- **Food Safety Center:** `/parent/student-profile` (per-student: `/parent/student-profile/[studentId]`)
-- **Allergy Review Queue:** `/admin/allergy-review`
 - **Ops Center:** `/ops`
+
+**Bootstrap admin after seed:** username `itlisa` — password from `ADMIN_SEED_PASSWORD` or default `FuelTheDons2026!` (change after first login).
 
 ## Database Setup (Production)
 
-When `DATABASE_URL` is set, the app persists students, scan transactions, users, audit logs, calendar data, and allergy workflows to PostgreSQL. Without it, the app runs in **demo mode** (in-memory only).
+When `DATABASE_URL` is set, the app persists students, scan transactions, users, audit logs, calendar data, and allergy workflows to PostgreSQL. Without it, the UI shows empty states — real data comes from imports and live use.
 
 ### Production Database Setup (Neon — free tier)
 
@@ -59,7 +52,7 @@ DATABASE_URL="postgresql://user:password@ep-xxx.us-east-2.aws.neon.tech/neondb?s
 NEXT_PUBLIC_APP_URL=https://fuelthedons.com
 ```
 
-4. Push schema and seed Madonna High School production data:
+4. Push schema and bootstrap school + admin (no demo roster):
 
 ```bash
 npm run db:push
@@ -70,11 +63,7 @@ npm run db:seed
 
 6. Optional: copy `SCHOOL_ID` from seed output if you run multiple schools.
 
-**Seeded portal login (production DB):** username `d.garcia`, `j.wilson`, or `sarah.anderson` — password `FuelTheDons2026!` (change after first login).
-
-### Local development without a database
-
-Omit `DATABASE_URL` — demo mode works unchanged for local UI development.
+7. Import real students via **Admin → Family Import** (SIS export).
 
 ### Legacy local Postgres
 
@@ -94,7 +83,9 @@ npm run db:seed
 | `npm run lint` | Run ESLint |
 | `npm run db:generate` | Generate Prisma client |
 | `npm run db:push` | Push schema to database |
-| `npm run db:seed` | Seed demo data |
+| `npm run db:seed` | Bootstrap school + primary admin (no demo people) |
+| `npm run db:seed-lisa` | Upsert itlisa admin on an existing school |
+| `npm run db:disable-demo-students` | Disable legacy demo MD IDs if present |
 | `npm run db:studio` | Open Prisma Studio |
 
 ## Design System
@@ -128,8 +119,7 @@ src/
 │   ├── ui/                   # Design system components
 │   ├── layout/               # AppSidebar
 │   ├── admin/                # CSV import wizard
-│   └── providers/            # Demo + React Query providers
-├── data/demo/                # Seeded demo data
+│   └── providers/            # App data + React Query providers
 └── lib/
     ├── types.ts              # Shared TypeScript types
     ├── prisma.ts             # Prisma client singleton
@@ -137,7 +127,7 @@ src/
 
 prisma/
 ├── schema.prisma             # Multi-tenant schema
-└── seed.ts                   # Database seed script
+└── seed.ts                   # Bootstrap school + admin (no demo roster)
 ```
 
 ## Multi-Tenant & White-Label
@@ -168,9 +158,7 @@ cp .env.example .env
 | `STRIPE_SECRET_KEY` | Future | Payment processing |
 | `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | Future | Payment processing |
 
-### Demo mode on production
-
-The app runs fully in **demo mode** without a database. All portals, scan station, food safety workflow, and admin review queue use in-memory demo data via `DemoProvider`. You can deploy to Vercel immediately and add `DATABASE_URL` later when moving off demo data.
+Without a database the UI stays empty. Add `DATABASE_URL`, run `db:seed`, then import real students — the app does not invent roster or menu data.
 
 ## Deployment
 
