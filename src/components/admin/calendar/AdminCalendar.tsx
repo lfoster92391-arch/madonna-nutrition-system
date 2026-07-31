@@ -1,9 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useRef, useState } from "react"
-import Link from "next/link"
 import {
-  CalendarDays,
   ChevronLeft,
   ChevronRight,
   Globe,
@@ -324,12 +322,6 @@ export function AdminCalendar() {
             <Button variant="outline" onClick={handlePublishMonth}>
               <Send className="h-4 w-4" />
               Publish Month
-            </Button>
-            <Button variant="outline" asChild>
-              <Link href="/admin/calendar/design">
-                <CalendarDays className="h-4 w-4" />
-                Design Studio
-              </Link>
             </Button>
           </div>
         </div>
