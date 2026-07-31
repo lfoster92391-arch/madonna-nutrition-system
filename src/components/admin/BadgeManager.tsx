@@ -19,6 +19,12 @@ import { Button } from "@/components/ui/button"
 import { Card, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input, Label, Select } from "@/components/ui/input"
 import { exportRowsToCsv, getTemplate } from "@/lib/import-export"
+import {
+  assertCsvFile,
+  normalizeBadgeStatusValue,
+  normalizeCsvRecord,
+  pickCsvField,
+} from "@/lib/import-export/coerce"
 import { api } from "@/lib/api/client"
 import type { Student } from "@/lib/types"
 import { cn } from "@/lib/utils"
@@ -30,35 +36,6 @@ const STATUS_VARIANT: Record<
   active: "success",
   pending: "warning",
   inactive: "danger",
-}
-
-function normalizeCsvRow(row: Record<string, string>): Record<string, string> {
-  const out: Record<string, string> = {}
-  for (const [key, value] of Object.entries(row)) {
-    out[key.replace(/^\ufeff/, "").trim()] = value?.trim() ?? ""
-  }
-  return out
-}
-
-function pickCsvField(row: Record<string, string>, ...keys: string[]): string {
-  for (const key of keys) {
-    const value = row[key]
-    if (value) return value
-  }
-  const normalized = Object.fromEntries(
-    Object.entries(row).map(([k, v]) => [k.toLowerCase().replace(/[_\s-]/g, ""), v])
-  )
-  for (const key of keys) {
-    const value = normalized[key.toLowerCase().replace(/[_\s-]/g, "")]
-    if (value) return value
-  }
-  return ""
-}
-
-function normalizeBadgeStatus(raw?: string): Student["badgeStatus"] {
-  const value = raw?.trim().toLowerCase()
-  if (value === "active" || value === "inactive") return value
-  return "pending"
 }
 
 async function fetchBadges(): Promise<Student[]> {
@@ -164,25 +141,33 @@ export function BadgeManager() {
       setImportSummary("Sign in as an admin to import badges.")
       return
     }
+    const csvError = assertCsvFile(file)
+    if (csvError) {
+      setImportSummary(csvError)
+      setImportErrors([])
+      setIncompleteRows([])
+      return
+    }
     setImportSummary(null)
     setImportErrors([])
     setIncompleteRows([])
 
-    Papa.parse<Record<string, string>>(file, {
+    Papa.parse<Record<string, unknown>>(file, {
       header: true,
       skipEmptyLines: true,
       complete: async (results) => {
         const rows = results.data
           .map((raw) => {
-            const row = normalizeCsvRow(raw)
+            const row = normalizeCsvRecord(raw)
             return {
               mdId: pickCsvField(row, "mdId", "MD ID", "md_id", "MDID"),
               firstName: pickCsvField(row, "firstName", "First Name", "first_name"),
               lastName: pickCsvField(row, "lastName", "Last Name", "last_name"),
               grade: pickCsvField(row, "grade", "Grade"),
               photoUrl: pickCsvField(row, "photoUrl", "Photo URL", "photo_url") || undefined,
-              badgeStatus: normalizeBadgeStatus(
-                pickCsvField(row, "badgeStatus", "Badge Status", "badge_status")
+              badgeStatus: normalizeBadgeStatusValue(
+                pickCsvField(row, "badgeStatus", "Badge Status", "badge_status"),
+                "pending"
               ),
               barcode: pickCsvField(row, "barcode", "Barcode") || undefined,
             }
@@ -365,8 +350,8 @@ export function BadgeManager() {
           <div>
             <h3 className="font-semibold text-primary">Bulk badge import</h3>
             <p className="text-sm text-silver-foreground">
-              Upload the badge enrollment CSV. Complete rows import immediately; incomplete rows
-              (missing name/grade/photo) can be skipped or created as stubs for individual edit.
+              Upload a badge enrollment CSV (not Excel). Complete rows import immediately; incomplete rows
+              (missing name/grade) can be skipped or created as stubs for individual edit.
             </p>
           </div>
           <ImportExportMenu type="badges" onImport={scrollToImport} exportRows={exportRows} />
@@ -386,7 +371,7 @@ export function BadgeManager() {
         <input
           ref={fileRef}
           type="file"
-          accept=".csv,.xlsx,.xls"
+          accept=".csv,text/csv"
           className="hidden"
           onChange={(e) => {
             const file = e.target.files?.[0]

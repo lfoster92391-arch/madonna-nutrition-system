@@ -7,7 +7,7 @@ import { generateTempPassword, PRIMARY_ADMIN_EMAIL, PRIMARY_ADMIN_USERNAME } fro
 import type { familyImportRowSchema } from "@/lib/api/validation"
 import type { z } from "zod"
 
-export type FamilyImportRow = z.infer<typeof familyImportRowSchema>
+export type FamilyImportRow = z.infer<typeof familyImportRowSchema> & { _rowNumber?: number }
 
 export interface FamilyImportError {
   row: number
@@ -242,7 +242,7 @@ export async function importFamilyRows(input: {
 
   for (let index = 0; index < input.rows.length; index++) {
     const row = input.rows[index]!
-    const rowNumber = index + 1
+    const rowNumber = row._rowNumber ?? index + 1
     const email = row.parentEmail.trim().toLowerCase()
     const relationship = row.relationship?.trim() || "Guardian"
 

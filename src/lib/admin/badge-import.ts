@@ -4,7 +4,7 @@ import { assertBarcodeAvailable, findStudentByExternalId } from "@/lib/db/studen
 import type { badgeImportRowSchema } from "@/lib/api/validation"
 import type { z } from "zod"
 
-export type BadgeImportRow = z.infer<typeof badgeImportRowSchema>
+export type BadgeImportRow = z.infer<typeof badgeImportRowSchema> & { _rowNumber?: number }
 
 export interface BadgeImportError {
   row: number
@@ -64,7 +64,7 @@ export async function importBadgeRows(input: {
 
   for (let i = 0; i < input.rows.length; i++) {
     const row = input.rows[i]!
-    const rowNumber = i + 2
+    const rowNumber = row._rowNumber ?? i + 2
     const mdId = row.mdId.trim()
     if (!mdId) {
       result.skipped += 1

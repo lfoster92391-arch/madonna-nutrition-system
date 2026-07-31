@@ -5,7 +5,7 @@ import { findStudentByExternalId } from "@/lib/db/students"
 import type { studentImportRowSchema } from "@/lib/api/validation"
 import type { z } from "zod"
 
-export type StudentImportRow = z.infer<typeof studentImportRowSchema>
+export type StudentImportRow = z.infer<typeof studentImportRowSchema> & { _rowNumber?: number }
 
 export interface StudentImportError {
   row: number
@@ -58,7 +58,7 @@ export async function importStudentRows(input: {
 
   for (let i = 0; i < input.rows.length; i++) {
     const row = input.rows[i]!
-    const rowNumber = i + 1
+    const rowNumber = row._rowNumber ?? i + 1
     const mdId = row.mdId.trim()
 
     try {

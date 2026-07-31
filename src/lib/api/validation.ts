@@ -1,5 +1,14 @@
 import { z } from "zod"
 import { isWeekendDateKey, WEEKEND_MENU_DAY_MESSAGE } from "@/lib/calendar"
+import {
+  importBadgeStatus,
+  importMoney,
+  importMoneyDefault0,
+  importOptionalBadgeStatus,
+  importOptionalString,
+  importRequiredString,
+  importString,
+} from "@/lib/import-export/coerce"
 
 export const allergySchema = z.object({
   name: z.string().min(1),
@@ -320,25 +329,28 @@ export const matchReceiptSchema = z.object({
 })
 
 export const familyImportRowSchema = z.object({
-  parentEmail: z.string().email(),
-  parentFirstName: z.string().min(1),
-  parentLastName: z.string().min(1),
-  parentPhone: z.string().optional(),
-  parentUsername: z.string().optional(),
-  studentMdId: z.string().min(1),
-  studentFirstName: z.string().optional(),
-  studentLastName: z.string().optional(),
-  grade: z.string().optional(),
-  balance: z.coerce.number().optional(),
-  relationship: z.string().optional(),
-  password: z.string().optional(),
+  parentEmail: z.preprocess(
+    (val) => (typeof val === "string" ? val.trim().toLowerCase() : String(val ?? "").trim().toLowerCase()),
+    z.string().email()
+  ),
+  parentFirstName: importRequiredString,
+  parentLastName: importRequiredString,
+  parentPhone: importOptionalString,
+  parentUsername: importOptionalString,
+  studentMdId: importRequiredString,
+  studentFirstName: importOptionalString,
+  studentLastName: importOptionalString,
+  grade: importOptionalString,
+  balance: importMoney,
+  relationship: importOptionalString,
+  password: importOptionalString,
   sendWelcomeEmail: z.union([z.boolean(), z.string()]).optional(),
 })
 
 export const familyImportRequestSchema = z.object({
   adminUserId: z.string().min(1),
   performedBy: z.string().min(1),
-  rows: z.array(familyImportRowSchema).min(1).max(500),
+  rows: z.array(z.unknown()).min(1).max(500),
 })
 
 const STAFF_IMPORT_ROLE_ALIASES: Record<string, "admin" | "cashier" | "staff" | "teacher"> = {
@@ -352,8 +364,10 @@ const STAFF_IMPORT_ROLE_ALIASES: Record<string, "admin" | "cashier" | "staff" | 
 
 export const staffImportRoleSchema = z.preprocess(
   (val) => {
-    if (typeof val !== "string") return val
-    const normalized = val.trim().toLowerCase().replace(/[\s-]+/g, "")
+    const normalized = String(val ?? "")
+      .trim()
+      .toLowerCase()
+      .replace(/[\s-]+/g, "")
     return STAFF_IMPORT_ROLE_ALIASES[normalized] ?? normalized
   },
   z.enum(["admin", "cashier", "staff", "teacher"], {
@@ -361,42 +375,36 @@ export const staffImportRoleSchema = z.preprocess(
   })
 )
 
+function asTrimmedEmail(val: unknown): unknown {
+  if (val === null || val === undefined) return val
+  return String(val).trim().toLowerCase()
+}
+
 export const staffImportRowSchema = z.object({
-  firstName: z.string().min(1),
-  lastName: z.string().min(1),
-  email: z.string().email(),
+  firstName: importRequiredString,
+  lastName: importRequiredString,
+  email: z.preprocess(
+    (val) => (typeof val === "string" ? val.trim().toLowerCase() : asTrimmedEmail(val)),
+    z.string().email()
+  ),
   role: staffImportRoleSchema,
-  department: z.string().optional(),
-  username: z.string().optional(),
-  phone: z.string().optional(),
-  badgeId: z.string().optional(),
-  password: z.string().optional(),
+  department: importOptionalString,
+  username: importOptionalString,
+  phone: importOptionalString,
+  badgeId: importOptionalString,
+  password: importOptionalString,
 })
 
 export const staffImportRequestSchema = z.object({
   adminUserId: z.string().min(1),
   performedBy: z.string().min(1),
   defaultPassword: z.string().min(8).optional(),
-  rows: z.array(staffImportRowSchema).min(1).max(500),
+  rows: z.array(z.unknown()).min(1).max(500),
 })
 
-export const badgeStatusSchema = z.preprocess(
-  (val) => {
-    if (typeof val !== "string") return val
-    const normalized = val.trim().toLowerCase()
-    return normalized || undefined
-  },
-  z.enum(["active", "pending", "inactive"])
-)
+export const badgeStatusSchema = importBadgeStatus
 
-export const optionalBadgeStatusSchema = z.preprocess(
-  (val) => {
-    if (typeof val !== "string") return val
-    const normalized = val.trim().toLowerCase()
-    return normalized || undefined
-  },
-  z.enum(["active", "pending", "inactive"]).optional()
-)
+export const optionalBadgeStatusSchema = importOptionalBadgeStatus
 
 export const badgeAssignSchema = z.object({
   barcode: z.string().min(1).optional().nullable(),
@@ -404,61 +412,82 @@ export const badgeAssignSchema = z.object({
   photo: z.string().optional(),
 })
 
-/** Loose row shape for bulk upload — incomplete rows are handled per-row, not rejected as a batch. */
+/** Loose row shape for bulk upload - incomplete rows are handled per-row, not rejected as a batch. */
 export const badgeImportRowSchema = z.object({
-  mdId: z.string().min(1),
-  firstName: z.string().optional().default(""),
-  lastName: z.string().optional().default(""),
-  grade: z.string().optional().default(""),
-  photoUrl: z.string().optional(),
+  mdId: importRequiredString,
+  firstName: importString,
+  lastName: importString,
+  grade: importString,
+  photoUrl: importOptionalString,
   badgeStatus: optionalBadgeStatusSchema,
-  barcode: z.string().optional(),
+  barcode: importOptionalString,
 })
 
 export const badgeImportRequestSchema = z.object({
   adminUserId: z.string().min(1),
-  rows: z.array(badgeImportRowSchema).min(1).max(1000),
-  /** When true, create stub students for incomplete rows so they can be edited individually. */
+  rows: z.array(z.unknown()).min(1).max(1000),
   createIncompleteStubs: z.boolean().optional(),
 })
 
 export const studentImportRowSchema = z.object({
-  mdId: z.string().min(1),
-  firstName: z.string().min(1),
-  lastName: z.string().min(1),
-  grade: z.string().min(1),
-  homeroom: z.string().optional(),
-  balance: z.coerce.number().optional().default(0),
-  photoUrl: z.string().optional(),
-  parentEmail: z.string().email().optional().or(z.literal("")),
-  parentPhone: z.string().optional(),
-  allergies: z.string().optional(),
-  dietaryRestrictions: z.string().optional(),
+  mdId: importRequiredString,
+  firstName: importRequiredString,
+  lastName: importRequiredString,
+  grade: importRequiredString,
+  homeroom: importOptionalString,
+  balance: importMoneyDefault0,
+  photoUrl: importOptionalString,
+  parentEmail: z.preprocess((val) => {
+    if (val === null || val === undefined) return ""
+    return String(val).trim()
+  }, z.union([z.string().email(), z.literal("")])),
+  parentPhone: importOptionalString,
+  allergies: importOptionalString,
+  dietaryRestrictions: importOptionalString,
 })
 
 export const studentImportRequestSchema = z.object({
   adminUserId: z.string().min(1),
   performedBy: z.string().min(1),
-  rows: z.array(studentImportRowSchema).min(1).max(1000),
+  rows: z.array(z.unknown()).min(1).max(1000),
   updateExisting: z.boolean().optional(),
 })
 
 export const vendorSchema = z.object({
-  name: z.string().min(1),
-  contactName: z.string().optional(),
-  email: z.string().email().optional().or(z.literal("")),
-  phone: z.string().optional(),
-  category: z.string().optional(),
+  name: importRequiredString,
+  contactName: importOptionalString,
+  email: z.preprocess((val) => {
+    if (val === null || val === undefined) return ""
+    return String(val).trim()
+  }, z.union([z.string().email(), z.literal("")])),
+  phone: importOptionalString,
+  category: importOptionalString,
   active: z.boolean().optional(),
 })
 
 export const vendorImportRowSchema = vendorSchema.extend({
-  name: z.string().min(1),
+  name: importRequiredString,
 })
 
 export const vendorImportRequestSchema = z.object({
   adminUserId: z.string().min(1),
-  rows: z.array(vendorImportRowSchema).min(1).max(500),
+  rows: z.array(z.unknown()).min(1).max(500),
+})
+
+export const parentImportRowSchema = z.object({
+  parentEmail: z.preprocess(
+    (val) => (typeof val === "string" ? val.trim().toLowerCase() : String(val ?? "").trim().toLowerCase()),
+    z.string().email()
+  ),
+  parentName: importRequiredString,
+  parentPhone: importOptionalString,
+  mdId: importRequiredString,
+  relationship: importOptionalString,
+})
+
+export const parentImportRequestSchema = z.object({
+  adminUserId: z.string().min(1),
+  rows: z.array(z.unknown()).min(1).max(500),
 })
 
 export const studentPhotoUploadSchema = z.object({

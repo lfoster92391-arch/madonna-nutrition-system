@@ -17,6 +17,7 @@ import { useAuth } from "@/components/providers/AuthProvider"
 import { api } from "@/lib/api/client"
 import { Badge } from "@/components/ui/badge"
 import { downloadImportTemplate, exportRowsToCsv } from "@/lib/import-export"
+import { asMoneyNumber, asTrimmedString, assertCsvFile } from "@/lib/import-export/coerce"
 import { Button } from "@/components/ui/button"
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input, Label, Select } from "@/components/ui/input"
@@ -29,10 +30,11 @@ const studentSchema = z.object({
   lastName: z.string().min(1),
   grade: z.string().min(1),
   homeroom: z.string().optional(),
-  balance: z.preprocess(
-    (value) => (value === "" || value === null || value === undefined ? 0 : value),
-    z.coerce.number()
-  ),
+  balance: z.preprocess((value) => {
+    if (value === "" || value === null || value === undefined) return 0
+    const n = asMoneyNumber(value)
+    return n === undefined ? 0 : n
+  }, z.number()),
   parentEmail: z.union([z.string().email(), z.literal("")]).optional(),
   parentPhone: z.string().optional(),
   photo: z.string().optional(),
@@ -130,14 +132,29 @@ export function CsvImportWizard() {
   const existingIds = useMemo(() => new Set(students.map((s) => s.id)), [students])
 
   const processFile = useCallback((file: File) => {
+    const csvError = assertCsvFile(file)
+    if (csvError) {
+      setFilename(file.name)
+      setErrorRows([{ row: 0, errors: [csvError] }])
+      setStep("validation")
+      return
+    }
     setFilename(file.name)
-    Papa.parse<Record<string, string>>(file, {
+    Papa.parse<Record<string, unknown>>(file, {
       header: true,
       skipEmptyLines: true,
       complete: (results) => {
         const cols = results.meta.fields ?? []
         setHeaders(cols)
-        setRawRows(results.data)
+        setRawRows(
+          results.data.map((row) => {
+            const mapped: Record<string, string> = {}
+            for (const [key, value] of Object.entries(row)) {
+              mapped[key] = asTrimmedString(value)
+            }
+            return mapped
+          })
+        )
         const autoMap: Partial<Record<FieldKey, string>> = {}
         for (const field of [...REQUIRED_FIELDS, ...OPTIONAL_FIELDS]) {
           const match = autoDetectColumn(cols, field)
@@ -165,7 +182,7 @@ export function CsvImportWizard() {
     rawRows.forEach((row, index) => {
       const mapped: Record<string, string> = {}
       for (const [field, col] of Object.entries(mapping)) {
-        if (col) mapped[field] = row[col] ?? ""
+        if (col) mapped[field] = asTrimmedString(row[col] ?? "")
       }
 
       // Empty optional balance → 0 so badge enrollment CSVs without Balance still import
@@ -377,7 +394,7 @@ export function CsvImportWizard() {
           <Upload className="h-10 w-10 text-silver-foreground" />
           <p className="mt-4 font-medium text-primary">Drag & drop SIS export CSV here</p>
           <p className="mt-1 text-sm text-silver-foreground">
-            Supports badge enrollment CSVs (mdId, firstName, lastName, grade, photoUrl, barcode).
+            CSV only (save Excel as .csv first). Supports badge enrollment CSVs (mdId, firstName, lastName, grade, photoUrl, barcode).
             Balance and photo are optional — fill gaps later per student.
           </p>
           <input
