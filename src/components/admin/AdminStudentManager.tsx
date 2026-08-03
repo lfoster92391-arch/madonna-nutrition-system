@@ -243,7 +243,7 @@ export function AdminStudentManager({
   const editingPhoto = pendingPhoto ?? savedPhoto
 
   return (
-    <div className={showPageHeader ? "w-full px-6 py-8 md:px-8" : "w-full"}>
+    <div className={showPageHeader ? "admin-page-pad" : "w-full min-w-0"}>
       <input
         ref={photoInputRef}
         type="file"
@@ -260,20 +260,20 @@ export function AdminStudentManager({
         onChange={(e) => void handlePhotoUpload(e)}
       />
 
-      <div className="mx-auto max-w-full space-y-8">
+      <div className="mx-auto max-w-full space-y-5 sm:space-y-8">
         {showPageHeader && (
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div>
+          <div className="flex flex-wrap items-center justify-between gap-3 sm:gap-4">
+            <div className="min-w-0">
               <p className="text-xs font-bold uppercase tracking-[0.2em] text-silver-foreground">
                 Setup
               </p>
-              <h1 className="text-3xl font-bold text-primary">Students</h1>
-              <p className="text-silver-foreground">
+              <h1 className="text-2xl font-bold text-primary sm:text-3xl">Students</h1>
+              <p className="text-sm text-silver-foreground sm:text-base">
                 Add students, open a profile to take or upload a photo for badges, and add money to
                 lunch accounts
               </p>
             </div>
-            <div className="flex flex-wrap gap-3">
+            <div className="flex w-full flex-wrap gap-2 sm:w-auto sm:gap-3">
               {showImportExportMenu && (
                 <ImportExportMenu
                   type="students"
@@ -368,8 +368,8 @@ export function AdminStudentManager({
             <CardHeader>
               <CardTitle>Student Manager</CardTitle>
             </CardHeader>
-            <div className="relative mb-4 px-6">
-              <Search className="absolute left-10 top-1/2 h-5 w-5 -translate-y-1/2 text-silver-foreground" />
+            <div className="relative mb-4 px-3 sm:px-6">
+              <Search className="absolute left-6 top-1/2 h-5 w-5 -translate-y-1/2 text-silver-foreground sm:left-10" />
               <Input
                 className="pl-12"
                 placeholder="Search by name or student ID…"
@@ -377,8 +377,8 @@ export function AdminStudentManager({
                 onChange={(e) => setSearch(e.target.value)}
               />
             </div>
-            <div className="overflow-x-auto px-6 pb-6">
-              <table className="w-full text-sm">
+            <div className="mobile-scroll-x px-3 pb-6 sm:px-6">
+              <table className="w-full min-w-[640px] text-sm">
                 <thead>
                   <tr className="border-b border-silver/60 text-silver-foreground">
                     <th className="pb-3 pr-4 text-left font-medium">Photo</th>
@@ -566,7 +566,7 @@ export function AdminStudentManager({
                       <p className="text-xs font-medium text-amber-800">New photo — not saved yet</p>
                     )}
                   </div>
-                  <div className="flex min-w-[220px] flex-1 flex-col gap-3">
+                  <div className="flex min-w-0 flex-1 flex-col gap-3 sm:min-w-[220px]">
                     <Button
                       type="button"
                       size="lg"

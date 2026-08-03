@@ -253,10 +253,10 @@ export function BadgeManager() {
 
   return (
     <div className="space-y-6">
-      <div className="rounded-2xl border-2 border-primary/20 bg-white p-5 shadow-sm">
-        <div className="flex flex-wrap items-start justify-between gap-4">
+      <div className="rounded-2xl border-2 border-primary/20 bg-white p-3 shadow-sm sm:p-5">
+        <div className="flex flex-wrap items-start justify-between gap-3 sm:gap-4">
           <div className="min-w-0 max-w-xl">
-            <h2 className="text-lg font-bold text-primary">Print student badges</h2>
+            <h2 className="text-base font-bold text-primary sm:text-lg">Print student badges</h2>
             <p className="mt-1 text-sm text-silver-foreground">
               Select students below (or use the filtered list), then preview printable badge
               cards with photo, name, email, grade, barcode, and MD ID.
@@ -267,9 +267,10 @@ export function BadgeManager() {
                 : `${selectedIds.size} student${selectedIds.size === 1 ? "" : "s"} selected.`}
             </p>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex w-full flex-wrap gap-2 sm:w-auto">
             <Button
               variant="outline"
+              className="min-h-11 flex-1 sm:flex-none"
               onClick={() =>
                 openPrintPreview(new Set(filtered.map((s) => s.id)))
               }
@@ -279,6 +280,7 @@ export function BadgeManager() {
             </Button>
             <Button
               size="lg"
+              className="min-h-11 flex-1 sm:flex-none"
               onClick={() => openPrintPreview()}
               disabled={selectedIds.size === 0}
             >
@@ -290,11 +292,11 @@ export function BadgeManager() {
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="relative min-w-[220px] flex-1">
+        <div className="relative w-full min-w-0 flex-1 sm:min-w-[220px]">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-silver-foreground" />
           <Input
             className="pl-9"
-            placeholder="Search by name, MD ID, or barcodeâ€¦"
+            placeholder="Search by name, MD ID, or barcode…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -302,14 +304,14 @@ export function BadgeManager() {
         <Select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)}
-          className="w-40"
+          className="w-full sm:w-40"
         >
           <option value="all">All statuses</option>
           <option value="active">Active</option>
           <option value="pending">Pending</option>
           <option value="inactive">Inactive</option>
         </Select>
-        <Button variant="outline" onClick={handleExportCsv}>
+        <Button variant="outline" className="w-full sm:w-auto" onClick={handleExportCsv}>
           Export CSV
         </Button>
       </div>
@@ -326,11 +328,11 @@ export function BadgeManager() {
             </Button>
           </div>
         </CardHeader>
-        <div className="overflow-x-auto px-6 pb-6">
+        <div className="mobile-scroll-x px-3 pb-6 sm:px-6">
           {isLoading ? (
-            <p className="text-sm text-silver-foreground">Loading badgesâ€¦</p>
+            <p className="text-sm text-silver-foreground">Loading badges…</p>
           ) : (
-            <table className="w-full text-sm">
+            <table className="w-full min-w-[720px] text-sm">
               <thead>
                 <tr className="border-b text-left text-silver-foreground">
                   <th className="pb-3 pr-3">

@@ -29,8 +29,8 @@ const REPORTS = [
 
 export default function AdminReportingPage() {
   return (
-    <div className="min-h-screen bg-white p-8">
-      <div className="mx-auto max-w-5xl space-y-8">
+    <div className="min-h-screen bg-white p-3 sm:p-6 md:p-8">
+      <div className="mx-auto max-w-5xl space-y-5 sm:space-y-8">
         <div>
           <h1 className="flex items-center gap-2 text-3xl font-bold text-primary">
             <BarChart3 className="h-8 w-8" />

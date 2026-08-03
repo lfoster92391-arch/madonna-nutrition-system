@@ -59,7 +59,7 @@ export function AdminTopBar() {
 
   return (
     <header
-      className="flex h-[72px] shrink-0 items-center gap-2 border-b px-3 sm:gap-4 sm:px-4 md:px-6"
+      className="flex h-14 shrink-0 items-center gap-2 border-b px-2 sm:h-16 sm:gap-4 sm:px-4 md:h-[72px] md:px-6"
       style={{ borderColor: ADMIN_SILVER, backgroundColor: "#FFFFFF" }}
     >
       <button

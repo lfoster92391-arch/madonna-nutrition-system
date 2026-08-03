@@ -61,10 +61,51 @@
   --foreground: #0a1e3f;
 }
 
+html {
+  overflow-x: clip;
+}
+
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-inter), system-ui, sans-serif;
+  overflow-x: clip;
+  max-width: 100%;
+}
+
+/* Wide tables / badge previews: intentional horizontal scroll, not page overflow */
+.mobile-scroll-x {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  scrollbar-width: thin;
+}
+
+.mobile-scroll-x::-webkit-scrollbar {
+  height: 6px;
+}
+
+.mobile-scroll-x::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--silver) 80%, transparent);
+  border-radius: 999px;
+}
+
+/* Admin pages: tighter mobile gutters without changing desktop */
+.admin-page-pad {
+  width: 100%;
+  padding: 1rem 0.75rem;
+}
+
+@media (min-width: 640px) {
+  .admin-page-pad {
+    padding: 1.5rem 1.25rem;
+  }
+}
+
+@media (min-width: 768px) {
+  .admin-page-pad {
+    padding: 2rem;
+  }
 }
 
 * {
@@ -281,5 +322,21 @@ body {
     page-break-inside: avoid;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
+  }
+}
+
+/* On-screen badge preview: keep physical size but allow horizontal pan on phones */
+@media screen and (max-width: 430px) {
+  .badge-print-sheet {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+    scrollbar-width: thin;
+  }
+
+  .badge-print-grid {
+    width: max-content;
+    max-width: none;
+    justify-items: start;
   }
 }

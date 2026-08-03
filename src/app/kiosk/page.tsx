@@ -658,7 +658,7 @@ export default function ScanStationPage() {
       </header>
 
       <main className="flex min-h-0 flex-1 flex-col overflow-hidden lg:flex-row">
-        <section className="flex max-h-[38dvh] min-h-0 w-full shrink-0 flex-col overflow-hidden border-b border-[#AEB6C2]/60 p-2 sm:max-h-[40dvh] sm:p-3 md:max-h-none md:p-4 lg:w-[55%] lg:max-h-none lg:border-b-0 lg:border-r lg:p-6">
+        <section className="flex max-h-[38dvh] min-h-0 w-full shrink-0 flex-col overflow-x-hidden overflow-y-auto border-b border-[#AEB6C2]/60 p-2 sm:max-h-[40dvh] sm:p-3 md:max-h-none md:overflow-hidden md:p-4 lg:w-[55%] lg:max-h-none lg:border-b-0 lg:border-r lg:p-6">
           {student ? (
             <div className="flex min-h-0 flex-1 flex-col gap-2 sm:gap-3 md:gap-4">
               <div className="flex gap-2 sm:gap-3 md:gap-4">
@@ -678,11 +678,13 @@ export default function ScanStationPage() {
                     <GraduationCap className="h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4 md:h-5 md:w-5" aria-hidden />
                     Grade {student.grade}
                   </p>
-                  <p className="mt-0.5 flex items-center gap-1.5 text-xs text-[#64748B] sm:mt-1 sm:gap-2 sm:text-sm md:text-base lg:text-lg">
+                  <p className="mt-0.5 flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-[#64748B] sm:mt-1 sm:gap-x-2 sm:text-sm md:text-base lg:text-lg">
                     <IdCard className="h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4 md:h-5 md:w-5" aria-hidden />
-                    MD ID: {student.id}
+                    <span className="min-w-0 break-all">MD ID: {student.id}</span>
                     {student.barcode && student.barcode !== student.id ? (
-                      <span className="text-[#64748B]"> · Barcode: {student.barcode}</span>
+                      <span className="min-w-0 break-all text-[#64748B]">
+                        · Barcode: {student.barcode}
+                      </span>
                     ) : null}
                   </p>
                 </div>
@@ -752,12 +754,12 @@ export default function ScanStationPage() {
             Select Meal
           </p>
 
-          <div className="mt-1 flex shrink-0 gap-1 sm:mt-1.5 sm:gap-1.5 md:mt-2 md:gap-2">
+          <div className="mobile-scroll-x mt-1 flex shrink-0 gap-1 pb-0.5 sm:mt-1.5 sm:gap-1.5 md:mt-2 md:gap-2 md:overflow-visible">
             {primaryMeals.map((meal) => renderMealButton(meal))}
           </div>
 
           {secondaryMeals.length > 0 && (
-            <div className="mt-1 flex shrink-0 gap-1 sm:mt-1.5 sm:gap-1.5 md:mt-2 md:gap-2">
+            <div className="mobile-scroll-x mt-1 flex shrink-0 gap-1 pb-0.5 sm:mt-1.5 sm:gap-1.5 md:mt-2 md:gap-2 md:overflow-visible">
               {secondaryMeals.map((meal) => renderMealButton(meal, true))}
             </div>
           )}

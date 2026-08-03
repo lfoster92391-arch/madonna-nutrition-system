@@ -529,8 +529,8 @@ export function UserManager() {
   }
 
   return (
-    <div className="min-h-screen bg-white p-8">
-      <div className="mx-auto max-w-7xl space-y-8">
+    <div className="min-h-screen bg-white p-3 sm:p-6 md:p-8">
+      <div className="mx-auto max-w-7xl space-y-5 sm:space-y-8">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold text-primary">User Management</h1>
@@ -578,8 +578,8 @@ export function UserManager() {
               <CardHeader>
                 <CardTitle>All Users ({filtered.length})</CardTitle>
               </CardHeader>
-              <div className="mb-4 flex flex-wrap gap-4 px-6">
-                <div className="relative min-w-[240px] flex-1">
+              <div className="mb-4 flex flex-wrap gap-3 px-3 sm:gap-4 sm:px-6">
+                <div className="relative w-full min-w-0 flex-1 sm:min-w-[240px]">
                   <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-silver-foreground" />
                   <Input
                     className="pl-12"
@@ -588,11 +588,12 @@ export function UserManager() {
                     onChange={(e) => setSearch(e.target.value)}
                   />
                 </div>
-                <div className="flex flex-wrap gap-2">
+                <div className="mobile-scroll-x flex max-w-full gap-2 pb-1">
                   <Button
                     size="sm"
                     variant={roleFilter === "all" ? "default" : "outline"}
                     onClick={() => setRoleFilter("all")}
+                    className="shrink-0"
                   >
                     All
                   </Button>
@@ -602,14 +603,15 @@ export function UserManager() {
                       size="sm"
                       variant={roleFilter === role ? "default" : "outline"}
                       onClick={() => setRoleFilter(role)}
+                      className="shrink-0"
                     >
                       {ROLE_LABELS[role]}
                     </Button>
                   ))}
                 </div>
               </div>
-              <div className="overflow-x-auto px-6 pb-6">
-                <table className="w-full text-sm">
+              <div className="mobile-scroll-x px-3 pb-6 sm:px-6">
+                <table className="w-full min-w-[720px] text-sm">
                   <thead>
                     <tr className="border-b border-silver/60 text-silver-foreground">
                       <th className="pb-3 pr-4 text-left font-medium">Photo</th>

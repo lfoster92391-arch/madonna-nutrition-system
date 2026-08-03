@@ -136,30 +136,30 @@ const QUICK_LINKS: Array<{ label: string; href: string; icon: LucideIcon }> = [
 
 export function WorkerNavigationGuide() {
   return (
-    <div className="space-y-8">
-      <div className="space-y-3">
+    <div className="space-y-5 sm:space-y-8">
+      <div className="space-y-2 sm:space-y-3">
         <p
           className="text-xs font-bold uppercase tracking-[0.2em]"
           style={{ color: ADMIN_SILVER }}
         >
           Fuel The Dons
         </p>
-        <h1 className="text-3xl font-bold md:text-4xl" style={{ color: ADMIN_NAVY }}>
+        <h1 className="text-2xl font-bold sm:text-3xl md:text-4xl" style={{ color: ADMIN_NAVY }}>
           How to use this site
         </h1>
-        <p className="max-w-2xl text-base leading-relaxed md:text-lg" style={{ color: ADMIN_SILVER }}>
+        <p className="max-w-2xl text-sm leading-relaxed sm:text-base md:text-lg" style={{ color: ADMIN_SILVER }}>
           New to computers? That is okay. Follow the big buttons below, one step at a time.
           You do not need to memorize everything — come back here anytime.
         </p>
       </div>
 
-      <div className="flex flex-wrap gap-3">
+      <div className="mobile-scroll-x flex gap-2 pb-1 sm:flex-wrap sm:gap-3 sm:overflow-visible sm:pb-0">
         {QUICK_LINKS.map(({ label, href, icon: Icon }) => (
           <Button
             key={label}
             asChild
             size="lg"
-            className="min-h-14 min-w-[9rem] text-base font-semibold"
+            className="min-h-12 min-w-[7.5rem] shrink-0 text-sm font-semibold sm:min-h-14 sm:min-w-[9rem] sm:text-base"
             style={{ backgroundColor: ADMIN_NAVY }}
           >
             <Link href={href}>
@@ -170,7 +170,7 @@ export function WorkerNavigationGuide() {
         ))}
       </div>
 
-      <div className="space-y-5">
+      <div className="space-y-4 sm:space-y-5">
         {GUIDE_STEPS.map((step) => {
           const Icon = step.icon
           const isAnchor = step.href.startsWith("#")
@@ -180,9 +180,9 @@ export function WorkerNavigationGuide() {
               className="overflow-hidden border shadow-sm"
               style={{ borderColor: ADMIN_SILVER, backgroundColor: ADMIN_WHITE }}
             >
-              <div className="flex flex-col gap-5 p-5 md:flex-row md:items-start md:p-6">
+              <div className="flex flex-col gap-4 p-4 sm:gap-5 sm:p-5 md:flex-row md:items-start md:p-6">
                 <div
-                  className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl text-xl font-bold text-white"
+                  className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-lg font-bold text-white sm:h-14 sm:w-14 sm:text-xl"
                   style={{ backgroundColor: ADMIN_NAVY }}
                   aria-hidden
                 >
@@ -196,11 +196,11 @@ export function WorkerNavigationGuide() {
                     >
                       <Icon className="h-5 w-5" style={{ color: ADMIN_NAVY }} />
                     </div>
-                    <div>
-                      <h2 className="text-xl font-bold" style={{ color: ADMIN_NAVY }}>
+                    <div className="min-w-0">
+                      <h2 className="text-lg font-bold sm:text-xl" style={{ color: ADMIN_NAVY }}>
                         {step.title}
                       </h2>
-                      <p className="text-base" style={{ color: ADMIN_SILVER }}>
+                      <p className="text-sm sm:text-base" style={{ color: ADMIN_SILVER }}>
                         {step.plain}
                       </p>
                     </div>
