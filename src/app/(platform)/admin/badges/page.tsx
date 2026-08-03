@@ -9,7 +9,7 @@ export default function AdminBadgesPage() {
     <AdminModulePage
       section="Get Started"
       title="Badge Setup"
-      description="Configure student scan badges and ID photos for cafeteria stations."
+      description="Configure student scan badges, ID photos, and mass-print badge sheets for cafeteria stations."
       icon={IdCard}
     >
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-silver/60 bg-white p-4 shadow-sm">

@@ -13,12 +13,14 @@ import {
   Upload,
 } from "lucide-react"
 import { useAuth } from "@/components/providers/AuthProvider"
+import { BadgeMassPrint } from "@/components/admin/BadgeMassPrint"
 import { ImportExportMenu } from "@/components/admin/import-export/ImportExportMenu"
+import { studentHasRealPhoto } from "@/components/admin/StudentBadgeCard"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input, Label, Select } from "@/components/ui/input"
-import { exportRowsToCsv, getTemplate } from "@/lib/import-export"
+import { exportRowsToCsv } from "@/lib/import-export"
 import { api } from "@/lib/api/client"
 import type { Student } from "@/lib/types"
 import { cn } from "@/lib/utils"
@@ -79,6 +81,8 @@ export function BadgeManager() {
   const [statusInput, setStatusInput] = useState<Student["badgeStatus"]>("active")
   const [importSummary, setImportSummary] = useState<string | null>(null)
   const [importErrors, setImportErrors] = useState<Array<{ row: number; message: string }>>([])
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [printMode, setPrintMode] = useState(false)
 
   const { data: badges = [], isLoading } = useQuery({
     queryKey: ["badges"],
@@ -123,6 +127,14 @@ export function BadgeManager() {
     })
   }, [badges, search, statusFilter])
 
+  const selectedStudents = useMemo(
+    () => badges.filter((s) => selectedIds.has(s.id)),
+    [badges, selectedIds]
+  )
+
+  const allFilteredSelected =
+    filtered.length > 0 && filtered.every((s) => selectedIds.has(s.id))
+
   const exportRows = useMemo(
     () =>
       badges.map((s) => ({
@@ -142,10 +154,34 @@ export function BadgeManager() {
     fileRef.current?.click()
   }, [])
 
-  const handlePrint = () => {
-    const template = getTemplate("badges")
+  const handleExportCsv = () => {
     exportRowsToCsv("badges", exportRows)
-    window.print()
+  }
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const toggleSelectAllFiltered = () => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (allFilteredSelected) {
+        for (const s of filtered) next.delete(s.id)
+      } else {
+        for (const s of filtered) next.add(s.id)
+      }
+      return next
+    })
+  }
+
+  const openPrintPreview = (ids?: Set<string>) => {
+    if (ids) setSelectedIds(ids)
+    setPrintMode(true)
   }
 
   const handleImportFile = async (file: File) => {
@@ -206,8 +242,53 @@ export function BadgeManager() {
     setStatusInput(student.badgeStatus ?? "pending")
   }
 
+  if (printMode) {
+    return (
+      <BadgeMassPrint
+        students={selectedStudents}
+        onClose={() => setPrintMode(false)}
+      />
+    )
+  }
+
   return (
     <div className="space-y-6">
+      <div className="rounded-2xl border-2 border-primary/20 bg-white p-5 shadow-sm">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="min-w-0 max-w-xl">
+            <h2 className="text-lg font-bold text-primary">Print student badges</h2>
+            <p className="mt-1 text-sm text-silver-foreground">
+              Select students below (or use the filtered list), then preview printable badge
+              cards with photo, name, email, grade, barcode, and MD ID.
+            </p>
+            <p className="mt-2 text-sm font-medium text-primary">
+              {selectedIds.size === 0
+                ? "No students selected yet."
+                : `${selectedIds.size} student${selectedIds.size === 1 ? "" : "s"} selected.`}
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="outline"
+              onClick={() =>
+                openPrintPreview(new Set(filtered.map((s) => s.id)))
+              }
+              disabled={filtered.length === 0}
+            >
+              Print filtered ({filtered.length})
+            </Button>
+            <Button
+              size="lg"
+              onClick={() => openPrintPreview()}
+              disabled={selectedIds.size === 0}
+            >
+              <Printer className="mr-2 h-5 w-5" />
+              Print student badges
+            </Button>
+          </div>
+        </div>
+      </div>
+
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="relative min-w-[220px] flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-silver-foreground" />
@@ -228,18 +309,22 @@ export function BadgeManager() {
           <option value="pending">Pending</option>
           <option value="inactive">Inactive</option>
         </Select>
-        <Button variant="outline" onClick={handlePrint}>
-          <Printer className="mr-2 h-4 w-4" />
-          Export / Print
+        <Button variant="outline" onClick={handleExportCsv}>
+          Export CSV
         </Button>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <IdCard className="h-5 w-5" />
-            Badge Roster ({filtered.length})
-          </CardTitle>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <IdCard className="h-5 w-5" />
+              Badge Roster ({filtered.length})
+            </CardTitle>
+            <Button variant="outline" size="sm" onClick={toggleSelectAllFiltered} disabled={filtered.length === 0}>
+              {allFilteredSelected ? "Clear selection" : "Select all filtered"}
+            </Button>
+          </div>
         </CardHeader>
         <div className="overflow-x-auto px-6 pb-6">
           {isLoading ? (
@@ -248,6 +333,15 @@ export function BadgeManager() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b text-left text-silver-foreground">
+                  <th className="pb-3 pr-3">
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 accent-primary"
+                      checked={allFilteredSelected}
+                      onChange={toggleSelectAllFiltered}
+                      aria-label="Select all filtered students"
+                    />
+                  </th>
                   <th className="pb-3 pr-4">Photo</th>
                   <th className="pb-3 pr-4">Student</th>
                   <th className="pb-3 pr-4">MD ID</th>
@@ -260,14 +354,30 @@ export function BadgeManager() {
               <tbody>
                 {filtered.map((student) => (
                   <tr key={student.id} className="border-b border-silver/40">
-                    <td className="py-3 pr-4">
-                      <Image
-                        src={student.photo}
-                        alt=""
-                        width={40}
-                        height={40}
-                        className="h-10 w-10 rounded-lg object-cover"
+                    <td className="py-3 pr-3">
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4 accent-primary"
+                        checked={selectedIds.has(student.id)}
+                        onChange={() => toggleSelect(student.id)}
+                        aria-label={`Select ${student.firstName} ${student.lastName}`}
                       />
+                    </td>
+                    <td className="py-3 pr-4">
+                      {studentHasRealPhoto(student.photo) ? (
+                        <Image
+                          src={student.photo}
+                          alt=""
+                          width={40}
+                          height={40}
+                          className="h-10 w-10 rounded-lg object-cover"
+                          unoptimized={student.photo.startsWith("data:")}
+                        />
+                      ) : (
+                        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-silver/30 text-[9px] font-semibold uppercase text-silver-foreground">
+                          No photo
+                        </div>
+                      )}
                     </td>
                     <td className="py-3 pr-4 font-medium">
                       {student.firstName} {student.lastName}
@@ -281,9 +391,18 @@ export function BadgeManager() {
                       </Badge>
                     </td>
                     <td className="py-3">
-                      <Button size="sm" variant="outline" onClick={() => openAssign(student)}>
-                        Assign
-                      </Button>
+                      <div className="flex flex-wrap gap-2">
+                        <Button size="sm" variant="outline" onClick={() => openAssign(student)}>
+                          Assign
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => openPrintPreview(new Set([student.id]))}
+                        >
+                          Print
+                        </Button>
+                      </div>
                     </td>
                   </tr>
                 ))}
