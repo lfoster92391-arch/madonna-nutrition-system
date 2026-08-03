@@ -4,7 +4,7 @@ import { UserManager } from "@/components/admin/UserManager"
 export default function AdminSetupPage() {
   return (
     <>
-      <div className="w-full px-6 py-8 md:px-8">
+      <div className="admin-page-pad">
         <div className="mx-auto max-w-full">
           <WorkerNavigationGuide />
         </div>

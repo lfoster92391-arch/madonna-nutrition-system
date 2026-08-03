@@ -35,23 +35,23 @@ export function AdminImportsHub() {
   }
 
   return (
-    <div className="w-full px-6 py-8 md:px-8">
-      <div className="mx-auto max-w-full space-y-8">
-        <div>
+    <div className="admin-page-pad">
+      <div className="mx-auto max-w-full space-y-5 sm:space-y-8">
+        <div className="min-w-0">
           <p className="text-xs font-bold uppercase tracking-[0.2em] text-silver-foreground">
             Setup
           </p>
-          <h1 className="text-3xl font-bold text-primary">Students &amp; Imports</h1>
-          <p className="text-silver-foreground">
+          <h1 className="text-2xl font-bold text-primary sm:text-3xl">Students &amp; Imports</h1>
+          <p className="mt-1 text-sm text-silver-foreground sm:text-base">
             Add or import students, edit details and photos, add money to lunch accounts, and create
             parent or staff accounts
           </p>
         </div>
 
-        <Tabs value={tab} onValueChange={setTab} className="space-y-6">
+        <Tabs value={tab} onValueChange={setTab} className="min-w-0 space-y-5 sm:space-y-6">
           <TabsList>
             <TabsTrigger value="students">Students (SIS)</TabsTrigger>
-            <TabsTrigger value="families">Parents &amp; Family Accounts</TabsTrigger>
+            <TabsTrigger value="families">Parents &amp; Family</TabsTrigger>
             <TabsTrigger value="staff">Staff Accounts</TabsTrigger>
           </TabsList>
 

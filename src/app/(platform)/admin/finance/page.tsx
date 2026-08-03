@@ -58,7 +58,7 @@ export default function AdminFinancePage() {
               <CardTitle className="text-[#041B52]">Reconciliation Status</CardTitle>
               <CardDescription>Card vs receipt vs inventory receive matching</CardDescription>
             </CardHeader>
-            <div className="overflow-x-auto px-6 pb-6">
+            <div className="mobile-scroll-x px-3 pb-6 sm:px-6">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-[#AEB6C2]/40 text-left text-[#AEB6C2]">
@@ -93,7 +93,7 @@ export default function AdminFinancePage() {
               <CardTitle className="text-[#041B52]">Meal Cost Engine</CardTitle>
               <CardDescription>Ingredient cost, meal cost, revenue, and margins by template</CardDescription>
             </CardHeader>
-            <div className="overflow-x-auto px-6 pb-6">
+            <div className="mobile-scroll-x px-3 pb-6 sm:px-6">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-[#AEB6C2]/40 text-left text-[#AEB6C2]">

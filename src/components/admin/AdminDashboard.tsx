@@ -246,10 +246,10 @@ export function AdminDashboard() {
   const adminName = user?.displayName?.split(" ")[0] ?? "Admin"
 
   return (
-    <div className="w-full px-6 py-8 md:px-8">
-      <div className="mx-auto max-w-full space-y-10">
-        <div className="space-y-4">
-          <h1 className="text-2xl font-bold md:text-3xl" style={{ color: ADMIN_NAVY }}>
+    <div className="admin-page-pad">
+      <div className="mx-auto max-w-full space-y-6 sm:space-y-10">
+        <div className="space-y-3 sm:space-y-4">
+          <h1 className="text-xl font-bold sm:text-2xl md:text-3xl" style={{ color: ADMIN_NAVY }}>
             Welcome back, {adminName}!
           </h1>
           <div
@@ -289,8 +289,8 @@ export function AdminDashboard() {
             <div
               className={
                 section.cards.length === 1
-                  ? "grid max-w-md gap-6"
-                  : "grid gap-6 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4"
+                  ? "grid max-w-md gap-3 sm:gap-6"
+                  : "grid gap-3 sm:grid-cols-2 sm:gap-6 xl:grid-cols-3 2xl:grid-cols-4"
               }
             >
               {section.cards.map((card) => (
@@ -310,7 +310,7 @@ function LauncherCardItem({ card }: { card: LauncherCard }) {
 
   return (
     <div
-      className="group flex flex-col rounded-2xl border p-6 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+      className="group flex flex-col rounded-2xl border p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md sm:p-6"
       style={{ borderColor: ADMIN_SILVER, backgroundColor: ADMIN_WHITE }}
     >
       <Link href={card.href} className="flex flex-1 flex-col">

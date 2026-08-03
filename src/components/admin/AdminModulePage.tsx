@@ -32,18 +32,18 @@ export function AdminModulePage({
   headerActions,
 }: AdminModulePageProps) {
   return (
-    <div className="w-full px-6 py-8 md:px-8">
-      <div className="mx-auto max-w-full space-y-8">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
+    <div className="admin-page-pad">
+      <div className="mx-auto max-w-full space-y-5 sm:space-y-8">
+        <div className="flex flex-wrap items-start justify-between gap-3 sm:gap-4">
+          <div className="min-w-0">
             <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary">{section}</p>
-            <div className="mt-1 flex items-center gap-3">
-              <Icon className="h-8 w-8 text-primary" />
-              <h1 className="text-3xl font-bold text-primary">{title}</h1>
+            <div className="mt-1 flex items-center gap-2 sm:gap-3">
+              <Icon className="h-6 w-6 shrink-0 text-primary sm:h-8 sm:w-8" />
+              <h1 className="text-2xl font-bold text-primary sm:text-3xl">{title}</h1>
             </div>
-            <p className="mt-2 text-silver-foreground">{description}</p>
+            <p className="mt-2 text-sm text-silver-foreground sm:text-base">{description}</p>
           </div>
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
             {headerActions}
             {readOnly && (
               <Badge variant="outline" className="text-sm">
@@ -54,7 +54,7 @@ export function AdminModulePage({
         </div>
 
         {stats.length > 0 && (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
             {stats.map((stat) => (
               <Card key={stat.label}>
                 <CardHeader className="pb-2">

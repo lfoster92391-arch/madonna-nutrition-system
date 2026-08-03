@@ -7,7 +7,7 @@ import { ADMIN_NAVY, ADMIN_SILVER } from "@/components/admin/layout/admin-theme"
 export function AdminFooter() {
   return (
     <footer
-      className="flex shrink-0 flex-wrap items-center justify-between gap-4 border-t px-6 py-4 md:px-8"
+      className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-t px-3 py-2.5 sm:gap-4 sm:px-6 sm:py-4 md:px-8"
       style={{ backgroundColor: ADMIN_NAVY, borderColor: "rgba(255,255,255,0.1)" }}
     >
       <div>

@@ -59,8 +59,8 @@ export default function AllergyReviewPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white p-8">
-      <div className="mx-auto max-w-7xl space-y-8">
+    <div className="min-h-screen bg-white p-3 sm:p-6 md:p-8">
+      <div className="mx-auto max-w-7xl space-y-5 sm:space-y-8">
         <div>
           <h1 className="text-3xl font-bold text-primary">Allergy Review Queue</h1>
           <p className="text-silver-foreground">
@@ -84,7 +84,7 @@ export default function AllergyReviewPage() {
           {rows.length === 0 ? (
             <p className="px-6 pb-6 text-silver-foreground">No submissions awaiting review.</p>
           ) : (
-            <div className="overflow-x-auto px-6 pb-6">
+            <div className="mobile-scroll-x px-3 pb-6 sm:px-6">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-silver/60 text-silver-foreground">

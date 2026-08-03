@@ -94,7 +94,7 @@ export function AuditLogTable({
         {rows.length === 0 ? (
           <p className="px-6 pb-6 text-silver-foreground">No audit entries found.</p>
         ) : (
-          <div className="overflow-x-auto px-6 pb-6">
+          <div className="mobile-scroll-x px-3 pb-6 sm:px-6">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-silver/60 text-silver-foreground">

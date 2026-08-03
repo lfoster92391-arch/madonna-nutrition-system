@@ -12,7 +12,7 @@ export function AdminLayoutShell({ children }: { children: React.ReactNode }) {
   return (
     <AdminLayoutProvider>
       <div
-        className="admin-portal flex h-screen flex-col overflow-x-hidden"
+        className="admin-portal flex h-[100dvh] flex-col overflow-x-hidden"
         style={{ backgroundColor: ADMIN_BG }}
       >
         <div className="flex min-h-0 min-w-0 flex-1">

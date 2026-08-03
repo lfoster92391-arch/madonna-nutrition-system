@@ -119,7 +119,7 @@ export default function AdminAnalyticsPage() {
                   <CardTitle className="text-[#041B52]">Nutrition Compliance</CardTitle>
                   <CardDescription>Calories, allergens, and menu standards from meal templates</CardDescription>
                 </CardHeader>
-                <div className="overflow-x-auto px-6 pb-6">
+                <div className="mobile-scroll-x px-3 pb-6 sm:px-6">
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b border-[#AEB6C2]/40 text-left text-[#AEB6C2]">
@@ -156,7 +156,7 @@ export default function AdminAnalyticsPage() {
                   <CardTitle className="text-[#041B52]">Vendor Performance</CardTitle>
                   <CardDescription>Spend, order count, and lead time trends</CardDescription>
                 </CardHeader>
-                <div className="overflow-x-auto px-6 pb-6">
+                <div className="mobile-scroll-x px-3 pb-6 sm:px-6">
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b border-[#AEB6C2]/40 text-left text-[#AEB6C2]">
