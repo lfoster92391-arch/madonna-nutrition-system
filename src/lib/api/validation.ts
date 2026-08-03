@@ -1,5 +1,14 @@
 import { z } from "zod"
 import { isWeekendDateKey, WEEKEND_MENU_DAY_MESSAGE } from "@/lib/calendar"
+import {
+  asTrimmedString,
+  importBadgeStatusDefaultActive,
+  importMoneyDefault0,
+  importOptionalBadgeStatus,
+  importOptionalEmail,
+  importOptionalString,
+  importRequiredString,
+} from "@/lib/import-export/coerce"
 
 export const allergySchema = z.object({
   name: z.string().min(1),
@@ -387,23 +396,8 @@ export const staffImportRequestSchema = z.object({
   rows: z.array(staffImportRowSchema).min(1).max(500),
 })
 
-export const badgeStatusSchema = z.preprocess(
-  (val) => {
-    if (typeof val !== "string") return val
-    const normalized = val.trim().toLowerCase()
-    return normalized || undefined
-  },
-  z.enum(["active", "pending", "inactive"])
-)
-
-export const optionalBadgeStatusSchema = z.preprocess(
-  (val) => {
-    if (typeof val !== "string") return val
-    const normalized = val.trim().toLowerCase()
-    return normalized || undefined
-  },
-  z.enum(["active", "pending", "inactive"]).optional()
-)
+export const badgeStatusSchema = importBadgeStatusDefaultActive
+export const optionalBadgeStatusSchema = importOptionalBadgeStatus
 
 export const badgeAssignSchema = z.object({
   barcode: z.string().min(1).optional().nullable(),
@@ -412,13 +406,13 @@ export const badgeAssignSchema = z.object({
 })
 
 export const badgeImportRowSchema = z.object({
-  mdId: z.string().min(1),
-  firstName: z.string().min(1),
-  lastName: z.string().min(1),
-  grade: z.string().min(1),
-  photoUrl: z.string().optional(),
+  mdId: importRequiredString,
+  firstName: importRequiredString,
+  lastName: importRequiredString,
+  grade: importRequiredString,
+  photoUrl: importOptionalString,
   badgeStatus: optionalBadgeStatusSchema,
-  barcode: z.string().optional(),
+  barcode: importOptionalString,
 })
 
 export const badgeImportRequestSchema = z.object({
@@ -426,24 +420,40 @@ export const badgeImportRequestSchema = z.object({
   rows: z.array(badgeImportRowSchema).min(1).max(1000),
 })
 
+/**
+ * Student SIS import row.
+ * Required identity: mdId + firstName + lastName.
+ * Empty optional fields (email, grade, balance, parent*, photo*, badgeStatus) bypass / default safely.
+ */
 export const studentImportRowSchema = z.object({
-  mdId: z.string().min(1),
-  firstName: z.string().min(1),
-  lastName: z.string().min(1),
-  grade: z.string().min(1),
-  homeroom: z.string().optional(),
-  balance: z.coerce.number(),
-  photoUrl: z.string().optional(),
-  parentEmail: z.string().email().optional().or(z.literal("")),
-  parentPhone: z.string().optional(),
-  allergies: z.string().optional(),
-  dietaryRestrictions: z.string().optional(),
+  mdId: importRequiredString,
+  firstName: importRequiredString,
+  lastName: importRequiredString,
+  /** Student email — accepted when present; empty bypasses (no Student.email column). */
+  email: importOptionalEmail,
+  grade: z.preprocess((val) => {
+    const s = asTrimmedString(val)
+    return s === "" ? "" : s
+  }, z.string()),
+  homeroom: importOptionalString,
+  balance: importMoneyDefault0,
+  /** Maps to Student.badgeStatus; empty → active. Also accepts active/isActive aliases via wizard. */
+  badgeStatus: importBadgeStatusDefaultActive,
+  photo: importOptionalString,
+  photoUrl: importOptionalString,
+  parent: importOptionalString,
+  parentName: importOptionalString,
+  parentEmail: importOptionalEmail,
+  parentPhone: importOptionalString,
+  allergies: importOptionalString,
+  dietaryRestrictions: importOptionalString,
 })
 
 export const studentImportRequestSchema = z.object({
   adminUserId: z.string().min(1),
   performedBy: z.string().min(1),
-  rows: z.array(studentImportRowSchema).min(1).max(1000),
+  /** Raw rows — validated per-row so one bad optional field does not reject the batch. */
+  rows: z.array(z.unknown()).min(1).max(1000),
   updateExisting: z.boolean().optional(),
 })
 

@@ -1,11 +1,11 @@
 import { prisma } from "@/lib/prisma"
-import { allergiesToCreateInput } from "@/lib/db/mappers"
+import { allergiesToCreateInput, badgeStatusToDb } from "@/lib/db/mappers"
 import { createAuditLog } from "@/lib/db/audit"
 import { findStudentByExternalId } from "@/lib/db/students"
 import type { studentImportRowSchema } from "@/lib/api/validation"
 import type { z } from "zod"
 
-export type StudentImportRow = z.infer<typeof studentImportRowSchema>
+export type StudentImportRow = z.infer<typeof studentImportRowSchema> & { _rowNumber?: number }
 
 export interface StudentImportError {
   row: number
@@ -41,6 +41,50 @@ function parseDietary(raw?: string) {
   return raw.split(/[,;]/).map((item) => item.trim()).filter(Boolean)
 }
 
+function resolvePhoto(row: StudentImportRow): string | undefined {
+  const fromUrl = row.photoUrl?.trim()
+  if (fromUrl) return fromUrl
+  const fromPhoto = row.photo?.trim()
+  return fromPhoto || undefined
+}
+
+function resolveParentName(row: StudentImportRow, email: string): string {
+  const named = row.parentName?.trim() || row.parent?.trim()
+  if (named) return named
+  return email.split("@")[0] ?? "Parent"
+}
+
+async function upsertParentLink(input: {
+  studentId: string
+  email: string
+  name: string
+  phone?: string
+}) {
+  const parent = await prisma.parent.upsert({
+    where: { email: input.email },
+    update: {
+      name: input.name,
+      phone: input.phone?.trim() || undefined,
+    },
+    create: {
+      email: input.email,
+      name: input.name,
+      phone: input.phone?.trim() || null,
+    },
+  })
+  await prisma.parentStudent.upsert({
+    where: {
+      parentId_studentId: { parentId: parent.id, studentId: input.studentId },
+    },
+    update: {},
+    create: {
+      parentId: parent.id,
+      studentId: input.studentId,
+      relationship: "Guardian",
+    },
+  })
+}
+
 export async function importStudentRows(input: {
   rows: StudentImportRow[]
   schoolId: string
@@ -58,13 +102,18 @@ export async function importStudentRows(input: {
 
   for (let i = 0; i < input.rows.length; i++) {
     const row = input.rows[i]!
-    const rowNumber = i + 1
+    const rowNumber = row._rowNumber ?? i + 1
     const mdId = row.mdId.trim()
 
     try {
       const existing = await findStudentByExternalId(mdId)
       const allergies = parseAllergies(row.allergies)
       const dietaryRestrictions = parseDietary(row.dietaryRestrictions)
+      const photo = resolvePhoto(row)
+      const badgeStatus = badgeStatusToDb(row.badgeStatus ?? "active")
+      const grade = row.grade?.trim() ?? ""
+      const balance = row.balance ?? 0
+      const parentEmail = row.parentEmail?.trim().toLowerCase()
 
       if (existing) {
         result.matched += 1
@@ -79,9 +128,7 @@ export async function importStudentRows(input: {
           continue
         }
 
-        const photoUpdate = row.photoUrl?.trim()
-          ? { photo: row.photoUrl.trim() }
-          : {}
+        const photoUpdate = photo ? { photo } : {}
 
         await prisma.$transaction(async (tx) => {
           await tx.allergy.deleteMany({ where: { studentId: existing.id } })
@@ -100,38 +147,22 @@ export async function importStudentRows(input: {
             data: {
               firstName: row.firstName.trim(),
               lastName: row.lastName.trim(),
-              grade: row.grade.trim(),
+              grade,
               homeroom: row.homeroom?.trim() || undefined,
-              balance: row.balance,
+              balance,
+              badgeStatus,
               ...photoUpdate,
               dietaryRestrictions,
             },
           })
         })
 
-        if (row.parentEmail?.trim()) {
-          const email = row.parentEmail.trim().toLowerCase()
-          const parent = await prisma.parent.upsert({
-            where: { email },
-            update: {
-              phone: row.parentPhone?.trim() || undefined,
-            },
-            create: {
-              email,
-              name: email.split("@")[0] ?? "Parent",
-              phone: row.parentPhone?.trim() || null,
-            },
-          })
-          await prisma.parentStudent.upsert({
-            where: {
-              parentId_studentId: { parentId: parent.id, studentId: existing.id },
-            },
-            update: {},
-            create: {
-              parentId: parent.id,
-              studentId: existing.id,
-              relationship: "Guardian",
-            },
+        if (parentEmail) {
+          await upsertParentLink({
+            studentId: existing.id,
+            email: parentEmail,
+            name: resolveParentName(row, parentEmail),
+            phone: row.parentPhone,
           })
         }
 
@@ -140,18 +171,17 @@ export async function importStudentRows(input: {
         continue
       }
 
-      const createPhoto = row.photoUrl?.trim() || undefined
       const student = await prisma.student.create({
         data: {
           externalId: mdId,
           barcode: mdId,
-          badgeStatus: "PENDING",
+          badgeStatus,
           firstName: row.firstName.trim(),
           lastName: row.lastName.trim(),
-          grade: row.grade.trim(),
+          grade,
           homeroom: row.homeroom?.trim() || undefined,
-          balance: row.balance,
-          photo: createPhoto,
+          balance,
+          photo,
           dietaryRestrictions,
           schoolId: input.schoolId,
           allergies: {
@@ -162,25 +192,12 @@ export async function importStudentRows(input: {
         },
       })
 
-      if (row.parentEmail?.trim()) {
-        const email = row.parentEmail.trim().toLowerCase()
-        const parent = await prisma.parent.upsert({
-          where: { email },
-          update: {
-            phone: row.parentPhone?.trim() || undefined,
-          },
-          create: {
-            email,
-            name: email.split("@")[0] ?? "Parent",
-            phone: row.parentPhone?.trim() || null,
-          },
-        })
-        await prisma.parentStudent.create({
-          data: {
-            parentId: parent.id,
-            studentId: student.id,
-            relationship: "Guardian",
-          },
+      if (parentEmail) {
+        await upsertParentLink({
+          studentId: student.id,
+          email: parentEmail,
+          name: resolveParentName(row, parentEmail),
+          phone: row.parentPhone,
         })
       }
 

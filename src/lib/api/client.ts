@@ -357,6 +357,12 @@ export const api = {
       updated: number
       skipped: number
       errors: Array<{ row: number; message: string }>
+      rowOutcomes?: Array<{
+        row: number
+        mdId: string
+        status: string
+        message?: string
+      }>
     }>("/api/imports/students", {
       method: "POST",
       body: JSON.stringify(input),
