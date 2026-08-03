@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma"
 import { resolveSchoolId } from "@/lib/db/school"
+import { scanIdCandidates } from "@/lib/scan/scan-id"
 
 export const studentInclude = {
   allergies: true,
@@ -18,13 +19,22 @@ export async function findStudentByExternalId(externalId: string) {
 /** Resolve a kiosk scan value by MD ID (externalId) or physical badge barcode. */
 export async function findStudentByScanId(scanId: string) {
   const schoolId = await resolveSchoolId()
-  const normalized = scanId.trim()
-  if (!normalized) return null
+  const candidates = scanIdCandidates(scanId)
+  if (candidates.length === 0) return null
+
+  const byExternalId = await prisma.student.findFirst({
+    where: {
+      schoolId,
+      externalId: { in: candidates },
+    },
+    include: studentInclude,
+  })
+  if (byExternalId) return byExternalId
 
   return prisma.student.findFirst({
     where: {
       schoolId,
-      OR: [{ externalId: normalized }, { barcode: normalized }],
+      barcode: { in: candidates },
     },
     include: studentInclude,
   })

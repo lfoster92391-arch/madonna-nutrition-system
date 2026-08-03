@@ -121,11 +121,13 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
             writeSession(reconciled)
           }
         }
-      } else if (databaseEnabled) {
+      } else if (databaseEnabled && users.length > 0) {
+        // User list loaded but session identity is gone — clear auth.
         writeSession(null)
         setUser(null)
         setMustChangePassword(false)
       } else {
+        // Keep kiosk/cashier session if the users query is empty or still recovering.
         setUser(session)
         setMustChangePassword(Boolean(session.mustChangePassword))
       }

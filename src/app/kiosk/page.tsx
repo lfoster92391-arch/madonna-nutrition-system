@@ -45,6 +45,7 @@ import {
   refreshStudentCacheFromServer,
   syncPendingTransactions,
 } from "@/lib/offline/sync-manager"
+import { findStudentMatchingScan, sanitizeScanInput } from "@/lib/scan/scan-id"
 import { cn, formatCurrency } from "@/lib/utils"
 
 const MEAL_RESET_MS = 1200
@@ -361,14 +362,15 @@ export default function ScanStationPage() {
 
   const lookupStudent = useCallback(
     async (id: string) => {
-      const trimmed = id.trim()
+      const trimmed = sanitizeScanInput(id)
       if (!trimmed) return
 
+      // Stay on the kiosk station for miss/hit — never clear auth/session on scan miss.
       if (isOffline) {
         const cached = await findCachedStudent(trimmed)
         if (!cached) {
           setScanStatus("error")
-          setFlashMessage("Student not in offline cache.")
+          setFlashMessage("Student not found. Check MD ID / barcode and try again.")
           setScanValue("")
           window.setTimeout(focusScan, 50)
           return
@@ -377,9 +379,7 @@ export default function ScanStationPage() {
         return
       }
 
-      const found = students.find(
-        (s) => s.id === trimmed || s.barcode === trimmed || (s.barcode ?? s.id) === trimmed
-      )
+      const found = findStudentMatchingScan(students, trimmed)
       if (found) {
         loadStudent(found)
         return
@@ -391,8 +391,22 @@ export default function ScanStationPage() {
         return
       }
 
+      // Server-side fallback covers stale client lists and alternate barcode formats.
+      try {
+        const res = await fetch(`/api/students/lookup?q=${encodeURIComponent(trimmed)}`)
+        if (res.ok) {
+          const remote = (await res.json()) as Student
+          if (remote?.id) {
+            loadStudent(remote)
+            return
+          }
+        }
+      } catch {
+        // Keep kiosk online UX; fall through to not-found message.
+      }
+
       setScanStatus("error")
-      setFlashMessage("Student not found. Try again.")
+      setFlashMessage("Student not found. Check MD ID / barcode and try again.")
       setScanValue("")
       window.setTimeout(focusScan, 50)
     },
@@ -400,13 +414,13 @@ export default function ScanStationPage() {
   )
 
   function handleScanChange(value: string) {
-    const digitsOnly = value.replace(/\D/g, "")
-    setScanValue(digitsOnly)
+    const cleaned = sanitizeScanInput(value)
+    setScanValue(cleaned)
     if (scanTimerRef.current) clearTimeout(scanTimerRef.current)
-    if (digitsOnly.length >= 4) {
+    if (cleaned.length >= 4) {
       setScanStatus("scanning")
-      scanTimerRef.current = setTimeout(() => lookupStudent(digitsOnly), 200)
-    } else if (digitsOnly.length === 0) {
+      scanTimerRef.current = setTimeout(() => lookupStudent(cleaned), 200)
+    } else if (cleaned.length === 0) {
       setScanStatus(student ? "found" : "ready")
     }
   }
@@ -431,7 +445,7 @@ export default function ScanStationPage() {
   async function handleMeal(mealLabel: string, price: number) {
     if (!student) return
     if (mealBlocked) {
-      setFlashMessage("MEAL BLOCKED ΓÇö Allergy conflict. Do not serve today's meal.")
+      setFlashMessage("MEAL BLOCKED — Allergy conflict. Do not serve today's meal.")
       window.setTimeout(focusScan, 50)
       return
     }
@@ -761,7 +775,9 @@ export default function ScanStationPage() {
               aria-live="polite"
               className={cn(
                 "mt-1 shrink-0 rounded-xl border px-2 py-1.5 text-xs font-semibold sm:mt-1.5 sm:rounded-2xl sm:px-2.5 sm:py-2 sm:text-sm md:mt-2 md:px-3 md:py-2.5 md:text-base",
-                flashMessage.includes("BLOCKED")
+                scanStatus === "error" ||
+                flashMessage.includes("BLOCKED") ||
+                flashMessage.toLowerCase().includes("not found")
                   ? "border-[#D62828] bg-[#FEF2F2] text-[#D62828]"
                   : "border-[#00A83E] bg-[#00A83E]/10 text-[#00A83E]"
               )}
