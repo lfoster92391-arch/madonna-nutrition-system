@@ -1,10 +1,10 @@
 "use client"
 
-import { useMemo, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import Image from "next/image"
 import Link from "next/link"
 import { useQueryClient } from "@tanstack/react-query"
-import { Camera, DollarSign, Pencil, Plus, Search, Upload, UserX } from "lucide-react"
+import { Camera, DollarSign, Pencil, Plus, Search, Upload, UserX, X } from "lucide-react"
 import { CsvImportWizard } from "@/components/admin/CsvImportWizard"
 import { DesktopOnly } from "@/components/admin/DesktopOnly"
 import { ImportExportMenu } from "@/components/admin/import-export/ImportExportMenu"
@@ -241,6 +241,19 @@ export function AdminStudentManager({
     ? students.find((s) => s.id === editing.id)?.photo ?? editing.photo
     : null
   const editingPhoto = pendingPhoto ?? savedPhoto
+  const sheetOpen = Boolean(showAdd || editing || showOfficePaymentPanel)
+
+  // Keep main from swallowing gestures while a mobile sheet is open
+  useEffect(() => {
+    if (!sheetOpen) return
+    const main = document.querySelector(".admin-portal main") as HTMLElement | null
+    if (!main) return
+    const prev = main.style.overflowY
+    main.style.overflowY = "hidden"
+    return () => {
+      main.style.overflowY = prev
+    }
+  }, [sheetOpen])
 
   return (
     <div className={showPageHeader ? "admin-page-pad" : "w-full min-w-0"}>
@@ -364,7 +377,7 @@ export function AdminStudentManager({
         )}
 
         <div className="grid gap-6 lg:grid-cols-3">
-          <Card className="lg:col-span-2">
+          <Card className="min-w-0 p-3 sm:p-6 lg:col-span-2">
             <CardHeader>
               <CardTitle>Student Manager</CardTitle>
             </CardHeader>
@@ -377,7 +390,91 @@ export function AdminStudentManager({
                 onChange={(e) => setSearch(e.target.value)}
               />
             </div>
-            <div className="mobile-scroll-x px-3 pb-6 sm:px-6">
+            {/* Phones: stacked cards scroll with main (avoids nested x-scroll trap) */}
+            <div className="space-y-3 px-1 pb-4 sm:px-2 md:hidden">
+              {filtered.length === 0 ? (
+                <p className="py-8 text-center text-sm text-silver-foreground">
+                  No students yet. Tap <strong>Add Student</strong> or import a spreadsheet below.
+                </p>
+              ) : (
+                filtered.map((s) => (
+                  <div
+                    key={s.id}
+                    className={`rounded-2xl border border-silver/50 bg-silver/5 p-3 ${s.disabled ? "opacity-50" : ""}`}
+                  >
+                    <div className="flex items-start gap-3">
+                      <button
+                        type="button"
+                        onClick={() => startEdit(s)}
+                        className="shrink-0"
+                        title="Open profile to update photo"
+                        disabled={s.disabled}
+                      >
+                        <Image
+                          src={s.photo}
+                          alt={s.firstName}
+                          width={56}
+                          height={56}
+                          className="h-14 w-14 rounded-xl object-cover"
+                          unoptimized={s.photo.startsWith("data:")}
+                        />
+                      </button>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate font-semibold text-primary">
+                          {s.firstName} {s.lastName}
+                          {s.disabled && (
+                            <Badge variant="danger" className="ml-2 align-middle">
+                              Disabled
+                            </Badge>
+                          )}
+                        </p>
+                        <p className="mt-0.5 font-mono text-xs text-silver-foreground">{s.id}</p>
+                        <p className="mt-1 text-sm text-silver-foreground">
+                          Grade {s.grade} · {formatCurrency(s.balance)}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <Button
+                        size="sm"
+                        onClick={() => startEdit(s)}
+                        disabled={s.disabled}
+                        className="min-h-10 flex-1 gap-1.5 font-semibold"
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                        Open profile
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={s.disabled}
+                        className="min-h-10 flex-1"
+                        onClick={() => {
+                          setPaymentStudentId(s.id)
+                          setShowOfficePaymentPanel(true)
+                        }}
+                      >
+                        <DollarSign className="h-3.5 w-3.5" />
+                        Add money
+                      </Button>
+                      {!s.disabled && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="min-h-10"
+                          onClick={() => void disableStudent(s.id)}
+                        >
+                          <UserX className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* md+: table with intentional horizontal pan if needed */}
+            <div className="mobile-scroll-x hidden px-3 pb-6 sm:px-6 md:block">
               <table className="w-full min-w-[640px] text-sm">
                 <thead>
                   <tr className="border-b border-silver/60 text-silver-foreground">
@@ -494,179 +591,217 @@ export function AdminStudentManager({
         </div>
 
         {(showAdd || editing) && (
-          <div ref={editFormRef}>
-          <Card>
-            <CardHeader>
-              <CardTitle>{editing ? "Student profile" : "Add Student"}</CardTitle>
-              {editing && (
-                <p className="text-sm text-silver-foreground">
-                  Update details and photo. The photo is used on badges, Badge Manager, and lunch
-                  line checkout.
-                </p>
-              )}
-            </CardHeader>
-            <div className="grid gap-4 px-6 md:grid-cols-2 lg:grid-cols-3">
-              {!editing && (
-                <div>
-                  <Label>Student ID</Label>
-                  <Input value={form.id} onChange={(e) => setForm({ ...form, id: e.target.value })} />
-                </div>
-              )}
-              <div>
-                <Label>First Name</Label>
-                <Input value={form.firstName} onChange={(e) => setForm({ ...form, firstName: e.target.value })} />
-              </div>
-              <div>
-                <Label>Last Name</Label>
-                <Input value={form.lastName} onChange={(e) => setForm({ ...form, lastName: e.target.value })} />
-              </div>
-              <div>
-                <Label>Grade</Label>
-                <Input value={form.grade} onChange={(e) => setForm({ ...form, grade: e.target.value })} />
-              </div>
-              <div>
-                <Label>Homeroom</Label>
-                <Input value={form.homeroom} onChange={(e) => setForm({ ...form, homeroom: e.target.value })} />
-              </div>
-              <div>
-                <Label>Balance</Label>
-                <Input value={form.balance} onChange={(e) => setForm({ ...form, balance: e.target.value })} />
-                <p className="mt-1 text-xs text-silver-foreground">
-                  Prefer &quot;Add money to account&quot; when cash or a check is received in the office.
-                </p>
-              </div>
-            </div>
-
-            {editing && (
-              <div className="mt-6 space-y-4 border-t border-silver/40 px-6 pt-6">
-                <div>
-                  <h3 className="text-lg font-semibold text-primary">Badge photo</h3>
-                  <p className="text-sm text-silver-foreground">
-                    Take a photo with your phone camera or upload a picture, then tap Save. This
-                    same photo shows on badges and when the badge is scanned at checkout.
-                  </p>
-                </div>
-                <div className="flex flex-wrap items-start gap-5">
-                  <div className="space-y-2">
-                    {editingPhoto ? (
-                      <Image
-                        src={editingPhoto}
-                        alt={`${editing.firstName} ${editing.lastName}`}
-                        width={128}
-                        height={128}
-                        className="h-32 w-32 rounded-2xl border border-silver/50 object-cover"
-                        unoptimized={editingPhoto.startsWith("data:")}
-                      />
-                    ) : (
-                      <div className="flex h-32 w-32 items-center justify-center rounded-2xl border border-dashed border-silver/60 bg-silver/10 text-center text-xs font-medium text-silver-foreground">
-                        No photo yet
-                      </div>
-                    )}
-                    {pendingPhoto && (
-                      <p className="text-xs font-medium text-amber-800">New photo — not saved yet</p>
-                    )}
-                  </div>
-                  <div className="flex min-w-0 flex-1 flex-col gap-3 sm:min-w-[220px]">
-                    <Button
-                      type="button"
-                      size="lg"
-                      className="min-h-14 text-base"
-                      disabled={photoBusy}
-                      onClick={() => triggerPhotoUpload("camera")}
-                    >
-                      <Camera className="h-5 w-5" />
-                      Take photo
-                    </Button>
-                    <Button
-                      type="button"
-                      size="lg"
-                      variant="outline"
-                      className="min-h-14 text-base"
-                      disabled={photoBusy}
-                      onClick={() => triggerPhotoUpload("file")}
-                    >
-                      <Upload className="h-5 w-5" />
-                      Upload photo
-                    </Button>
-                    <Button
-                      type="button"
-                      size="lg"
-                      className="min-h-14 text-base"
-                      disabled={photoBusy || !pendingPhoto}
-                      onClick={() => void handleSavePhoto()}
-                    >
-                      {photoBusy ? "Saving…" : "Save"}
-                    </Button>
-                  </div>
-                </div>
-                {photoMessage && (
-                  <p
-                    className={`rounded-xl px-4 py-3 text-sm font-medium ${
-                      photoMessage === "Photo saved for badges"
-                        ? "border border-emerald-200 bg-emerald-50 text-emerald-900"
-                        : "bg-silver/20 text-primary"
-                    }`}
-                    role="status"
-                  >
-                    {photoMessage}
-                  </p>
-                )}
-                <div className="pt-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="lg"
-                    className="min-h-12"
-                    onClick={() => {
-                      setPaymentStudentId(editing.id)
-                      setShowOfficePaymentPanel(true)
-                    }}
-                  >
-                    <DollarSign className="h-4 w-4" />
-                    Add money to account
-                  </Button>
-                </div>
-              </div>
-            )}
-
-            <div className="mt-4 flex flex-wrap gap-3 px-6 pb-6">
-              <Button size="lg" className="min-h-12" onClick={() => void handleSave()}>
-                {editing ? "Save changes" : "Save student"}
-              </Button>
+          <div
+            ref={editFormRef}
+            className="fixed inset-0 z-50 flex flex-col bg-[#f7f8fb] md:static md:z-auto md:block md:bg-transparent"
+            role="dialog"
+            aria-modal="true"
+            aria-label={editing ? "Student profile" : "Add Student"}
+          >
+            <div className="flex shrink-0 items-center justify-between gap-3 border-b border-silver/60 bg-white px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))] md:hidden">
+              <h2 className="text-lg font-semibold text-primary">
+                {editing ? "Student profile" : "Add Student"}
+              </h2>
               <Button
-                size="lg"
-                variant="outline"
-                className="min-h-12"
+                type="button"
+                variant="ghost"
+                className="min-h-11 min-w-11"
                 onClick={closeEditor}
               >
-                Cancel
+                <X className="h-5 w-5" />
+                <span className="sr-only">Close</span>
               </Button>
             </div>
-          </Card>
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] md:overflow-visible md:p-0">
+              <Card>
+                <CardHeader className="hidden md:flex">
+                  <CardTitle>{editing ? "Student profile" : "Add Student"}</CardTitle>
+                  {editing && (
+                    <p className="text-sm text-silver-foreground">
+                      Update details and photo. The photo is used on badges, Badge Manager, and lunch
+                      line checkout.
+                    </p>
+                  )}
+                </CardHeader>
+                {editing && (
+                  <p className="mb-4 px-1 text-sm text-silver-foreground md:hidden">
+                    Update details and photo. The photo is used on badges and lunch line checkout.
+                  </p>
+                )}
+                <div className="grid gap-4 px-3 sm:px-6 md:grid-cols-2 lg:grid-cols-3">
+                  {!editing && (
+                    <div>
+                      <Label>Student ID</Label>
+                      <Input value={form.id} onChange={(e) => setForm({ ...form, id: e.target.value })} />
+                    </div>
+                  )}
+                  <div>
+                    <Label>First Name</Label>
+                    <Input value={form.firstName} onChange={(e) => setForm({ ...form, firstName: e.target.value })} />
+                  </div>
+                  <div>
+                    <Label>Last Name</Label>
+                    <Input value={form.lastName} onChange={(e) => setForm({ ...form, lastName: e.target.value })} />
+                  </div>
+                  <div>
+                    <Label>Grade</Label>
+                    <Input value={form.grade} onChange={(e) => setForm({ ...form, grade: e.target.value })} />
+                  </div>
+                  <div>
+                    <Label>Homeroom</Label>
+                    <Input value={form.homeroom} onChange={(e) => setForm({ ...form, homeroom: e.target.value })} />
+                  </div>
+                  <div>
+                    <Label>Balance</Label>
+                    <Input value={form.balance} onChange={(e) => setForm({ ...form, balance: e.target.value })} />
+                    <p className="mt-1 text-xs text-silver-foreground">
+                      Prefer &quot;Add money to account&quot; when cash or a check is received in the office.
+                    </p>
+                  </div>
+                </div>
+
+                {editing && (
+                  <div className="mt-6 space-y-4 border-t border-silver/40 px-3 pt-6 sm:px-6">
+                    <div>
+                      <h3 className="text-lg font-semibold text-primary">Badge photo</h3>
+                      <p className="text-sm text-silver-foreground">
+                        Take a photo with your phone camera or upload a picture, then tap Save. This
+                        same photo shows on badges and when the badge is scanned at checkout.
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap items-start gap-5">
+                      <div className="space-y-2">
+                        {editingPhoto ? (
+                          <Image
+                            src={editingPhoto}
+                            alt={`${editing.firstName} ${editing.lastName}`}
+                            width={128}
+                            height={128}
+                            className="h-32 w-32 rounded-2xl border border-silver/50 object-cover"
+                            unoptimized={editingPhoto.startsWith("data:")}
+                          />
+                        ) : (
+                          <div className="flex h-32 w-32 items-center justify-center rounded-2xl border border-dashed border-silver/60 bg-silver/10 text-center text-xs font-medium text-silver-foreground">
+                            No photo yet
+                          </div>
+                        )}
+                        {pendingPhoto && (
+                          <p className="text-xs font-medium text-amber-800">New photo — not saved yet</p>
+                        )}
+                      </div>
+                      <div className="flex min-w-0 flex-1 flex-col gap-3 sm:min-w-[220px]">
+                        <Button
+                          type="button"
+                          size="lg"
+                          className="min-h-14 text-base"
+                          disabled={photoBusy}
+                          onClick={() => triggerPhotoUpload("camera")}
+                        >
+                          <Camera className="h-5 w-5" />
+                          Take photo
+                        </Button>
+                        <Button
+                          type="button"
+                          size="lg"
+                          variant="outline"
+                          className="min-h-14 text-base"
+                          disabled={photoBusy}
+                          onClick={() => triggerPhotoUpload("file")}
+                        >
+                          <Upload className="h-5 w-5" />
+                          Upload photo
+                        </Button>
+                        <Button
+                          type="button"
+                          size="lg"
+                          className="min-h-14 text-base"
+                          disabled={photoBusy || !pendingPhoto}
+                          onClick={() => void handleSavePhoto()}
+                        >
+                          {photoBusy ? "Saving…" : "Save"}
+                        </Button>
+                      </div>
+                    </div>
+                    {photoMessage && (
+                      <p
+                        className={`rounded-xl px-4 py-3 text-sm font-medium ${
+                          photoMessage === "Photo saved for badges"
+                            ? "border border-emerald-200 bg-emerald-50 text-emerald-900"
+                            : "bg-silver/20 text-primary"
+                        }`}
+                        role="status"
+                      >
+                        {photoMessage}
+                      </p>
+                    )}
+                    <div className="pt-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="lg"
+                        className="min-h-12 w-full sm:w-auto"
+                        onClick={() => {
+                          setPaymentStudentId(editing.id)
+                          setShowOfficePaymentPanel(true)
+                        }}
+                      >
+                        <DollarSign className="h-4 w-4" />
+                        Add money to account
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                <div className="mt-4 flex flex-wrap gap-3 px-3 pb-6 sm:px-6">
+                  <Button size="lg" className="min-h-12 flex-1 sm:flex-none" onClick={() => void handleSave()}>
+                    {editing ? "Save changes" : "Save student"}
+                  </Button>
+                  <Button
+                    size="lg"
+                    variant="outline"
+                    className="min-h-12 flex-1 sm:flex-none"
+                    onClick={closeEditor}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </Card>
+            </div>
           </div>
         )}
 
         {showOfficePaymentPanel && (
-          <div className="space-y-3">
-            <div className="flex flex-wrap items-center justify-between gap-3">
+          <div
+            className="fixed inset-0 z-[60] flex flex-col bg-[#f7f8fb] md:static md:z-auto md:block md:bg-transparent"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Add money to account"
+          >
+            <div className="flex shrink-0 items-center justify-between gap-3 border-b border-silver/60 bg-white px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
               <h2 className="text-lg font-semibold text-primary">Add money to account</h2>
               <Button
+                type="button"
                 variant="ghost"
+                className="min-h-11 min-w-11 md:min-w-0"
                 onClick={() => {
                   setShowOfficePaymentPanel(false)
                   setPaymentStudentId(null)
                 }}
               >
-                Close
+                <X className="h-5 w-5 md:hidden" />
+                <span className="hidden md:inline">Close</span>
+                <span className="sr-only md:hidden">Close</span>
               </Button>
             </div>
-            <RecordOfficePayment
-              students={students.filter((s) => !isDemoStudentExternalId(s.id))}
-              initialStudentId={paymentStudentId ?? undefined}
-              onDone={() => {
-                void queryClient.invalidateQueries({ queryKey: ["students"] })
-              }}
-            />
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] md:overflow-visible md:p-0 md:pt-3">
+              <RecordOfficePayment
+                students={students.filter((s) => !isDemoStudentExternalId(s.id))}
+                initialStudentId={paymentStudentId ?? undefined}
+                onDone={() => {
+                  void queryClient.invalidateQueries({ queryKey: ["students"] })
+                }}
+              />
+            </div>
           </div>
         )}
 
