@@ -39,8 +39,9 @@ export function BadgeMassPrint({ students, onClose }: BadgeMassPrintProps) {
             email, grade, or barcode still print; check the card and fill gaps later if needed.
           </p>
           <p className="mt-2 text-xs font-medium text-primary/80">
-            Leave ½&quot; clear at the top for the badge hole. Content sits in the band from
-            ½&quot;–2&quot; from the top (fits landscape badges with top hole).
+            Leave ½&quot; clear at the top for the badge hole. Content (Madonna logo, school
+            name, photo, status, barcode) sits in the band from ½&quot;–2&quot; from the top —
+            3&quot; × 2¾&quot; landscape badges with top hole.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
