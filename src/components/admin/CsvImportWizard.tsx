@@ -17,6 +17,12 @@ import { useAuth } from "@/components/providers/AuthProvider"
 import { api } from "@/lib/api/client"
 import { Badge } from "@/components/ui/badge"
 import { downloadImportTemplate, exportRowsToCsv } from "@/lib/import-export"
+import {
+  asMoneyNumber,
+  asTrimmedString,
+  assertCsvFile,
+  normalizeBadgeStatusValue,
+} from "@/lib/import-export/coerce"
 import { Button } from "@/components/ui/button"
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label, Select } from "@/components/ui/input"
@@ -27,9 +33,20 @@ const studentSchema = z.object({
   mdId: z.string().min(1).optional(),
   firstName: z.string().min(1),
   lastName: z.string().min(1),
-  grade: z.string().min(1),
+  email: z.union([z.string().email(), z.literal("")]).optional(),
+  grade: z.string().optional(),
   homeroom: z.string().optional(),
-  balance: z.coerce.number(),
+  balance: z.preprocess((value) => {
+    if (value === "" || value === null || value === undefined) return 0
+    const n = asMoneyNumber(value)
+    return n === undefined ? 0 : n
+  }, z.number()),
+  badgeStatus: z.preprocess(
+    (value) => normalizeBadgeStatusValue(value, "active"),
+    z.enum(["active", "pending", "inactive"])
+  ),
+  parent: z.string().optional(),
+  parentName: z.string().optional(),
   parentEmail: z.union([z.string().email(), z.literal("")]).optional(),
   parentPhone: z.string().optional(),
   photo: z.string().optional(),
@@ -39,12 +56,34 @@ const studentSchema = z.object({
 }).refine((d) => Boolean(d.id || d.mdId), { message: "mdId or id is required" })
 
 type ImportStep = "upload" | "mapping" | "validation" | "preview" | "complete"
-type FieldKey = "id" | "mdId" | "firstName" | "lastName" | "grade" | "homeroom" | "balance" | "parentEmail" | "parentPhone" | "photo" | "photoUrl" | "allergies" | "dietaryRestrictions"
+type FieldKey =
+  | "id"
+  | "mdId"
+  | "firstName"
+  | "lastName"
+  | "email"
+  | "grade"
+  | "homeroom"
+  | "balance"
+  | "badgeStatus"
+  | "parent"
+  | "parentEmail"
+  | "parentPhone"
+  | "photo"
+  | "photoUrl"
+  | "allergies"
+  | "dietaryRestrictions"
 
-const REQUIRED_FIELDS: FieldKey[] = ["mdId", "firstName", "lastName", "grade", "balance"]
+/** Minimum identity fields; everything else is optional and empty values bypass. */
+const REQUIRED_FIELDS: FieldKey[] = ["mdId", "firstName", "lastName"]
 const OPTIONAL_FIELDS: FieldKey[] = [
   "id",
+  "email",
+  "grade",
   "homeroom",
+  "balance",
+  "badgeStatus",
+  "parent",
   "parentEmail",
   "parentPhone",
   "photo",
@@ -58,10 +97,13 @@ const AUTO_MAP_ALIASES: Record<FieldKey, string[]> = {
   mdId: ["mdid", "md_id", "madonnaid", "badgenumber", "badge_number", "studentnumber"],
   firstName: ["firstname", "first_name", "first"],
   lastName: ["lastname", "last_name", "last"],
+  email: ["email", "studentemail", "student_email"],
   grade: ["grade", "gradelevel"],
   homeroom: ["homeroom", "home_room", "room"],
   balance: ["balance", "accountbalance"],
-  parentEmail: ["parentemail", "parent_email", "email"],
+  badgeStatus: ["badgestatus", "badge_status", "active", "isactive", "status", "activestatus"],
+  parent: ["parent", "parentname", "parent_name", "guardian", "guardianname"],
+  parentEmail: ["parentemail", "parent_email", "guardianemail", "guardian_email"],
   parentPhone: ["parentphone", "parent_phone", "phone"],
   photo: ["photo", "photofilename", "photo_filename"],
   photoUrl: ["photourl", "photo_url", "imageurl", "image_url"],
@@ -70,10 +112,16 @@ const AUTO_MAP_ALIASES: Record<FieldKey, string[]> = {
 }
 
 function autoDetectColumn(cols: string[], field: FieldKey): string | undefined {
+  const aliases = AUTO_MAP_ALIASES[field]
+  const exact = cols.find((h) => {
+    const normalized = h.toLowerCase().replace(/[_\s-]/g, "")
+    return aliases.some((alias) => normalized === alias)
+  })
+  if (exact) return exact
   return cols.find((h) => {
     const normalized = h.toLowerCase().replace(/[_\s-]/g, "")
-    return AUTO_MAP_ALIASES[field].some(
-      (alias) => normalized === alias || normalized.includes(alias)
+    return aliases.some(
+      (alias) => alias.length >= 4 && normalized.includes(alias)
     )
   })
 }
@@ -111,20 +159,36 @@ export function CsvImportWizard() {
   const [validRows, setValidRows] = useState<Student[]>([])
   const [errorRows, setErrorRows] = useState<{ row: number; errors: string[] }[]>([])
   const [duplicateRows, setDuplicateRows] = useState<number[]>([])
+  const [updateExistingRows, setUpdateExistingRows] = useState<Student[]>([])
   const [lastImportId, setLastImportId] = useState<string | null>(null)
   const [dragOver, setDragOver] = useState(false)
 
   const existingIds = useMemo(() => new Set(students.map((s) => s.id)), [students])
 
   const processFile = useCallback((file: File) => {
+    const csvError = assertCsvFile(file)
+    if (csvError) {
+      setFilename(file.name)
+      setErrorRows([{ row: 0, errors: [csvError] }])
+      setStep("validation")
+      return
+    }
     setFilename(file.name)
-    Papa.parse<Record<string, string>>(file, {
+    Papa.parse<Record<string, unknown>>(file, {
       header: true,
       skipEmptyLines: true,
       complete: (results) => {
-        const cols = results.meta.fields ?? []
+        const cols = (results.meta.fields ?? []).map((h) => h.replace(/^\ufeff/, "").trim())
         setHeaders(cols)
-        setRawRows(results.data)
+        setRawRows(
+          results.data.map((row) => {
+            const mapped: Record<string, string> = {}
+            for (const [key, value] of Object.entries(row)) {
+              mapped[key.replace(/^\ufeff/, "").trim()] = asTrimmedString(value)
+            }
+            return mapped
+          })
+        )
         const autoMap: Partial<Record<FieldKey, string>> = {}
         for (const field of [...REQUIRED_FIELDS, ...OPTIONAL_FIELDS]) {
           const match = autoDetectColumn(cols, field)
@@ -145,14 +209,18 @@ export function CsvImportWizard() {
 
   function runValidation() {
     const parsed: Student[] = []
+    const updates: Student[] = []
     const errors: { row: number; errors: string[] }[] = []
     const duplicates: number[] = []
 
     rawRows.forEach((row, index) => {
       const mapped: Record<string, string> = {}
       for (const [field, col] of Object.entries(mapping)) {
-        if (col) mapped[field] = row[col] ?? ""
+        if (col) mapped[field] = asTrimmedString(row[col] ?? "")
       }
+
+      // Empty optional balance → 0; empty badgeStatus handled by schema default (active)
+      if (!mapped.balance?.trim()) mapped.balance = "0"
 
       const result = studentSchema.safeParse(mapped)
       if (!result.success) {
@@ -164,57 +232,64 @@ export function CsvImportWizard() {
       }
 
       const studentId = result.data.id || result.data.mdId!
-      if (existingIds.has(studentId)) {
-        duplicates.push(index + 2)
-        errors.push({ row: index + 2, errors: ["Duplicate student ID"] })
-        return
-      }
-
       const parentContacts: ParentContact[] = []
       if (result.data.parentEmail) {
+        const parentName =
+          result.data.parent?.trim() ||
+          `${result.data.firstName} ${result.data.lastName} Parent`
         parentContacts.push({
-          name: `${result.data.firstName} ${result.data.lastName} Parent`,
+          name: parentName,
           email: result.data.parentEmail,
           phone: result.data.parentPhone ?? "",
           relationship: "Guardian",
         })
       }
 
-      parsed.push({
+      const student: Student = {
         id: studentId,
         firstName: result.data.firstName,
         lastName: result.data.lastName,
-        grade: result.data.grade,
+        grade: result.data.grade?.trim() || "",
         homeroom: result.data.homeroom,
-        balance: result.data.balance,
-        photo:
-          result.data.photoUrl ||
-          result.data.photo ||
-          "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=400&auto=format&fit=crop",
+        balance: result.data.balance ?? 0,
+        badgeStatus: result.data.badgeStatus,
+        photo: result.data.photoUrl || result.data.photo || "",
         allergies: parseAllergies(result.data.allergies),
         dietaryRestrictions: result.data.dietaryRestrictions
           ? result.data.dietaryRestrictions.split(/[,;]/).map((d) => d.trim()).filter(Boolean)
           : [],
         parentContacts,
-      })
+      }
+
+      if (existingIds.has(studentId)) {
+        duplicates.push(index + 2)
+        updates.push(student)
+        return
+      }
+
+      parsed.push(student)
     })
 
     setValidRows(parsed)
+    setUpdateExistingRows(updates)
     setErrorRows(errors)
     setDuplicateRows(duplicates)
-    setStep(errors.length > 0 && parsed.length === 0 ? "validation" : "preview")
+    setStep(parsed.length + updates.length > 0 ? "preview" : "validation")
   }
 
   async function executeImport() {
     if (!user?.id) return
-    const rows = validRows.map((student) => ({
+    const rowsToImport = [...validRows, ...updateExistingRows]
+    const rows = rowsToImport.map((student) => ({
       mdId: student.id,
       firstName: student.firstName,
       lastName: student.lastName,
       grade: student.grade,
       homeroom: student.homeroom ?? "",
       balance: student.balance,
-      photoUrl: student.photo,
+      badgeStatus: student.badgeStatus ?? "active",
+      photoUrl: student.photo || undefined,
+      parent: student.parentContacts[0]?.name ?? "",
       parentEmail: student.parentContacts[0]?.email ?? "",
       parentPhone: student.parentContacts[0]?.phone ?? "",
       allergies: student.allergies.map((a) => a.name).join(", "),
@@ -238,7 +313,7 @@ export function CsvImportWizard() {
       successRows: report.created + report.updated,
       errorRows: report.errors.length,
       status: "completed",
-      importedStudentIds: validRows.map((r) => r.id),
+      importedStudentIds: rowsToImport.map((r) => r.id),
     }
     addImportLog(log)
     setLastImportId(log.id)
@@ -279,6 +354,7 @@ export function CsvImportWizard() {
     if (lastImportId) rollbackImport(lastImportId)
     setStep("upload")
     setValidRows([])
+    setUpdateExistingRows([])
     setErrorRows([])
     setDuplicateRows([])
   }
@@ -327,7 +403,7 @@ export function CsvImportWizard() {
           <Upload className="h-10 w-10 text-silver-foreground" />
           <p className="mt-4 font-medium text-primary">Drag & drop SIS export CSV here</p>
           <p className="mt-1 text-sm text-silver-foreground">
-            Supports: mdId, firstName, lastName, grade, homeroom, balance, photoUrl, parentEmail, parentPhone, allergies
+            Required: mdId, firstName, lastName. Optional (empty OK): email, grade, badgeStatus, balance, parent, parentEmail, photo, photoUrl
           </p>
           <input
             type="file"
@@ -341,7 +417,7 @@ export function CsvImportWizard() {
       {step === "mapping" && (
         <div className="space-y-4">
           <p className="text-sm text-silver-foreground">
-            Map CSV columns to student fields ({rawRows.length} rows detected)
+            Map CSV columns to student fields ({rawRows.length} rows detected). Unmapped optional columns are skipped.
           </p>
           {([...REQUIRED_FIELDS, ...OPTIONAL_FIELDS] as FieldKey[]).map((field) => (
             <div key={field}>
@@ -368,14 +444,14 @@ export function CsvImportWizard() {
         <div className="space-y-4">
           {duplicateRows.length > 0 && (
             <div className="rounded-2xl border border-warning/40 bg-warning/5 p-4 text-sm text-warning">
-              {duplicateRows.length} duplicate ID(s) detected — existing students will not be overwritten.
+              {duplicateRows.length} existing student ID(s) will be updated on import.
             </div>
           )}
           {errorRows.length > 0 && (
             <div className="rounded-2xl border border-danger/40 bg-danger/5 p-4">
               <div className="flex items-center gap-2 font-semibold text-danger">
                 <AlertCircle className="h-5 w-5" />
-                {errorRows.length} error row(s)
+                {errorRows.length} error row(s) — other rows can still import
               </div>
               <ul className="mt-2 max-h-32 overflow-y-auto text-sm text-danger">
                 {errorRows.slice(0, 10).map((e) => (
@@ -384,11 +460,11 @@ export function CsvImportWizard() {
               </ul>
             </div>
           )}
-          {validRows.length > 0 && (
+          {(validRows.length > 0 || updateExistingRows.length > 0) && (
             <div className="rounded-2xl border border-success/40 bg-success/5 p-4">
               <div className="flex items-center gap-2 font-semibold text-success">
                 <CheckCircle2 className="h-5 w-5" />
-                {validRows.length} valid row(s) ready to import
+                {validRows.length} new, {updateExistingRows.length} update(s) ready to import
               </div>
               <div className="mt-3 max-h-48 overflow-y-auto">
                 <table className="w-full text-sm">
@@ -397,17 +473,17 @@ export function CsvImportWizard() {
                       <th className="pb-2 text-left">ID</th>
                       <th className="pb-2 text-left">Name</th>
                       <th className="pb-2 text-left">Grade</th>
-                      <th className="pb-2 text-left">Homeroom</th>
+                      <th className="pb-2 text-left">Status</th>
                       <th className="pb-2 text-right">Balance</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {validRows.slice(0, 10).map((r) => (
+                    {[...validRows, ...updateExistingRows].slice(0, 10).map((r) => (
                       <tr key={r.id} className="border-t border-silver/30">
                         <td className="py-2">{r.id}</td>
                         <td className="py-2">{r.firstName} {r.lastName}</td>
-                        <td className="py-2">{r.grade}</td>
-                        <td className="py-2">{r.homeroom ?? "—"}</td>
+                        <td className="py-2">{r.grade || "—"}</td>
+                        <td className="py-2">{r.badgeStatus ?? "active"}</td>
                         <td className="py-2 text-right">${r.balance.toFixed(2)}</td>
                       </tr>
                     ))}
@@ -416,8 +492,10 @@ export function CsvImportWizard() {
               </div>
             </div>
           )}
-          {validRows.length > 0 && (
-            <Button onClick={executeImport}>Import {validRows.length} Students</Button>
+          {(validRows.length > 0 || updateExistingRows.length > 0) && (
+            <Button onClick={executeImport}>
+              Import {validRows.length + updateExistingRows.length} Students
+            </Button>
           )}
         </div>
       )}
