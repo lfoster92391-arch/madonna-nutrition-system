@@ -294,7 +294,7 @@ export function BadgeManager() {
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-silver-foreground" />
           <Input
             className="pl-9"
-            placeholder="Search by name, MD ID, or barcode…"
+            placeholder="Search by name, MD ID, or barcodeâ€¦"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -328,7 +328,7 @@ export function BadgeManager() {
         </CardHeader>
         <div className="overflow-x-auto px-6 pb-6">
           {isLoading ? (
-            <p className="text-sm text-silver-foreground">Loading badges…</p>
+            <p className="text-sm text-silver-foreground">Loading badgesâ€¦</p>
           ) : (
             <table className="w-full text-sm">
               <thead>
@@ -415,7 +415,7 @@ export function BadgeManager() {
       {assignMdId && (
         <Card className="border-primary/30">
           <CardHeader>
-            <CardTitle className="text-base">Assign badge — MD ID {assignMdId}</CardTitle>
+            <CardTitle className="text-base">Assign badge â€” MD ID {assignMdId}</CardTitle>
           </CardHeader>
           <div className="grid gap-4 px-6 pb-6 sm:grid-cols-3">
             <div>
