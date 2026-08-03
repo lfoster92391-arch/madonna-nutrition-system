@@ -28,6 +28,16 @@ import { cn } from "@/lib/utils"
 const ROLES: UserRole[] = ["admin", "cashier", "parent", "staff", "teacher"]
 
 function UserAvatar({ user }: { user: User }) {
+  if (user.photo) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={user.photo}
+        alt={formatUserName(user)}
+        className="h-12 w-12 shrink-0 rounded-xl object-cover"
+      />
+    )
+  }
   const initials = `${user.firstName[0] ?? ""}${user.lastName[0] ?? ""}`.toUpperCase()
   return (
     <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-sm font-bold text-primary">
@@ -110,7 +120,7 @@ function ActionsMenu({
             className="block w-full px-4 py-2 text-left text-sm hover:bg-silver/20"
             onClick={() => { setOpen(false); onEdit() }}
           >
-            Edit account
+            Edit account / Open profile
           </button>
           <button
             type="button"
@@ -525,7 +535,12 @@ export function UserManager() {
           <div>
             <h1 className="text-3xl font-bold text-primary">User Management</h1>
             <p className="text-silver-foreground">
-              Manage portal accounts, roles, and access — all changes are audit logged.
+              Manage portal accounts, roles, and access — all changes are audit logged. Staff imports
+              also appear under{" "}
+              <Link href="/admin/imports?tab=staff" className="font-semibold text-primary underline">
+                Students &amp; Imports → Staff Accounts
+              </Link>
+              .
             </p>
           </div>
           <div className="flex gap-3">
@@ -608,6 +623,17 @@ export function UserManager() {
                     </tr>
                   </thead>
                   <tbody>
+                    {filtered.length === 0 ? (
+                      <tr>
+                        <td colSpan={8} className="py-10 text-center text-silver-foreground">
+                          No users match this filter.{" "}
+                          <Link href="/admin/imports?tab=staff" className="font-semibold text-primary underline">
+                            Import staff
+                          </Link>{" "}
+                          or tap Add User.
+                        </td>
+                      </tr>
+                    ) : null}
                     {filtered.map((u) => (
                       <tr
                         key={u.id}
@@ -653,14 +679,19 @@ export function UserManager() {
                           {formatLastLogin(u.lastLoginAt)}
                         </td>
                         <td className="py-3 text-right">
-                          <ActionsMenu
-                            user={u}
-                            onEdit={() => openEdit(u)}
-                            onReset={() => openReset(u)}
-                            onChangeRole={() => openChangeRole(u)}
-                            onToggleStatus={() => openToggleStatus(u)}
-                            onDelete={() => openDelete(u)}
-                          />
+                          <div className="flex flex-wrap items-center justify-end gap-2">
+                            <Button size="sm" onClick={() => openEdit(u)}>
+                              Open profile
+                            </Button>
+                            <ActionsMenu
+                              user={u}
+                              onEdit={() => openEdit(u)}
+                              onReset={() => openReset(u)}
+                              onChangeRole={() => openChangeRole(u)}
+                              onToggleStatus={() => openToggleStatus(u)}
+                              onDelete={() => openDelete(u)}
+                            />
+                          </div>
                         </td>
                       </tr>
                     ))}

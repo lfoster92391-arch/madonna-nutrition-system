@@ -208,6 +208,7 @@ export function mapUser(user: DbUser): User {
     status: USER_STATUS_TO_APP[user.status],
     phone: user.phone ?? undefined,
     badgeId: user.badgeId ?? undefined,
+    photo: user.photo ?? undefined,
     department: user.department ?? undefined,
     accountBalance: user.accountBalance ? Number(user.accountBalance) : undefined,
     linkedStudentIds: user.linkedStudentIds,

@@ -10,6 +10,13 @@ export const ROLE_LABELS: Record<UserRole, string> = {
 
 const STAFF_BADGE_ROLES = new Set<UserRole>(["admin", "cashier", "staff", "teacher"])
 
+/** Workplace accounts shown on Staff Accounts (excludes parent family logins). */
+export const WORKPLACE_USER_ROLES: UserRole[] = ["admin", "cashier", "staff", "teacher"]
+
+export function isWorkplaceUserRole(role: UserRole): boolean {
+  return STAFF_BADGE_ROLES.has(role)
+}
+
 export function userRoleSupportsBadge(role: UserRole): boolean {
   return STAFF_BADGE_ROLES.has(role)
 }

@@ -11,6 +11,7 @@ import {
   FileUp,
   Upload,
 } from "lucide-react"
+import { useQueryClient } from "@tanstack/react-query"
 import { useAuth } from "@/components/providers/AuthProvider"
 import { useDemo } from "@/components/providers/DemoProvider"
 import { Badge } from "@/components/ui/badge"
@@ -119,6 +120,7 @@ async function copyText(text: string) {
 export function StaffImportWizard() {
   const { user: authUser } = useAuth()
   const { users, databaseEnabled } = useDemo()
+  const queryClient = useQueryClient()
 
   const [step, setStep] = useState<ImportStep>("upload")
   const [filename, setFilename] = useState("")
@@ -270,6 +272,7 @@ export function StaffImportWizard() {
       })
       setImportResult(result)
       setStep("complete")
+      void queryClient.invalidateQueries({ queryKey: ["users"] })
     } catch (error) {
       setErrorRows([
         {
@@ -545,6 +548,11 @@ export function StaffImportWizard() {
               </div>
             )}
 
+            <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-4 text-sm text-emerald-900">
+              Imported staff appear in the <strong>Staff directory</strong> above. Tap{" "}
+              <strong>Open profile</strong> on any row to edit details or add a photo.
+            </div>
+
             <div className="flex flex-wrap justify-center gap-3">
               {importResult.credentials.length > 0 && (
                 <Button variant="outline" onClick={exportResultsCsv}>
@@ -552,6 +560,14 @@ export function StaffImportWizard() {
                   Export Results CSV
                 </Button>
               )}
+              <Button
+                variant="outline"
+                onClick={() =>
+                  window.scrollTo({ top: 0, behavior: "smooth" })
+                }
+              >
+                View staff directory
+              </Button>
               <Button onClick={resetWizard}>Import Another File</Button>
             </div>
           </div>

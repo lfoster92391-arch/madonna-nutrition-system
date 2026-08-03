@@ -100,10 +100,10 @@ const GUIDE_STEPS: GuideStep[] = [
   },
   {
     number: 6,
-    title: "Record office payments",
+    title: "Add money to a lunch account",
     plain: "Student pays cash/check in the office? Enter it here.",
     details: [
-      "Find the student → Record office payment.",
+      "Find the student → Open profile or Add money to account.",
       "Enter the amount and how they paid (cash, check, or card).",
       "The money is added to their lunch account right away.",
     ],
@@ -116,11 +116,11 @@ const GUIDE_STEPS: GuideStep[] = [
     title: "Staff logins (setup)",
     plain: "Create accounts so workers can sign in.",
     details: [
-      "Add cafeteria staff and choose their role.",
-      "Cashiers can run the lunch line.",
-      "Admins can change menus, students, and payments.",
+      "Open Staff Accounts to import or add cafeteria staff.",
+      "After import, tap Open profile to edit details or add a photo.",
+      "Cashiers can run the lunch line; admins can change menus and students.",
     ],
-    href: "#staff-accounts",
+    href: "/admin/imports?tab=staff",
     buttonLabel: "Manage Staff Accounts",
     icon: Users,
   },

@@ -89,6 +89,7 @@ export interface User {
   role: UserRole
   status: UserStatus
   badgeId?: string
+  photo?: string
   linkedStudentIds?: string[]
   phone?: string
   department?: string

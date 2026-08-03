@@ -55,6 +55,7 @@ model User {
   lastName         String
   phone            String?
   badgeId          String?
+  photo            String?
   role             UserRole   @default(STAFF)
   status           UserStatus @default(ACTIVE)
   passwordHash        String?
