@@ -72,7 +72,7 @@ export function LoginForm({ role, redirectTo }: LoginFormProps) {
       <form onSubmit={handleSignIn} className="space-y-5">
         <div>
           <Label htmlFor="username" className="text-sm font-semibold" style={{ color: NAVY }}>
-            Username
+            Username or email
           </Label>
           <div className="relative mt-2">
             <User className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-[#64748B]" />
@@ -81,7 +81,8 @@ export function LoginForm({ role, redirectTo }: LoginFormProps) {
               autoFocus
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              placeholder="Enter your username"
+              placeholder="Enter username or email"
+              autoComplete="username"
               className="h-14 pl-12 text-base"
             />
           </div>

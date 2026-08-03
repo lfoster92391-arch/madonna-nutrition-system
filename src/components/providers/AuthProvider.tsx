@@ -141,7 +141,7 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
     ): Promise<LoginResult> => {
       const trimmed = username.trim()
       if (!trimmed) {
-        return { success: false, error: "Please enter a username." }
+        return { success: false, error: "Please enter a username or email." }
       }
 
       if (!databaseEnabled) {

@@ -31,7 +31,7 @@ Open [http://localhost:3000](http://localhost:3000)
 - **Parent Portal:** `/parent`
 - **Ops Center:** `/ops`
 
-**Bootstrap admin after seed:** username `itlisa` — password from `ADMIN_SEED_PASSWORD` or default `FuelTheDons2026!` (change after first login).
+**Bootstrap admin after seed:** username `itlisa` or email `lisamorris@weirtonmadonna.org` — password from `ADMIN_SEED_PASSWORD` or default `FuelTheDons2026!` (change after first login).
 
 ## Database Setup (Production)
 
@@ -84,7 +84,7 @@ npm run db:seed
 | `npm run db:generate` | Generate Prisma client |
 | `npm run db:push` | Push schema to database |
 | `npm run db:seed` | Bootstrap school + primary admin (no demo people) |
-| `npm run db:seed-lisa` | Upsert itlisa admin on an existing school |
+| `npm run db:seed-lisa` | Upsert itlisa admin (`lisamorris@weirtonmadonna.org`) on an existing school |
 | `npm run db:disable-demo-students` | Disable legacy demo MD IDs if present |
 | `npm run db:studio` | Open Prisma Studio |
 
