@@ -1,6 +1,8 @@
 "use client"
 
-import { useRef } from "react"
+import { useEffect, useRef, useState } from "react"
+import { useSearchParams } from "next/navigation"
+import { AdminStaffManager } from "@/components/admin/AdminStaffManager"
 import { AdminStudentManager } from "@/components/admin/AdminStudentManager"
 import { DesktopOnly } from "@/components/admin/DesktopOnly"
 import { FamilyImportWizard } from "@/components/admin/FamilyImportWizard"
@@ -8,9 +10,21 @@ import { StaffImportWizard } from "@/components/admin/StaffImportWizard"
 import { ImportExportMenu } from "@/components/admin/import-export/ImportExportMenu"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
+const VALID_TABS = new Set(["students", "families", "staff"])
+
 export function AdminImportsHub() {
+  const searchParams = useSearchParams()
+  const tabParam = searchParams.get("tab")
+  const initialTab = tabParam && VALID_TABS.has(tabParam) ? tabParam : "students"
+  const [tab, setTab] = useState(initialTab)
   const familyImportRef = useRef<HTMLDivElement>(null)
   const staffImportRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (tabParam && VALID_TABS.has(tabParam)) {
+      setTab(tabParam)
+    }
+  }, [tabParam])
 
   function scrollToFamilyImport() {
     familyImportRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
@@ -29,12 +43,12 @@ export function AdminImportsHub() {
           </p>
           <h1 className="text-3xl font-bold text-primary">Students &amp; Imports</h1>
           <p className="text-silver-foreground">
-            Add or import students, edit details and photos, record office payments, and create
+            Add or import students, edit details and photos, add money to lunch accounts, and create
             parent or staff accounts
           </p>
         </div>
 
-        <Tabs defaultValue="students" className="space-y-6">
+        <Tabs value={tab} onValueChange={setTab} className="space-y-6">
           <TabsList>
             <TabsTrigger value="students">Students (SIS)</TabsTrigger>
             <TabsTrigger value="families">Parents &amp; Family Accounts</TabsTrigger>
@@ -56,12 +70,13 @@ export function AdminImportsHub() {
             </DesktopOnly>
           </TabsContent>
 
-          <TabsContent value="staff" className="space-y-6">
+          <TabsContent value="staff" className="space-y-8">
+            <AdminStaffManager onImportClick={scrollToStaffImport} />
             <div className="hidden justify-end md:flex">
               <ImportExportMenu type="staff" onImport={scrollToStaffImport} />
             </div>
             <DesktopOnly message="Staff bulk import is available on desktop. Open this page on a computer to upload CSV files.">
-              <div ref={staffImportRef}>
+              <div ref={staffImportRef} id="staff-import">
                 <StaffImportWizard />
               </div>
             </DesktopOnly>

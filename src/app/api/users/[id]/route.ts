@@ -58,6 +58,8 @@ export async function PATCH(request: Request, { params }: RouteParams) {
           role: data.role ? toDbUserRole(data.role) : undefined,
           phone: data.phone,
           badgeId,
+          department: data.department,
+          photo: data.photo,
           linkedStudentIds: data.linkedStudentIds,
         },
       })
@@ -76,6 +78,8 @@ export async function PATCH(request: Request, { params }: RouteParams) {
           role: mapUser(existing).role,
           phone: existing.phone,
           badgeId: existing.badgeId,
+          department: existing.department,
+          photo: existing.photo ? "set" : null,
           linkedStudentIds: existing.linkedStudentIds,
         },
         newValue: {
@@ -85,6 +89,8 @@ export async function PATCH(request: Request, { params }: RouteParams) {
           role: mapUser(updated).role,
           phone: updated.phone,
           badgeId: updated.badgeId,
+          department: updated.department,
+          photo: updated.photo ? "set" : null,
           linkedStudentIds: updated.linkedStudentIds,
         },
       })

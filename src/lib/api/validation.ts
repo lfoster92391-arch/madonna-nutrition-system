@@ -124,9 +124,15 @@ export const updateUserSchema = z.object({
   role: userRoleSchema.optional(),
   phone: z.string().optional(),
   badgeId: badgeIdSchema,
+  department: z.string().optional(),
+  photo: z.string().optional(),
   linkedStudentIds: z.array(z.string()).optional(),
   performedBy: z.string().optional(),
   reason: z.string().optional(),
+})
+
+export const userPhotoUploadSchema = z.object({
+  photo: z.string().min(1),
 })
 
 export const userActionSchema = z.object({
@@ -478,3 +484,4 @@ export const vendorImportRequestSchema = z.object({
 export const studentPhotoUploadSchema = z.object({
   photo: z.string().min(1),
 })
+

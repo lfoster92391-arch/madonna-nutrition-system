@@ -10,6 +10,7 @@ import {
   Plus,
   ScanLine,
   Send,
+  Users,
 } from "lucide-react"
 import { ADMIN_NAVY, ADMIN_SILVER } from "@/components/admin/layout/admin-theme"
 
@@ -20,7 +21,8 @@ const ACTIONS = [
   { label: "Send Notice", href: "/admin/communication", icon: Send },
   { label: "Export Report", href: "/admin/reporting", icon: FileDown },
   { label: "Open Cashier", href: "/scan", icon: ScanLine },
-  { label: "Office Payment", href: "/admin/imports", icon: DollarSign },
+  { label: "Add money", href: "/admin/imports", icon: DollarSign },
+  { label: "Staff", href: "/admin/imports?tab=staff", icon: Users },
   { label: "Worker Guide", href: "/admin/setup", icon: BookOpen },
 ]
 

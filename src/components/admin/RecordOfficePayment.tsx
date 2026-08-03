@@ -183,7 +183,7 @@ export function RecordOfficePayment({
 
       <Button type="submit" size="lg" className="min-h-12 w-full text-base sm:w-auto" disabled={busy}>
         <DollarSign className="h-4 w-4" />
-        {busy ? "Saving…" : "Record office payment"}
+        {busy ? "Saving…" : "Add money to account"}
       </Button>
     </form>
   )
@@ -193,10 +193,10 @@ export function RecordOfficePayment({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Record office payment</CardTitle>
+        <CardTitle>Add money to account</CardTitle>
         <p className="text-sm text-silver-foreground">
           Use this when a family pays in the school office. The money goes on the student&apos;s
-          lunch account.
+          lunch account right away.
         </p>
       </CardHeader>
       <div className="px-6 pb-6">{form}</div>

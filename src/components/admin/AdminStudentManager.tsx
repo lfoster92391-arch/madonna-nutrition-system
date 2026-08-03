@@ -269,8 +269,8 @@ export function AdminStudentManager({
               </p>
               <h1 className="text-3xl font-bold text-primary">Students</h1>
               <p className="text-silver-foreground">
-                Add students, open a profile to take or upload a photo for badges, and record office
-                payments
+                Add students, open a profile to take or upload a photo for badges, and add money to
+                lunch accounts
               </p>
             </div>
             <div className="flex flex-wrap gap-3">
@@ -292,7 +292,7 @@ export function AdminStudentManager({
                 }}
               >
                 <DollarSign className="h-4 w-4" />
-                Record office payment
+                Add money to account
               </Button>
               <Button
                 onClick={() => {
@@ -338,7 +338,7 @@ export function AdminStudentManager({
                 }}
               >
                 <DollarSign className="h-4 w-4" />
-                Record office payment
+                Add money to account
               </Button>
               <Button
                 onClick={() => {
@@ -359,7 +359,7 @@ export function AdminStudentManager({
         {justAddedId && (
           <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-4 text-sm text-emerald-900">
             Student saved. Use <strong>Open profile</strong> below to take or upload a photo for
-            badges, or record an office payment if they paid today.
+            badges, or <strong>Add money to account</strong> if they paid today.
           </div>
         )}
 
@@ -451,7 +451,7 @@ export function AdminStudentManager({
                             }}
                           >
                             <DollarSign className="h-3.5 w-3.5" />
-                            Payment
+                            Add money
                           </Button>
                           {!s.disabled && (
                             <Button size="sm" variant="ghost" onClick={() => void disableStudent(s.id)}>
@@ -532,7 +532,7 @@ export function AdminStudentManager({
                 <Label>Balance</Label>
                 <Input value={form.balance} onChange={(e) => setForm({ ...form, balance: e.target.value })} />
                 <p className="mt-1 text-xs text-silver-foreground">
-                  Prefer &quot;Record office payment&quot; when money is received in the office.
+                  Prefer &quot;Add money to account&quot; when cash or a check is received in the office.
                 </p>
               </div>
             </div>
@@ -623,7 +623,7 @@ export function AdminStudentManager({
                     }}
                   >
                     <DollarSign className="h-4 w-4" />
-                    Record office payment
+                    Add money to account
                   </Button>
                 </div>
               </div>
@@ -649,7 +649,7 @@ export function AdminStudentManager({
         {showOfficePaymentPanel && (
           <div className="space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <h2 className="text-lg font-semibold text-primary">Record office payment</h2>
+              <h2 className="text-lg font-semibold text-primary">Add money to account</h2>
               <Button
                 variant="ghost"
                 onClick={() => {
