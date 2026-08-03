@@ -1,4 +1,5 @@
 import type { Allergy, Student } from "@/lib/types"
+import { scanIdCandidates, studentMatchesScanId } from "@/lib/scan/scan-id"
 
 const DB_NAME = "mnms-scan-offline"
 const DB_VERSION = 1
@@ -122,11 +123,15 @@ export async function cacheStudents(students: Student[]): Promise<void> {
 }
 
 export async function findCachedStudent(scanId: string): Promise<CachedStudent | null> {
-  const normalized = scanId.trim()
-  const direct = await runTransaction<CachedStudent>("students", "readonly", (store) =>
-    store.get(normalized)
-  )
-  if (direct) return direct as CachedStudent
+  const candidates = scanIdCandidates(scanId)
+  if (candidates.length === 0) return null
+
+  for (const candidate of candidates) {
+    const direct = await runTransaction<CachedStudent>("students", "readonly", (store) =>
+      store.get(candidate)
+    )
+    if (direct) return direct as CachedStudent
+  }
 
   const db = await openDb()
   return new Promise((resolve, reject) => {
@@ -136,8 +141,11 @@ export async function findCachedStudent(scanId: string): Promise<CachedStudent |
     request.onsuccess = () => {
       const items = request.result as CachedStudent[]
       resolve(
-        items.find(
-          (s) => s.externalId === normalized || s.barcode === normalized || s.id === normalized
+        items.find((s) =>
+          studentMatchesScanId(
+            { id: s.externalId || s.id, barcode: s.barcode },
+            scanId
+          )
         ) ?? null
       )
     }
