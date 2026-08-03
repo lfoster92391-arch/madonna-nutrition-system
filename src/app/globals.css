@@ -267,13 +267,16 @@ body {
 
   .badge-print-grid {
     display: grid !important;
-    grid-template-columns: repeat(2, 3.6in) !important;
+    /* Physical landscape badges: 3in × 2.75in with top hole safe zone */
+    grid-template-columns: repeat(2, 3in) !important;
     justify-content: space-around !important;
-    gap: 0.35in 0.3in !important;
+    gap: 0.25in 0.4in !important;
     max-width: none !important;
   }
 
   .student-badge-card {
+    width: 3in !important;
+    height: 2.75in !important;
     break-inside: avoid;
     page-break-inside: avoid;
     -webkit-print-color-adjust: exact;

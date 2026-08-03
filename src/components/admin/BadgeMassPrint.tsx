@@ -35,8 +35,12 @@ export function BadgeMassPrint({ students, onClose }: BadgeMassPrintProps) {
           <h2 className="text-xl font-bold text-primary">Print student badges</h2>
           <p className="mt-1 text-sm text-silver-foreground">
             Preview below shows {sorted.length} badge{sorted.length === 1 ? "" : "s"} —{" "}
-            2 across, 2 down on each letter page. Missing photo, email, grade, or barcode still
-            print; check the card and fill gaps later if needed.
+            landscape cards at 3&quot; × 2¾&quot;, two across on letter paper. Missing photo,
+            email, grade, or barcode still print; check the card and fill gaps later if needed.
+          </p>
+          <p className="mt-2 text-xs font-medium text-primary/80">
+            Leave ½&quot; clear at the top for the badge hole. Content sits in the band from
+            ½&quot;–2&quot; from the top (fits landscape badges with top hole).
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
