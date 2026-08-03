@@ -30,7 +30,7 @@ export const LAST_ADMIN_ERROR =
 
 /** Canonical IT administrator — reserved from parent family imports. */
 export const PRIMARY_ADMIN_USERNAME = "itlisa"
-export const PRIMARY_ADMIN_EMAIL = "lisa.morris@madonnahs.org"
+export const PRIMARY_ADMIN_EMAIL = "lisamorris@weirtonmadonna.org"
 
 export function countActiveAdmins(users: User[]): number {
   return users.filter((u) => u.role === "admin" && u.status === "active").length
@@ -66,6 +66,7 @@ export function normalizeUsername(username: string): string {
   return username.trim().toLowerCase().replace(/\s+/g, "")
 }
 
+/** Login accepts username or email (case-insensitive; whitespace stripped). */
 export function findUserByLogin(
   users: User[],
   username: string
@@ -74,6 +75,7 @@ export function findUserByLogin(
   return users.find(
     (u) =>
       normalizeUsername(u.username) === normalized ||
-      u.email.toLowerCase() === normalized
+      u.email.toLowerCase().trim() === normalized ||
+      normalizeUsername(u.email) === normalized
   )
 }

@@ -12,7 +12,9 @@ import { PrismaClient, UserRole, UserStatus } from "@prisma/client"
 
 const prisma = new PrismaClient()
 
-const LISA_EMAIL = "lisa.morris@madonnahs.org"
+const LISA_EMAIL = "lisamorris@weirtonmadonna.org"
+/** Previous seed email — migrate this account onto the canonical address when present. */
+const LEGACY_LISA_EMAIL = "lisa.morris@madonnahs.org"
 const LISA_USERNAME = "itlisa"
 const DEFAULT_PASSWORD = process.env.ADMIN_SEED_PASSWORD ?? "FuelTheDons2026!"
 
@@ -47,33 +49,40 @@ async function main() {
   const existingByEmail = await prisma.user.findUnique({
     where: { email: LISA_EMAIL },
   })
+  const existingByLegacyEmail =
+    LEGACY_LISA_EMAIL === LISA_EMAIL
+      ? null
+      : await prisma.user.findUnique({ where: { email: LEGACY_LISA_EMAIL } })
 
   let user
 
-  if (existingByUsername && existingByEmail && existingByUsername.id !== existingByEmail.id) {
-    const linkedStudentIds = [
-      ...new Set([
-        ...(existingByUsername.linkedStudentIds ?? []),
-        ...(existingByEmail.linkedStudentIds ?? []),
-      ]),
-    ]
+  const mergeOnto = async (keepId, dropIds = []) => {
+    const linkedStudentIds = new Set()
+    const keep = await prisma.user.findUnique({ where: { id: keepId } })
+    for (const id of keep?.linkedStudentIds ?? []) linkedStudentIds.add(id)
+    for (const dropId of dropIds) {
+      if (dropId === keepId) continue
+      const drop = await prisma.user.findUnique({ where: { id: dropId } })
+      for (const id of drop?.linkedStudentIds ?? []) linkedStudentIds.add(id)
+      if (drop) await prisma.user.delete({ where: { id: dropId } })
+    }
+    return prisma.user.update({
+      where: { id: keepId },
+      data: { ...adminData, username: LISA_USERNAME, linkedStudentIds: [...linkedStudentIds] },
+    })
+  }
 
-    await prisma.user.delete({ where: { id: existingByEmail.id } })
+  const candidates = [existingByUsername, existingByEmail, existingByLegacyEmail].filter(Boolean)
+  const uniqueIds = [...new Set(candidates.map((u) => u.id))]
 
-    user = await prisma.user.update({
-      where: { id: existingByUsername.id },
-      data: { ...adminData, linkedStudentIds },
-    })
-  } else if (existingByUsername) {
-    user = await prisma.user.update({
-      where: { id: existingByUsername.id },
-      data: adminData,
-    })
-  } else if (existingByEmail) {
-    user = await prisma.user.update({
-      where: { id: existingByEmail.id },
-      data: { ...adminData, username: LISA_USERNAME },
-    })
+  if (uniqueIds.length > 1) {
+    const keepId = existingByUsername?.id ?? existingByEmail?.id ?? existingByLegacyEmail.id
+    user = await mergeOnto(
+      keepId,
+      uniqueIds.filter((id) => id !== keepId)
+    )
+  } else if (uniqueIds.length === 1) {
+    user = await mergeOnto(uniqueIds[0])
   } else {
     user = await prisma.user.create({
       data: { ...adminData, username: LISA_USERNAME },
@@ -84,6 +93,7 @@ async function main() {
   console.log("  User id:", user.id)
   console.log("  Username:", LISA_USERNAME, "(not display name — no spaces)")
   console.log("  Email:", LISA_EMAIL)
+  console.log("  Login with username or email + seeded password.")
   console.log("  School:", school.name, `(${school.id})`)
 }
 

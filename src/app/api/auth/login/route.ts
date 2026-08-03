@@ -39,7 +39,7 @@ export async function POST(request: Request) {
 
     if (!user) {
       return NextResponse.json(
-        { success: false, error: "No account found with that username." },
+        { success: false, error: "No account found with that username or email." },
         { status: 401 }
       )
     }

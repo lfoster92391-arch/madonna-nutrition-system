@@ -34,35 +34,54 @@ async function main() {
 
   console.log("School ID (set SCHOOL_ID on Vercel):", school.id)
 
-  await prisma.user.upsert({
-    where: { email: "lisa.morris@madonnahs.org" },
-    update: {
-      username: "itlisa",
-      firstName: "Lisa",
-      lastName: "Morris",
-      role: UserRole.ADMIN,
-      status: UserStatus.ACTIVE,
-      badgeId: "90010",
-      phone: "555-1010",
-      passwordHash,
-      mustChangePassword: false,
-      linkedStudentIds: [],
-      schoolId: school.id,
-    },
-    create: {
-      username: "itlisa",
-      email: "lisa.morris@madonnahs.org",
-      firstName: "Lisa",
-      lastName: "Morris",
-      role: UserRole.ADMIN,
-      status: UserStatus.ACTIVE,
-      badgeId: "90010",
-      phone: "555-1010",
-      passwordHash,
-      mustChangePassword: false,
-      schoolId: school.id,
-    },
+  const adminEmail = "lisamorris@weirtonmadonna.org"
+  const legacyAdminEmail = "lisa.morris@madonnahs.org"
+  const adminUsername = "itlisa"
+  const adminData = {
+    email: adminEmail,
+    username: adminUsername,
+    firstName: "Lisa",
+    lastName: "Morris",
+    role: UserRole.ADMIN,
+    status: UserStatus.ACTIVE,
+    badgeId: "90010",
+    phone: "555-1010",
+    passwordHash,
+    mustChangePassword: false,
+    linkedStudentIds: [] as string[],
+    schoolId: school.id,
+  }
+
+  const existingByUsername = await prisma.user.findUnique({ where: { username: adminUsername } })
+  const existingByEmail = await prisma.user.findUnique({ where: { email: adminEmail } })
+  const existingByLegacyEmail = await prisma.user.findUnique({
+    where: { email: legacyAdminEmail },
   })
+
+  const candidates = [existingByUsername, existingByEmail, existingByLegacyEmail].filter(Boolean)
+  const uniqueIds = [...new Set(candidates.map((u) => u!.id))]
+
+  if (uniqueIds.length > 1) {
+    const keepId = existingByUsername?.id ?? existingByEmail?.id ?? existingByLegacyEmail!.id
+    const linkedStudentIds = new Set<string>()
+    for (const candidate of candidates) {
+      for (const id of candidate!.linkedStudentIds ?? []) linkedStudentIds.add(id)
+    }
+    for (const id of uniqueIds) {
+      if (id !== keepId) await prisma.user.delete({ where: { id } })
+    }
+    await prisma.user.update({
+      where: { id: keepId },
+      data: { ...adminData, linkedStudentIds: [...linkedStudentIds] },
+    })
+  } else if (uniqueIds.length === 1) {
+    await prisma.user.update({
+      where: { id: uniqueIds[0] },
+      data: adminData,
+    })
+  } else {
+    await prisma.user.create({ data: adminData })
+  }
 
   await prisma.calendarSettings.upsert({
     where: { schoolId: school.id },
@@ -117,7 +136,7 @@ async function main() {
   })
 
   console.log("Bootstrap seed completed for", school.name)
-  console.log("Admin login username: itlisa")
+  console.log("Admin login: username itlisa OR email lisamorris@weirtonmadonna.org")
   console.log("No demo students, staff, menus, or inventory were created.")
 }
 

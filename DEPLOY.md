@@ -213,11 +213,11 @@ npm run db:seed
 
 5. Redeploy: `npx vercel --prod --yes`
 
-Seed prints `SCHOOL_ID` — optionally add to Vercel. Bootstrap admin username: `itlisa` (password from `ADMIN_SEED_PASSWORD` or default `FuelTheDons2026!`).
+Seed prints `SCHOOL_ID` — optionally add to Vercel. Bootstrap admin: username `itlisa` or email `lisamorris@weirtonmadonna.org` (password from `ADMIN_SEED_PASSWORD` or default `FuelTheDons2026!`).
 
 ### Production student roster (Lisa Morris / Madonna HS)
 
-**Real students come only from SIS and family CSV imports** — `npm run db:seed` only creates the school, calendar defaults, agreement, and **itlisa** admin.
+**Real students come only from SIS and family CSV imports** — `npm run db:seed` only creates the school, calendar defaults, agreement, and **itlisa** admin (`lisamorris@weirtonmadonna.org`).
 
 On a fresh production database:
 
