@@ -73,11 +73,14 @@ body {
   max-width: 100%;
 }
 
-/* Wide tables / badge previews: intentional horizontal scroll, not page overflow */
+/* Wide tables / chip rows: horizontal pan only — do NOT become a vertical scrollport.
+   overflow-x:auto alone pairs overflow-y to auto (CSS), which traps touch on tall
+   Student Manager tables after PR #18. Use clip + pan-x/pan-y so main can scroll. */
 .mobile-scroll-x {
   overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
+  overflow-y: clip;
   overscroll-behavior-x: contain;
+  touch-action: pan-x pan-y;
   scrollbar-width: thin;
 }
 
