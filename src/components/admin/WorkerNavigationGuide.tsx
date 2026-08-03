@@ -62,11 +62,11 @@ const GUIDE_STEPS: GuideStep[] = [
   {
     number: 3,
     title: "Students & imports",
-    plain: "Add students, then fill in more info.",
+    plain: "Add students, then open each profile.",
     details: [
       "Import from a spreadsheet, or add one student at a time.",
-      "After a student is added, tap Edit to add grade, homeroom, and photo.",
-      "Photos help cashiers recognize students at checkout.",
+      "After a student is added, tap Open profile.",
+      "Use Take photo or Upload photo, then Save — the photo goes on their badge.",
     ],
     href: "/admin/imports",
     buttonLabel: "Open Students",
@@ -74,12 +74,12 @@ const GUIDE_STEPS: GuideStep[] = [
   },
   {
     number: 4,
-    title: "Photos for checkout",
+    title: "Photos for badges",
     plain: "Upload a picture or take one with a phone.",
     details: [
-      "On the student list, tap the photo or Edit.",
-      "Choose a file, or use Take photo on a phone/tablet.",
-      "The lunch line shows this photo when a badge is scanned.",
+      "Students list → Open profile.",
+      "Tap Take photo (phone camera) or Upload photo, then Save.",
+      "You should see “Photo saved for badges.” Badge Manager and the lunch line use this same photo.",
     ],
     href: "/admin/imports",
     buttonLabel: "Add Student Photos",
@@ -90,7 +90,7 @@ const GUIDE_STEPS: GuideStep[] = [
     title: "Badges & lunch line",
     plain: "Scan badges to charge meals.",
     details: [
-      "Badge Setup links each student ID to a barcode.",
+      "Badge Setup shows each student’s photo from their profile.",
       "Open Cashier / Scan on a tablet at the lunch line.",
       "Scan the badge → confirm meal → balance updates.",
     ],

@@ -654,6 +654,7 @@ export default function ScanStationPage() {
                   width={120}
                   height={120}
                   className="h-[64px] w-[64px] shrink-0 rounded-xl border border-[#AEB6C2] object-cover sm:h-[80px] sm:w-[80px] sm:rounded-2xl md:h-[100px] md:w-[100px] lg:h-[120px] lg:w-[120px]"
+                  unoptimized={student.photo.startsWith("data:")}
                 />
                 <div className="min-w-0 flex-1">
                   <h2 className="truncate text-lg font-bold uppercase tracking-tight sm:text-xl md:text-2xl lg:text-3xl">

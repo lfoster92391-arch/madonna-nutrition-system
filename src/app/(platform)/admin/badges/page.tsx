@@ -14,8 +14,11 @@ export default function AdminBadgesPage() {
     >
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-silver/60 bg-white p-4 shadow-sm">
         <p className="text-sm text-silver-foreground">
-          Barcode format: 4–6 digits. Kiosk accepts MD ID or barcode. See{" "}
-          <code className="rounded bg-silver/30 px-1">docs/BADGE_BARCODE_FORMAT.md</code>.
+          Badge photos come from each student&apos;s profile. To add or change a photo:{" "}
+          <Link href="/admin/imports" className="font-semibold text-primary underline">
+            Students
+          </Link>{" "}
+          → Open profile → Take photo or Upload photo → Save. Barcode format: 4–6 digits.
         </p>
         <Button asChild>
           <Link href="/scan">

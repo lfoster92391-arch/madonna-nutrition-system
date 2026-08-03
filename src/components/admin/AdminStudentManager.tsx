@@ -47,6 +47,7 @@ export function AdminStudentManager({
   const [showOfficePaymentPanel, setShowOfficePaymentPanel] = useState(false)
   const [photoBusy, setPhotoBusy] = useState(false)
   const [photoMessage, setPhotoMessage] = useState<string | null>(null)
+  const [pendingPhoto, setPendingPhoto] = useState<string | null>(null)
   const [form, setForm] = useState({
     id: "",
     firstName: "",
@@ -59,7 +60,6 @@ export function AdminStudentManager({
   const cameraInputRef = useRef<HTMLInputElement>(null)
   const importWizardRef = useRef<HTMLDivElement>(null)
   const editFormRef = useRef<HTMLDivElement>(null)
-  const [photoTargetId, setPhotoTargetId] = useState<string | null>(null)
 
   const filtered = useMemo(() => {
     const activeStudents = students.filter((s) => !s.disabled && !isDemoStudentExternalId(s.id))
@@ -143,7 +143,7 @@ export function AdminStudentManager({
         dietaryRestrictions: [],
         parentContacts: [],
       })
-      setPhotoMessage("Student saved. Now add a photo for the lunch line (optional but helpful).")
+      setPhotoMessage("Student saved. Now take or upload a photo for badges (optional but helpful).")
       requestAnimationFrame(() => {
         editFormRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
       })
@@ -156,6 +156,7 @@ export function AdminStudentManager({
     setEditing(student)
     setJustAddedId(null)
     setPhotoMessage(null)
+    setPendingPhoto(null)
     setForm({
       id: student.id,
       firstName: student.firstName,
@@ -167,6 +168,14 @@ export function AdminStudentManager({
     requestAnimationFrame(() => {
       editFormRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
     })
+  }
+
+  function closeEditor() {
+    setShowAdd(false)
+    setEditing(null)
+    setJustAddedId(null)
+    setPhotoMessage(null)
+    setPendingPhoto(null)
   }
 
   async function savePhotoForStudent(targetId: string, dataUrl: string) {
@@ -192,7 +201,9 @@ export function AdminStudentManager({
       } else {
         await updateStudent(targetId, { photo: dataUrl })
       }
-      setPhotoMessage("Photo saved. It will show at checkout when this student is scanned.")
+      void queryClient.invalidateQueries({ queryKey: ["badges"] })
+      setPendingPhoto(null)
+      setPhotoMessage("Photo saved for badges")
       if (editing?.id === targetId) {
         setEditing((prev) => (prev ? { ...prev, photo: dataUrl } : prev))
       }
@@ -200,31 +211,36 @@ export function AdminStudentManager({
       setPhotoMessage("Could not save the photo. Try again with a smaller image.")
     } finally {
       setPhotoBusy(false)
-      setPhotoTargetId(null)
     }
   }
 
   async function handlePhotoUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
-    const targetId = photoTargetId
-    if (!file || !targetId) return
+    if (!file || !editing) return
     const dataUrl = await readFileAsDataUrl(file)
-    await savePhotoForStudent(targetId, dataUrl)
+    setPendingPhoto(dataUrl)
+    setPhotoMessage("Preview ready. Tap Save to put this photo on badges and checkout.")
     e.target.value = ""
   }
 
-  function triggerPhotoUpload(studentId: string, mode: "file" | "camera" = "file") {
-    setPhotoTargetId(studentId)
+  function triggerPhotoUpload(mode: "file" | "camera" = "file") {
+    if (!editing) return
     const ref = mode === "camera" ? cameraInputRef : photoInputRef
     ref.current?.click()
+  }
+
+  async function handleSavePhoto() {
+    if (!editing || !pendingPhoto) return
+    await savePhotoForStudent(editing.id, pendingPhoto)
   }
 
   const showPageHeader = !embedded && !importsTab
   const showImportWizard = !embedded || importsTab
   const showImportExportMenu = !embedded || importsTab
-  const editingPhoto = editing
+  const savedPhoto = editing
     ? students.find((s) => s.id === editing.id)?.photo ?? editing.photo
     : null
+  const editingPhoto = pendingPhoto ?? savedPhoto
 
   return (
     <div className={showPageHeader ? "w-full px-6 py-8 md:px-8" : "w-full"}>
@@ -253,7 +269,8 @@ export function AdminStudentManager({
               </p>
               <h1 className="text-3xl font-bold text-primary">Students</h1>
               <p className="text-silver-foreground">
-                Add students, edit details, upload photos, and record office payments
+                Add students, open a profile to take or upload a photo for badges, and record office
+                payments
               </p>
             </div>
             <div className="flex flex-wrap gap-3">
@@ -283,6 +300,7 @@ export function AdminStudentManager({
                   setEditing(null)
                   setJustAddedId(null)
                   setPhotoMessage(null)
+                  setPendingPhoto(null)
                 }}
               >
                 <Plus className="h-4 w-4" />
@@ -297,7 +315,8 @@ export function AdminStudentManager({
             <div>
               <h2 className="text-xl font-semibold text-primary">Student Manager</h2>
               <p className="text-sm text-silver-foreground">
-                After you add a student, tap Edit to add a photo and more info
+                After you add a student, tap <strong>Open profile</strong> to take or upload a photo
+                for their badge
               </p>
             </div>
             <div className="flex flex-wrap gap-3">
@@ -327,6 +346,7 @@ export function AdminStudentManager({
                   setEditing(null)
                   setJustAddedId(null)
                   setPhotoMessage(null)
+                  setPendingPhoto(null)
                 }}
               >
                 <Plus className="h-4 w-4" />
@@ -338,8 +358,8 @@ export function AdminStudentManager({
 
         {justAddedId && (
           <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-4 text-sm text-emerald-900">
-            Student saved. Use <strong>Edit</strong> below to add a photo for the lunch line, or
-            record an office payment if they paid today.
+            Student saved. Use <strong>Open profile</strong> below to take or upload a photo for
+            badges, or record an office payment if they paid today.
           </div>
         )}
 
@@ -383,10 +403,10 @@ export function AdminStudentManager({
                       <td className="py-3 pr-4">
                         <button
                           type="button"
-                          onClick={() => triggerPhotoUpload(s.id, "file")}
+                          onClick={() => startEdit(s)}
                           className="group relative"
-                          title="Upload or change photo"
-                          disabled={photoBusy}
+                          title="Open profile to update photo"
+                          disabled={s.disabled}
                         >
                           <Image
                             src={s.photo}
@@ -419,7 +439,7 @@ export function AdminStudentManager({
                             className="min-h-10 gap-1.5 font-semibold"
                           >
                             <Pencil className="h-3.5 w-3.5" />
-                            Edit
+                            Open profile
                           </Button>
                           <Button
                             size="sm"
@@ -477,10 +497,11 @@ export function AdminStudentManager({
           <div ref={editFormRef}>
           <Card>
             <CardHeader>
-              <CardTitle>{editing ? "Edit Student" : "Add Student"}</CardTitle>
+              <CardTitle>{editing ? "Student profile" : "Add Student"}</CardTitle>
               {editing && (
                 <p className="text-sm text-silver-foreground">
-                  Change details below. Add a photo so cashiers recognize this student at lunch.
+                  Update details and photo. The photo is used on badges, Badge Manager, and lunch
+                  line checkout.
                 </p>
               )}
             </CardHeader>
@@ -519,48 +540,74 @@ export function AdminStudentManager({
             {editing && (
               <div className="mt-6 space-y-4 border-t border-silver/40 px-6 pt-6">
                 <div>
-                  <h3 className="text-base font-semibold text-primary">Student photo</h3>
+                  <h3 className="text-lg font-semibold text-primary">Badge photo</h3>
                   <p className="text-sm text-silver-foreground">
-                    Upload a picture or take one with your phone camera. Used at the lunch line.
+                    Take a photo with your phone camera or upload a picture, then tap Save. This
+                    same photo shows on badges and when the badge is scanned at checkout.
                   </p>
                 </div>
-                <div className="flex flex-wrap items-center gap-4">
-                  {editingPhoto && (
-                    <Image
-                      src={editingPhoto}
-                      alt={`${editing.firstName} ${editing.lastName}`}
-                      width={96}
-                      height={96}
-                      className="rounded-2xl object-cover"
-                      unoptimized={editingPhoto.startsWith("data:")}
-                    />
-                  )}
-                  <div className="flex flex-wrap gap-3">
+                <div className="flex flex-wrap items-start gap-5">
+                  <div className="space-y-2">
+                    {editingPhoto ? (
+                      <Image
+                        src={editingPhoto}
+                        alt={`${editing.firstName} ${editing.lastName}`}
+                        width={128}
+                        height={128}
+                        className="h-32 w-32 rounded-2xl border border-silver/50 object-cover"
+                        unoptimized={editingPhoto.startsWith("data:")}
+                      />
+                    ) : (
+                      <div className="flex h-32 w-32 items-center justify-center rounded-2xl border border-dashed border-silver/60 bg-silver/10 text-center text-xs font-medium text-silver-foreground">
+                        No photo yet
+                      </div>
+                    )}
+                    {pendingPhoto && (
+                      <p className="text-xs font-medium text-amber-800">New photo — not saved yet</p>
+                    )}
+                  </div>
+                  <div className="flex min-w-[220px] flex-1 flex-col gap-3">
+                    <Button
+                      type="button"
+                      size="lg"
+                      className="min-h-14 text-base"
+                      disabled={photoBusy}
+                      onClick={() => triggerPhotoUpload("camera")}
+                    >
+                      <Camera className="h-5 w-5" />
+                      Take photo
+                    </Button>
                     <Button
                       type="button"
                       size="lg"
                       variant="outline"
-                      className="min-h-12"
+                      className="min-h-14 text-base"
                       disabled={photoBusy}
-                      onClick={() => triggerPhotoUpload(editing.id, "file")}
+                      onClick={() => triggerPhotoUpload("file")}
                     >
-                      <Upload className="h-4 w-4" />
+                      <Upload className="h-5 w-5" />
                       Upload photo
                     </Button>
                     <Button
                       type="button"
                       size="lg"
-                      className="min-h-12"
-                      disabled={photoBusy}
-                      onClick={() => triggerPhotoUpload(editing.id, "camera")}
+                      className="min-h-14 text-base"
+                      disabled={photoBusy || !pendingPhoto}
+                      onClick={() => void handleSavePhoto()}
                     >
-                      <Camera className="h-4 w-4" />
-                      Take photo
+                      {photoBusy ? "Saving…" : "Save"}
                     </Button>
                   </div>
                 </div>
                 {photoMessage && (
-                  <p className="rounded-xl bg-silver/20 px-4 py-3 text-sm text-primary" role="status">
+                  <p
+                    className={`rounded-xl px-4 py-3 text-sm font-medium ${
+                      photoMessage === "Photo saved for badges"
+                        ? "border border-emerald-200 bg-emerald-50 text-emerald-900"
+                        : "bg-silver/20 text-primary"
+                    }`}
+                    role="status"
+                  >
                     {photoMessage}
                   </p>
                 )}
@@ -590,12 +637,7 @@ export function AdminStudentManager({
                 size="lg"
                 variant="outline"
                 className="min-h-12"
-                onClick={() => {
-                  setShowAdd(false)
-                  setEditing(null)
-                  setJustAddedId(null)
-                  setPhotoMessage(null)
-                }}
+                onClick={closeEditor}
               >
                 Cancel
               </Button>
