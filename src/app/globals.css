@@ -220,3 +220,63 @@ body {
     will-change: transform, opacity;
   }
 }
+
+/* Mass-print student badges — hide chrome, keep badge cards */
+@media print {
+  .no-print,
+  .badge-print-controls,
+  .admin-print-hide {
+    display: none !important;
+  }
+
+  body {
+    background: white !important;
+  }
+
+  .admin-portal {
+    display: block !important;
+    height: auto !important;
+    overflow: visible !important;
+    background: white !important;
+  }
+
+  .admin-portal main {
+    overflow: visible !important;
+  }
+
+  /* Only the badge sheet should appear on paper */
+  body * {
+    visibility: hidden !important;
+  }
+
+  .badge-print-sheet,
+  .badge-print-sheet * {
+    visibility: visible !important;
+  }
+
+  .badge-print-sheet {
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0.25in !important;
+    margin: 0 !important;
+  }
+
+  .badge-print-grid {
+    display: grid !important;
+    grid-template-columns: repeat(2, 3.6in) !important;
+    justify-content: space-around !important;
+    gap: 0.35in 0.3in !important;
+    max-width: none !important;
+  }
+
+  .student-badge-card {
+    break-inside: avoid;
+    page-break-inside: avoid;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}
