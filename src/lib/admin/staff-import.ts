@@ -7,7 +7,7 @@ import { PRIMARY_ADMIN_EMAIL, PRIMARY_ADMIN_USERNAME, normalizeUsername } from "
 import type { staffImportRowSchema } from "@/lib/api/validation"
 import type { z } from "zod"
 
-export type StaffImportRow = z.infer<typeof staffImportRowSchema>
+export type StaffImportRow = z.infer<typeof staffImportRowSchema> & { _rowNumber?: number }
 
 export interface StaffImportError {
   row: number
@@ -110,7 +110,7 @@ export async function importStaffRows(input: {
 
   for (let index = 0; index < input.rows.length; index++) {
     const row = input.rows[index]!
-    const rowNumber = index + 1
+    const rowNumber = row._rowNumber ?? index + 1
     const email = row.email.trim().toLowerCase()
     const derivedUsername = defaultUsername(email, row.username)
     const primaryAdminError = validatePrimaryAdminStaffImport(email, derivedUsername)

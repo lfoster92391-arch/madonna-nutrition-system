@@ -22,7 +22,9 @@ const nextConfig: NextConfig = {
       { source: "/auth/teacher", destination: "/login/teacher", permanent: false },
       { source: "/auth/staff", destination: "/login/staff", permanent: false },
       { source: "/auth/cashier", destination: "/kiosk", permanent: false },
-      { source: "/admin/menu", destination: "/admin/menu-library", permanent: false },
+      // Menu = lunch calendar; cookbook/meal library is /admin/cookbook
+      { source: "/admin/menu", destination: "/admin/calendar", permanent: false },
+      { source: "/admin/menu-library", destination: "/admin/cookbook", permanent: false },
       { source: "/admin/launch", destination: "/admin", permanent: false },
       { source: "/admin/launch/:path*", destination: "/admin", permanent: false },
       { source: "/admin/calendar/design", destination: "/admin/calendar", permanent: false },

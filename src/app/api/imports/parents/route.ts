@@ -1,28 +1,16 @@
 import { NextResponse } from "next/server"
-import { z } from "zod"
 import { requireAdmin } from "@/lib/api/admin-auth"
+import { parentImportRequestSchema, parentImportRowSchema } from "@/lib/api/validation"
 import { badRequest, serverError, withDatabase } from "@/lib/api/response"
 import { findStudentByExternalId } from "@/lib/db/students"
+import { parseImportRows } from "@/lib/import-export/coerce"
 import { prisma } from "@/lib/prisma"
-
-const parentRowSchema = z.object({
-  parentEmail: z.string().email(),
-  parentName: z.string().min(1),
-  parentPhone: z.string().optional(),
-  mdId: z.string().min(1),
-  relationship: z.string().optional(),
-})
-
-const importSchema = z.object({
-  adminUserId: z.string().min(1),
-  rows: z.array(parentRowSchema).min(1).max(500),
-})
 
 export async function POST(request: Request) {
   const result = await withDatabase(async () => {
     try {
       const body = await request.json()
-      const parsed = importSchema.safeParse(body)
+      const parsed = parentImportRequestSchema.safeParse(body)
       if (!parsed.success) {
         return badRequest("Invalid parent import payload", parsed.error.flatten())
       }
@@ -30,18 +18,25 @@ export async function POST(request: Request) {
       const auth = await requireAdmin(parsed.data.adminUserId)
       if ("error" in auth) return auth.error
 
+      const { valid, errors: parseErrors } = parseImportRows(
+        parsed.data.rows,
+        parentImportRowSchema,
+        { rowNumberOffset: 1 }
+      )
+
       let created = 0
       let linked = 0
       let matched = 0
       let updated = 0
-      let skipped = 0
-      const errors: { row: number; message: string }[] = []
+      let skipped = parseErrors.length
+      const errors = [...parseErrors]
 
-      for (let i = 0; i < parsed.data.rows.length; i++) {
-        const row = parsed.data.rows[i]!
+      for (const item of valid) {
+        const row = item.data
+        const rowNumber = item.rowNumber
         const student = await findStudentByExternalId(row.mdId)
         if (!student || student.schoolId !== auth.schoolId) {
-          errors.push({ row: i + 1, message: `Student MD ID ${row.mdId} not found` })
+          errors.push({ row: rowNumber, message: `Student MD ID ${row.mdId} not found` })
           skipped++
           continue
         }

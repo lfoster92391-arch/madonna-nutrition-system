@@ -10,6 +10,7 @@ import {
   type ReactNode,
 } from "react"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
+import { usePathname } from "next/navigation"
 import { DEFAULT_CALENDAR_SETTINGS } from "@/config/calendar-defaults"
 import { api } from "@/lib/api/client"
 import { addOneYear, payloadToAllergies } from "@/lib/food-safety"
@@ -174,8 +175,15 @@ function requireDatabase(enabled: boolean) {
 
 export function DemoProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient()
+  const pathname = usePathname()
   const [dbEnabled, setDbEnabled] = useState(false)
   const [configLoaded, setConfigLoaded] = useState(false)
+
+  // Public entry pages (portal selection + login) never read cafeteria data, so
+  // skip the ~10 dashboard queries there to keep first load fast and cut DB load.
+  const isPublicPage =
+    pathname === "/" || pathname === "/login" || pathname?.startsWith("/login/") === true
+  const dataEnabled = dbEnabled && !isPublicPage
 
   useEffect(() => {
     api
@@ -197,52 +205,52 @@ export function DemoProvider({ children }: { children: ReactNode }) {
   const studentsQuery = useQuery({
     queryKey: ["students"],
     queryFn: api.getStudents,
-    enabled: dbEnabled,
+    enabled: dataEnabled,
   })
   const transactionsQuery = useQuery({
     queryKey: ["transactions"],
     queryFn: api.getTransactions,
-    enabled: dbEnabled,
+    enabled: dataEnabled,
   })
   const usersQuery = useQuery({
     queryKey: ["users"],
     queryFn: api.getUsers,
-    enabled: dbEnabled,
+    enabled: dataEnabled,
   })
   const auditLogsQuery = useQuery({
     queryKey: ["audit-logs"],
     queryFn: api.getAuditLogs,
-    enabled: dbEnabled,
+    enabled: dataEnabled,
   })
   const calendarEventsQuery = useQuery({
     queryKey: ["calendar-events"],
     queryFn: api.getCalendarEvents,
-    enabled: dbEnabled,
+    enabled: dataEnabled,
   })
   const calendarSettingsQuery = useQuery({
     queryKey: ["calendar-settings"],
     queryFn: api.getCalendarSettings,
-    enabled: dbEnabled,
+    enabled: dataEnabled,
   })
   const mealTemplatesQuery = useQuery({
     queryKey: ["meal-templates"],
     queryFn: api.getMealTemplates,
-    enabled: dbEnabled,
+    enabled: dataEnabled,
   })
   const allergySubmissionsQuery = useQuery({
     queryKey: ["allergy-submissions"],
     queryFn: api.getAllergySubmissions,
-    enabled: dbEnabled,
+    enabled: dataEnabled,
   })
   const studentProfilesQuery = useQuery({
     queryKey: ["student-profiles"],
     queryFn: api.getStudentProfiles,
-    enabled: dbEnabled,
+    enabled: dataEnabled,
   })
   const medicalDocumentsQuery = useQuery({
     queryKey: ["medical-documents"],
     queryFn: api.getMedicalDocuments,
-    enabled: dbEnabled,
+    enabled: dataEnabled,
   })
 
   const dbLoading =

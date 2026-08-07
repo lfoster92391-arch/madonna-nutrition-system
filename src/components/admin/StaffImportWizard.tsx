@@ -17,6 +17,7 @@ import { useDemo } from "@/components/providers/DemoProvider"
 import { Badge } from "@/components/ui/badge"
 import { api } from "@/lib/api/client"
 import { downloadImportTemplate, exportRowsToCsv } from "@/lib/import-export"
+import { asTrimmedString, assertCsvFile } from "@/lib/import-export/coerce"
 import { PRIMARY_ADMIN_EMAIL, PRIMARY_ADMIN_USERNAME, ROLE_LABELS } from "@/lib/users"
 import { Button } from "@/components/ui/button"
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -135,14 +136,29 @@ export function StaffImportWizard() {
   const [bulkDefaultPassword, setBulkDefaultPassword] = useState("")
 
   const processFile = useCallback((file: File) => {
+    const csvError = assertCsvFile(file)
+    if (csvError) {
+      setFilename(file.name)
+      setErrorRows([{ row: 0, errors: [csvError] }])
+      setStep("validation")
+      return
+    }
     setFilename(file.name)
-    Papa.parse<Record<string, string>>(file, {
+    Papa.parse<Record<string, unknown>>(file, {
       header: true,
       skipEmptyLines: true,
       complete: (results) => {
         const cols = results.meta.fields ?? []
         setHeaders(cols)
-        setRawRows(results.data)
+        setRawRows(
+          results.data.map((row) => {
+            const mapped: Record<string, string> = {}
+            for (const [key, value] of Object.entries(row)) {
+              mapped[key] = asTrimmedString(value)
+            }
+            return mapped
+          })
+        )
         const autoMap: Partial<Record<FieldKey, string>> = {}
         for (const field of [...REQUIRED_FIELDS, ...OPTIONAL_FIELDS]) {
           const match = autoDetectColumn(cols, field)

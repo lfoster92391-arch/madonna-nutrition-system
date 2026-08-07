@@ -37,8 +37,10 @@ export function PortalCard({
     animationDelay: `${index * 65}ms`,
   } as CSSProperties
 
+  // Overflow-safe shell: min-w-0 / max-w-full + flex-basis so portal CTAs wrap
+  // instead of overflowing the viewport (from landing-page-buttons).
   const shellClass =
-    "landing-card-enter group relative flex w-full max-md:min-h-[44px] max-md:flex-row max-md:items-stretch max-md:justify-start max-md:gap-3 max-md:rounded-[19px] max-md:border max-md:border-white/30 max-md:px-3 max-md:py-3 max-md:shadow-[0_4px_16px_rgba(0,30,98,0.18)] max-md:backdrop-blur-sm max-md:[background:linear-gradient(145deg,color-mix(in_srgb,var(--portal-color)_96%,#041B52),color-mix(in_srgb,var(--portal-color)_88%,#041B52))] md:h-auto md:min-h-[200px] md:max-w-[360px] md:shrink-0 md:flex-col md:items-center md:justify-center md:rounded-[24px] md:px-6 md:py-5 md:[background-color:var(--portal-color)] md:shadow-[0_8px_24px_rgba(0,30,98,0.18)] sm:w-[360px]"
+    "landing-card-enter group relative flex w-full min-w-0 max-w-full max-md:min-h-[44px] max-md:flex-row max-md:items-stretch max-md:justify-start max-md:gap-3 max-md:rounded-[19px] max-md:border max-md:border-white/30 max-md:px-3 max-md:py-3 max-md:pr-9 max-md:shadow-[0_4px_16px_rgba(0,30,98,0.18)] max-md:backdrop-blur-sm max-md:[background:linear-gradient(145deg,color-mix(in_srgb,var(--portal-color)_96%,#041B52),color-mix(in_srgb,var(--portal-color)_88%,#041B52))] md:h-auto md:min-h-[200px] md:max-w-[240px] md:flex-1 md:basis-[160px] md:flex-col md:items-center md:justify-center md:rounded-[24px] md:px-4 md:py-5 md:[background-color:var(--portal-color)] md:shadow-[0_8px_24px_rgba(0,30,98,0.18)]"
 
   const body = (
     <>
@@ -55,14 +57,14 @@ export function PortalCard({
 
       <div className="max-md:flex max-md:min-w-0 max-md:flex-1 max-md:flex-col max-md:justify-center max-md:rounded-xl max-md:bg-[#041B52]/30 max-md:px-2.5 max-md:py-2 max-md:text-left md:text-center">
         <span
-          className="mb-1.5 inline-flex w-fit rounded-full bg-white/20 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-white max-md:block md:hidden"
+          className="mb-1.5 inline-flex max-w-full rounded-full bg-white/20 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-white max-md:block max-md:truncate md:hidden"
           style={{ textShadow: MOBILE_TEXT_SHADOW }}
         >
           {roleLabel}
         </span>
 
         <span
-          className="block text-center text-lg font-bold leading-tight text-white max-md:text-left max-md:text-[17px] max-md:leading-snug md:text-lg"
+          className="block max-w-full text-center text-lg font-bold leading-tight text-white max-md:truncate max-md:text-left max-md:text-[17px] max-md:leading-snug md:text-balance md:text-lg"
           style={{ textShadow: MOBILE_TEXT_SHADOW }}
         >
           {portalName}
@@ -79,19 +81,19 @@ export function PortalCard({
 
         {secondaryAction && (
           <div
-            className="mt-3 flex flex-col gap-2 max-md:mt-2 sm:flex-row sm:justify-center md:mt-4"
+            className="mt-3 flex min-w-0 flex-col gap-2 max-md:mt-2 sm:flex-row sm:justify-center md:mt-4"
             onClick={(e) => e.stopPropagation()}
           >
             <Link
               href={route}
-              className="inline-flex min-h-10 items-center justify-center rounded-xl bg-white px-3 py-2 text-center text-sm font-bold transition hover:bg-white/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+              className="inline-flex min-h-10 min-w-0 items-center justify-center rounded-xl bg-white px-3 py-2 text-center text-sm font-bold transition hover:bg-white/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
               style={{ color }}
             >
               {primaryLabel ?? "Log in"}
             </Link>
             <Link
               href={secondaryAction.route}
-              className="inline-flex min-h-10 items-center justify-center rounded-xl border border-white/70 bg-white/15 px-3 py-2 text-center text-sm font-bold text-white transition hover:bg-white/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+              className="inline-flex min-h-10 min-w-0 items-center justify-center rounded-xl border border-white/70 bg-white/15 px-3 py-2 text-center text-sm font-bold text-white transition hover:bg-white/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
             >
               {secondaryAction.label}
             </Link>

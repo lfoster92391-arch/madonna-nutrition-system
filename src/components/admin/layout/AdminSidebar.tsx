@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation"
 import {
   BarChart3,
   Brain,
-  Calendar,
+  ChefHat,
   ChevronLeft,
   Headphones,
   LayoutDashboard,
@@ -32,10 +32,28 @@ import {
 } from "@/components/admin/layout/admin-theme"
 import { useOverlayLock } from "@/hooks/useOverlayLock"
 
-const NAV_ITEMS = [
+const NAV_ITEMS: Array<{
+  label: string
+  href: string
+  icon: typeof LayoutDashboard
+  exact?: boolean
+  readOnly?: boolean
+  matchPrefixes?: string[]
+}> = [
   { label: "Dashboard", href: "/admin", icon: LayoutDashboard, exact: true },
-  { label: "Menu", href: "/admin/menu", icon: UtensilsCrossed },
-  { label: "Calendar", href: "/admin/calendar", icon: Calendar },
+  // Menu = lunch calendar (not Cookbook)
+  {
+    label: "Menu",
+    href: "/admin/calendar",
+    icon: UtensilsCrossed,
+    matchPrefixes: ["/admin/calendar", "/admin/menu"],
+  },
+  {
+    label: "Cookbook",
+    href: "/admin/cookbook",
+    icon: ChefHat,
+    matchPrefixes: ["/admin/cookbook", "/admin/menu-library"],
+  },
   { label: "Operations", href: "/admin/receiving", icon: Wrench },
   { label: "Procurement", href: "/admin/procurement", icon: Truck },
   { label: "Financials", href: "/admin/finance", icon: Wallet },
@@ -47,8 +65,16 @@ const NAV_ITEMS = [
   { label: "Support", href: "/admin/support", icon: Headphones },
 ]
 
-function isActive(pathname: string, href: string, exact?: boolean) {
+function isActive(
+  pathname: string,
+  href: string,
+  exact?: boolean,
+  matchPrefixes?: string[]
+) {
   if (exact) return pathname === href
+  if (matchPrefixes?.some((p) => pathname === p || pathname.startsWith(`${p}/`))) {
+    return true
+  }
   const base = href.split("#")[0]
   return pathname === base || pathname.startsWith(`${base}/`)
 }
@@ -113,8 +139,8 @@ export function AdminSidebar() {
         </div>
 
         <nav className="flex-1 space-y-0.5 overflow-y-auto px-2 py-4">
-          {NAV_ITEMS.map(({ label, href, icon: Icon, exact, readOnly }) => {
-            const active = isActive(pathname, href, exact)
+          {NAV_ITEMS.map(({ label, href, icon: Icon, exact, readOnly, matchPrefixes }) => {
+            const active = isActive(pathname, href, exact, matchPrefixes)
             return (
               <Link
                 key={label}
