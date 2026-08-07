@@ -127,7 +127,7 @@ export function StudentBadgeCard({ student, className }: StudentBadgeCardProps) 
                 <dt className="shrink-0 font-semibold text-[#64748b]">Grade</dt>
                 <dd className="truncate">{grade || "—"}</dd>
               </div>
-              <div className="flex gap-1">
+              <div className="flex gap-1 text-[8.25px]">
                 <dt className="shrink-0 font-semibold text-[#64748b]">MD ID</dt>
                 <dd className="truncate font-mono font-semibold">{mdId || "—"}</dd>
               </div>
@@ -143,7 +143,7 @@ export function StudentBadgeCard({ student, className }: StudentBadgeCardProps) 
                   className="max-h-[0.26in] max-w-full overflow-hidden [&_svg]:h-[0.22in] [&_svg]:w-auto"
                   dangerouslySetInnerHTML={{ __html: barcode.svg }}
                 />
-                <p className="font-mono text-[6.5px] leading-none tracking-wider text-[#0a1e3f]">
+                <p className="font-mono text-[7.15px] leading-none tracking-wider text-[#0a1e3f]">
                   {barcodeValue}
                 </p>
               </div>
@@ -152,7 +152,7 @@ export function StudentBadgeCard({ student, className }: StudentBadgeCardProps) 
                 <p className="font-mono text-[9px] font-bold tracking-wide">
                   {barcodeValue || "—"}
                 </p>
-                <p className="font-mono text-[6.5px] text-[#64748b]">MD ID {mdId}</p>
+                <p className="font-mono text-[7.15px] text-[#64748b]">MD ID {mdId}</p>
               </div>
             )}
           </div>
