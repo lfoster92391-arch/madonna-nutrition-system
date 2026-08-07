@@ -26,7 +26,8 @@ export function PaymentsFundingTab() {
   const success = searchParams.get("success") === "1"
   const canceled = searchParams.get("canceled") === "1"
 
-  const payment = useAddFundsPayment()
+  const studentFromUrl = searchParams.get("student") ?? undefined
+  const payment = useAddFundsPayment(studentFromUrl)
   const suggestedDeposit = getSuggestedDeposit(payment.linkedStudents)
   const familyBalance = payment.linkedStudents.reduce((sum, s) => sum + s.balance, 0)
 

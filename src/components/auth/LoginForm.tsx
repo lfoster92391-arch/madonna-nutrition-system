@@ -35,6 +35,10 @@ export function LoginForm({ role, redirectTo }: LoginFormProps) {
 
   useEffect(() => {
     if (user?.role === role) {
+      if (role === "parent" && user.needsStudentLink) {
+        router.replace("/login/parent/link")
+        return
+      }
       router.replace(redirectTo)
     }
   }, [user, role, redirectTo, router])
@@ -45,6 +49,10 @@ export function LoginForm({ role, redirectTo }: LoginFormProps) {
     const result = await login(username, password, role)
     if (!result.success) {
       setError(result.error ?? "Sign in failed.")
+      return
+    }
+    if (role === "parent" && result.needsStudentLink) {
+      router.push("/login/parent/link")
       return
     }
     router.push(redirectTo)
@@ -139,6 +147,15 @@ export function LoginForm({ role, redirectTo }: LoginFormProps) {
         <HelpCircle className="h-4 w-4 shrink-0" />
         Need help? Contact your system administrator.
       </p>
+
+      {role === "parent" && (
+        <p className="mt-4 text-center text-sm text-[#64748B]">
+          New here?{" "}
+          <a href="/login/parent/register" className="font-semibold hover:underline" style={{ color: NAVY }}>
+            Create a parent account
+          </a>
+        </p>
+      )}
     </div>
   )
 }

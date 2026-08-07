@@ -9,6 +9,7 @@ import { findUserByLogin, normalizeUsername, ROLE_LABELS } from "@/lib/users"
 import { loginSchema } from "@/lib/api/validation"
 import { badRequest, withDatabase } from "@/lib/api/response"
 import { isAllowedTeacherEmail, TEACHER_ACCESS_DENIED_MESSAGE } from "@/config/teacher-auth"
+import { parentHasLinkedStudents } from "@/lib/auth/parent-links"
 import type { UserRole } from "@/lib/types"
 
 function portalMatchesUserRole(
@@ -86,9 +87,30 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: "Invalid password." }, { status: 401 })
     }
 
+    let needsStudentLink = false
+    if (role === "parent") {
+      needsStudentLink = !(await parentHasLinkedStudents(user.id))
+      if (needsStudentLink) {
+        // Allow login session only for the link flow — portal stays blocked until linked.
+        return NextResponse.json({
+          success: true,
+          mustChangePassword: dbUser.mustChangePassword,
+          needsStudentLink: true,
+          user: {
+            id: user.id,
+            username: user.username,
+            role,
+            displayName: `${user.firstName} ${user.lastName}`,
+            email: user.email,
+          },
+        })
+      }
+    }
+
     return NextResponse.json({
       success: true,
       mustChangePassword: dbUser.mustChangePassword,
+      needsStudentLink: false,
       user: {
         id: user.id,
         username: user.username,

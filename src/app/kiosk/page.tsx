@@ -25,6 +25,7 @@ import {
   Wine,
 } from "lucide-react"
 import { useDemo } from "@/components/providers/DemoProvider"
+import { RecordOfficePayment } from "@/components/admin/RecordOfficePayment"
 import { getAllergyBannerStyle, getHighestAllergySeverity } from "@/lib/allergy-display"
 import { ScanKeypad } from "@/components/scan/ScanKeypad"
 import { OfflineBanner } from "@/components/scan/OfflineBanner"
@@ -48,9 +49,11 @@ import {
 import { findStudentMatchingScan, sanitizeScanInput } from "@/lib/scan/scan-id"
 import { cn, formatCurrency } from "@/lib/utils"
 
-const MEAL_RESET_MS = 1200
-const ERROR_RESET_MS = 2000
-const FLASH_DISMISS_MS = 2000
+const MEAL_RESET_MS = 4000
+const ERROR_RESET_MS = 3500
+const FLASH_DISMISS_MS = 3500
+/** Idle time on the found-student panel before clearing (paused while Add Money is open). */
+const FOUND_IDLE_MS = 90_000
 
 const MEAL_ICONS: Record<string, typeof Utensils> = {
   student_meal: Utensils,
@@ -156,12 +159,15 @@ export default function ScanStationPage() {
   const [syncMessage, setSyncMessage] = useState("")
   const [pendingCount, setPendingCount] = useState(0)
   const [offlineRecent, setOfflineRecent] = useState<Transaction[]>([])
+  const [addFundsOpen, setAddFundsOpen] = useState(false)
+  const [idleDeadline, setIdleDeadline] = useState<number | null>(null)
 
   const scanInputRef = useRef<HTMLInputElement>(null)
   const scanTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const resetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const errorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const flashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const highestSeverity = student ? getHighestAllergySeverity(student.allergies) : null
   const bannerStyle = highestSeverity ? getAllergyBannerStyle(highestSeverity) : null
@@ -220,7 +226,12 @@ export default function ScanStationPage() {
   const armScanner = useCallback(
     (options?: { keepStudent?: boolean }) => {
       const keepStudent = options?.keepStudent ?? false
-      if (!keepStudent) setStudent(null)
+      if (!keepStudent) {
+        setStudent(null)
+        setAddFundsOpen(false)
+        setIdleDeadline(null)
+        if (idleTimerRef.current) clearTimeout(idleTimerRef.current)
+      }
       setScanStatus(keepStudent ? "found" : "ready")
       setScanValue("")
       setCountdownEnd(null)
@@ -229,11 +240,41 @@ export default function ScanStationPage() {
     [focusScan]
   )
 
+  const bumpIdleTimer = useCallback(() => {
+    if (!student || addFundsOpen || scanStatus === "complete") {
+      setIdleDeadline(null)
+      if (idleTimerRef.current) clearTimeout(idleTimerRef.current)
+      return
+    }
+    const deadline = Date.now() + FOUND_IDLE_MS
+    setIdleDeadline(deadline)
+    if (idleTimerRef.current) clearTimeout(idleTimerRef.current)
+    idleTimerRef.current = setTimeout(() => {
+      setAddFundsOpen(false)
+      setStudent(null)
+      setScanStatus("ready")
+      setScanValue("")
+      setIdleDeadline(null)
+      setFlashMessage("Station cleared after idle — scan the next student.")
+      if (flashTimerRef.current) clearTimeout(flashTimerRef.current)
+      flashTimerRef.current = setTimeout(() => setFlashMessage(""), FLASH_DISMISS_MS)
+      window.setTimeout(focusScan, 50)
+    }, FOUND_IDLE_MS)
+  }, [student, addFundsOpen, scanStatus, focusScan])
+
   useEffect(() => {
+    bumpIdleTimer()
+    return () => {
+      if (idleTimerRef.current) clearTimeout(idleTimerRef.current)
+    }
+  }, [bumpIdleTimer])
+
+  useEffect(() => {
+    if (addFundsOpen) return
     focusScan()
     const interval = setInterval(focusScan, 2000)
     return () => clearInterval(interval)
-  }, [focusScan])
+  }, [focusScan, addFundsOpen])
 
   const finishSync = useCallback(
     async (result: Awaited<ReturnType<typeof syncPendingTransactions>>) => {
@@ -355,6 +396,7 @@ export default function ScanStationPage() {
       setScanStatus("found")
       setScanValue("")
       setFlashMessage("")
+      setAddFundsOpen(false)
       window.setTimeout(focusScan, 50)
     },
     [focusScan]
@@ -426,15 +468,20 @@ export default function ScanStationPage() {
   }
 
   function appendDigit(digit: string) {
+    bumpIdleTimer()
     handleScanChange(scanValue + digit)
   }
 
   function deleteLastDigit() {
+    bumpIdleTimer()
     handleScanChange(scanValue.slice(0, -1))
   }
 
   function clearScanValue() {
-    handleScanChange("")
+    bumpIdleTimer()
+    setScanValue("")
+    setScanStatus(student ? "found" : "ready")
+    window.setTimeout(focusScan, 50)
   }
 
   function resetStation() {
@@ -444,6 +491,7 @@ export default function ScanStationPage() {
 
   async function handleMeal(mealLabel: string, price: number) {
     if (!student) return
+    bumpIdleTimer()
     if (mealBlocked) {
       setFlashMessage("MEAL BLOCKED — Allergy conflict. Do not serve today's meal.")
       window.setTimeout(focusScan, 50)
@@ -727,13 +775,24 @@ export default function ScanStationPage() {
                   {isOffline ? "~" : ""}
                   {formatCurrency(localBalance)}
                 </p>
-                <Link
-                  href="/parent/add-funds"
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAddFundsOpen(true)
+                    setIdleDeadline(null)
+                    if (idleTimerRef.current) clearTimeout(idleTimerRef.current)
+                  }}
                   className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-xl border-2 border-[#00A83E] py-2 text-xs font-bold text-[#00A83E] transition hover:bg-[#00A83E]/5 sm:mt-3 sm:gap-2 sm:rounded-2xl sm:py-2.5 sm:text-sm md:mt-4 md:py-3 md:text-base"
                 >
                   <Plus className="h-4 w-4 sm:h-5 sm:w-5" aria-hidden />
                   ADD FUNDS
-                </Link>
+                </button>
+                {idleDeadline && !addFundsOpen && scanStatus === "found" && (
+                  <p className="mt-2 text-center text-[10px] font-medium text-[#64748B] sm:text-xs">
+                    Clears in about {Math.max(1, Math.ceil((idleDeadline - Date.now()) / 1000))}s
+                    without activity
+                  </p>
+                )}
               </div>
             </div>
           ) : (
@@ -868,6 +927,48 @@ export default function ScanStationPage() {
           </div>
         </div>
       </footer>
+
+      {addFundsOpen && student && (
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-3 sm:items-center sm:p-6"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Add money to account"
+        >
+          <div className="max-h-[90dvh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-4 shadow-xl sm:p-6">
+            <div className="mb-4 flex items-start justify-between gap-3">
+              <div>
+                <h2 className="text-lg font-bold text-[#041B52]">Add money</h2>
+                <p className="text-sm text-[#64748B]">
+                  Office deposit for {student.firstName} {student.lastName}. Station idle timer is
+                  paused while this form is open.
+                </p>
+              </div>
+              <button
+                type="button"
+                className="rounded-xl border border-[#AEB6C2] px-3 py-2 text-sm font-semibold text-[#041B52]"
+                onClick={() => {
+                  setAddFundsOpen(false)
+                  bumpIdleTimer()
+                }}
+              >
+                Close
+              </button>
+            </div>
+            <RecordOfficePayment
+              students={[student]}
+              initialStudentId={student.id}
+              compact
+              onDone={(balanceAfter) => {
+                setLocalBalance(balanceAfter)
+                setStudent((prev) => (prev ? { ...prev, balance: balanceAfter } : prev))
+                void queryClient.invalidateQueries({ queryKey: ["students"] })
+                void queryClient.invalidateQueries({ queryKey: ["transactions"] })
+              }}
+            />
+          </div>
+        </div>
+      )}
     </div>
   )
 }

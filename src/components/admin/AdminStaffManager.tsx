@@ -4,14 +4,17 @@ import { useMemo, useRef, useState } from "react"
 import Image from "next/image"
 import Link from "next/link"
 import { useQueryClient } from "@tanstack/react-query"
-import { Camera, Pencil, Plus, Search, Upload, UserRound } from "lucide-react"
+import { Camera, DollarSign, Pencil, Plus, Search, Upload, UserRound } from "lucide-react"
 import { useDemo } from "@/components/providers/DemoProvider"
 import { useAuth } from "@/components/providers/AuthProvider"
+import { RecordStaffOfficePayment } from "@/components/admin/RecordStaffOfficePayment"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input, Label, Select } from "@/components/ui/input"
 import { api } from "@/lib/api/client"
+import { compressImageDataUrl } from "@/lib/images/compress-data-url"
+import { formatCurrency } from "@/lib/utils"
 import {
   formatUserName,
   isWorkplaceUserRole,
@@ -66,6 +69,7 @@ export function AdminStaffManager({
   const [roleFilter, setRoleFilter] = useState<UserRole | "all">("all")
   const [editing, setEditing] = useState<User | null>(null)
   const [showAdd, setShowAdd] = useState(false)
+  const [showAddMoney, setShowAddMoney] = useState(false)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
   const [photoBusy, setPhotoBusy] = useState(false)
@@ -129,6 +133,7 @@ export function AdminStaffManager({
   function openProfile(user: User) {
     setEditing(user)
     setShowAdd(false)
+    setShowAddMoney(false)
     setMessage(null)
     setPendingPhoto(null)
     setPhotoMessage(null)
@@ -161,6 +166,7 @@ export function AdminStaffManager({
   function closeEditor() {
     setEditing(null)
     setShowAdd(false)
+    setShowAddMoney(false)
     resetForm()
   }
 
@@ -263,7 +269,8 @@ export function AdminStaffManager({
     if (!file || !editing) return
     try {
       const dataUrl = await readFileAsDataUrl(file)
-      setPendingPhoto(dataUrl)
+      const compressed = await compressImageDataUrl(dataUrl)
+      setPendingPhoto(compressed)
       setPhotoMessage("Preview ready. Tap Save photo to keep it on this profile.")
     } catch {
       setPhotoMessage("Could not read that image. Try another file.")
@@ -275,8 +282,9 @@ export function AdminStaffManager({
     setPhotoBusy(true)
     setPhotoMessage(null)
     try {
-      const updated = await api.uploadUserPhoto(editing.id, pendingPhoto)
-      setEditing({ ...updated, photo: pendingPhoto })
+      const compressed = await compressImageDataUrl(pendingPhoto)
+      const updated = await api.uploadUserPhoto(editing.id, compressed)
+      setEditing({ ...updated, photo: compressed })
       setPendingPhoto(null)
       setPhotoMessage("Photo saved.")
       void queryClient.invalidateQueries({ queryKey: ["users"] })
@@ -442,15 +450,30 @@ export function AdminStaffManager({
                     </Badge>
                   </td>
                   <td className="py-3 text-right">
-                    <Button
-                      size="sm"
-                      onClick={() => openProfile(u)}
-                      disabled={u.status === "disabled"}
-                      className="min-h-10 gap-1.5 font-semibold"
-                    >
-                      <Pencil className="h-3.5 w-3.5" />
-                      Open profile
-                    </Button>
+                    <div className="flex flex-wrap items-center justify-end gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          openProfile(u)
+                          setShowAddMoney(true)
+                        }}
+                        disabled={u.status === "disabled"}
+                        className="min-h-10 gap-1.5 font-semibold"
+                      >
+                        <DollarSign className="h-3.5 w-3.5" />
+                        Add Money
+                      </Button>
+                      <Button
+                        size="sm"
+                        onClick={() => openProfile(u)}
+                        disabled={u.status === "disabled"}
+                        className="min-h-10 gap-1.5 font-semibold"
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                        Open profile
+                      </Button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -551,6 +574,43 @@ export function AdminStaffManager({
                 </div>
               )}
             </div>
+
+            {editing && (
+              <div className="mt-6 space-y-4 border-t border-silver/40 px-6 pt-6">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <h3 className="text-lg font-semibold text-primary">Lunch account</h3>
+                    <p className="text-sm text-silver-foreground">
+                      Staff meal balance:{" "}
+                      <strong className="tabular-nums text-primary">
+                        {formatCurrency(editing.accountBalance ?? 0)}
+                      </strong>
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    size="lg"
+                    variant={showAddMoney ? "default" : "outline"}
+                    className="min-h-12"
+                    onClick={() => setShowAddMoney((v) => !v)}
+                  >
+                    <DollarSign className="h-4 w-4" />
+                    {showAddMoney ? "Hide Add Money" : "Add Money"}
+                  </Button>
+                </div>
+                {showAddMoney && (
+                  <RecordStaffOfficePayment
+                    staffUser={editing}
+                    onDone={(balanceAfter) => {
+                      setEditing((prev) =>
+                        prev ? { ...prev, accountBalance: balanceAfter } : prev
+                      )
+                      void queryClient.invalidateQueries({ queryKey: ["users"] })
+                    }}
+                  />
+                )}
+              </div>
+            )}
 
             {editing && (
               <div className="mt-6 space-y-4 border-t border-silver/40 px-6 pt-6">
