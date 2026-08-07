@@ -29,7 +29,7 @@ export function MyLunchToday() {
           className="mt-4"
           onClick={() => updateTeacherReservation("account", "reserve")}
         >
-          Reserve Lunch
+          Order lunch for today
         </Button>
       </Card>
     )

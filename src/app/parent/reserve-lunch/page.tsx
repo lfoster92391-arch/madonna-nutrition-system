@@ -1,7 +1,8 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react"
 import Link from "next/link"
+import { useSearchParams } from "next/navigation"
 import { ModuleShell } from "@/components/layout/ModuleShell"
 import { useAgreementStatus } from "@/components/agreements/useAgreementStatus"
 import { useDemo } from "@/components/providers/DemoProvider"
@@ -18,16 +19,17 @@ import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Label, Select } from "@/components/ui/input"
 import { formatCurrency } from "@/lib/utils"
-import { filterPublicCalendarEvents } from "@/lib/calendar-publish"
+import { filterPublicCalendarEvents, todayDateKey } from "@/lib/calendar-publish"
 import { isSchoolLunchDateKey } from "@/lib/calendar"
+import { DEFAULT_ONBOARDING_PRICING } from "@/config/onboarding-pricing"
 
 type MealType = "MAIN" | "SIDE" | "ALA_CARTE" | "MILK"
 
 const MEAL_OPTIONS: { value: MealType; label: string; defaultPrice: number }[] = [
-  { value: "MAIN", label: "Main Meal", defaultPrice: 3 },
-  { value: "SIDE", label: "Side", defaultPrice: 2 },
-  { value: "ALA_CARTE", label: "A La Carte", defaultPrice: 4.5 },
-  { value: "MILK", label: "Milk", defaultPrice: 0.75 },
+  { value: "MAIN", label: "Main Meal", defaultPrice: DEFAULT_ONBOARDING_PRICING.mainMealPrice },
+  { value: "SIDE", label: "Side", defaultPrice: DEFAULT_ONBOARDING_PRICING.sideMealPrice },
+  { value: "ALA_CARTE", label: "A La Carte", defaultPrice: DEFAULT_ONBOARDING_PRICING.alaCartePrice },
+  { value: "MILK", label: "Milk", defaultPrice: DEFAULT_ONBOARDING_PRICING.milkPrice },
 ]
 
 interface ReservationRow {
@@ -40,14 +42,18 @@ interface ReservationRow {
   status: string
 }
 
-export default function ParentReserveLunchPage() {
+function ParentReserveLunchContent() {
+  const searchParams = useSearchParams()
   const { user } = useAuth()
   const { students, requiresSignature, loading } = useAgreementStatus()
   const { studentProfiles, allergySubmissions, calendarEvents, databaseEnabled } = useDemo()
   const { students: linkedStudents } = useParentLinkedStudents()
 
-  const [selectedStudentId, setSelectedStudentId] = useState("")
-  const [selectedDate, setSelectedDate] = useState("")
+  const dateParam = searchParams.get("date") ?? ""
+  const studentParam = searchParams.get("studentId") ?? ""
+
+  const [selectedStudentId, setSelectedStudentId] = useState(studentParam)
+  const [selectedDate, setSelectedDate] = useState(dateParam)
   const [mealType, setMealType] = useState<MealType>("MAIN")
   const [submitting, setSubmitting] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
@@ -55,11 +61,11 @@ export default function ParentReserveLunchPage() {
   const [reservations, setReservations] = useState<ReservationRow[]>([])
 
   const statusByStudent = new Map(students.map((s) => [s.studentId, s]))
+  const today = todayDateKey()
 
   const publicEvents = useMemo(() => filterPublicCalendarEvents(calendarEvents), [calendarEvents])
 
   const menuDates = useMemo(() => {
-    const today = new Date().toISOString().slice(0, 10)
     return publicEvents
       .filter(
         (e) =>
@@ -68,12 +74,23 @@ export default function ParentReserveLunchPage() {
       .map((e) => e.date)
       .filter((date, index, arr) => arr.indexOf(date) === index)
       .sort()
-  }, [publicEvents])
+  }, [publicEvents, today])
 
   const selectedMenu = useMemo(
     () => publicEvents.find((e) => e.category === "menu_day" && e.date === selectedDate),
     [publicEvents, selectedDate]
   )
+
+  const submitLabel = useMemo(() => {
+    if (!selectedDate) return "Order lunch"
+    if (selectedDate === today) return "Order lunch for today"
+    const label = new Date(`${selectedDate}T12:00:00`).toLocaleDateString("en-US", {
+      weekday: "short",
+      month: "short",
+      day: "numeric",
+    })
+    return `Order lunch for ${label}`
+  }, [selectedDate, today])
 
   const loadReservations = useCallback(async () => {
     if (!user || !databaseEnabled) return
@@ -91,13 +108,17 @@ export default function ParentReserveLunchPage() {
   }, [loadReservations])
 
   useEffect(() => {
-    if (!selectedStudentId && linkedStudents[0]) {
-      setSelectedStudentId(linkedStudents[0].id)
+    if (!selectedStudentId && (studentParam || linkedStudents[0]?.id)) {
+      setSelectedStudentId(studentParam || linkedStudents[0]!.id)
     }
-    if (!selectedDate && menuDates[0]) {
-      setSelectedDate(menuDates[0])
+    if (!selectedDate) {
+      if (dateParam && menuDates.includes(dateParam)) {
+        setSelectedDate(dateParam)
+      } else if (menuDates[0]) {
+        setSelectedDate(menuDates[0])
+      }
     }
-  }, [linkedStudents, menuDates, selectedDate, selectedStudentId])
+  }, [linkedStudents, menuDates, selectedDate, selectedStudentId, dateParam, studentParam])
 
   async function handleSubmit() {
     setError(null)
@@ -123,13 +144,13 @@ export default function ParentReserveLunchPage() {
       })
       const data = await res.json()
       if (!res.ok) {
-        setError(data.error ?? "Unable to reserve lunch")
+        setError(data.error ?? "Unable to order lunch")
         return
       }
-      setMessage(`Reserved ${data.menuTitle ?? "meal"} for ${data.reservation.studentName}.`)
+      setMessage(`Ordered ${data.menuTitle ?? "meal"} for ${data.reservation.studentName}.`)
       await loadReservations()
     } catch {
-      setError("Unable to reserve lunch. Try again.")
+      setError("Unable to order lunch. Try again.")
     } finally {
       setSubmitting(false)
     }
@@ -137,7 +158,7 @@ export default function ParentReserveLunchPage() {
 
   if (loading) {
     return (
-      <ModuleShell section="Parent Portal" title="Reserve Lunch" description="Loading eligibility...">
+      <ModuleShell section="Parent Portal" title="Order Lunch" description="Loading eligibility...">
         <p className="text-[#AEB6C2]">Checking cafeteria agreement status...</p>
       </ModuleShell>
     )
@@ -147,13 +168,13 @@ export default function ParentReserveLunchPage() {
     return (
       <ModuleShell
         section="Parent Portal"
-        title="Reserve Lunch"
+        title="Order Lunch"
         description="A signed cafeteria agreement is required before lunch enrollment."
       >
         <Card className="rounded-[20px] border-[#D62828]/30 bg-[#D62828]/5 p-8">
           <p className="font-semibold text-[#041B52]">Cafeteria Agreement Required</p>
           <p className="mt-2 text-sm text-[#64748B]">
-            You must sign the current Fuel The Dons cafeteria agreement before reserving meals.
+            You must sign the current Fuel The Dons cafeteria agreement before ordering meals.
           </p>
           <Button asChild className="mt-6">
             <Link href="/parent/agreements">Sign Agreement</Link>
@@ -167,8 +188,8 @@ export default function ParentReserveLunchPage() {
     return (
       <ModuleShell
         section="Parent Portal"
-        title="Reserve Lunch"
-        description="Pre-order meals for students with a signed cafeteria agreement."
+        title="Order Lunch"
+        description="Order meals for students with a signed cafeteria agreement."
       >
         <Card className="rounded-[20px] border-[#AEB6C2]/60 p-8">
           <p className="font-semibold text-[#041B52]">No students yet</p>
@@ -191,14 +212,14 @@ export default function ParentReserveLunchPage() {
     return (
       <ModuleShell
         section="Parent Portal"
-        title="Reserve Lunch"
-        description="Complete dietary and allergy forms before reserving meals."
+        title="Order Lunch"
+        description="Complete dietary and allergy forms before ordering meals."
       >
         <Card className="rounded-[20px] border-[#D62828]/30 bg-[#D62828]/5 p-8">
           <p className="font-semibold text-[#041B52]">Dietary &amp; Food Allergy Form Required</p>
           <p className="mt-2 text-sm text-[#64748B]">
             Each student needs a complete, current dietary and food allergy form before lunch
-            reservations can proceed.
+            orders can proceed.
           </p>
           <ul className="mt-4 space-y-2 text-sm text-[#041B52]">
             {blockingStudents.map((student) => {
@@ -231,12 +252,12 @@ export default function ParentReserveLunchPage() {
   return (
     <ModuleShell
       section="Parent Portal"
-      title="Reserve Lunch"
-      description="Pre-order meals from the published school calendar."
+      title="Order Lunch"
+      description="Order meals from the published school lunch menu."
     >
       <div className="grid gap-6 lg:grid-cols-2">
         <Card className="rounded-[20px] border-[#AEB6C2]/60 p-8">
-          <h2 className="text-lg font-semibold text-[#041B52]">New Reservation</h2>
+          <h2 className="text-lg font-semibold text-[#041B52]">New Order</h2>
           <div className="mt-6 space-y-4">
             <div>
               <Label>Student</Label>
@@ -264,7 +285,14 @@ export default function ParentReserveLunchPage() {
                 ) : (
                   menuDates.map((date) => (
                     <option key={date} value={date}>
-                      {date}
+                      {date === today
+                        ? `Today (${date})`
+                        : new Date(`${date}T12:00:00`).toLocaleDateString("en-US", {
+                            weekday: "short",
+                            month: "short",
+                            day: "numeric",
+                            year: "numeric",
+                          })}
                     </option>
                   ))
                 )}
@@ -292,18 +320,19 @@ export default function ParentReserveLunchPage() {
             {message ? <p className="text-sm text-[#00A83E]">{message}</p> : null}
             <Button
               type="button"
+              className="w-full sm:w-auto"
               disabled={submitting || !selectedDate || menuDates.length === 0}
               onClick={() => void handleSubmit()}
             >
-              {submitting ? "Saving..." : "Reserve Lunch"}
+              {submitting ? "Ordering..." : submitLabel}
             </Button>
           </div>
         </Card>
 
         <Card className="rounded-[20px] border-[#AEB6C2]/60 p-8">
-          <h2 className="text-lg font-semibold text-[#041B52]">Your Reservations</h2>
+          <h2 className="text-lg font-semibold text-[#041B52]">Your Orders</h2>
           {reservations.length === 0 ? (
-            <p className="mt-4 text-sm text-[#64748B]">No lunch reservations yet.</p>
+            <p className="mt-4 text-sm text-[#64748B]">No lunch orders yet.</p>
           ) : (
             <ul className="mt-4 divide-y divide-[#AEB6C2]/40">
               {reservations.map((row) => (
@@ -324,5 +353,19 @@ export default function ParentReserveLunchPage() {
         </Card>
       </div>
     </ModuleShell>
+  )
+}
+
+export default function ParentReserveLunchPage() {
+  return (
+    <Suspense
+      fallback={
+        <ModuleShell section="Parent Portal" title="Order Lunch" description="Loading...">
+          <p className="text-[#AEB6C2]">Loading lunch order options...</p>
+        </ModuleShell>
+      }
+    >
+      <ParentReserveLunchContent />
+    </Suspense>
   )
 }

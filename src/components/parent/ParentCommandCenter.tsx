@@ -10,6 +10,7 @@ import { ParentHero } from "@/components/parent/ParentHero"
 import { ParentMobileAnnouncements } from "@/components/parent/ParentMobileAnnouncements"
 import { QuickActionsStrip } from "@/components/parent/QuickActionsStrip"
 import { StudentCardRow } from "@/components/parent/StudentCardRow"
+import { TodaysMenuSection } from "@/components/parent/TodaysMenuSection"
 import { AddFundsDrawer } from "@/components/parent/v3/drawers/AddFundsDrawer"
 import { AlertsDrawer } from "@/components/parent/v3/drawers/AlertsDrawer"
 import { MealActivityDrawer } from "@/components/parent/v3/drawers/MealActivityDrawer"
@@ -122,6 +123,7 @@ function ParentCommandCenterContent() {
             openDrawer("add-funds")
           }}
         />
+        <TodaysMenuSection />
         <QuickActionsStrip
           onAddFunds={() => openDrawer("add-funds")}
           onHistory={() => openDrawer("meal-activity")}
