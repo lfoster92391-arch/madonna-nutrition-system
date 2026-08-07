@@ -73,9 +73,15 @@ export function CookbookPicker({
       </div>
 
       {filtered.length === 0 ? (
-        <p className="py-8 text-center text-sm text-silver-foreground">
-          No saved meals in {formatCategoryLabel(activeTab)} yet.
-        </p>
+        <div className="rounded-xl border border-dashed border-silver/60 bg-silver/5 px-4 py-8 text-center">
+          <UtensilsCrossed className="mx-auto mb-2 h-8 w-8 text-silver-foreground/40" />
+          <p className="text-sm font-semibold text-primary">
+            No {formatCategoryLabel(activeTab).toLowerCase()} meals saved yet
+          </p>
+          <p className="mt-1 text-sm text-silver-foreground">
+            Close this window and open Cookbook to add a meal first.
+          </p>
+        </div>
       ) : (
         <div
           className={cn(

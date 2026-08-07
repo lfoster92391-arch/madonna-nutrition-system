@@ -466,9 +466,9 @@ export function BadgeManager() {
       <div ref={importRef} className="rounded-2xl border border-silver/60 bg-white p-6 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h3 className="font-semibold text-primary">Bulk badge import</h3>
+            <h3 className="font-semibold text-primary">Import badges from a file</h3>
             <p className="text-sm text-silver-foreground">
-              Upload the badge enrollment CSV template to link barcodes and set status.
+              Pick a CSV file, check it imported, done. The file should include each student&apos;s MD ID and barcode.
             </p>
           </div>
           <ImportExportMenu type="badges" onImport={scrollToImport} exportRows={exportRows} />
@@ -486,7 +486,7 @@ export function BadgeManager() {
         />
         <Button variant="outline" className="mt-4" onClick={() => fileRef.current?.click()}>
           <Upload className="mr-2 h-4 w-4" />
-          Choose CSV file
+          Pick a CSV file
         </Button>
         {importSummary && (
           <div
