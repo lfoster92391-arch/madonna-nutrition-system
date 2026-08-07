@@ -1,0 +1,69 @@
+import { NextResponse } from "next/server"
+import { parentStudentSearchSchema } from "@/lib/api/validation"
+import { badRequest, serverError, withDatabase } from "@/lib/api/response"
+import { resolveSchoolId } from "@/lib/db/school"
+import { prisma } from "@/lib/prisma"
+
+export const runtime = "nodejs"
+
+/** Limited student search for parent signup / linking (no balances or contacts). */
+export async function GET(request: Request) {
+  const result = await withDatabase(async () => {
+    try {
+      const { searchParams } = new URL(request.url)
+      const parsed = parentStudentSearchSchema.safeParse({
+        q: searchParams.get("q") ?? "",
+      })
+      if (!parsed.success) {
+        return badRequest("Enter at least 2 characters to search", parsed.error.flatten())
+      }
+
+      const q = parsed.data.q.trim()
+      const schoolId = await resolveSchoolId()
+      const tokens = q.split(/\s+/).filter(Boolean).slice(0, 4)
+
+      const students = await prisma.student.findMany({
+        where: {
+          schoolId,
+          disabled: false,
+          OR: [
+            { externalId: { contains: q, mode: "insensitive" } },
+            { barcode: { contains: q, mode: "insensitive" } },
+            {
+              AND: tokens.map((token) => ({
+                OR: [
+                  { firstName: { contains: token, mode: "insensitive" } },
+                  { lastName: { contains: token, mode: "insensitive" } },
+                  { externalId: { contains: token, mode: "insensitive" } },
+                ],
+              })),
+            },
+          ],
+        },
+        select: {
+          externalId: true,
+          firstName: true,
+          lastName: true,
+          grade: true,
+          homeroom: true,
+        },
+        orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
+        take: 15,
+      })
+
+      return NextResponse.json({
+        students: students.map((s) => ({
+          id: s.externalId,
+          firstName: s.firstName,
+          lastName: s.lastName,
+          grade: s.grade,
+          homeroom: s.homeroom,
+        })),
+      })
+    } catch (error) {
+      console.error("GET /api/auth/parent/search-students", error)
+      return serverError()
+    }
+  })
+  return result instanceof NextResponse ? result : result
+}

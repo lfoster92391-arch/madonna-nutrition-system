@@ -1,0 +1,134 @@
+import bcrypt from "bcryptjs"
+import { Prisma, type UserRole } from "@prisma/client"
+import { isAllowedTeacherEmail, TEACHER_ACCESS_DENIED_MESSAGE } from "@/config/teacher-auth"
+import { resolveSchoolId } from "@/lib/db/school"
+import { normalizeUsername, PRIMARY_ADMIN_EMAIL, PRIMARY_ADMIN_USERNAME } from "@/lib/users"
+import { prisma } from "@/lib/prisma"
+
+export type WorkplaceRegisterRole = "staff" | "teacher"
+
+export class WorkplaceRegisterError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = "WorkplaceRegisterError"
+  }
+}
+
+function usernameFromEmail(email: string, role: WorkplaceRegisterRole): string {
+  const local = email.split("@")[0] ?? role
+  const cleaned = normalizeUsername(local).replace(/[^a-z0-9._-]/gi, "") || role
+  return cleaned.slice(0, 40)
+}
+
+const ROLE_TO_DB: Record<WorkplaceRegisterRole, UserRole> = {
+  staff: "STAFF",
+  teacher: "TEACHER",
+}
+
+export async function registerWorkplaceUser(input: {
+  role: WorkplaceRegisterRole
+  email: string
+  password: string
+  firstName: string
+  lastName: string
+  phone?: string
+  department?: string
+}): Promise<{
+  id: string
+  username: string
+  role: WorkplaceRegisterRole
+  displayName: string
+  email: string
+}> {
+  const emailNorm = input.email.trim().toLowerCase()
+  const firstName = input.firstName.trim()
+  const lastName = input.lastName.trim()
+
+  if (input.role === "teacher" && !isAllowedTeacherEmail(emailNorm)) {
+    throw new WorkplaceRegisterError(TEACHER_ACCESS_DENIED_MESSAGE)
+  }
+
+  if (
+    emailNorm === PRIMARY_ADMIN_EMAIL.toLowerCase() ||
+    normalizeUsername(emailNorm) === PRIMARY_ADMIN_USERNAME
+  ) {
+    throw new WorkplaceRegisterError(
+      "That email is reserved. Contact IT if you need help signing in."
+    )
+  }
+
+  const schoolId = await resolveSchoolId()
+
+  const existingUser = await prisma.user.findFirst({
+    where: {
+      OR: [{ email: emailNorm }, { username: normalizeUsername(emailNorm) }],
+    },
+    select: { id: true, role: true },
+  })
+
+  if (existingUser) {
+    throw new WorkplaceRegisterError(
+      "An account with this email already exists. Sign in instead."
+    )
+  }
+
+  let username = usernameFromEmail(emailNorm, input.role)
+  if (username === PRIMARY_ADMIN_USERNAME) {
+    username = `${input.role}${Math.floor(Math.random() * 9000 + 1000)}`
+  }
+  const usernameTaken = await prisma.user.findUnique({
+    where: { username },
+    select: { id: true },
+  })
+  if (usernameTaken) {
+    username = `${username}${Math.floor(Math.random() * 9000 + 1000)}`
+  }
+
+  const passwordHash = await bcrypt.hash(input.password, 10)
+
+  const user = await prisma.user.create({
+    data: {
+      username,
+      email: emailNorm,
+      firstName,
+      lastName,
+      phone: input.phone?.trim() || null,
+      department: input.department?.trim() || null,
+      role: ROLE_TO_DB[input.role],
+      status: "ACTIVE",
+      passwordHash,
+      mustChangePassword: false,
+      linkedStudentIds: [],
+      schoolId,
+      accountBalance: new Prisma.Decimal(0),
+    },
+  })
+
+  await prisma.auditLog.create({
+    data: {
+      action: "USER_CREATED",
+      entity: "user",
+      entityType: "user",
+      entityId: user.id,
+      performedBy: "self_registration",
+      schoolId,
+      metadata: {
+        role: input.role,
+        source: "public_register",
+      },
+      newValue: {
+        username: user.username,
+        email: user.email,
+        role: input.role,
+      },
+    },
+  })
+
+  return {
+    id: user.id,
+    username: user.username,
+    role: input.role,
+    displayName: `${user.firstName} ${user.lastName}`,
+    email: user.email,
+  }
+}

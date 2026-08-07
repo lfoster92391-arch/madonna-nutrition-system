@@ -54,6 +54,55 @@ export const officeDepositSchema = z.object({
   note: z.string().max(500).optional(),
 })
 
+export const staffDepositSchema = z.object({
+  userId: z.string().min(1),
+  amount: z.number().positive().max(2000),
+  method: z.enum(["cash", "check", "card", "other"]).default("cash"),
+  note: z.string().max(500).optional(),
+})
+
+export const parentRegisterSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(8).max(100),
+  firstName: z.string().min(1).max(80),
+  lastName: z.string().min(1).max(80),
+  phone: z.string().max(40).optional(),
+  /** Prefer array; single id kept for compatibility. */
+  studentExternalId: z.string().min(1).optional(),
+  studentExternalIds: z.array(z.string().min(1)).max(10).optional(),
+  relationship: z.string().min(1).max(60).default("Guardian"),
+}).superRefine((val, ctx) => {
+  const ids = [
+    ...(val.studentExternalIds ?? []),
+    ...(val.studentExternalId ? [val.studentExternalId] : []),
+  ]
+  if (ids.length === 0) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Link at least one student",
+      path: ["studentExternalIds"],
+    })
+  }
+})
+
+export const parentLinkStudentSchema = z.object({
+  studentExternalId: z.string().min(1),
+  relationship: z.string().min(1).max(60).default("Guardian"),
+})
+
+export const parentStudentSearchSchema = z.object({
+  q: z.string().min(2).max(80),
+})
+
+export const workplaceRegisterSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(8).max(100),
+  firstName: z.string().min(1).max(80),
+  lastName: z.string().min(1).max(80),
+  phone: z.string().max(40).optional(),
+  department: z.string().max(80).optional(),
+})
+
 export const queuedTransactionSchema = z.object({
   clientTxId: z.string().uuid(),
   studentId: z.string().min(1),
@@ -132,7 +181,7 @@ export const updateUserSchema = z.object({
 })
 
 export const userPhotoUploadSchema = z.object({
-  photo: z.string().min(1),
+  photo: z.string().min(1).max(2_500_000),
 })
 
 export const userActionSchema = z.object({
@@ -482,6 +531,7 @@ export const vendorImportRequestSchema = z.object({
 })
 
 export const studentPhotoUploadSchema = z.object({
-  photo: z.string().min(1),
+  // data: URLs from phone cameras can be large; compress client-side first.
+  photo: z.string().min(1).max(2_500_000),
 })
 

@@ -14,9 +14,29 @@ export function StudentSettingsSection() {
   return (
     <SettingsPanel
       title="Student Settings"
-      description="Quick access to lunch restrictions, funding defaults, and food preferences."
+      description="Quick access to lunch restrictions, funding defaults, and food preferences. Add siblings anytime."
     >
       <div className="space-y-6">
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-[14px] border border-dashed border-silver/70 bg-white px-4 py-3">
+          <p className="text-sm text-silver-foreground">
+            Have more than one child at Madonna? Connect each student so you can see balances and
+            pay from one dashboard.
+          </p>
+          <Button asChild size="sm">
+            <Link href="/login/parent/add-child">Add another child</Link>
+          </Button>
+        </div>
+
+        {linkedStudents.length === 0 && (
+          <p className="rounded-[14px] border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            No students linked yet.{" "}
+            <Link href="/login/parent/link" className="font-semibold underline">
+              Link a student
+            </Link>{" "}
+            to use the parent portal.
+          </p>
+        )}
+
         {linkedStudents.map((student) => {
           const restrictions = [
             ...student.allergies.map((a) => a.name),
@@ -37,6 +57,7 @@ export function StudentSettingsSection() {
                   width={64}
                   height={64}
                   className="h-16 w-16 shrink-0 rounded-[14px] object-cover"
+                  unoptimized={student.photo.startsWith("data:")}
                 />
                 <div className="min-w-0 flex-1 space-y-4">
                   <div>
@@ -44,7 +65,8 @@ export function StudentSettingsSection() {
                       {student.firstName} {student.lastName}
                     </h3>
                     <p className="text-sm text-silver-foreground">
-                      Grade {student.grade} ┬╖ {student.homeroom}
+                      Grade {student.grade}
+                      {student.homeroom ? ` · ${student.homeroom}` : ""}
                     </p>
                   </div>
 
@@ -68,7 +90,7 @@ export function StudentSettingsSection() {
                         Default funding
                       </dt>
                       <dd className="mt-1 text-primary">
-                        Alert below {formatCurrency(threshold)} ┬╖ Balance{" "}
+                        Alert below {formatCurrency(threshold)} · Balance{" "}
                         {formatCurrency(student.balance)}
                       </dd>
                     </div>
@@ -84,9 +106,16 @@ export function StudentSettingsSection() {
                     </div>
                   </dl>
 
-                  <Button asChild variant="outline" size="sm">
-                    <Link href={profileHref}>Open Profile</Link>
-                  </Button>
+                  <div className="flex flex-wrap gap-2">
+                    <Button asChild variant="outline" size="sm">
+                      <Link href={profileHref}>Open Profile</Link>
+                    </Button>
+                    <Button asChild size="sm">
+                      <Link href={`/parent/payments?tab=funding&student=${student.id}`}>
+                        Add funds
+                      </Link>
+                    </Button>
+                  </div>
                 </div>
               </div>
             </article>

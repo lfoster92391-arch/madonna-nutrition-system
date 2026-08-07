@@ -23,11 +23,13 @@ interface AuthUser {
   displayName: string
   email: string
   mustChangePassword?: boolean
+  needsStudentLink?: boolean
 }
 
 export interface LoginResult {
   success: boolean
   error?: string
+  needsStudentLink?: boolean
 }
 
 interface AuthContextValue {
@@ -35,6 +37,7 @@ interface AuthContextValue {
   isLoading: boolean
   mustChangePassword: boolean
   clearMustChangePassword: () => void
+  clearNeedsStudentLink: () => void
   login: (
     username: string,
     password: string,
@@ -164,6 +167,7 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
           success?: boolean
           error?: string
           mustChangePassword?: boolean
+          needsStudentLink?: boolean
           user?: AuthUser
         }
         try {
@@ -196,13 +200,14 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
           displayName: authUser.displayName,
           email: authUser.email,
           mustChangePassword: data.mustChangePassword,
+          needsStudentLink: Boolean(data.needsStudentLink),
         }
 
         setUser(session)
         setMustChangePassword(Boolean(data.mustChangePassword))
         writeSession(session)
         await recordUserLogin(authUser.id)
-        return { success: true }
+        return { success: true, needsStudentLink: Boolean(data.needsStudentLink) }
       } catch {
         return { success: false, error: "Unable to reach authentication service." }
       }
@@ -227,16 +232,35 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
     })
   }, [])
 
+  const clearNeedsStudentLink = useCallback(() => {
+    setUser((current) => {
+      if (!current) return current
+      const next = { ...current, needsStudentLink: false }
+      writeSession(next)
+      return next
+    })
+  }, [])
+
   const value = useMemo(
     () => ({
       user,
       isLoading: isLoading || dataLoading,
       mustChangePassword,
       clearMustChangePassword,
+      clearNeedsStudentLink,
       login,
       logout,
     }),
-    [user, isLoading, dataLoading, mustChangePassword, clearMustChangePassword, login, logout]
+    [
+      user,
+      isLoading,
+      dataLoading,
+      mustChangePassword,
+      clearMustChangePassword,
+      clearNeedsStudentLink,
+      login,
+      logout,
+    ]
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

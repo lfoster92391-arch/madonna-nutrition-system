@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input, Label } from "@/components/ui/input"
 import type { Student } from "@/lib/types"
+import { compressImageDataUrl } from "@/lib/images/compress-data-url"
 import { formatCurrency } from "@/lib/utils"
 
 function readFileAsDataUrl(file: File): Promise<string> {
@@ -182,6 +183,7 @@ export function AdminStudentManager({
     setPhotoBusy(true)
     setPhotoMessage(null)
     try {
+      const compressed = await compressImageDataUrl(dataUrl)
       if (databaseEnabled) {
         const headers: Record<string, string> = {
           "Content-Type": "application/json",
@@ -191,24 +193,38 @@ export function AdminStudentManager({
         const res = await fetch(`/api/students/${encodeURIComponent(targetId)}/photo`, {
           method: "POST",
           headers,
-          body: JSON.stringify({ photo: dataUrl }),
+          body: JSON.stringify({ photo: compressed }),
         })
         if (!res.ok) {
-          await updateStudent(targetId, { photo: dataUrl })
-        } else {
-          void queryClient.invalidateQueries({ queryKey: ["students"] })
+          const body = (await res.json().catch(() => ({}))) as { error?: string }
+          // Fallback PATCH only when photo endpoint is unavailable; still require success.
+          try {
+            await updateStudent(targetId, { photo: compressed })
+          } catch (fallbackError) {
+            throw new Error(
+              body.error ??
+                (fallbackError instanceof Error
+                  ? fallbackError.message
+                  : "Could not save the photo.")
+            )
+          }
         }
+        void queryClient.invalidateQueries({ queryKey: ["students"] })
       } else {
-        await updateStudent(targetId, { photo: dataUrl })
+        await updateStudent(targetId, { photo: compressed })
       }
       void queryClient.invalidateQueries({ queryKey: ["badges"] })
       setPendingPhoto(null)
       setPhotoMessage("Photo saved for badges")
       if (editing?.id === targetId) {
-        setEditing((prev) => (prev ? { ...prev, photo: dataUrl } : prev))
+        setEditing((prev) => (prev ? { ...prev, photo: compressed } : prev))
       }
-    } catch {
-      setPhotoMessage("Could not save the photo. Try again with a smaller image.")
+    } catch (error) {
+      setPhotoMessage(
+        error instanceof Error
+          ? error.message
+          : "Could not save the photo. Try again with a smaller image."
+      )
     } finally {
       setPhotoBusy(false)
     }
@@ -217,9 +233,14 @@ export function AdminStudentManager({
   async function handlePhotoUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file || !editing) return
-    const dataUrl = await readFileAsDataUrl(file)
-    setPendingPhoto(dataUrl)
-    setPhotoMessage("Preview ready. Tap Save to put this photo on badges and checkout.")
+    try {
+      const dataUrl = await readFileAsDataUrl(file)
+      const compressed = await compressImageDataUrl(dataUrl)
+      setPendingPhoto(compressed)
+      setPhotoMessage("Preview ready. Tap Save to put this photo on badges and checkout.")
+    } catch {
+      setPhotoMessage("Could not read that image. Try another file.")
+    }
     e.target.value = ""
   }
 

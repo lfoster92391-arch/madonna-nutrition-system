@@ -61,3 +61,5 @@ next-env.d.ts
 /tsc*.log
 /tmp*.txt
 /verify-*.log
+.tools/
+

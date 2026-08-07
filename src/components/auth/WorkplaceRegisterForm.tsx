@@ -1,0 +1,202 @@
+"use client"
+
+import { useState } from "react"
+import Link from "next/link"
+import { useRouter } from "next/navigation"
+import Image from "next/image"
+import { useAuth, type PortalRole } from "@/components/providers/AuthProvider"
+import { BRAND } from "@/config/brand"
+import { Button } from "@/components/ui/button"
+import { Input, Label } from "@/components/ui/input"
+
+const NAVY = "#001E62"
+
+type WorkplaceRole = Extract<Exclude<PortalRole, null>, "staff" | "teacher">
+
+const COPY: Record<
+  WorkplaceRole,
+  {
+    title: string
+    subtitle: string
+    emailHint: string
+    apiPath: string
+    loginPath: string
+    redirectTo: string
+  }
+> = {
+  staff: {
+    title: "Create staff account",
+    subtitle: "For Madonna staff meal accounts and announcements.",
+    emailHint: "Use your work email if you have one.",
+    apiPath: "/api/auth/staff/register",
+    loginPath: "/login/staff",
+    redirectTo: "/staff",
+  },
+  teacher: {
+    title: "Create teacher account",
+    subtitle: "For lunch signup and your teacher meal account.",
+    emailHint: "Teachers must use a school email (@weirtonmadonna.org).",
+    apiPath: "/api/auth/teacher/register",
+    loginPath: "/login/teacher",
+    redirectTo: "/teacher",
+  },
+}
+
+export function WorkplaceRegisterForm({ role }: { role: WorkplaceRole }) {
+  const router = useRouter()
+  const { login } = useAuth()
+  const copy = COPY[role]
+  const [firstName, setFirstName] = useState("")
+  const [lastName, setLastName] = useState("")
+  const [email, setEmail] = useState("")
+  const [phone, setPhone] = useState("")
+  const [department, setDepartment] = useState("")
+  const [password, setPassword] = useState("")
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState("")
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    setError("")
+    if (!firstName.trim() || !lastName.trim() || !email.trim() || password.length < 8) {
+      setError("Fill in your name, email, and a password of at least 8 characters.")
+      return
+    }
+
+    setBusy(true)
+    try {
+      const res = await fetch(copy.apiPath, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          firstName: firstName.trim(),
+          lastName: lastName.trim(),
+          email: email.trim(),
+          phone: phone.trim() || undefined,
+          department: department.trim() || undefined,
+          password,
+        }),
+      })
+      const data = (await res.json().catch(() => ({}))) as {
+        success?: boolean
+        error?: string
+      }
+      if (!res.ok || !data.success) {
+        setError(data.error ?? "Could not create account.")
+        return
+      }
+
+      const signedIn = await login(email.trim(), password, role)
+      if (!signedIn.success) {
+        setError(
+          signedIn.error ??
+            `Account created. Sign in on the ${role} login page with your new password.`
+        )
+        return
+      }
+      router.push(copy.redirectTo)
+    } catch {
+      setError("Could not create account. Try again.")
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="w-full max-w-lg rounded-[20px] border border-[#C8CDD7]/60 bg-white p-8 shadow-lg shadow-[#001E62]/5">
+      <div className="mb-6 text-center">
+        <Image
+          src="/brand-logo.png"
+          alt={BRAND.productName}
+          width={160}
+          height={42}
+          priority
+          className="mx-auto mb-4 h-10 w-auto object-contain"
+        />
+        <h1 className="text-2xl font-bold" style={{ color: NAVY }}>
+          {copy.title}
+        </h1>
+        <p className="mt-1 text-sm text-[#64748B]">{copy.subtitle}</p>
+      </div>
+
+      <form onSubmit={(e) => void handleSubmit(e)} className="space-y-4">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <Label htmlFor={`${role}-first`}>First name</Label>
+            <Input
+              id={`${role}-first`}
+              value={firstName}
+              onChange={(e) => setFirstName(e.target.value)}
+              className="mt-2 h-12"
+              required
+            />
+          </div>
+          <div>
+            <Label htmlFor={`${role}-last`}>Last name</Label>
+            <Input
+              id={`${role}-last`}
+              value={lastName}
+              onChange={(e) => setLastName(e.target.value)}
+              className="mt-2 h-12"
+              required
+            />
+          </div>
+        </div>
+        <div>
+          <Label htmlFor={`${role}-email`}>Email</Label>
+          <Input
+            id={`${role}-email`}
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="mt-2 h-12"
+            required
+          />
+          <p className="mt-1 text-xs text-[#64748B]">{copy.emailHint}</p>
+        </div>
+        <div>
+          <Label htmlFor={`${role}-phone`}>Phone (optional)</Label>
+          <Input
+            id={`${role}-phone`}
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            className="mt-2 h-12"
+          />
+        </div>
+        <div>
+          <Label htmlFor={`${role}-dept`}>Department (optional)</Label>
+          <Input
+            id={`${role}-dept`}
+            value={department}
+            onChange={(e) => setDepartment(e.target.value)}
+            className="mt-2 h-12"
+            placeholder={role === "teacher" ? "e.g. Grade 5" : "e.g. Facilities"}
+          />
+        </div>
+        <div>
+          <Label htmlFor={`${role}-password`}>Password</Label>
+          <Input
+            id={`${role}-password`}
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="mt-2 h-12"
+            minLength={8}
+            required
+          />
+        </div>
+        {error && <p className="text-sm font-medium text-danger">{error}</p>}
+        <Button type="submit" size="lg" className="h-14 w-full text-base" disabled={busy}>
+          {busy ? "Creating…" : "Create account"}
+        </Button>
+      </form>
+
+      <p className="mt-6 text-center text-sm text-[#64748B]">
+        Already have an account?{" "}
+        <Link href={copy.loginPath} className="font-semibold hover:underline" style={{ color: NAVY }}>
+          Sign in
+        </Link>
+      </p>
+    </div>
+  )
+}

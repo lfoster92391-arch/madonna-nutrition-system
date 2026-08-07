@@ -1,0 +1,19 @@
+import Link from "next/link"
+import { ParentRegisterForm } from "@/components/auth/ParentRegisterForm"
+
+const NAVY = "#001E62"
+
+export default function ParentRegisterPage() {
+  return (
+    <div className="flex min-h-screen flex-col items-center justify-center bg-white px-6 py-12">
+      <Link
+        href="/login/parent"
+        className="mb-8 text-sm font-medium hover:underline"
+        style={{ color: NAVY }}
+      >
+        &larr; Back to parent sign in
+      </Link>
+      <ParentRegisterForm />
+    </div>
+  )
+}

@@ -1,0 +1,147 @@
+import { NextResponse } from "next/server"
+import bcrypt from "bcryptjs"
+import { Prisma } from "@prisma/client"
+import { parentRegisterSchema } from "@/lib/api/validation"
+import { badRequest, serverError, withDatabase } from "@/lib/api/response"
+import { linkParentUserToStudent } from "@/lib/auth/parent-links"
+import { resolveSchoolId } from "@/lib/db/school"
+import { normalizeUsername } from "@/lib/users"
+import { prisma } from "@/lib/prisma"
+
+export const runtime = "nodejs"
+
+function usernameFromEmail(email: string): string {
+  const local = email.split("@")[0] ?? "parent"
+  const cleaned = normalizeUsername(local).replace(/[^a-z0-9._-]/gi, "") || "parent"
+  return cleaned.slice(0, 40)
+}
+
+export async function POST(request: Request) {
+  const result = await withDatabase(async () => {
+    try {
+      const body = await request.json()
+      const parsed = parentRegisterSchema.safeParse(body)
+      if (!parsed.success) {
+        return badRequest("Invalid registration", parsed.error.flatten())
+      }
+
+      const {
+        email,
+        password,
+        firstName,
+        lastName,
+        phone,
+        studentExternalId,
+        studentExternalIds,
+        relationship,
+      } = parsed.data
+
+      const studentIds = [
+        ...new Set([
+          ...(studentExternalIds ?? []),
+          ...(studentExternalId ? [studentExternalId] : []),
+        ]),
+      ]
+
+      if (studentIds.length === 0) {
+        return badRequest(
+          "Link at least one student. Search and select your child before creating an account."
+        )
+      }
+
+      const schoolId = await resolveSchoolId()
+      const emailNorm = email.trim().toLowerCase()
+
+      const students = await prisma.student.findMany({
+        where: {
+          schoolId,
+          externalId: { in: studentIds },
+          disabled: false,
+        },
+        select: { id: true, externalId: true, firstName: true, lastName: true },
+      })
+
+      if (students.length !== studentIds.length) {
+        return badRequest(
+          "One or more students were not found. Search again and select each child before creating an account."
+        )
+      }
+
+      const existingUser = await prisma.user.findFirst({
+        where: {
+          OR: [{ email: emailNorm }, { username: normalizeUsername(emailNorm) }],
+        },
+        select: { id: true, role: true },
+      })
+
+      if (existingUser) {
+        return badRequest(
+          "An account with this email already exists. Sign in instead, then link your student if needed."
+        )
+      }
+
+      let username = usernameFromEmail(emailNorm)
+      const usernameTaken = await prisma.user.findUnique({
+        where: { username },
+        select: { id: true },
+      })
+      if (usernameTaken) {
+        username = `${username}${Math.floor(Math.random() * 9000 + 1000)}`
+      }
+
+      const passwordHash = await bcrypt.hash(password, 10)
+
+      const user = await prisma.user.create({
+        data: {
+          username,
+          email: emailNorm,
+          firstName: firstName.trim(),
+          lastName: lastName.trim(),
+          phone: phone?.trim() || null,
+          role: "PARENT",
+          status: "ACTIVE",
+          passwordHash,
+          mustChangePassword: false,
+          linkedStudentIds: [],
+          schoolId,
+          accountBalance: new Prisma.Decimal(0),
+        },
+      })
+
+      const linkedStudents: Array<{ id: string; name: string }> = []
+      try {
+        for (const student of students) {
+          await linkParentUserToStudent({
+            parentUserId: user.id,
+            studentExternalId: student.externalId,
+            relationship,
+          })
+          linkedStudents.push({
+            id: student.externalId,
+            name: `${student.firstName} ${student.lastName}`,
+          })
+        }
+      } catch (linkError) {
+        await prisma.user.delete({ where: { id: user.id } }).catch(() => undefined)
+        throw linkError
+      }
+
+      return NextResponse.json({
+        success: true,
+        user: {
+          id: user.id,
+          username: user.username,
+          role: "parent" as const,
+          displayName: `${user.firstName} ${user.lastName}`,
+          email: user.email,
+        },
+        linkedStudents,
+        linkedStudent: linkedStudents[0],
+      })
+    } catch (error) {
+      console.error("POST /api/auth/parent/register", error)
+      return serverError()
+    }
+  })
+  return result instanceof NextResponse ? result : result
+}
