@@ -64,20 +64,33 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: true, status: "cancelled" })
     }
 
+    const menuEvent = await prisma.calendarEvent.findFirst({
+      where: {
+        schoolId,
+        date: today,
+        category: "menu_day",
+      },
+      orderBy: { createdAt: "desc" },
+    })
+
+    const resolvedMealName =
+      mealName ?? menuEvent?.title ?? TEACHER_LUNCH_DEFAULTS.mealName
+    const resolvedMealPrice = mealPrice ?? TEACHER_LUNCH_DEFAULTS.mealPrice
+
     const reservation = await prisma.teacherLunchReservation.upsert({
       where: { userId_date: { userId: teacher.id, date: today } },
       update: {
         paymentMethod: toDbPaymentMethod(paymentMethod),
         status: "RESERVED",
-        mealName: mealName ?? TEACHER_LUNCH_DEFAULTS.mealName,
-        mealPrice: mealPrice ?? TEACHER_LUNCH_DEFAULTS.mealPrice,
+        mealName: resolvedMealName,
+        mealPrice: resolvedMealPrice,
       },
       create: {
         userId: teacher.id,
         schoolId,
         date: today,
-        mealName: mealName ?? TEACHER_LUNCH_DEFAULTS.mealName,
-        mealPrice: mealPrice ?? TEACHER_LUNCH_DEFAULTS.mealPrice,
+        mealName: resolvedMealName,
+        mealPrice: resolvedMealPrice,
         mealPhotoUrl: TEACHER_LUNCH_DEFAULTS.mealPhotoUrl,
         paymentMethod: toDbPaymentMethod(paymentMethod),
         status: "RESERVED",

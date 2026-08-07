@@ -4,6 +4,7 @@ import { useMemo, useState } from "react"
 import { ChevronLeft, ChevronRight } from "lucide-react"
 import { CATEGORY_ICONS, CategoryLegend } from "@/components/calendar/CalendarMonthGrid"
 import { ResponsiveCalendar } from "@/components/calendar/ResponsiveCalendar"
+import { OrderLunchAction } from "@/components/parent/OrderLunchAction"
 import { useDemo } from "@/components/providers/DemoProvider"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
@@ -188,6 +189,13 @@ export function ParentCalendarView() {
                           {event.description}
                         </p>
                       )}
+                      {event.category === "menu_day" ? (
+                        <OrderLunchAction
+                          date={event.date}
+                          menuTitle={event.title}
+                          enabled
+                        />
+                      ) : null}
                     </div>
                   )
                 })}

@@ -2,6 +2,7 @@
 
 import { UtensilsCrossed } from "lucide-react"
 import { useDemo } from "@/components/providers/DemoProvider"
+import { OrderLunchAction } from "@/components/parent/OrderLunchAction"
 import { PARENT_CARD, PARENT_NAVY } from "@/components/parent/parent-dashboard-styles"
 import { getMealCoverPhoto } from "@/lib/meal-templates"
 import { isPublicCalendarEvent, todayDateKey } from "@/lib/calendar-publish"
@@ -29,7 +30,7 @@ export function TodaysMenuSection() {
   return (
     <section>
       <h2 className="mb-4 text-lg font-bold md:mb-6 md:text-xl" style={{ color: PARENT_NAVY }}>
-        Today&apos;s Menu
+        Today&apos;s Lunch Menu
       </h2>
       <div className={`${PARENT_CARD} p-5 md:p-6`}>
         {!primaryEvent ? (
@@ -41,12 +42,22 @@ export function TodaysMenuSection() {
                 Menu not published yet
               </p>
               <p className="mt-4 text-sm text-[#64748B]">
-                Today&apos;s lunch menu will appear here once published from Admin Calendar.
+                Today&apos;s lunch menu will appear here once published from Admin Calendar. You can
+                still order for another school day from the calendar.
+              </p>
+              <p className="mt-3 text-sm">
+                <a
+                  href="/parent/calendar"
+                  className="font-semibold underline-offset-2 hover:underline"
+                  style={{ color: PARENT_NAVY }}
+                >
+                  View lunch calendar
+                </a>
               </p>
             </div>
           </div>
         ) : (
-          <div className="flex gap-4">
+          <div className="flex flex-col gap-4 sm:flex-row">
             {cover ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
@@ -63,7 +74,9 @@ export function TodaysMenuSection() {
                 {primaryEvent.title}
               </p>
               {primaryEvent.description && (
-                <p className="mt-2 text-sm leading-relaxed text-[#64748B]">{primaryEvent.description}</p>
+                <p className="mt-2 text-sm leading-relaxed text-[#64748B]">
+                  {primaryEvent.description}
+                </p>
               )}
               {linkedTemplate && linkedTemplate.items.length > 0 && (
                 <ul className="mt-3 space-y-1 text-sm text-[#64748B]">
@@ -77,6 +90,7 @@ export function TodaysMenuSection() {
                   Allergens: {linkedTemplate.allergens.join(", ")}
                 </p>
               )}
+              <OrderLunchAction date={today} menuTitle={primaryEvent.title} enabled />
             </div>
           </div>
         )}
