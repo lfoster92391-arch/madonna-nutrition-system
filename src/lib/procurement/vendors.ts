@@ -3,7 +3,7 @@ import { resolveSchoolId } from "@/lib/db/school"
 import type { vendorImportRowSchema } from "@/lib/api/validation"
 import type { z } from "zod"
 
-export type VendorImportRow = z.infer<typeof vendorImportRowSchema>
+export type VendorImportRow = z.infer<typeof vendorImportRowSchema> & { _rowNumber?: number }
 
 export interface VendorRecord {
   id: string
@@ -69,7 +69,7 @@ export async function importVendorRows(input: {
 
   for (let i = 0; i < input.rows.length; i++) {
     const row = input.rows[i]!
-    const rowNumber = i + 1
+    const rowNumber = row._rowNumber ?? i + 1
     const name = row.name.trim()
 
     try {

@@ -347,13 +347,27 @@ export const api = {
       method: "POST",
       body: JSON.stringify(input),
     }),
-  adminImportBadges: (input: { adminUserId: string; rows: Record<string, unknown>[] }) =>
+  adminImportBadges: (input: {
+    adminUserId: string
+    rows: Record<string, unknown>[]
+    createIncompleteStubs?: boolean
+  }) =>
     fetchJson<{
       matched: number
       updated: number
       created: number
       skipped: number
-      errors: Array<{ row: number; message: string }>
+      incomplete: Array<{
+        row: number
+        mdId: string
+        firstName: string
+        lastName: string
+        grade: string
+        photoUrl?: string
+        barcode?: string
+        missing: string[]
+      }>
+      errors: Array<{ row: number; message: string; mdId?: string; incomplete?: boolean }>
     }>("/api/imports/badges", {
       method: "POST",
       body: JSON.stringify(input),

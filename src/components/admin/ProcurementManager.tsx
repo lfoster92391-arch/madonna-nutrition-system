@@ -7,6 +7,7 @@ import { Building2, Pencil, Plus, Trash2, Truck, Upload } from "lucide-react"
 import { ReceivingStudio } from "@/components/operations/ReceivingStudio"
 import { useAuth } from "@/components/providers/AuthProvider"
 import { ImportExportMenu } from "@/components/admin/import-export/ImportExportMenu"
+import { assertCsvFile, normalizeCsvRecord, pickCsvField } from "@/lib/import-export/coerce"
 import { AdminModulePage } from "@/components/admin/AdminModulePage"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -121,20 +122,28 @@ export function ProcurementManager() {
 
   const handleImport = (file: File) => {
     if (!user?.id) return
-    Papa.parse<Record<string, string>>(file, {
+    const csvError = assertCsvFile(file)
+    if (csvError) {
+      setImportMessage(csvError)
+      return
+    }
+    Papa.parse<Record<string, unknown>>(file, {
       header: true,
       skipEmptyLines: true,
       complete: async (results) => {
         try {
           const summary = await api.adminImportVendors({
             adminUserId: user.id,
-            rows: results.data.map((row) => ({
-              name: row.name ?? row["Vendor Name"] ?? "",
-              contactName: row.contactName ?? row["Contact Name"] ?? "",
-              email: row.email ?? row.Email ?? "",
-              phone: row.phone ?? row.Phone ?? "",
-              category: row.category ?? row.Category ?? "",
-            })),
+            rows: results.data.map((raw) => {
+              const row = normalizeCsvRecord(raw)
+              return {
+                name: pickCsvField(row, "name", "Vendor Name"),
+                contactName: pickCsvField(row, "contactName", "Contact Name") || undefined,
+                email: pickCsvField(row, "email", "Email") || "",
+                phone: pickCsvField(row, "phone", "Phone") || undefined,
+                category: pickCsvField(row, "category", "Category") || undefined,
+              }
+            }),
           })
           setImportMessage(
             `Created ${summary.created}, updated ${summary.updated}, ${summary.errors.length} errors.`
