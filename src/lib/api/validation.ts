@@ -8,6 +8,7 @@ import {
   importOptionalEmail,
   importOptionalString,
   importRequiredString,
+  importString,
 } from "@/lib/import-export/coerce"
 
 export const allergySchema = z.object({
@@ -460,11 +461,12 @@ export const badgeAssignSchema = z.object({
   photo: z.string().optional(),
 })
 
+/** Loose row shape — incomplete name/grade handled per-row via createIncompleteStubs. */
 export const badgeImportRowSchema = z.object({
   mdId: importRequiredString,
-  firstName: importRequiredString,
-  lastName: importRequiredString,
-  grade: importRequiredString,
+  firstName: importString,
+  lastName: importString,
+  grade: importString,
   photoUrl: importOptionalString,
   badgeStatus: optionalBadgeStatusSchema,
   barcode: importOptionalString,
@@ -472,7 +474,9 @@ export const badgeImportRowSchema = z.object({
 
 export const badgeImportRequestSchema = z.object({
   adminUserId: z.string().min(1),
-  rows: z.array(badgeImportRowSchema).min(1).max(1000),
+  /** Raw rows — validated per-row so incomplete stubs can still import. */
+  rows: z.array(z.unknown()).min(1).max(1000),
+  createIncompleteStubs: z.boolean().optional(),
 })
 
 /**
@@ -528,6 +532,23 @@ export const vendorImportRowSchema = vendorSchema.extend({
 export const vendorImportRequestSchema = z.object({
   adminUserId: z.string().min(1),
   rows: z.array(vendorImportRowSchema).min(1).max(500),
+})
+
+export const parentImportRowSchema = z.object({
+  parentEmail: z.preprocess(
+    (val) =>
+      typeof val === "string" ? val.trim().toLowerCase() : String(val ?? "").trim().toLowerCase(),
+    z.string().email()
+  ),
+  parentName: importRequiredString,
+  parentPhone: importOptionalString,
+  mdId: importRequiredString,
+  relationship: importOptionalString,
+})
+
+export const parentImportRequestSchema = z.object({
+  adminUserId: z.string().min(1),
+  rows: z.array(z.unknown()).min(1).max(500),
 })
 
 export const studentPhotoUploadSchema = z.object({
