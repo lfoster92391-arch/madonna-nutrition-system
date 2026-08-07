@@ -47,7 +47,9 @@ export function AdminStudentManager({
   const [paymentStudentId, setPaymentStudentId] = useState<string | null>(null)
   const [showOfficePaymentPanel, setShowOfficePaymentPanel] = useState(false)
   const [photoBusy, setPhotoBusy] = useState(false)
+  const [saving, setSaving] = useState(false)
   const [photoMessage, setPhotoMessage] = useState<string | null>(null)
+  const [formMessage, setFormMessage] = useState<string | null>(null)
   const [pendingPhoto, setPendingPhoto] = useState<string | null>(null)
   const [form, setForm] = useState({
     id: "",
@@ -61,6 +63,30 @@ export function AdminStudentManager({
   const cameraInputRef = useRef<HTMLInputElement>(null)
   const importWizardRef = useRef<HTMLDivElement>(null)
   const editFormRef = useRef<HTMLDivElement>(null)
+
+  /** Required fields only — empty optional fields (homeroom, balance) never block Save. */
+  const formValid = Boolean(
+    form.firstName.trim() &&
+      form.lastName.trim() &&
+      form.grade.trim() &&
+      (editing ? true : form.id.trim())
+  )
+
+  const formDirty = editing
+    ? pendingPhoto !== null ||
+      form.firstName !== editing.firstName ||
+      form.lastName !== editing.lastName ||
+      form.grade !== editing.grade ||
+      form.homeroom !== (editing.homeroom ?? "") ||
+      form.balance !== String(editing.balance)
+    : Boolean(
+        form.id.trim() ||
+          form.firstName.trim() ||
+          form.lastName.trim() ||
+          form.grade.trim() ||
+          form.homeroom.trim() ||
+          (form.balance.trim() && form.balance.trim() !== "0")
+      )
 
   const filtered = useMemo(() => {
     const activeStudents = students.filter((s) => !s.disabled && !isDemoStudentExternalId(s.id))
@@ -106,50 +132,97 @@ export function AdminStudentManager({
   }, [students])
 
   async function handleSave() {
-    if (editing) {
-      await updateStudent(editing.id, {
-        firstName: form.firstName,
-        lastName: form.lastName,
-        grade: form.grade,
-        homeroom: form.homeroom,
-        balance: parseFloat(form.balance),
-      })
-      setEditing(null)
-      setJustAddedId(null)
-    } else {
-      const newId = form.id.trim()
-      await addStudent({
-        id: newId,
-        firstName: form.firstName,
-        lastName: form.lastName,
-        grade: form.grade,
-        homeroom: form.homeroom,
-        balance: parseFloat(form.balance),
-        photo: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=400&auto=format&fit=crop",
-        allergies: [],
-        dietaryRestrictions: [],
-        parentContacts: [],
-      })
-      setShowAdd(false)
-      setJustAddedId(newId)
-      setEditing({
-        id: newId,
-        firstName: form.firstName,
-        lastName: form.lastName,
-        grade: form.grade,
-        homeroom: form.homeroom,
-        balance: parseFloat(form.balance) || 0,
-        photo: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=400&auto=format&fit=crop",
-        allergies: [],
-        dietaryRestrictions: [],
-        parentContacts: [],
-      })
-      setPhotoMessage("Student saved. Now take or upload a photo for badges (optional but helpful).")
-      requestAnimationFrame(() => {
-        editFormRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
-      })
+    setFormMessage(null)
+    if (!formValid) {
+      setFormMessage(
+        editing
+          ? "Enter first name, last name, and grade before saving."
+          : "Enter student ID, first name, last name, and grade before saving."
+      )
+      return
     }
-    setForm({ id: "", firstName: "", lastName: "", grade: "", homeroom: "", balance: "0" })
+    if (editing && !formDirty) {
+      setFormMessage("No changes to save.")
+      return
+    }
+
+    setSaving(true)
+    try {
+      if (editing) {
+        const targetId = editing.id
+        const fieldsChanged =
+          form.firstName !== editing.firstName ||
+          form.lastName !== editing.lastName ||
+          form.grade !== editing.grade ||
+          form.homeroom !== (editing.homeroom ?? "") ||
+          form.balance !== String(editing.balance)
+
+        if (fieldsChanged) {
+          await updateStudent(targetId, {
+            firstName: form.firstName.trim(),
+            lastName: form.lastName.trim(),
+            grade: form.grade.trim(),
+            homeroom: form.homeroom.trim(),
+            balance: parseFloat(form.balance) || 0,
+          })
+        }
+
+        // Photo-only edits count as dirty and save through the same button.
+        if (pendingPhoto) {
+          await savePhotoForStudent(targetId, pendingPhoto)
+        }
+
+        setEditing(null)
+        setJustAddedId(null)
+        setForm({ id: "", firstName: "", lastName: "", grade: "", homeroom: "", balance: "0" })
+      } else {
+        const newId = form.id.trim()
+        await addStudent({
+          id: newId,
+          firstName: form.firstName.trim(),
+          lastName: form.lastName.trim(),
+          grade: form.grade.trim(),
+          homeroom: form.homeroom.trim(),
+          balance: parseFloat(form.balance) || 0,
+          photo: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=400&auto=format&fit=crop",
+          allergies: [],
+          dietaryRestrictions: [],
+          parentContacts: [],
+        })
+        setShowAdd(false)
+        setJustAddedId(newId)
+        setEditing({
+          id: newId,
+          firstName: form.firstName.trim(),
+          lastName: form.lastName.trim(),
+          grade: form.grade.trim(),
+          homeroom: form.homeroom.trim(),
+          balance: parseFloat(form.balance) || 0,
+          photo: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=400&auto=format&fit=crop",
+          allergies: [],
+          dietaryRestrictions: [],
+          parentContacts: [],
+        })
+        setForm({
+          id: newId,
+          firstName: form.firstName.trim(),
+          lastName: form.lastName.trim(),
+          grade: form.grade.trim(),
+          homeroom: form.homeroom.trim(),
+          balance: String(parseFloat(form.balance) || 0),
+        })
+        setPhotoMessage("Student saved. Now take or upload a photo for badges (optional but helpful).")
+        requestAnimationFrame(() => {
+          editFormRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
+        })
+      }
+    } catch (error) {
+      setFormMessage(
+        error instanceof Error ? error.message : "Could not save student. Try again."
+      )
+    } finally {
+      setSaving(false)
+    }
   }
 
   function startEdit(student: Student) {
@@ -157,6 +230,7 @@ export function AdminStudentManager({
     setEditing(student)
     setJustAddedId(null)
     setPhotoMessage(null)
+    setFormMessage(null)
     setPendingPhoto(null)
     setForm({
       id: student.id,
@@ -176,6 +250,7 @@ export function AdminStudentManager({
     setEditing(null)
     setJustAddedId(null)
     setPhotoMessage(null)
+    setFormMessage(null)
     setPendingPhoto(null)
   }
 
@@ -220,11 +295,12 @@ export function AdminStudentManager({
         setEditing((prev) => (prev ? { ...prev, photo: compressed } : prev))
       }
     } catch (error) {
-      setPhotoMessage(
+      const message =
         error instanceof Error
           ? error.message
           : "Could not save the photo. Try again with a smaller image."
-      )
+      setPhotoMessage(message)
+      throw error instanceof Error ? error : new Error(message)
     } finally {
       setPhotoBusy(false)
     }
@@ -237,7 +313,8 @@ export function AdminStudentManager({
       const dataUrl = await readFileAsDataUrl(file)
       const compressed = await compressImageDataUrl(dataUrl)
       setPendingPhoto(compressed)
-      setPhotoMessage("Preview ready. Tap Save to put this photo on badges and checkout.")
+      setFormMessage(null)
+      setPhotoMessage("Preview ready. Tap Save photo or Save changes to put this on badges and checkout.")
     } catch {
       setPhotoMessage("Could not read that image. Try another file.")
     }
@@ -251,8 +328,16 @@ export function AdminStudentManager({
   }
 
   async function handleSavePhoto() {
-    if (!editing || !pendingPhoto) return
-    await savePhotoForStudent(editing.id, pendingPhoto)
+    if (!editing) return
+    if (!pendingPhoto) {
+      setPhotoMessage("Take or upload a photo first, then tap Save photo.")
+      return
+    }
+    try {
+      await savePhotoForStudent(editing.id, pendingPhoto)
+    } catch {
+      // Message already set in savePhotoForStudent
+    }
   }
 
   const showPageHeader = !embedded && !importsTab
@@ -334,7 +419,9 @@ export function AdminStudentManager({
                   setEditing(null)
                   setJustAddedId(null)
                   setPhotoMessage(null)
+                  setFormMessage(null)
                   setPendingPhoto(null)
+                  setForm({ id: "", firstName: "", lastName: "", grade: "", homeroom: "", balance: "0" })
                 }}
               >
                 <Plus className="h-4 w-4" />
@@ -380,7 +467,9 @@ export function AdminStudentManager({
                   setEditing(null)
                   setJustAddedId(null)
                   setPhotoMessage(null)
+                  setFormMessage(null)
                   setPendingPhoto(null)
+                  setForm({ id: "", firstName: "", lastName: "", grade: "", homeroom: "", balance: "0" })
                 }}
               >
                 <Plus className="h-4 w-4" />
@@ -653,28 +742,64 @@ export function AdminStudentManager({
                   {!editing && (
                     <div>
                       <Label>Student ID</Label>
-                      <Input value={form.id} onChange={(e) => setForm({ ...form, id: e.target.value })} />
+                      <Input
+                        value={form.id}
+                        onChange={(e) => {
+                          setFormMessage(null)
+                          setForm({ ...form, id: e.target.value })
+                        }}
+                      />
                     </div>
                   )}
                   <div>
                     <Label>First Name</Label>
-                    <Input value={form.firstName} onChange={(e) => setForm({ ...form, firstName: e.target.value })} />
+                    <Input
+                      value={form.firstName}
+                      onChange={(e) => {
+                        setFormMessage(null)
+                        setForm({ ...form, firstName: e.target.value })
+                      }}
+                    />
                   </div>
                   <div>
                     <Label>Last Name</Label>
-                    <Input value={form.lastName} onChange={(e) => setForm({ ...form, lastName: e.target.value })} />
+                    <Input
+                      value={form.lastName}
+                      onChange={(e) => {
+                        setFormMessage(null)
+                        setForm({ ...form, lastName: e.target.value })
+                      }}
+                    />
                   </div>
                   <div>
                     <Label>Grade</Label>
-                    <Input value={form.grade} onChange={(e) => setForm({ ...form, grade: e.target.value })} />
+                    <Input
+                      value={form.grade}
+                      onChange={(e) => {
+                        setFormMessage(null)
+                        setForm({ ...form, grade: e.target.value })
+                      }}
+                    />
                   </div>
                   <div>
                     <Label>Homeroom</Label>
-                    <Input value={form.homeroom} onChange={(e) => setForm({ ...form, homeroom: e.target.value })} />
+                    <Input
+                      value={form.homeroom}
+                      onChange={(e) => {
+                        setFormMessage(null)
+                        setForm({ ...form, homeroom: e.target.value })
+                      }}
+                    />
                   </div>
                   <div>
                     <Label>Balance</Label>
-                    <Input value={form.balance} onChange={(e) => setForm({ ...form, balance: e.target.value })} />
+                    <Input
+                      value={form.balance}
+                      onChange={(e) => {
+                        setFormMessage(null)
+                        setForm({ ...form, balance: e.target.value })
+                      }}
+                    />
                     <p className="mt-1 text-xs text-silver-foreground">
                       Prefer &quot;Add money to account&quot; when cash or a check is received in the office.
                     </p>
@@ -686,8 +811,9 @@ export function AdminStudentManager({
                     <div>
                       <h3 className="text-lg font-semibold text-primary">Badge photo</h3>
                       <p className="text-sm text-silver-foreground">
-                        Take a photo with your phone camera or upload a picture, then tap Save. This
-                        same photo shows on badges and when the badge is scanned at checkout.
+                        Take a photo with your phone camera or upload a picture, then tap Save photo
+                        (or Save changes below). This same photo shows on badges and when the badge is
+                        scanned at checkout.
                       </p>
                     </div>
                     <div className="flex flex-wrap items-start gap-5">
@@ -715,7 +841,7 @@ export function AdminStudentManager({
                           type="button"
                           size="lg"
                           className="min-h-14 text-base"
-                          disabled={photoBusy}
+                          disabled={photoBusy || saving}
                           onClick={() => triggerPhotoUpload("camera")}
                         >
                           <Camera className="h-5 w-5" />
@@ -726,7 +852,7 @@ export function AdminStudentManager({
                           size="lg"
                           variant="outline"
                           className="min-h-14 text-base"
-                          disabled={photoBusy}
+                          disabled={photoBusy || saving}
                           onClick={() => triggerPhotoUpload("file")}
                         >
                           <Upload className="h-5 w-5" />
@@ -736,10 +862,10 @@ export function AdminStudentManager({
                           type="button"
                           size="lg"
                           className="min-h-14 text-base"
-                          disabled={photoBusy || !pendingPhoto}
+                          disabled={photoBusy || saving}
                           onClick={() => void handleSavePhoto()}
                         >
-                          {photoBusy ? "Saving…" : "Save"}
+                          {photoBusy ? "Saving…" : "Save photo"}
                         </Button>
                       </div>
                     </div>
@@ -773,14 +899,29 @@ export function AdminStudentManager({
                   </div>
                 )}
 
+                {formMessage && (
+                  <p
+                    className="mx-3 mt-4 rounded-xl bg-silver/20 px-4 py-3 text-sm font-medium text-primary sm:mx-6"
+                    role="status"
+                  >
+                    {formMessage}
+                  </p>
+                )}
+
                 <div className="mt-4 flex flex-wrap gap-3 px-3 pb-6 sm:px-6">
-                  <Button size="lg" className="min-h-12 flex-1 sm:flex-none" onClick={() => void handleSave()}>
-                    {editing ? "Save changes" : "Save student"}
+                  <Button
+                    size="lg"
+                    className="min-h-12 flex-1 sm:flex-none"
+                    disabled={saving || photoBusy || !formValid}
+                    onClick={() => void handleSave()}
+                  >
+                    {saving ? "Saving…" : editing ? "Save changes" : "Save student"}
                   </Button>
                   <Button
                     size="lg"
                     variant="outline"
                     className="min-h-12 flex-1 sm:flex-none"
+                    disabled={saving || photoBusy}
                     onClick={closeEditor}
                   >
                     Cancel
