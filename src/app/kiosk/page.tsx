@@ -27,6 +27,7 @@ import {
 import { useDemo } from "@/components/providers/DemoProvider"
 import { RecordOfficePayment } from "@/components/admin/RecordOfficePayment"
 import { getAllergyBannerStyle, getHighestAllergySeverity } from "@/lib/allergy-display"
+import { BarcodeCameraScanner } from "@/components/scan/BarcodeCameraScanner"
 import { ScanKeypad } from "@/components/scan/ScanKeypad"
 import { OfflineBanner } from "@/components/scan/OfflineBanner"
 import { MEAL_PRICES } from "@/lib/types"
@@ -573,12 +574,12 @@ export default function ScanStationPage() {
 
   const statusSubtitle =
     scanStatus === "scanning"
-      ? "Reading badge ΓÇö hold still"
+      ? "Reading badge — hold still"
       : scanStatus === "error"
-        ? "Badge not recognized ΓÇö scanner will re-arm automatically"
+        ? "Badge not recognized — try again (station stays ready)"
         : scanStatus === "complete"
           ? flashMessage || "Transaction recorded"
-          : "Scan badge or enter ID"
+          : "Point camera at badge barcode, or enter ID"
 
   const studentMealAvailable =
     student && !mealBlocked && primaryMeals.find((m) => m.type === "student_meal")
@@ -796,14 +797,27 @@ export default function ScanStationPage() {
               </div>
             </div>
           ) : (
-            <div className="flex flex-1 flex-col items-center justify-center py-4 text-center text-[#64748B] sm:py-6">
-              <StatusDot phase={scanStatus} isOffline={isOffline} />
-              <p className="mt-2 text-base font-bold text-[#041B52] sm:mt-4 sm:text-lg md:text-xl">
-                Ready to scan
-              </p>
-              <p className="mt-1 px-4 text-xs sm:mt-2 sm:text-sm lg:text-base">
-                Scan a student ID badge or enter their MD ID to begin.
-              </p>
+            <div className="flex min-h-0 flex-1 flex-col gap-2 sm:gap-3">
+              <div className="flex items-center gap-2">
+                <StatusDot phase={scanStatus} isOffline={isOffline} />
+                <div className="min-w-0">
+                  <p className="text-base font-bold text-[#041B52] sm:text-lg md:text-xl">
+                    Ready to scan
+                  </p>
+                  <p className="text-xs text-[#64748B] sm:text-sm">
+                    Point camera at badge barcode, use a USB scanner, or enter MD ID.
+                  </p>
+                </div>
+              </div>
+              <BarcodeCameraScanner
+                className="min-h-0 flex-1"
+                defaultOpen
+                paused={scanStatus === "scanning" || scanStatus === "complete"}
+                onDetect={(raw) => {
+                  setScanStatus("scanning")
+                  void lookupStudent(raw)
+                }}
+              />
             </div>
           )}
         </section>
@@ -848,6 +862,17 @@ export default function ScanStationPage() {
           )}
 
           <div className="mt-auto min-h-0 shrink pt-0.5 sm:pt-1">
+            {student ? (
+              <BarcodeCameraScanner
+                className="mb-1.5 sm:mb-2"
+                defaultOpen={false}
+                paused={scanStatus === "scanning" || scanStatus === "complete"}
+                onDetect={(raw) => {
+                  setScanStatus("scanning")
+                  void lookupStudent(raw)
+                }}
+              />
+            ) : null}
             <p className="text-[10px] font-semibold uppercase tracking-wider text-[#64748B] sm:text-xs">
               Enter Student ID
             </p>
