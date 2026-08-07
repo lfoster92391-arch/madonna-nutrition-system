@@ -13,6 +13,7 @@ export interface ParentStudentAccess {
   schoolId: string
   studentName: string
   billingStudentId: string
+  payerRole: "PARENT" | "STAFF" | "OTHER"
 }
 
 export async function assertParentOwnsStudent(
@@ -34,8 +35,9 @@ export async function assertParentOwnsStudent(
   })
 
   const linkedIds = user?.linkedStudentIds ?? []
+  const canLinkViaUser = user?.role === "PARENT" || user?.role === "STAFF"
   const ownsViaUser =
-    user?.role === "PARENT" &&
+    Boolean(canLinkViaUser) &&
     (linkedIds.includes(student.id) || linkedIds.includes(student.externalId))
 
   if (ownsViaUser) {
@@ -43,10 +45,12 @@ export async function assertParentOwnsStudent(
       schoolId: student.schoolId,
       studentName: `${student.firstName} ${student.lastName}`,
       billingStudentId: student.id,
+      payerRole: user!.role === "STAFF" ? "STAFF" : "PARENT",
     }
   }
 
-  if (user?.email) {
+  // Parent model join is parent-only (staff uses User.linkedStudentIds only).
+  if (user?.role === "PARENT" && user.email) {
     const parent = await prisma.parent.findUnique({
       where: { email: user.email },
       select: {
@@ -62,6 +66,7 @@ export async function assertParentOwnsStudent(
         schoolId: student.schoolId,
         studentName: `${student.firstName} ${student.lastName}`,
         billingStudentId: student.id,
+        payerRole: "PARENT",
       }
     }
   }

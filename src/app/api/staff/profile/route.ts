@@ -11,6 +11,7 @@ export async function GET(request: Request) {
         email: staff.email,
         department: staff.department,
         accountBalance: staff.accountBalance,
+        linkedStudentIds: staff.linkedStudentIds,
       },
     })
   })

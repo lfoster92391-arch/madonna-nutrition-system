@@ -47,7 +47,7 @@ export function StaffTransactionsView() {
           Transactions
         </h1>
         <p className="mt-1 text-sm text-silver-foreground">
-          Your personal meal transaction history
+          Your meal history and linked student cafeteria activity
         </p>
       </div>
       <Card
@@ -57,11 +57,11 @@ export function StaffTransactionsView() {
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
             <h2 className="text-lg font-bold" style={{ color: STAFF_NAVY }}>
-              Your Meal Transactions
+              Recent activity
             </h2>
             <p className="mt-2 text-sm text-silver-foreground">
-              Staff personal transaction history. Student payment history is not accessible from the
-              Staff Portal.
+              Shows cafeteria charges and deposits for students linked to your staff account.
+              Link a child under Settings to see their history here.
             </p>
           </div>
           <div className="text-right">
@@ -83,7 +83,7 @@ export function StaffTransactionsView() {
           >
             <p className="text-sm font-medium text-silver-foreground">No transactions to display</p>
             <p className="mt-2 text-xs text-silver-foreground">
-              Meal charges appear here once your staff cafeteria account is linked.
+              Link a child in Settings to see their meal and deposit history.
             </p>
           </div>
         ) : (
@@ -94,12 +94,15 @@ export function StaffTransactionsView() {
                   <th className="px-3 py-3 font-semibold" style={{ color: STAFF_NAVY }}>
                     Date
                   </th>
-                  <th className="px-3 py-3 font-semibold" style={{ color: STAFF_NAVY }}>
-                    Type
-                  </th>
-                  <th className="px-3 py-3 font-semibold" style={{ color: STAFF_NAVY }}>
-                    Description
-                  </th>
+                    <th className="px-3 py-3 font-semibold" style={{ color: STAFF_NAVY }}>
+                      Student
+                    </th>
+                    <th className="px-3 py-3 font-semibold" style={{ color: STAFF_NAVY }}>
+                      Type
+                    </th>
+                    <th className="px-3 py-3 font-semibold" style={{ color: STAFF_NAVY }}>
+                      Description
+                    </th>
                   <th className="px-3 py-3 text-right font-semibold" style={{ color: STAFF_NAVY }}>
                     Amount
                   </th>
@@ -120,6 +123,7 @@ export function StaffTransactionsView() {
                       <td className="px-3 py-4 text-silver-foreground">
                         {new Date(tx.timestamp).toLocaleString()}
                       </td>
+                      <td className="px-3 py-4 text-silver-foreground">{tx.studentName}</td>
                       <td className="px-3 py-4 capitalize text-silver-foreground">
                         {isDeposit ? "Deposit" : "Meal"}
                       </td>

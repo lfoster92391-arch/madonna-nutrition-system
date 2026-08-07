@@ -1,12 +1,54 @@
 "use client"
 
-import { Bell, Mail, User } from "lucide-react"
+import { useCallback, useEffect, useState } from "react"
+import Link from "next/link"
+import { Bell, Mail, User, Users } from "lucide-react"
+import { useAuth } from "@/components/providers/AuthProvider"
+import { useDemo } from "@/components/providers/DemoProvider"
 import { useStaffData } from "@/components/providers/StaffDataProvider"
+import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { STAFF_NAVY, STAFF_SILVER } from "@/components/staff/layout/staff-theme"
+import { formatCurrency } from "@/lib/utils"
+
+type LinkedChild = {
+  id: string
+  firstName: string
+  lastName: string
+  grade: string
+  balance: number
+}
 
 export function StaffSettingsView() {
+  const { user } = useAuth()
+  const { databaseEnabled } = useDemo()
   const { profile } = useStaffData()
+  const [children, setChildren] = useState<LinkedChild[]>([])
+  const [loadingChildren, setLoadingChildren] = useState(true)
+
+  const loadChildren = useCallback(async () => {
+    if (!user || !databaseEnabled) {
+      setChildren([])
+      setLoadingChildren(false)
+      return
+    }
+    setLoadingChildren(true)
+    try {
+      const res = await fetch(`/api/staff/linked-students?staffId=${user.id}`)
+      if (res.ok) {
+        const data = (await res.json()) as { students?: LinkedChild[] }
+        setChildren(data.students ?? [])
+      } else {
+        setChildren([])
+      }
+    } finally {
+      setLoadingChildren(false)
+    }
+  }, [user, databaseEnabled])
+
+  useEffect(() => {
+    void loadChildren()
+  }, [loadChildren])
 
   return (
     <div className="space-y-6 p-4 sm:p-6">
@@ -47,6 +89,52 @@ export function StaffSettingsView() {
             </dd>
           </div>
         </dl>
+      </Card>
+
+      <Card
+        className="w-full max-w-xl rounded-2xl border p-4 shadow-sm sm:p-6"
+        style={{ borderColor: STAFF_SILVER }}
+      >
+        <h2 className="flex items-center gap-2 text-lg font-bold" style={{ color: STAFF_NAVY }}>
+          <Users className="h-5 w-5" />
+          Your children
+        </h2>
+        <p className="mt-2 text-sm text-silver-foreground">
+          Connect a student account so you can see balances and add lunch funds from the staff
+          portal.
+        </p>
+
+        {loadingChildren ? (
+          <p className="mt-4 text-sm text-silver-foreground">Loading…</p>
+        ) : children.length === 0 ? (
+          <p className="mt-4 text-sm text-silver-foreground">No children linked yet.</p>
+        ) : (
+          <ul className="mt-4 space-y-2">
+            {children.map((child) => (
+              <li
+                key={child.id}
+                className="flex items-center justify-between rounded-xl border px-3 py-2 text-sm"
+                style={{ borderColor: STAFF_SILVER }}
+              >
+                <span style={{ color: STAFF_NAVY }}>
+                  <span className="font-semibold">
+                    {child.firstName} {child.lastName}
+                  </span>
+                  <span className="block text-xs text-silver-foreground">
+                    MD {child.id} · Grade {child.grade}
+                  </span>
+                </span>
+                <span className="font-bold tabular-nums" style={{ color: STAFF_NAVY }}>
+                  {formatCurrency(child.balance)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        <Button asChild className="mt-5 w-full sm:w-auto">
+          <Link href="/staff/settings/add-child">Add your child</Link>
+        </Button>
       </Card>
 
       <Card

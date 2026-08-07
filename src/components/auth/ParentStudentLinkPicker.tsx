@@ -18,11 +18,15 @@ export function ParentStudentLinkPicker({
   onSelect,
   excludeIds = [],
   heading = "Find your child",
+  searchUrl = "/api/auth/parent/search-students",
+  helperText = "At least one student is required. You can add siblings after the first child.",
 }: {
   selectedId: string | null
   onSelect: (student: SearchableStudent) => void
   excludeIds?: string[]
   heading?: string
+  searchUrl?: string
+  helperText?: string
 }) {
   const [query, setQuery] = useState("")
   const [results, setResults] = useState<SearchableStudent[]>([])
@@ -42,9 +46,7 @@ export function ParentStudentLinkPicker({
       setBusy(true)
       setError(null)
       try {
-        const res = await fetch(
-          `/api/auth/parent/search-students?q=${encodeURIComponent(q)}`
-        )
+        const res = await fetch(`${searchUrl}?q=${encodeURIComponent(q)}`)
         const data = (await res.json().catch(() => ({}))) as {
           students?: SearchableStudent[]
           error?: string
@@ -68,7 +70,7 @@ export function ParentStudentLinkPicker({
     }, 300)
 
     return () => window.clearTimeout(timer)
-  }, [query, excludeIds.join("|")])
+  }, [query, excludeIds.join("|"), searchUrl])
 
   return (
     <div className="space-y-4">
@@ -85,9 +87,9 @@ export function ParentStudentLinkPicker({
             autoComplete="off"
           />
         </div>
-        <p className="mt-2 text-xs text-[#64748B]">
-          At least one student is required. You can add siblings after the first child.
-        </p>
+        {helperText ? (
+          <p className="mt-2 text-xs text-[#64748B]">{helperText}</p>
+        ) : null}
       </div>
 
       {busy && <p className="text-sm text-[#64748B]">Searching…</p>}
