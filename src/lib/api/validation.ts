@@ -94,6 +94,15 @@ export const parentStudentSearchSchema = z.object({
   q: z.string().min(2).max(80),
 })
 
+export const workplaceRegisterSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(8).max(100),
+  firstName: z.string().min(1).max(80),
+  lastName: z.string().min(1).max(80),
+  phone: z.string().max(40).optional(),
+  department: z.string().max(80).optional(),
+})
+
 export const queuedTransactionSchema = z.object({
   clientTxId: z.string().uuid(),
   studentId: z.string().min(1),

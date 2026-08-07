@@ -156,6 +156,22 @@ export function LoginForm({ role, redirectTo }: LoginFormProps) {
           </a>
         </p>
       )}
+      {role === "staff" && (
+        <p className="mt-4 text-center text-sm text-[#64748B]">
+          New here?{" "}
+          <a href="/login/staff/register" className="font-semibold hover:underline" style={{ color: NAVY }}>
+            Create a staff account
+          </a>
+        </p>
+      )}
+      {role === "teacher" && (
+        <p className="mt-4 text-center text-sm text-[#64748B]">
+          New here?{" "}
+          <a href="/login/teacher/register" className="font-semibold hover:underline" style={{ color: NAVY }}>
+            Create a teacher account
+          </a>
+        </p>
+      )}
     </div>
   )
 }

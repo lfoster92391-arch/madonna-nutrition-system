@@ -35,6 +35,11 @@ const PORTALS: PortalCardProps[] = [
     color: NAVY,
     route: "/login/teacher",
     icon: BookOpen,
+    primaryLabel: "Log in",
+    secondaryAction: {
+      label: "Create an account",
+      route: "/login/teacher/register",
+    },
   },
   {
     portalName: "Staff Portal",
@@ -43,6 +48,11 @@ const PORTALS: PortalCardProps[] = [
     color: "#1B4332",
     route: "/login/staff",
     icon: UtensilsCrossed,
+    primaryLabel: "Log in",
+    secondaryAction: {
+      label: "Create an account",
+      route: "/login/staff/register",
+    },
   },
   {
     portalName: "Admin Portal",
