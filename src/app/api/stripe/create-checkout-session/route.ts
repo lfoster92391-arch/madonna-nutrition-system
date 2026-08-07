@@ -31,14 +31,20 @@ export async function POST(request: Request) {
   const { studentId, parentUserId, amountDollars, savePaymentMethod } = parsed.data
 
   try {
-    const { schoolId, studentName, billingStudentId } = await assertParentOwnsStudent(
-      parentUserId,
-      studentId
-    )
+    const { schoolId, studentName, billingStudentId, payerRole } =
+      await assertParentOwnsStudent(parentUserId, studentId)
 
     const stripe = getStripe()
     const appUrl = getAppUrl()
     const amountCents = Math.round(amountDollars * 100)
+
+    const isStaffPayer = payerRole === "STAFF"
+    const successPath = isStaffPayer
+      ? "/staff/account?success=1&session_id={CHECKOUT_SESSION_ID}"
+      : "/parent/payments?tab=funding&success=1&session_id={CHECKOUT_SESSION_ID}"
+    const cancelPath = isStaffPayer
+      ? "/staff/account?canceled=1"
+      : "/parent/payments?tab=funding&canceled=1"
 
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
@@ -69,8 +75,8 @@ export async function POST(request: Request) {
         parentUserId,
         amountDollars: amountDollars.toFixed(2),
       },
-      success_url: `${appUrl}/parent/payments?tab=funding&success=1&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${appUrl}/parent/payments?tab=funding&canceled=1`,
+      success_url: `${appUrl}${successPath}`,
+      cancel_url: `${appUrl}${cancelPath}`,
     })
 
     if (!session.url) {

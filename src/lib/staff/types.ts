@@ -4,6 +4,7 @@ export interface StaffProfile {
   email: string
   department: string
   accountBalance: number
+  linkedStudentIds?: string[]
   photoUrl?: string
 }
 
