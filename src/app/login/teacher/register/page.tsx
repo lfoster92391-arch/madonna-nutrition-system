@@ -1,0 +1,18 @@
+import Link from "next/link"
+import { WorkplaceRegisterForm } from "@/components/auth/WorkplaceRegisterForm"
+import { TEACHER_NAVY } from "@/config/teacher-theme"
+
+export default function TeacherRegisterPage() {
+  return (
+    <div className="flex min-h-screen flex-col items-center justify-center bg-white px-6 py-12">
+      <Link
+        href="/login/teacher"
+        className="mb-8 text-sm font-medium hover:underline"
+        style={{ color: TEACHER_NAVY }}
+      >
+        &larr; Back to teacher sign in
+      </Link>
+      <WorkplaceRegisterForm role="teacher" />
+    </div>
+  )
+}

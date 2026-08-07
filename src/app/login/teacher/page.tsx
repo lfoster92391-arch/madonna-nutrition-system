@@ -14,7 +14,15 @@ export default function TeacherLoginPage() {
       </Link>
       <LoginForm role="teacher" redirectTo="/teacher" />
       <p className="mt-6 max-w-md text-center text-sm text-silver-foreground">
-        Teacher accounts must use an approved school email (e.g. @weirtonmadonna.org).
+        New teacher?{" "}
+        <Link
+          href="/login/teacher/register"
+          className="font-semibold hover:underline"
+          style={{ color: TEACHER_NAVY }}
+        >
+          Create an account
+        </Link>
+        . Use an approved school email (e.g. @weirtonmadonna.org).
       </p>
     </div>
   )

@@ -14,7 +14,15 @@ export default function StaffLoginPage() {
       </Link>
       <LoginForm role="staff" redirectTo="/staff" />
       <p className="mt-6 max-w-md text-center text-sm text-silver-foreground">
-        Staff accounts are created by your administrator. Contact IT if you need access.
+        New staff?{" "}
+        <Link
+          href="/login/staff/register"
+          className="font-semibold hover:underline"
+          style={{ color: STAFF_NAVY }}
+        >
+          Create an account
+        </Link>
+        . Your login is saved to the school database.
       </p>
     </div>
   )

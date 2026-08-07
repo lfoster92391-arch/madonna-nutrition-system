@@ -116,3 +116,77 @@ export async function creditStudentDeposit(
     }
   })
 }
+
+export interface CreditStaffDepositInput {
+  userId: string
+  schoolId: string
+  amountDollars: number
+  performedBy?: string
+  processedByUserId?: string
+  method?: OfficePaymentMethod
+  note?: string
+}
+
+/** Credit a staff/teacher lunch account (User.accountBalance). */
+export async function creditStaffDeposit(
+  input: CreditStaffDepositInput
+): Promise<{ balanceAfter: number }> {
+  if (!isDatabaseEnabled()) {
+    throw new Error("DATABASE_URL is not configured")
+  }
+
+  const amount = new Prisma.Decimal(input.amountDollars.toFixed(2))
+  const methodLabel =
+    input.method === "cash"
+      ? "Cash"
+      : input.method === "check"
+        ? "Check"
+        : input.method === "card"
+          ? "Card"
+          : "Other"
+
+  return prisma.$transaction(async (tx) => {
+    const staffUser = await tx.user.findFirst({
+      where: {
+        id: input.userId,
+        schoolId: input.schoolId,
+        status: "ACTIVE",
+        role: { in: ["STAFF", "TEACHER", "CASHIER", "ADMIN"] },
+      },
+      select: { id: true, accountBalance: true, firstName: true, lastName: true },
+    })
+
+    if (!staffUser) {
+      throw new Error("Staff account not found")
+    }
+
+    const balanceAfter = staffUser.accountBalance.add(amount)
+
+    await tx.user.update({
+      where: { id: staffUser.id },
+      data: { accountBalance: balanceAfter },
+    })
+
+    await tx.auditLog.create({
+      data: {
+        action: "FUNDS_ADDED",
+        entity: "staff_balance",
+        entityType: "user",
+        entityId: staffUser.id,
+        performedBy: input.performedBy ?? input.processedByUserId ?? "office_staff",
+        schoolId: input.schoolId,
+        metadata: {
+          amount: input.amountDollars,
+          source: "office",
+          method: input.method ?? "cash",
+          note: input.note?.trim() || null,
+          mealType: `Staff Office Deposit (${methodLabel})`,
+          staffName: `${staffUser.firstName} ${staffUser.lastName}`,
+        },
+        newValue: { accountBalance: Number(balanceAfter) },
+      },
+    })
+
+    return { balanceAfter: Number(balanceAfter) }
+  })
+}

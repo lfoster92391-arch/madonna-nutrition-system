@@ -80,6 +80,19 @@ export const api = {
         body: JSON.stringify(input),
       }
     ),
+  recordStaffOfficePayment: (input: {
+    userId: string
+    amount: number
+    method?: "cash" | "check" | "card" | "other"
+    note?: string
+  }) =>
+    fetchJson<{ balanceAfter: number; user?: import("@/lib/types").User }>(
+      "/api/transactions/staff-deposit",
+      {
+        method: "POST",
+        body: JSON.stringify(input),
+      }
+    ),
   syncBatch: (
     transactions: Array<{
       clientTxId: string

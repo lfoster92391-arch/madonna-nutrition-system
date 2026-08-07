@@ -1,0 +1,263 @@
+"use client"
+
+import { useState } from "react"
+import Link from "next/link"
+import { useRouter } from "next/navigation"
+import Image from "next/image"
+import { useAuth } from "@/components/providers/AuthProvider"
+import { BRAND } from "@/config/brand"
+import { Button } from "@/components/ui/button"
+import { Input, Label } from "@/components/ui/input"
+import {
+  AddAnotherChildButton,
+  LinkedStudentChips,
+  ParentStudentLinkPicker,
+  type SearchableStudent,
+} from "@/components/auth/ParentStudentLinkPicker"
+
+const NAVY = "#001E62"
+
+export function ParentRegisterForm() {
+  const router = useRouter()
+  const { login } = useAuth()
+  const [step, setStep] = useState<1 | 2>(1)
+  const [firstName, setFirstName] = useState("")
+  const [lastName, setLastName] = useState("")
+  const [email, setEmail] = useState("")
+  const [phone, setPhone] = useState("")
+  const [password, setPassword] = useState("")
+  const [linked, setLinked] = useState<SearchableStudent[]>([])
+  const [pendingSelect, setPendingSelect] = useState<SearchableStudent | null>(null)
+  const [addingAnother, setAddingAnother] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState("")
+
+  function continueToLink(e: React.FormEvent) {
+    e.preventDefault()
+    setError("")
+    if (!firstName.trim() || !lastName.trim() || !email.trim() || password.length < 8) {
+      setError("Fill in your name, email, and a password of at least 8 characters.")
+      return
+    }
+    setStep(2)
+  }
+
+  function confirmPendingChild() {
+    if (!pendingSelect) return
+    setLinked((prev) =>
+      prev.some((s) => s.id === pendingSelect.id) ? prev : [...prev, pendingSelect]
+    )
+    setPendingSelect(null)
+    setAddingAnother(false)
+    setError("")
+  }
+
+  async function finishRegister(e: React.FormEvent) {
+    e.preventDefault()
+    setError("")
+    if (linked.length === 0) {
+      setError("Link at least one student before creating the account.")
+      return
+    }
+
+    setBusy(true)
+    try {
+      const res = await fetch("/api/auth/parent/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          firstName: firstName.trim(),
+          lastName: lastName.trim(),
+          email: email.trim(),
+          phone: phone.trim() || undefined,
+          password,
+          studentExternalIds: linked.map((s) => s.id),
+          relationship: "Guardian",
+        }),
+      })
+      const data = (await res.json().catch(() => ({}))) as { error?: string; success?: boolean }
+      if (!res.ok || !data.success) {
+        setError(data.error ?? "Could not create account.")
+        return
+      }
+
+      const signedIn = await login(email.trim(), password, "parent")
+      if (!signedIn.success) {
+        setError(
+          signedIn.error ??
+            "Account created, but sign-in failed. Use the parent login page with your new password."
+        )
+        return
+      }
+      if (signedIn.needsStudentLink) {
+        router.push("/login/parent/link")
+        return
+      }
+      router.push("/parent")
+    } catch {
+      setError("Could not create account. Try again.")
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const showPicker = linked.length === 0 || addingAnother
+
+  return (
+    <div className="w-full max-w-lg rounded-[20px] border border-[#C8CDD7]/60 bg-white p-8 shadow-lg shadow-[#001E62]/5">
+      <div className="mb-6 text-center">
+        <Image
+          src="/brand-logo.png"
+          alt={BRAND.productName}
+          width={160}
+          height={42}
+          priority
+          className="mx-auto mb-4 h-10 w-auto object-contain"
+        />
+        <h1 className="text-2xl font-bold" style={{ color: NAVY }}>
+          Create parent account
+        </h1>
+        <p className="mt-1 text-sm text-[#64748B]">
+          Step {step} of 2 — {step === 1 ? "Your details" : "Link your student(s)"}
+        </p>
+      </div>
+
+      {step === 1 ? (
+        <form onSubmit={continueToLink} className="space-y-4">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <Label htmlFor="reg-first">First name</Label>
+              <Input
+                id="reg-first"
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+                className="mt-2 h-12"
+                required
+              />
+            </div>
+            <div>
+              <Label htmlFor="reg-last">Last name</Label>
+              <Input
+                id="reg-last"
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
+                className="mt-2 h-12"
+                required
+              />
+            </div>
+          </div>
+          <div>
+            <Label htmlFor="reg-email">Email</Label>
+            <Input
+              id="reg-email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="mt-2 h-12"
+              required
+            />
+          </div>
+          <div>
+            <Label htmlFor="reg-phone">Phone (optional)</Label>
+            <Input
+              id="reg-phone"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              className="mt-2 h-12"
+            />
+          </div>
+          <div>
+            <Label htmlFor="reg-password">Password</Label>
+            <Input
+              id="reg-password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="mt-2 h-12"
+              minLength={8}
+              required
+            />
+          </div>
+          {error && <p className="text-sm font-medium text-danger">{error}</p>}
+          <Button type="submit" size="lg" className="h-14 w-full text-base">
+            Next: Link your student
+          </Button>
+        </form>
+      ) : (
+        <form onSubmit={(e) => void finishRegister(e)} className="space-y-4">
+          {linked.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-sm font-semibold" style={{ color: NAVY }}>
+                Linked children ({linked.length})
+              </p>
+              <LinkedStudentChips
+                students={linked}
+                onRemove={(id) => setLinked((prev) => prev.filter((s) => s.id !== id))}
+              />
+            </div>
+          )}
+
+          {showPicker ? (
+            <>
+              <ParentStudentLinkPicker
+                selectedId={pendingSelect?.id ?? null}
+                onSelect={setPendingSelect}
+                excludeIds={linked.map((s) => s.id)}
+                heading={linked.length === 0 ? "Find your child" : "Find another child"}
+              />
+              {pendingSelect && (
+                <Button type="button" className="w-full" onClick={confirmPendingChild}>
+                  Add {pendingSelect.firstName} to this account
+                </Button>
+              )}
+              {linked.length > 0 && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="w-full"
+                  onClick={() => {
+                    setAddingAnother(false)
+                    setPendingSelect(null)
+                  }}
+                >
+                  Done adding children
+                </Button>
+              )}
+            </>
+          ) : (
+            <AddAnotherChildButton onClick={() => setAddingAnother(true)} disabled={busy} />
+          )}
+
+          {error && <p className="text-sm font-medium text-danger">{error}</p>}
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <Button
+              type="button"
+              variant="outline"
+              size="lg"
+              className="h-12 flex-1"
+              onClick={() => setStep(1)}
+              disabled={busy}
+            >
+              Back
+            </Button>
+            <Button
+              type="submit"
+              size="lg"
+              className="h-12 flex-1"
+              disabled={busy || linked.length === 0}
+            >
+              {busy ? "Creating…" : "Create account"}
+            </Button>
+          </div>
+        </form>
+      )}
+
+      <p className="mt-6 text-center text-sm text-[#64748B]">
+        Already have an account?{" "}
+        <Link href="/login/parent" className="font-semibold hover:underline" style={{ color: NAVY }}>
+          Sign in
+        </Link>
+      </p>
+    </div>
+  )
+}

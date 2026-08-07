@@ -1,0 +1,49 @@
+/**
+ * Downscale/compress a data-URL image so student/staff photos fit in Postgres
+ * and survive mobile camera uploads without blowing request body limits.
+ */
+export async function compressImageDataUrl(
+  dataUrl: string,
+  options?: { maxEdge?: number; quality?: number }
+): Promise<string> {
+  if (typeof window === "undefined") return dataUrl
+  if (!dataUrl.startsWith("data:image/")) return dataUrl
+
+  const maxEdge = options?.maxEdge ?? 720
+  const quality = options?.quality ?? 0.82
+
+  return new Promise((resolve) => {
+    const img = new Image()
+    img.onload = () => {
+      const { naturalWidth: w, naturalHeight: h } = img
+      if (!w || !h) {
+        resolve(dataUrl)
+        return
+      }
+
+      const scale = Math.min(1, maxEdge / Math.max(w, h))
+      const width = Math.max(1, Math.round(w * scale))
+      const height = Math.max(1, Math.round(h * scale))
+
+      const canvas = document.createElement("canvas")
+      canvas.width = width
+      canvas.height = height
+      const ctx = canvas.getContext("2d")
+      if (!ctx) {
+        resolve(dataUrl)
+        return
+      }
+      ctx.drawImage(img, 0, 0, width, height)
+
+      try {
+        const compressed = canvas.toDataURL("image/jpeg", quality)
+        // Prefer the smaller payload (already-small PNGs may win).
+        resolve(compressed.length < dataUrl.length ? compressed : dataUrl)
+      } catch {
+        resolve(dataUrl)
+      }
+    }
+    img.onerror = () => resolve(dataUrl)
+    img.src = dataUrl
+  })
+}

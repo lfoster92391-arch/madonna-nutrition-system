@@ -1,0 +1,38 @@
+import { NextResponse } from "next/server"
+import { workplaceRegisterSchema } from "@/lib/api/validation"
+import { badRequest, serverError, withDatabase } from "@/lib/api/response"
+import {
+  registerWorkplaceUser,
+  WorkplaceRegisterError,
+} from "@/lib/auth/workplace-register"
+
+export const runtime = "nodejs"
+
+export async function POST(request: Request) {
+  const result = await withDatabase(async () => {
+    try {
+      const body = await request.json()
+      const parsed = workplaceRegisterSchema.safeParse(body)
+      if (!parsed.success) {
+        return badRequest(
+          "Please check your name, email, and password (at least 8 characters).",
+          parsed.error.flatten()
+        )
+      }
+
+      const user = await registerWorkplaceUser({
+        role: "staff",
+        ...parsed.data,
+      })
+
+      return NextResponse.json({ success: true, user })
+    } catch (error) {
+      if (error instanceof WorkplaceRegisterError) {
+        return badRequest(error.message)
+      }
+      console.error("POST /api/auth/staff/register", error)
+      return serverError()
+    }
+  })
+  return result instanceof NextResponse ? result : result
+}

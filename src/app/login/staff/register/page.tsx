@@ -1,0 +1,18 @@
+import Link from "next/link"
+import { WorkplaceRegisterForm } from "@/components/auth/WorkplaceRegisterForm"
+import { STAFF_NAVY } from "@/components/staff/layout/staff-theme"
+
+export default function StaffRegisterPage() {
+  return (
+    <div className="flex min-h-screen flex-col items-center justify-center bg-white px-6 py-12">
+      <Link
+        href="/login/staff"
+        className="mb-8 text-sm font-medium hover:underline"
+        style={{ color: STAFF_NAVY }}
+      >
+        &larr; Back to staff sign in
+      </Link>
+      <WorkplaceRegisterForm role="staff" />
+    </div>
+  )
+}

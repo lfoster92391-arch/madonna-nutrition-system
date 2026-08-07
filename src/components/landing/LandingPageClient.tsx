@@ -18,10 +18,15 @@ const PORTALS: PortalCardProps[] = [
   {
     portalName: "Parent Portal",
     roleLabel: "For parents",
-    description: "Meals, balances, and nutrition for your child.",
+    description: "Meals, balances, and nutrition for your children.",
     color: "#0B2D8F",
     route: "/login/parent",
     icon: Users,
+    primaryLabel: "Log in",
+    secondaryAction: {
+      label: "Create an account",
+      route: "/login/parent/register",
+    },
   },
   {
     portalName: "Teacher Portal",
@@ -30,6 +35,11 @@ const PORTALS: PortalCardProps[] = [
     color: NAVY,
     route: "/login/teacher",
     icon: BookOpen,
+    primaryLabel: "Log in",
+    secondaryAction: {
+      label: "Create an account",
+      route: "/login/teacher/register",
+    },
   },
   {
     portalName: "Staff Portal",
@@ -38,6 +48,11 @@ const PORTALS: PortalCardProps[] = [
     color: "#1B4332",
     route: "/login/staff",
     icon: UtensilsCrossed,
+    primaryLabel: "Log in",
+    secondaryAction: {
+      label: "Create an account",
+      route: "/login/staff/register",
+    },
   },
   {
     portalName: "Admin Portal",
