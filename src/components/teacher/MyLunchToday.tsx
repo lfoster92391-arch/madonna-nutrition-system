@@ -1,11 +1,20 @@
 "use client"
 
+import { useMemo, useState } from "react"
 import Image from "next/image"
 import { CheckCircle2 } from "lucide-react"
+import { useDemo } from "@/components/providers/DemoProvider"
 import { useTeacherData } from "@/components/providers/TeacherDataProvider"
+import { PizzaSlicePicker } from "@/components/lunch/PizzaSlicePicker"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { TEACHER_NAVY } from "@/config/teacher-theme"
+import { isPublicCalendarEvent, todayDateKey } from "@/lib/calendar-publish"
+import {
+  DEFAULT_PIZZA_SLICES,
+  isPizzaDayName,
+  pizzaSliceTotal,
+} from "@/lib/pizza-day"
 import { formatCurrency } from "@/lib/utils"
 import type { TeacherPaymentMethod } from "@/lib/teacher/types"
 
@@ -17,6 +26,35 @@ const PAYMENT_LABELS: Record<TeacherPaymentMethod, string> = {
 
 export function MyLunchToday() {
   const { reservation, updateTeacherReservation } = useTeacherData()
+  const { calendarEvents } = useDemo()
+  const [ordering, setOrdering] = useState(false)
+  const [sliceCount, setSliceCount] = useState(DEFAULT_PIZZA_SLICES)
+  const [submitting, setSubmitting] = useState(false)
+
+  const todayMenuTitle = useMemo(() => {
+    const today = todayDateKey()
+    return calendarEvents.find(
+      (e) => e.date === today && e.category === "menu_day" && isPublicCalendarEvent(e)
+    )?.title
+  }, [calendarEvents])
+
+  const pizzaDay = isPizzaDayName(todayMenuTitle ?? reservation?.mealName)
+  const orderTotal = pizzaDay ? pizzaSliceTotal(sliceCount) : undefined
+
+  async function handleReserve() {
+    setSubmitting(true)
+    try {
+      const action =
+        reservation && reservation.status !== "cancelled" ? "change" : "reserve"
+      await updateTeacherReservation("account", action, {
+        sliceCount: pizzaDay ? sliceCount : undefined,
+      })
+      setOrdering(false)
+      setSliceCount(DEFAULT_PIZZA_SLICES)
+    } finally {
+      setSubmitting(false)
+    }
+  }
 
   if (!reservation || reservation.status === "cancelled") {
     return (
@@ -24,13 +62,51 @@ export function MyLunchToday() {
         <h2 className="text-lg font-bold" style={{ color: TEACHER_NAVY }}>
           My Lunch Today
         </h2>
-        <p className="mt-4 text-sm text-silver-foreground">No lunch reserved for today.</p>
-        <Button
-          className="mt-4"
-          onClick={() => updateTeacherReservation("account", "reserve")}
-        >
-          Order lunch for today
-        </Button>
+        {!ordering ? (
+          <>
+            <p className="mt-4 text-sm text-silver-foreground">No lunch reserved for today.</p>
+            {todayMenuTitle ? (
+              <p className="mt-2 text-sm text-silver-foreground">
+                Menu: <span className="font-medium" style={{ color: TEACHER_NAVY }}>{todayMenuTitle}</span>
+              </p>
+            ) : null}
+            <Button className="mt-4" onClick={() => setOrdering(true)}>
+              Order lunch for today
+            </Button>
+          </>
+        ) : (
+          <div className="mt-4 space-y-4">
+            {todayMenuTitle ? (
+              <p className="text-sm text-silver-foreground">
+                Menu: <span className="font-medium" style={{ color: TEACHER_NAVY }}>{todayMenuTitle}</span>
+              </p>
+            ) : null}
+            {pizzaDay ? (
+              <PizzaSlicePicker sliceCount={sliceCount} onChange={setSliceCount} />
+            ) : (
+              <p className="text-sm text-silver-foreground">Confirm to reserve today’s staff lunch.</p>
+            )}
+            <div className="flex flex-wrap gap-2">
+              <Button disabled={submitting} onClick={() => void handleReserve()}>
+                {submitting
+                  ? "Ordering..."
+                  : pizzaDay && orderTotal != null
+                    ? `Confirm order · Total: ${formatCurrency(orderTotal)}`
+                    : "Confirm order"}
+              </Button>
+              <Button
+                variant="outline"
+                disabled={submitting}
+                onClick={() => {
+                  setOrdering(false)
+                  setSliceCount(DEFAULT_PIZZA_SLICES)
+                }}
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        )}
       </Card>
     )
   }
@@ -53,7 +129,11 @@ export function MyLunchToday() {
             {reservation.mealName}
           </p>
           <p className="text-sm font-medium text-silver-foreground">
-            {formatCurrency(reservation.mealPrice)}
+            {reservation.sliceCount
+              ? `${reservation.sliceCount} ${
+                  reservation.sliceCount === 1 ? "slice" : "slices"
+                } · ${formatCurrency(reservation.totalAmount ?? reservation.mealPrice)}`
+              : formatCurrency(reservation.mealPrice)}
           </p>
           <p className="mt-2 text-sm text-silver-foreground">
             Paid with: {PAYMENT_LABELS[reservation.paymentMethod]}
@@ -68,9 +148,12 @@ export function MyLunchToday() {
         <Button
           variant="outline"
           size="sm"
-          onClick={() => updateTeacherReservation("prepay_online", "change")}
+          onClick={() => {
+            setSliceCount(reservation.sliceCount ?? DEFAULT_PIZZA_SLICES)
+            setOrdering(true)
+          }}
         >
-          Change or Cancel
+          Change order
         </Button>
         <Button
           variant="outline"
@@ -80,6 +163,31 @@ export function MyLunchToday() {
           Cancel
         </Button>
       </div>
+      {ordering ? (
+        <div className="mt-4 space-y-4 rounded-xl border border-[#C8CDD7] bg-[#F8F9FB] p-4">
+          {pizzaDay ? (
+            <PizzaSlicePicker sliceCount={sliceCount} onChange={setSliceCount} />
+          ) : (
+            <p className="text-sm text-silver-foreground">Update today’s lunch reservation.</p>
+          )}
+          <div className="flex flex-wrap gap-2">
+            <Button disabled={submitting} onClick={() => void handleReserve()}>
+              {submitting
+                ? "Saving..."
+                : pizzaDay && orderTotal != null
+                  ? `Save · Total: ${formatCurrency(orderTotal)}`
+                  : "Save changes"}
+            </Button>
+            <Button
+              variant="outline"
+              disabled={submitting}
+              onClick={() => setOrdering(false)}
+            >
+              Back
+            </Button>
+          </div>
+        </div>
+      ) : null}
     </Card>
   )
 }

@@ -15,6 +15,9 @@ export interface TeacherLunchReservation {
   id: string
   mealName: string
   mealPrice: number
+  sliceCount?: number | null
+  unitPrice?: number | null
+  totalAmount?: number | null
   mealPhotoUrl: string
   paymentMethod: TeacherPaymentMethod
   status: TeacherLunchStatus

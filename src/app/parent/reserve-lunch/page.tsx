@@ -15,6 +15,7 @@ import {
   getFoodProfileStatus,
   isDietaryFormBlocking,
 } from "@/lib/types"
+import { PizzaSlicePicker } from "@/components/lunch/PizzaSlicePicker"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Label, Select } from "@/components/ui/input"
@@ -22,6 +23,11 @@ import { formatCurrency } from "@/lib/utils"
 import { filterPublicCalendarEvents, todayDateKey } from "@/lib/calendar-publish"
 import { isSchoolLunchDateKey } from "@/lib/calendar"
 import { DEFAULT_ONBOARDING_PRICING } from "@/config/onboarding-pricing"
+import {
+  DEFAULT_PIZZA_SLICES,
+  isPizzaDayName,
+  pizzaSliceTotal,
+} from "@/lib/pizza-day"
 
 type MealType = "MAIN" | "SIDE" | "ALA_CARTE" | "MILK"
 
@@ -39,6 +45,8 @@ interface ReservationRow {
   date: string
   mealType: MealType
   price: number
+  sliceCount?: number | null
+  totalAmount?: number | null
   status: string
 }
 
@@ -55,6 +63,7 @@ function ParentReserveLunchContent() {
   const [selectedStudentId, setSelectedStudentId] = useState(studentParam)
   const [selectedDate, setSelectedDate] = useState(dateParam)
   const [mealType, setMealType] = useState<MealType>("MAIN")
+  const [sliceCount, setSliceCount] = useState(DEFAULT_PIZZA_SLICES)
   const [submitting, setSubmitting] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -80,6 +89,11 @@ function ParentReserveLunchContent() {
     () => publicEvents.find((e) => e.category === "menu_day" && e.date === selectedDate),
     [publicEvents, selectedDate]
   )
+
+  const pizzaDay = mealType === "MAIN" && isPizzaDayName(selectedMenu?.title)
+  const orderTotal = pizzaDay
+    ? pizzaSliceTotal(sliceCount)
+    : MEAL_OPTIONS.find((m) => m.value === mealType)?.defaultPrice ?? 3
 
   const submitLabel = useMemo(() => {
     if (!selectedDate) return "Order lunch"
@@ -127,7 +141,6 @@ function ParentReserveLunchContent() {
 
     setSubmitting(true)
     try {
-      const price = MEAL_OPTIONS.find((m) => m.value === mealType)?.defaultPrice ?? 3
       const res = await fetch("/api/lunch-reservations", {
         method: "POST",
         headers: {
@@ -139,7 +152,8 @@ function ParentReserveLunchContent() {
           studentId: selectedStudentId,
           date: selectedDate,
           mealType,
-          price,
+          price: orderTotal,
+          ...(pizzaDay ? { sliceCount } : {}),
         }),
       })
       const data = await res.json()
@@ -147,7 +161,16 @@ function ParentReserveLunchContent() {
         setError(data.error ?? "Unable to order lunch")
         return
       }
-      setMessage(`Ordered ${data.menuTitle ?? "meal"} for ${data.reservation.studentName}.`)
+      const slices = data.reservation?.sliceCount
+      setMessage(
+        slices
+          ? `Ordered ${data.menuTitle ?? "meal"} (${slices} ${
+              slices === 1 ? "slice" : "slices"
+            }) for ${data.reservation.studentName}. Total: ${formatCurrency(
+              data.reservation.totalAmount ?? orderTotal
+            )}.`
+          : `Ordered ${data.menuTitle ?? "meal"} for ${data.reservation.studentName}.`
+      )
       await loadReservations()
     } catch {
       setError("Unable to order lunch. Try again.")
@@ -311,11 +334,17 @@ function ParentReserveLunchContent() {
               >
                 {MEAL_OPTIONS.map((option) => (
                   <option key={option.value} value={option.value}>
-                    {option.label} ({formatCurrency(option.defaultPrice)})
+                    {option.label}
+                    {option.value === "MAIN" && pizzaDay
+                      ? ` ($1.00 / slice)`
+                      : ` (${formatCurrency(option.defaultPrice)})`}
                   </option>
                 ))}
               </Select>
             </div>
+            {pizzaDay ? (
+              <PizzaSlicePicker sliceCount={sliceCount} onChange={setSliceCount} />
+            ) : null}
             {error ? <p className="text-sm text-[#D62828]">{error}</p> : null}
             {message ? <p className="text-sm text-[#00A83E]">{message}</p> : null}
             <Button
@@ -324,7 +353,11 @@ function ParentReserveLunchContent() {
               disabled={submitting || !selectedDate || menuDates.length === 0}
               onClick={() => void handleSubmit()}
             >
-              {submitting ? "Ordering..." : submitLabel}
+              {submitting
+                ? "Ordering..."
+                : pizzaDay
+                  ? `${submitLabel} · Total: ${formatCurrency(orderTotal)}`
+                  : submitLabel}
             </Button>
           </div>
         </Card>
@@ -341,7 +374,11 @@ function ParentReserveLunchContent() {
                     {row.studentName} — {row.date}
                   </p>
                   <p className="text-[#64748B]">
-                    {row.mealType.replace(/_/g, " ")} · {formatCurrency(row.price)} · {row.status}
+                    {row.mealType.replace(/_/g, " ")}
+                    {row.sliceCount
+                      ? ` · ${row.sliceCount} ${row.sliceCount === 1 ? "slice" : "slices"}`
+                      : ""}{" "}
+                    · {formatCurrency(row.totalAmount ?? row.price)} · {row.status}
                   </p>
                 </li>
               ))}

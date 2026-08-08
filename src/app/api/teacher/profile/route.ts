@@ -29,6 +29,12 @@ export async function GET(request: Request) {
             id: reservation.id,
             mealName: reservation.mealName,
             mealPrice: Number(reservation.mealPrice),
+            sliceCount: reservation.sliceCount,
+            unitPrice: reservation.unitPrice != null ? Number(reservation.unitPrice) : null,
+            totalAmount:
+              reservation.totalAmount != null
+                ? Number(reservation.totalAmount)
+                : Number(reservation.mealPrice),
             mealPhotoUrl: reservation.mealPhotoUrl ?? DEFAULT_MEAL_PHOTO_URL,
             paymentMethod: fromDbPaymentMethod(reservation.paymentMethod),
             status: reservation.status.toLowerCase(),

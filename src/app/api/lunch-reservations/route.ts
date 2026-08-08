@@ -9,6 +9,7 @@ import { prisma } from "@/lib/prisma"
 import { badRequest, forbidden, notFound, serverError, withDatabase } from "@/lib/api/response"
 import { getSessionUserId } from "@/lib/api/session-auth"
 import { isWeekendDateKey, WEEKEND_MENU_DAY_MESSAGE } from "@/lib/calendar"
+import { resolveMainMealPricing } from "@/lib/pizza-day"
 
 const createReservationSchema = z.object({
   parentUserId: z.string().min(1),
@@ -16,6 +17,7 @@ const createReservationSchema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   mealType: z.enum(["MAIN", "SIDE", "ALA_CARTE", "MILK"]),
   price: z.number().nonnegative(),
+  sliceCount: z.number().int().positive().max(10).optional(),
 })
 
 function mapReservation(row: {
@@ -24,6 +26,9 @@ function mapReservation(row: {
   date: Date
   mealType: string
   price: { toString(): string }
+  sliceCount: number | null
+  unitPrice: { toString(): string } | null
+  totalAmount: { toString(): string } | null
   status: string
   createdAt: Date
   student: { externalId: string; firstName: string; lastName: string }
@@ -35,6 +40,9 @@ function mapReservation(row: {
     date: row.date.toISOString().slice(0, 10),
     mealType: row.mealType,
     price: Number(row.price),
+    sliceCount: row.sliceCount,
+    unitPrice: row.unitPrice != null ? Number(row.unitPrice) : null,
+    totalAmount: row.totalAmount != null ? Number(row.totalAmount) : Number(row.price),
     status: row.status,
     createdAt: row.createdAt.toISOString(),
   }
@@ -106,7 +114,7 @@ export async function POST(request: Request) {
         return badRequest("Invalid reservation payload", parsed.error.flatten())
       }
 
-      const { parentUserId, studentId, date, mealType, price } = parsed.data
+      const { parentUserId, studentId, date, mealType, price, sliceCount } = parsed.data
 
       try {
         await assertParentOwnsStudent(parentUserId, studentId)
@@ -160,6 +168,20 @@ export async function POST(request: Request) {
         return badRequest("No published menu for the selected date")
       }
 
+      const pricing =
+        mealType === "MAIN"
+          ? resolveMainMealPricing({
+              menuTitle: menuEvent.title,
+              sliceCount,
+              fallbackPrice: price,
+            })
+          : {
+              isPizzaDay: false as const,
+              sliceCount: null,
+              unitPrice: null,
+              totalAmount: price,
+            }
+
       const reservation = await prisma.lunchReservation.upsert({
         where: {
           studentId_date_mealType: {
@@ -169,14 +191,20 @@ export async function POST(request: Request) {
           },
         },
         update: {
-          price,
+          price: pricing.totalAmount,
+          sliceCount: pricing.sliceCount,
+          unitPrice: pricing.unitPrice,
+          totalAmount: pricing.totalAmount,
           status: "RESERVED",
         },
         create: {
           studentId: student.id,
           date: eventDate,
           mealType,
-          price,
+          price: pricing.totalAmount,
+          sliceCount: pricing.sliceCount,
+          unitPrice: pricing.unitPrice,
+          totalAmount: pricing.totalAmount,
           schoolId: student.schoolId,
         },
         include: {
@@ -188,6 +216,7 @@ export async function POST(request: Request) {
         {
           reservation: mapReservation(reservation),
           menuTitle: menuEvent.title,
+          isPizzaDay: pricing.isPizzaDay,
         },
         { status: 201 }
       )

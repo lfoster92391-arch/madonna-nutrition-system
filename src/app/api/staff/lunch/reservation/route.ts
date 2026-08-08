@@ -3,13 +3,13 @@ import { z } from "zod"
 import { prisma } from "@/lib/prisma"
 import { resolveSchoolId } from "@/lib/db/school"
 import { badRequest } from "@/lib/api/response"
-import { withTeacherAccess } from "@/lib/teacher/api"
+import { withStaffAccess } from "@/lib/staff/api"
 import { todayDateOnly, toDbPaymentMethod, fromDbPaymentMethod } from "@/lib/teacher/db"
 import { TEACHER_LUNCH_DEFAULTS } from "@/lib/teacher/defaults"
 import { resolveMainMealPricing } from "@/lib/pizza-day"
 
 const reservationSchema = z.object({
-  teacherId: z.string().min(1),
+  staffId: z.string().min(1),
   mealName: z.string().min(1).optional(),
   mealPrice: z.number().nonnegative().optional(),
   sliceCount: z.number().int().positive().max(10).optional(),
@@ -52,11 +52,11 @@ function mapReservation(reservation: {
 }
 
 export async function GET(request: Request) {
-  const teacherId = new URL(request.url).searchParams.get("teacherId")
-  return withTeacherAccess(teacherId, async (teacher) => {
+  const staffId = new URL(request.url).searchParams.get("staffId")
+  return withStaffAccess(staffId, async (staff) => {
     const today = todayDateOnly()
     const reservation = await prisma.teacherLunchReservation.findUnique({
-      where: { userId_date: { userId: teacher.id, date: today } },
+      where: { userId_date: { userId: staff.id, date: today } },
     })
 
     if (!reservation) {
@@ -72,15 +72,15 @@ export async function POST(request: Request) {
   const parsed = reservationSchema.safeParse(body)
   if (!parsed.success) return badRequest("Invalid reservation payload", parsed.error.flatten())
 
-  const { teacherId, paymentMethod, action, mealName, mealPrice, sliceCount } = parsed.data
+  const { staffId, paymentMethod, action, mealName, mealPrice, sliceCount } = parsed.data
 
-  return withTeacherAccess(teacherId, async (teacher) => {
+  return withStaffAccess(staffId, async (staff) => {
     const schoolId = await resolveSchoolId()
     const today = todayDateOnly()
 
     if (action === "cancel") {
       await prisma.teacherLunchReservation.updateMany({
-        where: { userId: teacher.id, date: today },
+        where: { userId: staff.id, date: today },
         data: { status: "CANCELLED" },
       })
       return NextResponse.json({ success: true, status: "cancelled" })
@@ -104,7 +104,7 @@ export async function POST(request: Request) {
     })
 
     const reservation = await prisma.teacherLunchReservation.upsert({
-      where: { userId_date: { userId: teacher.id, date: today } },
+      where: { userId_date: { userId: staff.id, date: today } },
       update: {
         paymentMethod: toDbPaymentMethod(paymentMethod),
         status: "RESERVED",
@@ -115,7 +115,7 @@ export async function POST(request: Request) {
         totalAmount: pricing.totalAmount,
       },
       create: {
-        userId: teacher.id,
+        userId: staff.id,
         schoolId,
         date: today,
         mealName: resolvedMealName,
