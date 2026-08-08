@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import Image from "next/image"
 import Link from "next/link"
 import { useQueryClient } from "@tanstack/react-query"
-import { Camera, DollarSign, Pencil, Plus, Search, Upload, UserX, X } from "lucide-react"
+import { ArrowLeft, Camera, DollarSign, Pencil, Plus, Search, Upload, UserX, X } from "lucide-react"
 import { CsvImportWizard } from "@/components/admin/CsvImportWizard"
 import { DesktopOnly } from "@/components/admin/DesktopOnly"
 import { ImportExportMenu } from "@/components/admin/import-export/ImportExportMenu"
@@ -62,7 +62,7 @@ export function AdminStudentManager({
   const photoInputRef = useRef<HTMLInputElement>(null)
   const cameraInputRef = useRef<HTMLInputElement>(null)
   const importWizardRef = useRef<HTMLDivElement>(null)
-  const editFormRef = useRef<HTMLDivElement>(null)
+  const managerPanelRef = useRef<HTMLDivElement>(null)
 
   /** Required fields only — empty optional fields (homeroom, balance) never block Save. */
   const formValid = Boolean(
@@ -194,7 +194,7 @@ export function AdminStudentManager({
           homeroom: saved.homeroom ?? "",
           balance: String(saved.balance),
         })
-        setFormMessage("Saved.")
+        setFormMessage("Updated.")
       } else {
         const newId = form.id.trim()
         await addStudent({
@@ -232,9 +232,7 @@ export function AdminStudentManager({
           balance: String(parseFloat(form.balance) || 0),
         })
         setPhotoMessage("Student saved. Now take or upload a photo for badges (optional but helpful).")
-        requestAnimationFrame(() => {
-          editFormRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
-        })
+        managerPanelRef.current?.scrollTo?.({ top: 0 })
       }
     } catch (error) {
       setFormMessage(
@@ -247,6 +245,7 @@ export function AdminStudentManager({
 
   function startEdit(student: Student) {
     setShowAdd(false)
+    setShowOfficePaymentPanel(false)
     setEditing(student)
     setJustAddedId(null)
     setPhotoMessage(null)
@@ -260,10 +259,27 @@ export function AdminStudentManager({
       homeroom: student.homeroom ?? "",
       balance: student.balance.toString(),
     })
-    requestAnimationFrame(() => {
-      editFormRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
-    })
+    managerPanelRef.current?.scrollTo?.({ top: 0 })
   }
+
+  // Keep open profile balance/photo in sync after Add money or list refresh
+  useEffect(() => {
+    if (!editing) return
+    const fresh = students.find((s) => s.id === editing.id)
+    if (!fresh) return
+    if (fresh.balance === editing.balance && fresh.photo === editing.photo) return
+
+    const priorBalance = editing.balance
+    setEditing((prev) =>
+      prev && prev.id === fresh.id
+        ? { ...prev, balance: fresh.balance, photo: fresh.photo }
+        : prev
+    )
+    setForm((prev) => {
+      if (prev.balance !== String(priorBalance)) return prev
+      return { ...prev, balance: String(fresh.balance) }
+    })
+  }, [students, editing?.id, editing?.balance, editing?.photo])
 
   function closeEditor() {
     setShowAdd(false)
@@ -272,6 +288,28 @@ export function AdminStudentManager({
     setPhotoMessage(null)
     setFormMessage(null)
     setPendingPhoto(null)
+    setShowOfficePaymentPanel(false)
+    setPaymentStudentId(null)
+  }
+
+  function openAddStudent() {
+    setShowAdd(true)
+    setEditing(null)
+    setShowOfficePaymentPanel(false)
+    setPaymentStudentId(null)
+    setJustAddedId(null)
+    setPhotoMessage(null)
+    setFormMessage(null)
+    setPendingPhoto(null)
+    setForm({ id: "", firstName: "", lastName: "", grade: "", homeroom: "", balance: "0" })
+  }
+
+  function openOfficePayment(studentId: string | null = null) {
+    setShowOfficePaymentPanel(true)
+    setPaymentStudentId(studentId)
+    if (!editing) {
+      setShowAdd(false)
+    }
   }
 
   async function savePhotoForStudent(targetId: string, dataUrl: string) {
@@ -334,7 +372,7 @@ export function AdminStudentManager({
       const compressed = await compressImageDataUrl(dataUrl)
       setPendingPhoto(compressed)
       setFormMessage(null)
-      setPhotoMessage("Preview ready. Tap Save photo or Save changes to put this on badges and checkout.")
+      setPhotoMessage("Preview ready. Tap Save photo or Update to put this on badges and checkout.")
     } catch {
       setPhotoMessage("Could not read that image. Try another file.")
     }
@@ -368,6 +406,7 @@ export function AdminStudentManager({
     : null
   const editingPhoto = pendingPhoto ?? savedPhoto
   const sheetOpen = Boolean(showAdd || editing || showOfficePaymentPanel)
+  const paymentFromProfile = showOfficePaymentPanel && Boolean(editing || showAdd)
 
   // Keep main from swallowing gestures while a mobile sheet is open
   useEffect(() => {
@@ -380,6 +419,15 @@ export function AdminStudentManager({
       main.style.overflowY = prev
     }
   }, [sheetOpen])
+
+  function handlePanelBack() {
+    if (paymentFromProfile) {
+      setShowOfficePaymentPanel(false)
+      setPaymentStudentId(null)
+      return
+    }
+    closeEditor()
+  }
 
   return (
     <div className={showPageHeader ? "admin-page-pad" : "w-full min-w-0"}>
@@ -423,27 +471,11 @@ export function AdminStudentManager({
               <Button variant="outline" asChild>
                 <Link href="/admin/allergy-review">Allergy Review Queue</Link>
               </Button>
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setShowOfficePaymentPanel(true)
-                  setPaymentStudentId(null)
-                }}
-              >
+              <Button variant="outline" onClick={() => openOfficePayment(null)}>
                 <DollarSign className="h-4 w-4" />
                 Add money to account
               </Button>
-              <Button
-                onClick={() => {
-                  setShowAdd(true)
-                  setEditing(null)
-                  setJustAddedId(null)
-                  setPhotoMessage(null)
-                  setFormMessage(null)
-                  setPendingPhoto(null)
-                  setForm({ id: "", firstName: "", lastName: "", grade: "", homeroom: "", balance: "0" })
-                }}
-              >
+              <Button onClick={openAddStudent}>
                 <Plus className="h-4 w-4" />
                 Add Student
               </Button>
@@ -471,27 +503,11 @@ export function AdminStudentManager({
               <Button variant="outline" asChild>
                 <Link href="/admin/allergy-review">Allergy Review Queue</Link>
               </Button>
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setShowOfficePaymentPanel(true)
-                  setPaymentStudentId(null)
-                }}
-              >
+              <Button variant="outline" onClick={() => openOfficePayment(null)}>
                 <DollarSign className="h-4 w-4" />
                 Add money to account
               </Button>
-              <Button
-                onClick={() => {
-                  setShowAdd(true)
-                  setEditing(null)
-                  setJustAddedId(null)
-                  setPhotoMessage(null)
-                  setFormMessage(null)
-                  setPendingPhoto(null)
-                  setForm({ id: "", firstName: "", lastName: "", grade: "", homeroom: "", balance: "0" })
-                }}
-              >
+              <Button onClick={openAddStudent}>
                 <Plus className="h-4 w-4" />
                 Add Student
               </Button>
@@ -499,171 +515,335 @@ export function AdminStudentManager({
           </div>
         )}
 
-        {justAddedId && (
+        {justAddedId && !editing && (
           <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-4 text-sm text-emerald-900">
-            Student saved. Use <strong>Open profile</strong> below to take or upload a photo for
-            badges, or <strong>Add money to account</strong> if they paid today.
+            Student saved. Use <strong>Open profile</strong> to take or upload a photo for badges, or
+            <strong> Add money to account</strong> if they paid today.
           </div>
         )}
 
         <div className="grid gap-6 lg:grid-cols-3">
-          <Card className="min-w-0 p-3 sm:p-6 lg:col-span-2">
-            <CardHeader>
-              <CardTitle>Student Manager</CardTitle>
-            </CardHeader>
-            <div className="relative mb-4 px-3 sm:px-6">
-              <Search className="absolute left-6 top-1/2 h-5 w-5 -translate-y-1/2 text-silver-foreground sm:left-10" />
-              <Input
-                className="pl-12"
-                placeholder="Search by name or student ID…"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
-            </div>
-            {/* Phones: stacked cards scroll with main (avoids nested x-scroll trap) */}
-            <div className="space-y-3 px-1 pb-4 sm:px-2 md:hidden">
-              {filtered.length === 0 ? (
-                <p className="py-8 text-center text-sm text-silver-foreground">
-                  No students yet. Tap <strong>Add Student</strong> or import a spreadsheet below.
-                </p>
-              ) : (
-                filtered.map((s) => (
-                  <div
-                    key={s.id}
-                    className={`rounded-2xl border border-silver/50 bg-silver/5 p-3 ${s.disabled ? "opacity-50" : ""}`}
-                  >
-                    <div className="flex items-start gap-3">
-                      <button
-                        type="button"
-                        onClick={() => startEdit(s)}
-                        className="shrink-0"
-                        title="Open profile to update photo"
-                        disabled={s.disabled}
-                      >
-                        <Image
-                          src={s.photo}
-                          alt={s.firstName}
-                          width={56}
-                          height={56}
-                          className="h-14 w-14 rounded-xl object-cover"
-                          unoptimized={s.photo.startsWith("data:")}
-                        />
-                      </button>
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate font-semibold text-primary">
-                          {s.firstName} {s.lastName}
-                          {s.disabled && (
-                            <Badge variant="danger" className="ml-2 align-middle">
-                              Disabled
-                            </Badge>
-                          )}
-                        </p>
-                        <p className="mt-0.5 font-mono text-xs text-silver-foreground">{s.id}</p>
-                        <p className="mt-1 text-sm text-silver-foreground">
-                          Grade {s.grade} · {formatCurrency(s.balance)}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      <Button
-                        size="sm"
-                        onClick={() => startEdit(s)}
-                        disabled={s.disabled}
-                        className="min-h-10 flex-1 gap-1.5 font-semibold"
-                      >
-                        <Pencil className="h-3.5 w-3.5" />
-                        Open profile
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        disabled={s.disabled}
-                        className="min-h-10 flex-1"
-                        onClick={() => {
-                          setPaymentStudentId(s.id)
-                          setShowOfficePaymentPanel(true)
-                        }}
-                      >
-                        <DollarSign className="h-3.5 w-3.5" />
-                        Add money
-                      </Button>
-                      {!s.disabled && (
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="min-h-10"
-                          onClick={() => void disableStudent(s.id)}
-                        >
-                          <UserX className="h-4 w-4" />
-                        </Button>
-                      )}
-                    </div>
+          <Card className="relative min-w-0 overflow-hidden p-0 lg:col-span-2">
+            {sheetOpen ? (
+              <div
+                ref={managerPanelRef}
+                className="fixed inset-0 z-50 flex flex-col bg-white md:static md:z-auto md:max-h-[min(78vh,860px)]"
+                role="dialog"
+                aria-modal="true"
+                aria-label={
+                  showOfficePaymentPanel
+                    ? "Add money to account"
+                    : editing
+                      ? "Student profile"
+                      : "Add Student"
+                }
+              >
+                <div className="flex shrink-0 items-center justify-between gap-3 border-b border-silver/60 bg-white px-3 py-3 pt-[max(0.75rem,env(safe-area-inset-top))] sm:px-6">
+                  <div className="min-w-0 flex-1">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      className="mb-1 -ml-2 h-auto min-h-10 gap-1.5 px-2 text-sm font-semibold text-primary"
+                      onClick={handlePanelBack}
+                    >
+                      <ArrowLeft className="h-4 w-4" />
+                      {paymentFromProfile ? "Back to profile" : "Back to list"}
+                    </Button>
+                    <h2 className="text-lg font-semibold text-primary sm:text-xl">
+                      {showOfficePaymentPanel
+                        ? "Add money to account"
+                        : editing
+                          ? "Student profile"
+                          : "Add Student"}
+                    </h2>
+                    {editing && !showOfficePaymentPanel && (
+                      <p className="mt-0.5 text-sm text-silver-foreground">
+                        Update details, balance, and photo inside Student Manager. Changes save to
+                        their lunch account immediately.
+                      </p>
+                    )}
                   </div>
-                ))
-              )}
-            </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="min-h-11 min-w-11 shrink-0 md:hidden"
+                    onClick={handlePanelBack}
+                  >
+                    <X className="h-5 w-5" />
+                    <span className="sr-only">Close</span>
+                  </Button>
+                </div>
 
-            {/* md+: table with intentional horizontal pan if needed */}
-            <div className="mobile-scroll-x hidden px-3 pb-6 sm:px-6 md:block">
-              <table className="w-full min-w-[640px] text-sm">
-                <thead>
-                  <tr className="border-b border-silver/60 text-silver-foreground">
-                    <th className="pb-3 pr-4 text-left font-medium">Photo</th>
-                    <th className="pb-3 pr-4 text-left font-medium">MD ID</th>
-                    <th className="pb-3 pr-4 text-left font-medium">Name</th>
-                    <th className="pb-3 pr-4 text-left font-medium">Grade</th>
-                    <th className="pb-3 pr-4 text-right font-medium">Balance</th>
-                    <th className="pb-3 text-right font-medium">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filtered.length === 0 ? (
-                    <tr>
-                      <td colSpan={6} className="py-10 text-center text-silver-foreground">
-                        No students yet. Tap <strong>Add Student</strong> or import a spreadsheet
-                        below.
-                      </td>
-                    </tr>
-                  ) : null}
-                  {filtered.map((s) => (
-                    <tr key={s.id} className={`border-b border-silver/30 ${s.disabled ? "opacity-50" : ""}`}>
-                      <td className="py-3 pr-4">
-                        <button
-                          type="button"
-                          onClick={() => startEdit(s)}
-                          className="group relative"
-                          title="Open profile to update photo"
-                          disabled={s.disabled}
-                        >
-                          <Image
-                            src={s.photo}
-                            alt={s.firstName}
-                            width={48}
-                            height={48}
-                            className="rounded-xl object-cover"
-                            unoptimized={s.photo.startsWith("data:")}
+                <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:px-6">
+                  {showOfficePaymentPanel ? (
+                    <RecordOfficePayment
+                      students={students.filter((s) => !isDemoStudentExternalId(s.id))}
+                      initialStudentId={paymentStudentId ?? undefined}
+                      onDone={() => {
+                        void queryClient.invalidateQueries({ queryKey: ["students"] })
+                      }}
+                    />
+                  ) : (
+                    <>
+                      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                        {!editing && (
+                          <div>
+                            <Label>Student ID</Label>
+                            <Input
+                              value={form.id}
+                              onChange={(e) => {
+                                setFormMessage(null)
+                                setForm({ ...form, id: e.target.value })
+                              }}
+                            />
+                          </div>
+                        )}
+                        <div>
+                          <Label>First Name</Label>
+                          <Input
+                            value={form.firstName}
+                            onChange={(e) => {
+                              setFormMessage(null)
+                              setForm({ ...form, firstName: e.target.value })
+                            }}
                           />
-                          <span className="absolute inset-0 flex items-center justify-center rounded-xl bg-primary/60 opacity-0 transition group-hover:opacity-100">
-                            <Camera className="h-5 w-5 text-white" />
-                          </span>
-                        </button>
-                      </td>
-                      <td className="py-3 pr-4">
-                        <span className="font-mono text-xs text-silver-foreground">{s.id}</span>
-                      </td>
-                      <td className="py-3 pr-4 font-medium text-primary">
-                        {s.firstName} {s.lastName}
-                        {s.disabled && <Badge variant="danger" className="ml-2">Disabled</Badge>}
-                      </td>
-                      <td className="py-3 pr-4">{s.grade}</td>
-                      <td className="py-3 pr-4 text-right tabular-nums">{formatCurrency(s.balance)}</td>
-                      <td className="py-3 text-right">
-                        <div className="flex flex-wrap justify-end gap-2">
+                        </div>
+                        <div>
+                          <Label>Last Name</Label>
+                          <Input
+                            value={form.lastName}
+                            onChange={(e) => {
+                              setFormMessage(null)
+                              setForm({ ...form, lastName: e.target.value })
+                            }}
+                          />
+                        </div>
+                        <div>
+                          <Label>Grade</Label>
+                          <Input
+                            value={form.grade}
+                            onChange={(e) => {
+                              setFormMessage(null)
+                              setForm({ ...form, grade: e.target.value })
+                            }}
+                          />
+                        </div>
+                        <div>
+                          <Label>Homeroom</Label>
+                          <Input
+                            value={form.homeroom}
+                            onChange={(e) => {
+                              setFormMessage(null)
+                              setForm({ ...form, homeroom: e.target.value })
+                            }}
+                          />
+                        </div>
+                        <div className="rounded-2xl border border-primary/15 bg-primary/[0.03] p-3 md:col-span-2 lg:col-span-1">
+                          <Label htmlFor="student-balance">Balance</Label>
+                          <Input
+                            id="student-balance"
+                            inputMode="decimal"
+                            value={form.balance}
+                            onChange={(e) => {
+                              setFormMessage(null)
+                              setForm({ ...form, balance: e.target.value })
+                            }}
+                            className="mt-1 text-lg font-semibold tabular-nums"
+                          />
+                          <p className="mt-1 text-xs text-silver-foreground">
+                            Edit and tap Update to set the lunch account balance. Prefer Add money
+                            when cash or a check is received in the office.
+                          </p>
+                        </div>
+                      </div>
+
+                      {editing && (
+                        <div className="mt-6 space-y-4 border-t border-silver/40 pt-6">
+                          <div>
+                            <h3 className="text-lg font-semibold text-primary">Badge photo</h3>
+                            <p className="text-sm text-silver-foreground">
+                              Take a photo with your phone camera or upload a picture, then tap Save
+                              photo (or Update below). This same photo shows on badges and when the
+                              badge is scanned at checkout.
+                            </p>
+                          </div>
+                          <div className="flex flex-wrap items-start gap-5">
+                            <div className="space-y-2">
+                              {editingPhoto ? (
+                                <Image
+                                  src={editingPhoto}
+                                  alt={`${editing.firstName} ${editing.lastName}`}
+                                  width={128}
+                                  height={128}
+                                  className="h-32 w-32 rounded-2xl border border-silver/50 object-cover"
+                                  unoptimized={editingPhoto.startsWith("data:")}
+                                />
+                              ) : (
+                                <div className="flex h-32 w-32 items-center justify-center rounded-2xl border border-dashed border-silver/60 bg-silver/10 text-center text-xs font-medium text-silver-foreground">
+                                  No photo yet
+                                </div>
+                              )}
+                              {pendingPhoto && (
+                                <p className="text-xs font-medium text-amber-800">
+                                  New photo — not saved yet
+                                </p>
+                              )}
+                            </div>
+                            <div className="flex min-w-0 flex-1 flex-col gap-3 sm:min-w-[220px]">
+                              <Button
+                                type="button"
+                                size="lg"
+                                className="min-h-14 text-base"
+                                disabled={photoBusy || saving}
+                                onClick={() => triggerPhotoUpload("camera")}
+                              >
+                                <Camera className="h-5 w-5" />
+                                Take photo
+                              </Button>
+                              <Button
+                                type="button"
+                                size="lg"
+                                variant="outline"
+                                className="min-h-14 text-base"
+                                disabled={photoBusy || saving}
+                                onClick={() => triggerPhotoUpload("file")}
+                              >
+                                <Upload className="h-5 w-5" />
+                                Upload photo
+                              </Button>
+                              <Button
+                                type="button"
+                                size="lg"
+                                className="min-h-14 text-base"
+                                disabled={photoBusy || saving}
+                                onClick={() => void handleSavePhoto()}
+                              >
+                                {photoBusy ? "Saving…" : "Save photo"}
+                              </Button>
+                            </div>
+                          </div>
+                          {photoMessage && (
+                            <p
+                              className={`rounded-xl px-4 py-3 text-sm font-medium ${
+                                photoMessage === "Photo saved for badges"
+                                  ? "border border-emerald-200 bg-emerald-50 text-emerald-900"
+                                  : "bg-silver/20 text-primary"
+                              }`}
+                              role="status"
+                            >
+                              {photoMessage}
+                            </p>
+                          )}
+                          <div className="pt-2">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="lg"
+                              className="min-h-12 w-full sm:w-auto"
+                              onClick={() => openOfficePayment(editing.id)}
+                            >
+                              <DollarSign className="h-4 w-4" />
+                              Add money to account
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+
+                      {formMessage && (
+                        <p
+                          className="mt-4 rounded-xl bg-silver/20 px-4 py-3 text-sm font-medium text-primary"
+                          role="status"
+                        >
+                          {formMessage}
+                        </p>
+                      )}
+
+                      <div className="sticky bottom-0 mt-4 flex flex-wrap gap-3 border-t border-silver/40 bg-white/95 py-4 backdrop-blur-sm">
+                        <Button
+                          size="lg"
+                          className="min-h-12 flex-1 font-semibold sm:min-w-[10rem] sm:flex-none"
+                          disabled={saving || photoBusy || !formValid}
+                          onClick={() => void handleSave()}
+                        >
+                          {saving ? "Saving…" : editing ? "Update" : "Save student"}
+                        </Button>
+                        <Button
+                          size="lg"
+                          variant="outline"
+                          className="min-h-12 flex-1 sm:flex-none"
+                          disabled={saving || photoBusy}
+                          onClick={closeEditor}
+                        >
+                          Back to list
+                        </Button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <>
+                <CardHeader className="px-3 pt-3 sm:px-6 sm:pt-6">
+                  <CardTitle>Student Manager</CardTitle>
+                </CardHeader>
+                <div className="relative mb-4 px-3 sm:px-6">
+                  <Search className="absolute left-6 top-1/2 h-5 w-5 -translate-y-1/2 text-silver-foreground sm:left-10" />
+                  <Input
+                    className="pl-12"
+                    placeholder="Search by name or student ID…"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-3 px-1 pb-4 sm:px-2 md:hidden">
+                  {filtered.length === 0 ? (
+                    <p className="py-8 text-center text-sm text-silver-foreground">
+                      No students yet. Tap <strong>Add Student</strong> or import a spreadsheet below.
+                    </p>
+                  ) : (
+                    filtered.map((s) => (
+                      <div
+                        key={s.id}
+                        className={`rounded-2xl border border-silver/50 bg-silver/5 p-3 ${s.disabled ? "opacity-50" : ""}`}
+                      >
+                        <div className="flex items-start gap-3">
+                          <button
+                            type="button"
+                            onClick={() => startEdit(s)}
+                            className="shrink-0"
+                            title="Open profile to update photo"
+                            disabled={s.disabled}
+                          >
+                            <Image
+                              src={s.photo}
+                              alt={s.firstName}
+                              width={56}
+                              height={56}
+                              className="h-14 w-14 rounded-xl object-cover"
+                              unoptimized={s.photo.startsWith("data:")}
+                            />
+                          </button>
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate font-semibold text-primary">
+                              {s.firstName} {s.lastName}
+                              {s.disabled && (
+                                <Badge variant="danger" className="ml-2 align-middle">
+                                  Disabled
+                                </Badge>
+                              )}
+                            </p>
+                            <p className="mt-0.5 font-mono text-xs text-silver-foreground">{s.id}</p>
+                            <p className="mt-1 text-sm text-silver-foreground">
+                              Grade {s.grade} · {formatCurrency(s.balance)}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="mt-3 flex flex-wrap gap-2">
                           <Button
                             size="sm"
                             onClick={() => startEdit(s)}
                             disabled={s.disabled}
-                            className="min-h-10 gap-1.5 font-semibold"
+                            className="min-h-10 flex-1 gap-1.5 font-semibold"
                           >
                             <Pencil className="h-3.5 w-3.5" />
                             Open profile
@@ -672,26 +852,128 @@ export function AdminStudentManager({
                             size="sm"
                             variant="outline"
                             disabled={s.disabled}
-                            onClick={() => {
-                              setPaymentStudentId(s.id)
-                              setShowOfficePaymentPanel(true)
-                            }}
+                            className="min-h-10 flex-1"
+                            onClick={() => openOfficePayment(s.id)}
                           >
                             <DollarSign className="h-3.5 w-3.5" />
                             Add money
                           </Button>
                           {!s.disabled && (
-                            <Button size="sm" variant="ghost" onClick={() => void disableStudent(s.id)}>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="min-h-10"
+                              onClick={() => void disableStudent(s.id)}
+                            >
                               <UserX className="h-4 w-4" />
                             </Button>
                           )}
                         </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                <div className="mobile-scroll-x hidden px-3 pb-6 sm:px-6 md:block">
+                  <table className="w-full min-w-[640px] text-sm">
+                    <thead>
+                      <tr className="border-b border-silver/60 text-silver-foreground">
+                        <th className="pb-3 pr-4 text-left font-medium">Photo</th>
+                        <th className="pb-3 pr-4 text-left font-medium">MD ID</th>
+                        <th className="pb-3 pr-4 text-left font-medium">Name</th>
+                        <th className="pb-3 pr-4 text-left font-medium">Grade</th>
+                        <th className="pb-3 pr-4 text-right font-medium">Balance</th>
+                        <th className="pb-3 text-right font-medium">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filtered.length === 0 ? (
+                        <tr>
+                          <td colSpan={6} className="py-10 text-center text-silver-foreground">
+                            No students yet. Tap <strong>Add Student</strong> or import a spreadsheet
+                            below.
+                          </td>
+                        </tr>
+                      ) : null}
+                      {filtered.map((s) => (
+                        <tr
+                          key={s.id}
+                          className={`border-b border-silver/30 ${s.disabled ? "opacity-50" : ""}`}
+                        >
+                          <td className="py-3 pr-4">
+                            <button
+                              type="button"
+                              onClick={() => startEdit(s)}
+                              className="group relative"
+                              title="Open profile to update photo"
+                              disabled={s.disabled}
+                            >
+                              <Image
+                                src={s.photo}
+                                alt={s.firstName}
+                                width={48}
+                                height={48}
+                                className="rounded-xl object-cover"
+                                unoptimized={s.photo.startsWith("data:")}
+                              />
+                              <span className="absolute inset-0 flex items-center justify-center rounded-xl bg-primary/60 opacity-0 transition group-hover:opacity-100">
+                                <Camera className="h-5 w-5 text-white" />
+                              </span>
+                            </button>
+                          </td>
+                          <td className="py-3 pr-4">
+                            <span className="font-mono text-xs text-silver-foreground">{s.id}</span>
+                          </td>
+                          <td className="py-3 pr-4 font-medium text-primary">
+                            {s.firstName} {s.lastName}
+                            {s.disabled && (
+                              <Badge variant="danger" className="ml-2">
+                                Disabled
+                              </Badge>
+                            )}
+                          </td>
+                          <td className="py-3 pr-4">{s.grade}</td>
+                          <td className="py-3 pr-4 text-right tabular-nums">
+                            {formatCurrency(s.balance)}
+                          </td>
+                          <td className="py-3 text-right">
+                            <div className="flex flex-wrap justify-end gap-2">
+                              <Button
+                                size="sm"
+                                onClick={() => startEdit(s)}
+                                disabled={s.disabled}
+                                className="min-h-10 gap-1.5 font-semibold"
+                              >
+                                <Pencil className="h-3.5 w-3.5" />
+                                Open profile
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                disabled={s.disabled}
+                                onClick={() => openOfficePayment(s.id)}
+                              >
+                                <DollarSign className="h-3.5 w-3.5" />
+                                Add money
+                              </Button>
+                              {!s.disabled && (
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => void disableStudent(s.id)}
+                                >
+                                  <UserX className="h-4 w-4" />
+                                </Button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            )}
           </Card>
 
           <Card>
@@ -702,7 +984,10 @@ export function AdminStudentManager({
               {Object.entries(signupTotals)
                 .sort(([a], [b]) => a.localeCompare(b))
                 .map(([grade, count]) => (
-                  <div key={grade} className="flex items-center justify-between rounded-2xl bg-silver/20 px-4 py-3">
+                  <div
+                    key={grade}
+                    className="flex items-center justify-between rounded-2xl bg-silver/20 px-4 py-3"
+                  >
                     <span className="font-medium text-primary">Grade {grade}</span>
                     <span className="text-2xl font-bold text-primary">{count}</span>
                   </div>
@@ -719,273 +1004,6 @@ export function AdminStudentManager({
             </div>
           </Card>
         </div>
-
-        {(showAdd || editing) && (
-          <div
-            ref={editFormRef}
-            className="fixed inset-0 z-50 flex flex-col bg-[#f7f8fb] md:static md:z-auto md:block md:bg-transparent"
-            role="dialog"
-            aria-modal="true"
-            aria-label={editing ? "Student profile" : "Add Student"}
-          >
-            <div className="flex shrink-0 items-center justify-between gap-3 border-b border-silver/60 bg-white px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))] md:hidden">
-              <h2 className="text-lg font-semibold text-primary">
-                {editing ? "Student profile" : "Add Student"}
-              </h2>
-              <Button
-                type="button"
-                variant="ghost"
-                className="min-h-11 min-w-11"
-                onClick={closeEditor}
-              >
-                <X className="h-5 w-5" />
-                <span className="sr-only">Close</span>
-              </Button>
-            </div>
-            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] md:overflow-visible md:p-0">
-              <Card>
-                <CardHeader className="hidden md:flex">
-                  <CardTitle>{editing ? "Student profile" : "Add Student"}</CardTitle>
-                  {editing && (
-                    <p className="text-sm text-silver-foreground">
-                      Update details and photo. The photo is used on badges, Badge Manager, and lunch
-                      line checkout.
-                    </p>
-                  )}
-                </CardHeader>
-                {editing && (
-                  <p className="mb-4 px-1 text-sm text-silver-foreground md:hidden">
-                    Update details and photo. The photo is used on badges and lunch line checkout.
-                  </p>
-                )}
-                <div className="grid gap-4 px-3 sm:px-6 md:grid-cols-2 lg:grid-cols-3">
-                  {!editing && (
-                    <div>
-                      <Label>Student ID</Label>
-                      <Input
-                        value={form.id}
-                        onChange={(e) => {
-                          setFormMessage(null)
-                          setForm({ ...form, id: e.target.value })
-                        }}
-                      />
-                    </div>
-                  )}
-                  <div>
-                    <Label>First Name</Label>
-                    <Input
-                      value={form.firstName}
-                      onChange={(e) => {
-                        setFormMessage(null)
-                        setForm({ ...form, firstName: e.target.value })
-                      }}
-                    />
-                  </div>
-                  <div>
-                    <Label>Last Name</Label>
-                    <Input
-                      value={form.lastName}
-                      onChange={(e) => {
-                        setFormMessage(null)
-                        setForm({ ...form, lastName: e.target.value })
-                      }}
-                    />
-                  </div>
-                  <div>
-                    <Label>Grade</Label>
-                    <Input
-                      value={form.grade}
-                      onChange={(e) => {
-                        setFormMessage(null)
-                        setForm({ ...form, grade: e.target.value })
-                      }}
-                    />
-                  </div>
-                  <div>
-                    <Label>Homeroom</Label>
-                    <Input
-                      value={form.homeroom}
-                      onChange={(e) => {
-                        setFormMessage(null)
-                        setForm({ ...form, homeroom: e.target.value })
-                      }}
-                    />
-                  </div>
-                  <div>
-                    <Label>Balance</Label>
-                    <Input
-                      value={form.balance}
-                      onChange={(e) => {
-                        setFormMessage(null)
-                        setForm({ ...form, balance: e.target.value })
-                      }}
-                    />
-                    <p className="mt-1 text-xs text-silver-foreground">
-                      Prefer &quot;Add money to account&quot; when cash or a check is received in the office.
-                    </p>
-                  </div>
-                </div>
-
-                {editing && (
-                  <div className="mt-6 space-y-4 border-t border-silver/40 px-3 pt-6 sm:px-6">
-                    <div>
-                      <h3 className="text-lg font-semibold text-primary">Badge photo</h3>
-                      <p className="text-sm text-silver-foreground">
-                        Take a photo with your phone camera or upload a picture, then tap Save photo
-                        (or Save changes below). This same photo shows on badges and when the badge is
-                        scanned at checkout.
-                      </p>
-                    </div>
-                    <div className="flex flex-wrap items-start gap-5">
-                      <div className="space-y-2">
-                        {editingPhoto ? (
-                          <Image
-                            src={editingPhoto}
-                            alt={`${editing.firstName} ${editing.lastName}`}
-                            width={128}
-                            height={128}
-                            className="h-32 w-32 rounded-2xl border border-silver/50 object-cover"
-                            unoptimized={editingPhoto.startsWith("data:")}
-                          />
-                        ) : (
-                          <div className="flex h-32 w-32 items-center justify-center rounded-2xl border border-dashed border-silver/60 bg-silver/10 text-center text-xs font-medium text-silver-foreground">
-                            No photo yet
-                          </div>
-                        )}
-                        {pendingPhoto && (
-                          <p className="text-xs font-medium text-amber-800">New photo — not saved yet</p>
-                        )}
-                      </div>
-                      <div className="flex min-w-0 flex-1 flex-col gap-3 sm:min-w-[220px]">
-                        <Button
-                          type="button"
-                          size="lg"
-                          className="min-h-14 text-base"
-                          disabled={photoBusy || saving}
-                          onClick={() => triggerPhotoUpload("camera")}
-                        >
-                          <Camera className="h-5 w-5" />
-                          Take photo
-                        </Button>
-                        <Button
-                          type="button"
-                          size="lg"
-                          variant="outline"
-                          className="min-h-14 text-base"
-                          disabled={photoBusy || saving}
-                          onClick={() => triggerPhotoUpload("file")}
-                        >
-                          <Upload className="h-5 w-5" />
-                          Upload photo
-                        </Button>
-                        <Button
-                          type="button"
-                          size="lg"
-                          className="min-h-14 text-base"
-                          disabled={photoBusy || saving}
-                          onClick={() => void handleSavePhoto()}
-                        >
-                          {photoBusy ? "Saving…" : "Save photo"}
-                        </Button>
-                      </div>
-                    </div>
-                    {photoMessage && (
-                      <p
-                        className={`rounded-xl px-4 py-3 text-sm font-medium ${
-                          photoMessage === "Photo saved for badges"
-                            ? "border border-emerald-200 bg-emerald-50 text-emerald-900"
-                            : "bg-silver/20 text-primary"
-                        }`}
-                        role="status"
-                      >
-                        {photoMessage}
-                      </p>
-                    )}
-                    <div className="pt-2">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="lg"
-                        className="min-h-12 w-full sm:w-auto"
-                        onClick={() => {
-                          setPaymentStudentId(editing.id)
-                          setShowOfficePaymentPanel(true)
-                        }}
-                      >
-                        <DollarSign className="h-4 w-4" />
-                        Add money to account
-                      </Button>
-                    </div>
-                  </div>
-                )}
-
-                {formMessage && (
-                  <p
-                    className="mx-3 mt-4 rounded-xl bg-silver/20 px-4 py-3 text-sm font-medium text-primary sm:mx-6"
-                    role="status"
-                  >
-                    {formMessage}
-                  </p>
-                )}
-
-                <div className="mt-4 flex flex-wrap gap-3 px-3 pb-6 sm:px-6">
-                  <Button
-                    size="lg"
-                    className="min-h-12 flex-1 sm:flex-none"
-                    disabled={saving || photoBusy || !formValid}
-                    onClick={() => void handleSave()}
-                  >
-                    {saving ? "Saving…" : editing ? "Save changes" : "Save student"}
-                  </Button>
-                  <Button
-                    size="lg"
-                    variant="outline"
-                    className="min-h-12 flex-1 sm:flex-none"
-                    disabled={saving || photoBusy}
-                    onClick={closeEditor}
-                  >
-                    Cancel
-                  </Button>
-                </div>
-              </Card>
-            </div>
-          </div>
-        )}
-
-        {showOfficePaymentPanel && (
-          <div
-            className="fixed inset-0 z-[60] flex flex-col bg-[#f7f8fb] md:static md:z-auto md:block md:bg-transparent"
-            role="dialog"
-            aria-modal="true"
-            aria-label="Add money to account"
-          >
-            <div className="flex shrink-0 items-center justify-between gap-3 border-b border-silver/60 bg-white px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
-              <h2 className="text-lg font-semibold text-primary">Add money to account</h2>
-              <Button
-                type="button"
-                variant="ghost"
-                className="min-h-11 min-w-11 md:min-w-0"
-                onClick={() => {
-                  setShowOfficePaymentPanel(false)
-                  setPaymentStudentId(null)
-                }}
-              >
-                <X className="h-5 w-5 md:hidden" />
-                <span className="hidden md:inline">Close</span>
-                <span className="sr-only md:hidden">Close</span>
-              </Button>
-            </div>
-            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] md:overflow-visible md:p-0 md:pt-3">
-              <RecordOfficePayment
-                students={students.filter((s) => !isDemoStudentExternalId(s.id))}
-                initialStudentId={paymentStudentId ?? undefined}
-                onDone={() => {
-                  void queryClient.invalidateQueries({ queryKey: ["students"] })
-                }}
-              />
-            </div>
-          </div>
-        )}
 
         {showImportWizard && (
           <DesktopOnly>
