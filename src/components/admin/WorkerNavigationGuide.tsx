@@ -41,6 +41,7 @@ const GUIDE_STEPS: GuideStep[] = [
       "Cookbook = your saved meals and recipes (reuse anytime).",
       "Menu / Calendar = what students eat on which day.",
       "Build meals in Cookbook first, then put them on the calendar.",
+      "Photos & Items: upload a stock photo, then Replace · Take photo when the real meal is ready.",
     ],
     href: "/admin/cookbook",
     buttonLabel: "Open Cookbook",

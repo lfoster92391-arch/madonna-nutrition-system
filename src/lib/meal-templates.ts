@@ -73,6 +73,15 @@ export function getMealCoverPhoto(
   )
 }
 
+/** Next/Image needs unoptimized for local uploads, data URLs, and (legacy) blob URLs. */
+export function isLocalMealPhotoUrl(url: string): boolean {
+  return (
+    url.startsWith("data:") ||
+    url.startsWith("blob:") ||
+    url.startsWith("/uploads/")
+  )
+}
+
 export function formatLastUsed(iso?: string): string {
   if (!iso) return "Never used"
   const date = new Date(iso)

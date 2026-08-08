@@ -22,6 +22,7 @@ import {
 } from "@/lib/calendar"
 import { getEventCoverPhoto } from "@/components/calendar/calendar-event-media"
 import type { CalendarEvent, CalendarEventCategory, MealTemplate } from "@/lib/types"
+import { isLocalMealPhotoUrl } from "@/lib/meal-templates"
 import { cn } from "@/lib/utils"
 
 export const CATEGORY_ICONS: Record<CalendarEventCategory, LucideIcon> = {
@@ -280,7 +281,7 @@ export function CalendarMonthGrid({
                                   fill
                                   className="object-cover"
                                   sizes="16px"
-                                  unoptimized={cover.startsWith("/uploads/") || cover.startsWith("blob:")}
+                                  unoptimized={isLocalMealPhotoUrl(cover)}
                                 />
                               </span>
                             ) : (

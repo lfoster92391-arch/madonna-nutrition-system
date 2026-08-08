@@ -16,6 +16,7 @@ import {
   getWeekDates,
 } from "@/lib/calendar"
 import type { CalendarEvent, MealTemplate } from "@/lib/types"
+import { isLocalMealPhotoUrl } from "@/lib/meal-templates"
 import { cn } from "@/lib/utils"
 
 interface CalendarWeekOutlookProps {
@@ -135,7 +136,7 @@ export function CalendarWeekOutlook({
                           fill
                           className="object-cover"
                           sizes="72px"
-                          unoptimized={cover.startsWith("/uploads/") || cover.startsWith("blob:")}
+                          unoptimized={isLocalMealPhotoUrl(cover)}
                         />
                       </span>
                     ) : Icon ? (
