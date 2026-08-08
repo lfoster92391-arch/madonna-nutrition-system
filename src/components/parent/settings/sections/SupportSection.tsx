@@ -3,19 +3,24 @@
 import Link from "next/link"
 import { SettingsPanel } from "@/components/parent/settings/SettingsPanel"
 import { Button } from "@/components/ui/button"
+import {
+  getItHelpDeskMailto,
+  IT_HELP_DESK_EMAIL,
+  IT_HELP_DESK_LABEL,
+} from "@/config/it-help"
 
 export function SupportSection() {
   return (
     <SettingsPanel
       title="Support"
-      description="Get help from the Madonna nutrition office or report an issue with your account."
+      description="Get help from the IT Help Desk or report an issue with your account."
     >
       <div className="space-y-4">
         <SupportCard
-          title="Contact nutrition office"
-          description="nutrition@madonnahs.org ┬╖ (304) 748-4414 ┬╖ MonΓÇôFri, 7:30 AM ΓÇô 2:30 PM"
-          actionLabel="Email office"
-          href="mailto:nutrition@madonnahs.org"
+          title={IT_HELP_DESK_LABEL}
+          description={`${IT_HELP_DESK_EMAIL} · Mon–Fri school hours`}
+          actionLabel="Email IT Help Desk"
+          href={getItHelpDeskMailto()}
         />
         <SupportCard
           title="FAQ"

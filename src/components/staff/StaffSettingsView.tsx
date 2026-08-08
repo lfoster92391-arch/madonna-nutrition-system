@@ -9,6 +9,11 @@ import { useStaffData } from "@/components/providers/StaffDataProvider"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { STAFF_NAVY, STAFF_SILVER } from "@/components/staff/layout/staff-theme"
+import {
+  getItHelpDeskMailto,
+  IT_HELP_DESK_EMAIL,
+  IT_HELP_DESK_LABEL,
+} from "@/config/it-help"
 import { formatCurrency } from "@/lib/utils"
 
 type LinkedChild = {
@@ -160,7 +165,23 @@ export function StaffSettingsView() {
           Support
         </h2>
         <p className="mt-2 text-sm text-silver-foreground">
-          Contact the nutrition office for account or badge issues.
+          Contact{" "}
+          <a
+            href={getItHelpDeskMailto()}
+            className="font-semibold underline-offset-2 hover:underline"
+            style={{ color: STAFF_NAVY }}
+          >
+            {IT_HELP_DESK_LABEL}
+          </a>{" "}
+          (
+          <a
+            href={getItHelpDeskMailto()}
+            className="underline-offset-2 hover:underline"
+            style={{ color: STAFF_NAVY }}
+          >
+            {IT_HELP_DESK_EMAIL}
+          </a>
+          ) for account or badge issues.
         </p>
       </Card>
     </div>

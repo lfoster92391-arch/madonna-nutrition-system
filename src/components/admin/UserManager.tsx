@@ -194,20 +194,40 @@ export function UserManager() {
   const performedBy = authUser?.displayName ?? "System Admin"
   const adminUserId = authUser?.id ?? ""
 
+  const studentNameById = useMemo(() => {
+    const map = new Map<string, string>()
+    for (const student of students) {
+      map.set(student.id, `${student.firstName} ${student.lastName}`)
+    }
+    return map
+  }, [students])
+
   const filtered = useMemo(() => {
     return users.filter((u) => {
       if (roleFilter !== "all" && u.role !== roleFilter) return false
       if (!search.trim()) return true
       const q = search.toLowerCase()
+      const linkedLabels = (u.linkedStudentIds ?? [])
+        .map((id) => studentNameById.get(id) ?? id)
+        .join(" ")
+        .toLowerCase()
       return (
         u.firstName.toLowerCase().includes(q) ||
         u.lastName.toLowerCase().includes(q) ||
         u.email.toLowerCase().includes(q) ||
         u.username.toLowerCase().includes(q) ||
-        (u.badgeId?.includes(q) ?? false)
+        (u.badgeId?.includes(q) ?? false) ||
+        linkedLabels.includes(q)
       )
     })
-  }, [users, search, roleFilter])
+  }, [users, search, roleFilter, studentNameById])
+
+  function linkedStudentLabels(user: User): string {
+    if (user.role !== "parent") return "—"
+    const ids = user.linkedStudentIds ?? []
+    if (ids.length === 0) return "None linked"
+    return ids.map((id) => studentNameById.get(id) ?? id).join(", ")
+  }
 
   if (authUser && authUser.role !== "admin") {
     return (
@@ -556,10 +576,14 @@ export function UserManager() {
           <div>
             <h1 className="text-3xl font-bold text-primary">User Management</h1>
             <p className="text-silver-foreground">
-              Manage portal accounts, roles, and access — all changes are audit logged. Staff imports
+              Manage portal accounts, roles, and access — all changes are audit logged. Parent accounts
               also appear under{" "}
+              <Link href="/admin/imports?tab=families" className="font-semibold text-primary underline">
+                Students &amp; Imports → Parents &amp; Family
+              </Link>
+              ; staff under{" "}
               <Link href="/admin/imports?tab=staff" className="font-semibold text-primary underline">
-                Students &amp; Imports → Staff Accounts
+                Staff Accounts
               </Link>
               .
             </p>
@@ -639,7 +663,9 @@ export function UserManager() {
                       <th className="pb-3 pr-4 text-left font-medium">Name</th>
                       <th className="pb-3 pr-4 text-left font-medium">Email</th>
                       <th className="pb-3 pr-4 text-left font-medium">Role</th>
-                      <th className="pb-3 pr-4 text-left font-medium">Badge ID</th>
+                      <th className="pb-3 pr-4 text-left font-medium">
+                        {roleFilter === "parent" ? "Linked students" : "Badge / students"}
+                      </th>
                       <th className="pb-3 pr-4 text-left font-medium">Status</th>
                       <th className="pb-3 pr-4 text-left font-medium">Last Login</th>
                       <th className="pb-3 text-right font-medium">Actions</th>
@@ -650,10 +676,27 @@ export function UserManager() {
                       <tr>
                         <td colSpan={8} className="py-10 text-center text-silver-foreground">
                           No users match this filter.{" "}
-                          <Link href="/admin/imports?tab=staff" className="font-semibold text-primary underline">
-                            Import staff
-                          </Link>{" "}
-                          or tap Add User.
+                          {roleFilter === "parent" ? (
+                            <>
+                              <Link
+                                href="/admin/imports?tab=families"
+                                className="font-semibold text-primary underline"
+                              >
+                                View parents &amp; family
+                              </Link>{" "}
+                              or tap Add User.
+                            </>
+                          ) : (
+                            <>
+                              <Link
+                                href="/admin/imports?tab=staff"
+                                className="font-semibold text-primary underline"
+                              >
+                                Import staff
+                              </Link>{" "}
+                              or tap Add User.
+                            </>
+                          )}
                         </td>
                       </tr>
                     ) : null}
@@ -690,8 +733,14 @@ export function UserManager() {
                             ))}
                           </select>
                         </td>
-                        <td className="py-3 pr-4 font-mono text-silver-foreground">
-                          {userRoleSupportsBadge(u.role) ? (u.badgeId ?? "—") : "—"}
+                        <td className="py-3 pr-4 text-silver-foreground">
+                          {u.role === "parent" || roleFilter === "parent" ? (
+                            linkedStudentLabels(u)
+                          ) : userRoleSupportsBadge(u.role) ? (
+                            <span className="font-mono">{u.badgeId ?? "—"}</span>
+                          ) : (
+                            "—"
+                          )}
                         </td>
                         <td className="py-3 pr-4">
                           <Badge variant={u.status === "active" ? "success" : "danger"}>
@@ -706,6 +755,11 @@ export function UserManager() {
                             <Button size="sm" onClick={() => openEdit(u)}>
                               Open profile
                             </Button>
+                            {u.role === "parent" && (
+                              <Button size="sm" variant="outline" onClick={() => openReset(u)}>
+                                Reset password
+                              </Button>
+                            )}
                             <ActionsMenu
                               user={u}
                               onEdit={() => openEdit(u)}
@@ -1079,8 +1133,12 @@ export function UserManager() {
                         rows={2}
                       />
                     </div>
-                    <Button onClick={handleResetPassword}>
-                      {resetForm.passwordMode === "generate" ? "Generate Password" : "Set Password"}
+                    <Button onClick={handleResetPassword} disabled={saving}>
+                      {saving
+                        ? "Resetting…"
+                        : resetForm.passwordMode === "generate"
+                          ? "Reset password"
+                          : "Set password"}
                     </Button>
                   </>
                 )}
