@@ -20,9 +20,12 @@ import { PARENT_CARD, PARENT_NAVY } from "@/components/parent/parent-dashboard-s
 import {
   getAssetPilotEduUrl,
   getFactsFamilyLoginUrl,
-  getParentGmailUrl,
-  getParentNutritionEmail,
 } from "@/config/parent-external-links"
+import {
+  getItHelpDeskMailto,
+  IT_HELP_DESK_EMAIL,
+  IT_HELP_DESK_LABEL,
+} from "@/config/it-help"
 
 type QuickActionsStripProps = {
   onAddFunds?: () => void
@@ -51,11 +54,11 @@ type ExternalLinkTileProps = {
 }
 
 function ExternalLinkTile({ href, label, subtitle, icon }: ExternalLinkTileProps) {
+  const isMailto = href.startsWith("mailto:")
   return (
     <a
       href={href}
-      target="_blank"
-      rel="noopener noreferrer"
+      {...(isMailto ? {} : { target: "_blank", rel: "noopener noreferrer" })}
       className={tileClass}
     >
       <span className={iconWrapClass} aria-hidden>
@@ -194,9 +197,9 @@ export function QuickActionsStrip({
               }
             />
             <ExternalLinkTile
-              href={getParentGmailUrl()}
-              label="Open Gmail"
-              subtitle={getParentNutritionEmail()}
+              href={getItHelpDeskMailto()}
+              label={IT_HELP_DESK_LABEL}
+              subtitle={IT_HELP_DESK_EMAIL}
               icon={<Mail className="h-6 w-6" style={{ color: PARENT_NAVY }} />}
             />
           </div>

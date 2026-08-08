@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react"
 import { useSearchParams } from "next/navigation"
+import { AdminParentManager } from "@/components/admin/AdminParentManager"
 import { AdminStaffManager } from "@/components/admin/AdminStaffManager"
 import { AdminStudentManager } from "@/components/admin/AdminStudentManager"
 import { DesktopOnly } from "@/components/admin/DesktopOnly"
@@ -60,10 +61,11 @@ export function AdminImportsHub() {
           </TabsContent>
 
           <TabsContent value="families" className="space-y-6">
+            <AdminParentManager />
             <div className="hidden justify-end md:flex">
               <ImportExportMenu type="families" onImport={scrollToFamilyImport} />
             </div>
-            <DesktopOnly>
+            <DesktopOnly message="Family bulk import is available on desktop. Open this page on a computer to upload CSV files.">
               <div ref={familyImportRef}>
                 <FamilyImportWizard />
               </div>

@@ -6,6 +6,7 @@ import { Eye, EyeOff, HelpCircle, Lock, User } from "lucide-react"
 import Image from "next/image"
 import { useAuth, type PortalRole } from "@/components/providers/AuthProvider"
 import { BRAND } from "@/config/brand"
+import { getItHelpDeskMailto, IT_HELP_DESK_LABEL } from "@/config/it-help"
 import { Button } from "@/components/ui/button"
 import { Input, Label } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
@@ -166,9 +167,13 @@ export function LoginForm({ role, redirectTo, variant = "page" }: LoginFormProps
             Remember me
           </label>
           {!embedded && (
-            <button type="button" className="font-medium hover:underline" style={{ color: NAVY }}>
+            <a
+              href={getItHelpDeskMailto()}
+              className="font-medium hover:underline"
+              style={{ color: NAVY }}
+            >
               Forgot Password?
-            </button>
+            </a>
           )}
         </div>
 
@@ -188,7 +193,14 @@ export function LoginForm({ role, redirectTo, variant = "page" }: LoginFormProps
         <>
           <p className="mt-6 flex items-center justify-center gap-2 text-center text-xs text-[#64748B]">
             <HelpCircle className="h-4 w-4 shrink-0" />
-            Need help? Contact your system administrator.
+            Need help?{" "}
+            <a
+              href={getItHelpDeskMailto()}
+              className="font-semibold hover:underline"
+              style={{ color: NAVY }}
+            >
+              {IT_HELP_DESK_LABEL}
+            </a>
           </p>
 
           {role === "parent" && (

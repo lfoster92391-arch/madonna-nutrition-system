@@ -1,4 +1,5 @@
 import type { ReactNode } from "react"
+import { getItHelpDeskMailto, IT_HELP_DESK_LABEL } from "@/config/it-help"
 
 /** Shared Fuel The Dons landing chrome (background + safe-area framing). */
 export function LandingShell({ children }: { children: ReactNode }) {
@@ -16,6 +17,16 @@ export function LandingShell({ children }: { children: ReactNode }) {
       <main className="relative z-10 flex min-h-screen min-h-[100dvh] w-full max-w-[100vw] flex-col items-center justify-end px-4 pb-[8vh] max-md:justify-start max-md:pb-[max(env(safe-area-inset-bottom),1.25rem)] max-md:pt-[max(env(safe-area-inset-top),1rem)] sm:px-6 sm:pb-[10vh] lg:pb-[12vh]">
         <div className="flex w-full min-w-0 max-w-[920px] flex-col items-center text-center">
           {children}
+          <p className="mt-6 text-sm font-medium text-[#475569]">
+            Need help?{" "}
+            <a
+              href={getItHelpDeskMailto()}
+              className="font-semibold underline-offset-2 hover:underline"
+              style={{ color: "#041B52" }}
+            >
+              {IT_HELP_DESK_LABEL}
+            </a>
+          </p>
         </div>
       </main>
     </div>

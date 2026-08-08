@@ -1,8 +1,13 @@
 "use client"
 
-import { HelpCircle, Mail, Phone } from "lucide-react"
+import { HelpCircle, Mail } from "lucide-react"
 import { Card } from "@/components/ui/card"
 import { STAFF_BG, STAFF_NAVY, STAFF_SILVER } from "@/components/staff/layout/staff-theme"
+import {
+  getItHelpDeskMailto,
+  IT_HELP_DESK_EMAIL,
+  IT_HELP_DESK_LABEL,
+} from "@/config/it-help"
 
 export function StaffHelpView() {
   return (
@@ -21,22 +26,30 @@ export function StaffHelpView() {
       >
         <h2 className="flex items-center gap-2 text-lg font-bold" style={{ color: STAFF_NAVY }}>
           <HelpCircle className="h-5 w-5" />
-          Need Assistance?
+          Need help?
         </h2>
         <p className="mt-3 text-sm text-silver-foreground">
-          Contact the Madonna Nutrition Office for badge issues, account questions, or lunch
-          schedule updates. Staff can view their own cafeteria account balance and published menu
+          Contact {IT_HELP_DESK_LABEL} for badge issues, account questions, or lunch schedule
+          updates. Staff can view their own cafeteria account balance and published menu
           information.
         </p>
         <div className="mt-6 space-y-3 text-sm">
-          <p className="flex items-center gap-2" style={{ color: STAFF_NAVY }}>
-            <Phone className="h-4 w-4" style={{ color: STAFF_SILVER }} />
-            Nutrition Office: (304) 555-0199
-          </p>
-          <p className="flex items-center gap-2" style={{ color: STAFF_NAVY }}>
+          <a
+            href={getItHelpDeskMailto()}
+            className="flex items-center gap-2 font-medium underline-offset-2 hover:underline"
+            style={{ color: STAFF_NAVY }}
+          >
             <Mail className="h-4 w-4" style={{ color: STAFF_SILVER }} />
-            nutrition@weirtonmadonna.org
-          </p>
+            {IT_HELP_DESK_LABEL}
+          </a>
+          <a
+            href={getItHelpDeskMailto()}
+            className="flex items-center gap-2 underline-offset-2 hover:underline"
+            style={{ color: STAFF_NAVY }}
+          >
+            <Mail className="h-4 w-4" style={{ color: STAFF_SILVER }} />
+            {IT_HELP_DESK_EMAIL}
+          </a>
         </div>
       </Card>
     </div>
