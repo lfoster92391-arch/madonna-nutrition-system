@@ -150,6 +150,7 @@ export function AdminStudentManager({
     try {
       if (editing) {
         const targetId = editing.id
+        const nextBalance = parseFloat(form.balance) || 0
         const fieldsChanged =
           form.firstName !== editing.firstName ||
           form.lastName !== editing.lastName ||
@@ -157,14 +158,26 @@ export function AdminStudentManager({
           form.homeroom !== (editing.homeroom ?? "") ||
           form.balance !== String(editing.balance)
 
+        let saved = editing
         if (fieldsChanged) {
-          await updateStudent(targetId, {
+          const updated = await updateStudent(targetId, {
             firstName: form.firstName.trim(),
             lastName: form.lastName.trim(),
             grade: form.grade.trim(),
             homeroom: form.homeroom.trim(),
-            balance: parseFloat(form.balance) || 0,
+            balance: nextBalance,
           })
+          if (updated) saved = updated
+          else {
+            saved = {
+              ...editing,
+              firstName: form.firstName.trim(),
+              lastName: form.lastName.trim(),
+              grade: form.grade.trim(),
+              homeroom: form.homeroom.trim(),
+              balance: nextBalance,
+            }
+          }
         }
 
         // Photo-only edits count as dirty and save through the same button.
@@ -172,9 +185,16 @@ export function AdminStudentManager({
           await savePhotoForStudent(targetId, pendingPhoto)
         }
 
-        setEditing(null)
-        setJustAddedId(null)
-        setForm({ id: "", firstName: "", lastName: "", grade: "", homeroom: "", balance: "0" })
+        setEditing(saved)
+        setForm({
+          id: saved.id,
+          firstName: saved.firstName,
+          lastName: saved.lastName,
+          grade: saved.grade,
+          homeroom: saved.homeroom ?? "",
+          balance: String(saved.balance),
+        })
+        setFormMessage("Saved.")
       } else {
         const newId = form.id.trim()
         await addStudent({
