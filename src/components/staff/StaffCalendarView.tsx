@@ -12,6 +12,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { STAFF_BG, STAFF_NAVY, STAFF_SILVER } from "@/components/staff/layout/staff-theme"
 import { formatDateKey, formatMonthYear, getAccentHex } from "@/lib/calendar"
 import { filterPublicCalendarEvents } from "@/lib/calendar-publish"
+import { isPizzaDayName } from "@/lib/pizza-day"
 
 export function StaffCalendarView() {
   const { calendarEvents, calendarSettings, mealTemplates } = useDemo()
@@ -190,6 +191,13 @@ export function StaffCalendarView() {
                   </p>
                   {event.description ? (
                     <p className="mt-1 text-sm text-silver-foreground">{event.description}</p>
+                  ) : null}
+                  {event.category === "menu_day" &&
+                  selectedDate === formatDateKey(now) &&
+                  isPizzaDayName(event.title) ? (
+                    <p className="mt-2 text-sm" style={{ color: STAFF_NAVY }}>
+                      Pizza Day is $1.00 per slice — order from My Lunch Today on your dashboard.
+                    </p>
                   ) : null}
                 </li>
               ))}

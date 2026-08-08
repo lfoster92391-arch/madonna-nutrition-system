@@ -529,6 +529,12 @@ model TeacherLunchReservation {
   date           DateTime               @db.Date
   mealName       String
   mealPrice      Decimal                @db.Decimal(10, 2)
+  /** Pizza Day: number of slices ordered (null for standard meals). */
+  sliceCount     Int?
+  /** Pizza Day: price per slice (typically $1.00). */
+  unitPrice      Decimal?               @db.Decimal(10, 2)
+  /** Charged total (slices × unitPrice on Pizza Day; otherwise equals mealPrice). */
+  totalAmount    Decimal?               @db.Decimal(10, 2)
   mealPhotoUrl   String?
   paymentMethod  LunchPaymentMethod
   status         LunchReservationStatus @default(RESERVED)
@@ -677,17 +683,23 @@ model AgreementAuditLog {
 }
 
 model LunchReservation {
-  id        String                   @id @default(cuid())
-  studentId String
-  student   Student                  @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  date      DateTime                 @db.Date
-  mealType  LunchReservationMealType
-  price     Decimal                  @db.Decimal(10, 2)
-  status    LunchReservationStatus   @default(RESERVED)
-  schoolId  String
-  school    School                   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  createdAt DateTime                 @default(now())
-  updatedAt DateTime                 @updatedAt
+  id          String                   @id @default(cuid())
+  studentId   String
+  student     Student                  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  date        DateTime                 @db.Date
+  mealType    LunchReservationMealType
+  price       Decimal                  @db.Decimal(10, 2)
+  /** Pizza Day: number of slices ordered (null for standard meals). */
+  sliceCount  Int?
+  /** Pizza Day: price per slice (typically $1.00). */
+  unitPrice   Decimal?                 @db.Decimal(10, 2)
+  /** Charged total (slices × unitPrice on Pizza Day; otherwise equals price). */
+  totalAmount Decimal?                 @db.Decimal(10, 2)
+  status      LunchReservationStatus   @default(RESERVED)
+  schoolId    String
+  school      School                   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  createdAt   DateTime                 @default(now())
+  updatedAt   DateTime                 @updatedAt
 
   @@unique([studentId, date, mealType])
 }

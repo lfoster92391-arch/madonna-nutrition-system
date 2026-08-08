@@ -2,6 +2,7 @@
 
 import { StaffCalendarPreview } from "@/components/staff/StaffCalendarPreview"
 import { StaffDashboardAnnouncements } from "@/components/staff/StaffDashboardAnnouncements"
+import { StaffMyLunchToday } from "@/components/staff/StaffMyLunchToday"
 import { StaffQuickAccessCards } from "@/components/staff/StaffQuickAccessCards"
 import { STAFF_BG } from "@/components/staff/layout/staff-theme"
 
@@ -14,6 +15,7 @@ export default function StaffDashboardPage() {
       <div className="md:hidden">
         <StaffDashboardAnnouncements />
       </div>
+      <StaffMyLunchToday />
       <StaffQuickAccessCards />
       <StaffCalendarPreview />
       <div className="hidden md:block">

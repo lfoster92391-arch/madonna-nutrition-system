@@ -5,11 +5,17 @@ import Link from "next/link"
 import { CheckCircle2 } from "lucide-react"
 import { useAuth } from "@/components/providers/AuthProvider"
 import { useDemo } from "@/components/providers/DemoProvider"
+import { PizzaSlicePicker } from "@/components/lunch/PizzaSlicePicker"
 import { Button } from "@/components/ui/button"
 import { Label, Select } from "@/components/ui/input"
 import { useParentLinkedStudents } from "@/hooks/useParentLinkedStudents"
 import { DEFAULT_ONBOARDING_PRICING } from "@/config/onboarding-pricing"
 import { todayDateKey } from "@/lib/calendar-publish"
+import {
+  DEFAULT_PIZZA_SLICES,
+  isPizzaDayName,
+  pizzaSliceTotal,
+} from "@/lib/pizza-day"
 import { formatCurrency } from "@/lib/utils"
 
 type OrderLunchActionProps = {
@@ -49,11 +55,16 @@ export function OrderLunchAction({
 
   const [open, setOpen] = useState(false)
   const [studentId, setStudentId] = useState("")
+  const [sliceCount, setSliceCount] = useState(DEFAULT_PIZZA_SLICES)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [confirmation, setConfirmation] = useState<string | null>(null)
 
   const buttonLabel = useMemo(() => orderButtonLabel(date), [date])
+  const pizzaDay = isPizzaDayName(menuTitle)
+  const orderTotal = pizzaDay
+    ? pizzaSliceTotal(sliceCount)
+    : DEFAULT_ONBOARDING_PRICING.mainMealPrice
 
   useEffect(() => {
     if (!studentId && linkedStudents[0]) {
@@ -86,7 +97,8 @@ export function OrderLunchAction({
           studentId,
           date,
           mealType: "MAIN",
-          price: DEFAULT_ONBOARDING_PRICING.mainMealPrice,
+          price: orderTotal,
+          ...(pizzaDay ? { sliceCount } : {}),
         }),
       })
       const data = await res.json().catch(() => ({}))
@@ -96,7 +108,12 @@ export function OrderLunchAction({
       }
       const childName = data.reservation?.studentName ?? "your student"
       const meal = data.menuTitle ?? menuTitle ?? "lunch"
-      setConfirmation(`Ordered ${meal} for ${childName}.`)
+      const slices = data.reservation?.sliceCount
+      setConfirmation(
+        slices
+          ? `Ordered ${meal} (${slices} ${slices === 1 ? "slice" : "slices"}) for ${childName}.`
+          : `Ordered ${meal} for ${childName}.`
+      )
       setOpen(false)
     } catch {
       setError("Unable to order lunch. Try again.")
@@ -116,8 +133,8 @@ export function OrderLunchAction({
           <div className="min-w-0 flex-1">
             <p className="font-semibold text-[#041B52]">{confirmation}</p>
             <p className="mt-1 text-[#64748B]">
-              {formatCurrency(DEFAULT_ONBOARDING_PRICING.mainMealPrice)} main meal · charged to the
-              student lunch account
+              {formatCurrency(orderTotal)}
+              {pizzaDay ? " · Pizza Day" : " main meal"} · charged to the student lunch account
             </p>
             <Button
               type="button"
@@ -126,6 +143,7 @@ export function OrderLunchAction({
               className="mt-3"
               onClick={() => {
                 setConfirmation(null)
+                setSliceCount(DEFAULT_PIZZA_SLICES)
                 setOpen(true)
               }}
             >
@@ -172,9 +190,18 @@ export function OrderLunchAction({
                   Menu: <span className="font-medium text-[#041B52]">{menuTitle}</span>
                 </p>
               ) : null}
-              <p className="mt-2 text-sm text-[#64748B]">
-                Main meal · {formatCurrency(DEFAULT_ONBOARDING_PRICING.mainMealPrice)}
-              </p>
+              {pizzaDay ? (
+                <PizzaSlicePicker
+                  id={`order-lunch-slices-${date}`}
+                  sliceCount={sliceCount}
+                  onChange={setSliceCount}
+                  className="mt-3"
+                />
+              ) : (
+                <p className="mt-2 text-sm text-[#64748B]">
+                  Main meal · {formatCurrency(DEFAULT_ONBOARDING_PRICING.mainMealPrice)}
+                </p>
+              )}
               {error ? <p className="mt-2 text-sm text-[#D62828]">{error}</p> : null}
               <div className="mt-4 flex flex-wrap gap-2">
                 <Button
@@ -182,7 +209,11 @@ export function OrderLunchAction({
                   disabled={submitting || !studentId}
                   onClick={() => void handleOrder()}
                 >
-                  {submitting ? "Ordering..." : "Confirm order"}
+                  {submitting
+                    ? "Ordering..."
+                    : pizzaDay
+                      ? `Confirm order · Total: ${formatCurrency(orderTotal)}`
+                      : "Confirm order"}
                 </Button>
                 <Button
                   type="button"

@@ -52,7 +52,8 @@ interface TeacherDataContextValue {
   confirmStudentLunch: (studentId: string, paymentMethod: TeacherPaymentMethod) => Promise<void>
   updateTeacherReservation: (
     paymentMethod: TeacherPaymentMethod,
-    action?: "reserve" | "cancel" | "change"
+    action?: "reserve" | "cancel" | "change",
+    options?: { sliceCount?: number }
   ) => Promise<void>
   refreshSignups: () => Promise<void>
 }
@@ -224,12 +225,21 @@ export function TeacherDataProvider({ children }: { children: ReactNode }) {
   )
 
   const updateTeacherReservation = useCallback(
-    async (paymentMethod: TeacherPaymentMethod, action: "reserve" | "cancel" | "change" = "reserve") => {
+    async (
+      paymentMethod: TeacherPaymentMethod,
+      action: "reserve" | "cancel" | "change" = "reserve",
+      options?: { sliceCount?: number }
+    ) => {
       if (!databaseEnabled || !user) return
       await fetch("/api/teacher/lunch/reservation", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ teacherId: user.id, paymentMethod, action }),
+        body: JSON.stringify({
+          teacherId: user.id,
+          paymentMethod,
+          action,
+          ...(options?.sliceCount != null ? { sliceCount: options.sliceCount } : {}),
+        }),
       })
       await loadFromApi()
     },
