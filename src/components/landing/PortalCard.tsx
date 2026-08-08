@@ -1,134 +1,212 @@
-import Link from "next/link"
-import type { CSSProperties } from "react"
-import { ChevronRight, type LucideIcon } from "lucide-react"
+"use client"
 
-export interface PortalCardProps {
-  portalName: string
-  roleLabel: string
+import Link from "next/link"
+import type { LucideIcon } from "lucide-react"
+import { BookOpen, Calculator, ChevronDown, Lock, Users, UtensilsCrossed } from "lucide-react"
+import { LoginForm } from "@/components/auth/LoginForm"
+import type { PortalRole } from "@/components/providers/AuthProvider"
+import { cn } from "@/lib/utils"
+
+const NAVY = "#041B52"
+
+export type AccessPortalKey = "parent" | "staff" | "teacher" | "scanner" | "admin"
+
+export interface AccessChoice {
+  key: AccessPortalKey
+  label: string
   description: string
-  color: string
-  route: string
   icon: LucideIcon
-  index?: number
-  /** Primary CTA label (defaults to opening the portal / login). */
-  primaryLabel?: string
-  /** Optional second action — used for Parent “Create an account”. */
-  secondaryAction?: {
-    label: string
-    route: string
-  }
+  loginRole?: Exclude<PortalRole, null>
+  redirectTo?: string
+  registerRoute?: string
+  href?: string
+  enterLabel?: string
 }
 
-const MOBILE_TEXT_SHADOW = "0 1px 3px rgba(0, 0, 0, 0.45), 0 0 1px rgba(0, 0, 0, 0.3)"
+export const PARENT_CHOICES: AccessChoice[] = [
+  {
+    key: "parent",
+    label: "Parent portal",
+    description: "Meals, balances, and nutrition for your children.",
+    icon: Users,
+    loginRole: "parent",
+    redirectTo: "/parent",
+    registerRoute: "/login/parent/register",
+  },
+]
 
-export function PortalCard({
-  portalName,
-  roleLabel,
-  description,
-  color,
-  route,
-  icon: Icon,
+export const SCHOOL_CHOICES: AccessChoice[] = [
+  {
+    key: "staff",
+    label: "Staff portal",
+    description: "Lunch calendar, announcements, and your account.",
+    icon: UtensilsCrossed,
+    loginRole: "staff",
+    redirectTo: "/staff",
+    registerRoute: "/login/staff/register",
+  },
+  {
+    key: "teacher",
+    label: "Teacher portal",
+    description: "Student lunch signup and your own meal account.",
+    icon: BookOpen,
+    loginRole: "teacher",
+    redirectTo: "/teacher",
+    registerRoute: "/login/teacher/register",
+  },
+  {
+    key: "scanner",
+    label: "Lunch scanner",
+    description: "Scan badges and ring up student lunch transactions.",
+    icon: Calculator,
+    href: "/kiosk",
+    enterLabel: "Open scanner",
+  },
+  {
+    key: "admin",
+    label: "Admin",
+    description: "Users, reports, and system administration.",
+    icon: Lock,
+    loginRole: "admin",
+    redirectTo: "/admin",
+  },
+]
+
+interface AccessBlockProps {
+  title: string
+  subtitle: string
+  accent: string
+  choices: AccessChoice[]
+  activeKey: AccessPortalKey | null
+  onSelect: (key: AccessPortalKey | null) => void
+  index?: number
+}
+
+export function AccessBlock({
+  title,
+  subtitle,
+  accent,
+  choices,
+  activeKey,
+  onSelect,
   index = 0,
-  primaryLabel,
-  secondaryAction,
-}: PortalCardProps) {
-  const cardStyle = {
-    "--portal-color": color,
-    animationDelay: `${index * 65}ms`,
-  } as CSSProperties
-
-  // Overflow-safe shell: min-w-0 / max-w-full + flex-basis so portal CTAs wrap
-  // instead of overflowing the viewport (from landing-page-buttons).
-  const shellClass =
-    "landing-card-enter group relative flex w-full min-w-0 max-w-full max-md:min-h-[44px] max-md:flex-row max-md:items-stretch max-md:justify-start max-md:gap-3 max-md:rounded-[19px] max-md:border max-md:border-white/30 max-md:px-3 max-md:py-3 max-md:pr-9 max-md:shadow-[0_4px_16px_rgba(0,30,98,0.18)] max-md:backdrop-blur-sm max-md:[background:linear-gradient(145deg,color-mix(in_srgb,var(--portal-color)_96%,#041B52),color-mix(in_srgb,var(--portal-color)_88%,#041B52))] md:h-auto md:min-h-[200px] md:max-w-[240px] md:flex-1 md:basis-[160px] md:flex-col md:items-center md:justify-center md:rounded-[24px] md:px-4 md:py-5 md:[background-color:var(--portal-color)] md:shadow-[0_8px_24px_rgba(0,30,98,0.18)]"
-
-  const body = (
-    <>
-      <span
-        className="mb-3 flex h-14 w-14 max-md:mb-0 max-md:mt-0.5 max-md:h-11 max-md:w-11 max-md:shrink-0 items-center justify-center rounded-full md:mb-3"
-        style={{
-          backgroundColor: "rgba(255, 255, 255, 0.2)",
-          boxShadow: "0 0 28px rgba(255, 255, 255, 0.25)",
-        }}
-        aria-hidden
-      >
-        <Icon className="h-7 w-7 max-md:h-5 max-md:w-5 shrink-0 text-white" strokeWidth={1.75} />
-      </span>
-
-      <div className="max-md:flex max-md:min-w-0 max-md:flex-1 max-md:flex-col max-md:justify-center max-md:rounded-xl max-md:bg-[#041B52]/30 max-md:px-2.5 max-md:py-2 max-md:text-left md:text-center">
-        <span
-          className="mb-1.5 inline-flex max-w-full rounded-full bg-white/20 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-white max-md:block max-md:truncate md:hidden"
-          style={{ textShadow: MOBILE_TEXT_SHADOW }}
-        >
-          {roleLabel}
-        </span>
-
-        <span
-          className="block max-w-full text-center text-lg font-bold leading-tight text-white max-md:truncate max-md:text-left max-md:text-[17px] max-md:leading-snug md:text-balance md:text-lg"
-          style={{ textShadow: MOBILE_TEXT_SHADOW }}
-        >
-          {portalName}
-        </span>
-
-        <span className="mt-2 h-px w-12 bg-white/40 max-md:hidden" aria-hidden />
-
-        <p
-          className="mt-2 text-center text-sm leading-snug text-white max-md:mt-1 max-md:text-left max-md:text-[13px] max-md:font-medium max-md:leading-snug max-md:line-clamp-2 md:mt-2 md:text-center md:text-sm md:font-normal md:text-white/90"
-          style={{ textShadow: MOBILE_TEXT_SHADOW }}
-        >
-          {description}
-        </p>
-
-        {secondaryAction && (
-          <div
-            className="mt-3 flex min-w-0 flex-col gap-2 max-md:mt-2 sm:flex-row sm:justify-center md:mt-4"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <Link
-              href={route}
-              className="inline-flex min-h-10 min-w-0 items-center justify-center rounded-xl bg-white px-3 py-2 text-center text-sm font-bold transition hover:bg-white/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
-              style={{ color }}
-            >
-              {primaryLabel ?? "Log in"}
-            </Link>
-            <Link
-              href={secondaryAction.route}
-              className="inline-flex min-h-10 min-w-0 items-center justify-center rounded-xl border border-white/70 bg-white/15 px-3 py-2 text-center text-sm font-bold text-white transition hover:bg-white/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
-            >
-              {secondaryAction.label}
-            </Link>
-          </div>
-        )}
-      </div>
-
-      {!secondaryAction && (
-        <ChevronRight
-          className="pointer-events-none absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-white/70 max-md:block md:hidden"
-          strokeWidth={2.5}
-          aria-hidden
-        />
-      )}
-    </>
-  )
-
-  if (secondaryAction) {
-    return (
-      <div
-        className={`${shellClass} md:transition-transform md:duration-200 md:hover:-translate-y-[6px] md:hover:scale-[1.02]`}
-        style={cardStyle}
-      >
-        {body}
-      </div>
-    )
-  }
+}: AccessBlockProps) {
+  const headingId = `access-${title.replace(/\s+/g, "-").toLowerCase()}`
 
   return (
-    <Link
-      href={route}
-      className={`${shellClass} max-md:active:scale-[0.98] md:transition-transform md:duration-200 md:hover:-translate-y-[6px] md:hover:scale-[1.02] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#001E62]`}
-      style={cardStyle}
+    <section
+      className="landing-card-enter flex w-full min-w-0 flex-col overflow-hidden rounded-2xl border border-white/35 bg-white/92 shadow-[0_8px_28px_rgba(4,27,82,0.16)] backdrop-blur-md max-md:rounded-[18px]"
+      style={{ animationDelay: `${index * 80}ms` }}
+      aria-labelledby={headingId}
     >
-      {body}
-    </Link>
+      <header
+        className="border-b border-[#041B52]/10 px-4 py-3.5 text-left sm:px-5"
+        style={{ borderTop: `4px solid ${accent}` }}
+      >
+        <h2
+          id={headingId}
+          className="text-lg font-bold tracking-tight sm:text-xl"
+          style={{ color: NAVY }}
+        >
+          {title}
+        </h2>
+        <p className="mt-0.5 text-sm font-medium text-[#475569]">{subtitle}</p>
+      </header>
+
+      <div className="flex flex-col gap-2 p-3 sm:p-4">
+        {choices.map((choice) => {
+          const Icon = choice.icon
+          const isOpen = activeKey === choice.key
+          return (
+            <div key={choice.key} className="min-w-0">
+              <button
+                type="button"
+                onClick={() => onSelect(isOpen ? null : choice.key)}
+                aria-expanded={isOpen}
+                className={cn(
+                  "flex w-full min-h-12 items-center gap-3 rounded-xl px-3 py-2.5 text-left transition",
+                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#041B52] focus-visible:ring-offset-2",
+                  isOpen
+                    ? "bg-[#041B52] text-white shadow-sm"
+                    : "bg-[#041B52]/[0.04] text-[#041B52] hover:bg-[#041B52]/[0.08]"
+                )}
+              >
+                <span
+                  className={cn(
+                    "flex h-10 w-10 shrink-0 items-center justify-center rounded-full",
+                    isOpen ? "bg-white/20" : "bg-white"
+                  )}
+                  style={!isOpen ? { color: accent } : undefined}
+                  aria-hidden
+                >
+                  <Icon className="h-5 w-5" strokeWidth={1.85} />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-[15px] font-bold leading-tight">{choice.label}</span>
+                  <span
+                    className={cn(
+                      "mt-0.5 block text-[12px] leading-snug max-md:line-clamp-2",
+                      isOpen ? "text-white/85" : "text-[#64748B]"
+                    )}
+                  >
+                    {choice.description}
+                  </span>
+                </span>
+                <ChevronDown
+                  className={cn(
+                    "h-5 w-5 shrink-0 transition-transform",
+                    isOpen ? "rotate-180 text-white/80" : "text-[#94A3B8]"
+                  )}
+                  aria-hidden
+                />
+              </button>
+
+              {isOpen && (
+                <div
+                  className="mt-2 rounded-xl border border-[#041B52]/10 bg-[#F8FAFC] p-3 sm:p-4"
+                  role="region"
+                  aria-label={`${choice.label} sign-in`}
+                >
+                  {choice.href ? (
+                    <div className="space-y-3 text-left">
+                      <p className="text-sm text-[#475569]">
+                        Open the lunch scanner on this device to check students out.
+                      </p>
+                      <Link
+                        href={choice.href}
+                        className="inline-flex min-h-11 w-full items-center justify-center rounded-xl px-4 text-sm font-bold text-white transition hover:opacity-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#041B52] focus-visible:ring-offset-2 sm:w-auto sm:min-w-[180px]"
+                        style={{ backgroundColor: accent }}
+                      >
+                        {choice.enterLabel ?? "Continue"}
+                      </Link>
+                    </div>
+                  ) : choice.loginRole && choice.redirectTo ? (
+                    <div className="space-y-3">
+                      <LoginForm
+                        role={choice.loginRole}
+                        redirectTo={choice.redirectTo}
+                        variant="embedded"
+                      />
+                      {choice.registerRoute && (
+                        <p className="text-center text-sm text-[#64748B]">
+                          New here?{" "}
+                          <Link
+                            href={choice.registerRoute}
+                            className="font-semibold underline-offset-2 hover:underline"
+                            style={{ color: NAVY }}
+                          >
+                            Create an account
+                          </Link>
+                        </p>
+                      )}
+                    </div>
+                  ) : null}
+                </div>
+              )}
+            </div>
+          )
+        })}
+      </div>
+    </section>
   )
 }

@@ -295,8 +295,8 @@ export function UserManager() {
   }
 
   async function saveEditFields() {
-    if (!selected) return
-    await updateUser(
+    if (!selected) return null
+    const updated = await updateUser(
       selected.id,
       {
         username: form.username,
@@ -310,6 +310,20 @@ export function UserManager() {
       performedBy,
       form.reason
     )
+    if (!updated) return null
+    setSelected(updated)
+    setForm((f) => ({
+      ...f,
+      username: updated.username,
+      email: updated.email,
+      firstName: updated.firstName,
+      lastName: updated.lastName,
+      phone: updated.phone ?? "",
+      badgeId: updated.badgeId ?? "",
+      linkedStudentIds: updated.linkedStudentIds ?? [],
+      reason: "",
+    }))
+    return updated
   }
 
   async function handleConfirmRoleChange() {
@@ -327,9 +341,13 @@ export function UserManager() {
     try {
       await updateUserRole(selected.id, pendingRole, performedBy, adminUserId)
       if (roleChangeAfterEdit) {
-        await saveEditFields()
-        setMode(null)
-        showToast("Account updated and role change logged to audit trail.")
+        const updated = await saveEditFields()
+        setMode("edit")
+        showToast(
+          updated
+            ? `${formatUserName(updated)} saved and role change logged.`
+            : "Account updated and role change logged to audit trail."
+        )
       } else {
         setMode(null)
         showToast(`Role changed to ${ROLE_LABELS[pendingRole]}.`)
@@ -413,9 +431,12 @@ export function UserManager() {
     }
     setSaving(true)
     try {
-      await saveEditFields()
-      setMode(null)
-      showToast("Account updated and logged to audit trail.")
+      const updated = await saveEditFields()
+      showToast(
+        updated
+          ? `${formatUserName(updated)} saved. Name and details are up to date.`
+          : "Account updated and logged to audit trail."
+      )
     } catch (error) {
       showToast(error instanceof Error ? error.message : "Failed to update account.", "error")
     } finally {

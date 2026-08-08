@@ -205,8 +205,40 @@ export function AdminStaffManager({
           performedBy,
           form.reason.trim()
         )
-        setEditing(updated)
-        setMessage("Staff profile saved.")
+        if (!updated) {
+          setMessage("Could not save staff profile.")
+          setSaving(false)
+          return
+        }
+        let next: User = {
+          ...updated,
+          accountBalance: updated.accountBalance ?? editing.accountBalance,
+          photo: pendingPhoto ? editing.photo : (updated.photo ?? editing.photo),
+        }
+        if (pendingPhoto) {
+          const compressed = await compressImageDataUrl(pendingPhoto)
+          const withPhoto = await api.uploadUserPhoto(editing.id, compressed)
+          next = {
+            ...withPhoto,
+            accountBalance: withPhoto.accountBalance ?? next.accountBalance,
+            photo: compressed,
+          }
+          setPendingPhoto(null)
+          setPhotoMessage("Photo saved.")
+        }
+        setEditing(next)
+        setForm({
+          firstName: next.firstName,
+          lastName: next.lastName,
+          email: next.email,
+          username: next.username,
+          phone: next.phone ?? "",
+          department: next.department ?? "",
+          badgeId: next.badgeId ?? "",
+          role: next.role,
+          reason: "",
+        })
+        setMessage("Staff profile saved. Name and details are up to date.")
         void queryClient.invalidateQueries({ queryKey: ["users"] })
       } else {
         if (!form.username.trim()) {
@@ -271,20 +303,28 @@ export function AdminStaffManager({
       const dataUrl = await readFileAsDataUrl(file)
       const compressed = await compressImageDataUrl(dataUrl)
       setPendingPhoto(compressed)
-      setPhotoMessage("Preview ready. Tap Save photo to keep it on this profile.")
+      setPhotoMessage("Preview ready. Tap Save photo or Save changes to keep it on this profile.")
     } catch {
       setPhotoMessage("Could not read that image. Try another file.")
     }
   }
 
   async function handleSavePhoto() {
-    if (!editing || !pendingPhoto) return
+    if (!editing) return
+    if (!pendingPhoto) {
+      setPhotoMessage("Take or upload a photo first, then tap Save photo.")
+      return
+    }
     setPhotoBusy(true)
     setPhotoMessage(null)
     try {
       const compressed = await compressImageDataUrl(pendingPhoto)
       const updated = await api.uploadUserPhoto(editing.id, compressed)
-      setEditing({ ...updated, photo: compressed })
+      setEditing({
+        ...updated,
+        accountBalance: updated.accountBalance ?? editing.accountBalance,
+        photo: compressed,
+      })
       setPendingPhoto(null)
       setPhotoMessage("Photo saved.")
       void queryClient.invalidateQueries({ queryKey: ["users"] })
@@ -666,7 +706,7 @@ export function AdminStaffManager({
                       type="button"
                       size="lg"
                       className="min-h-14 text-base"
-                      disabled={photoBusy || !pendingPhoto}
+                      disabled={photoBusy || saving}
                       onClick={() => void handleSavePhoto()}
                     >
                       {photoBusy ? "Saving…" : "Save photo"}
@@ -695,10 +735,21 @@ export function AdminStaffManager({
             )}
 
             <div className="mt-4 flex flex-wrap gap-3 px-6 pb-6">
-              <Button size="lg" className="min-h-12" disabled={saving} onClick={() => void handleSave()}>
+              <Button
+                size="lg"
+                className="min-h-12"
+                disabled={saving || photoBusy}
+                onClick={() => void handleSave()}
+              >
                 {saving ? "Saving…" : editing ? "Save changes" : "Create account"}
               </Button>
-              <Button size="lg" variant="outline" className="min-h-12" onClick={closeEditor}>
+              <Button
+                size="lg"
+                variant="outline"
+                className="min-h-12"
+                disabled={saving || photoBusy}
+                onClick={closeEditor}
+              >
                 Cancel
               </Button>
             </div>

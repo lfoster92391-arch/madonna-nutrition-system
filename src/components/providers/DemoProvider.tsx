@@ -83,7 +83,10 @@ interface DemoContextValue {
   mealTemplates: MealTemplate[]
   users: User[]
   addStudent: (student: Student) => void | Promise<void>
-  updateStudent: (id: string, updates: Partial<Student>) => void | Promise<void>
+  updateStudent: (
+    id: string,
+    updates: Partial<Student>
+  ) => Student | void | Promise<Student | void>
   disableStudent: (id: string) => void | Promise<void>
   processMeal: (
     studentId: string,
@@ -298,8 +301,9 @@ export function DemoProvider({ children }: { children: ReactNode }) {
   const updateStudent = useCallback(
     async (id: string, updates: Partial<Student>) => {
       requireDatabase(dbEnabled)
-      await api.updateStudent(id, updates)
+      const student = await api.updateStudent(id, updates)
       invalidate("students")
+      return student
     },
     [dbEnabled, invalidate]
   )
