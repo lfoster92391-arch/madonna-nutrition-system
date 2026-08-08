@@ -113,7 +113,35 @@ function emptyTemplate(category: MealCategory = "lunch"): Omit<MealTemplate, "id
 }
 
 function templateToDraft(template: MealTemplate): MealTemplate {
-  return { ...template, items: [...template.items], photos: [...template.photos] }
+  // Deep-clone nested rows so meal A and meal B never share photo/item object refs.
+  return {
+    ...template,
+    items: template.items.map((item) => ({ ...item })),
+    photos: template.photos.map((photo) => ({ ...photo })),
+  }
+}
+
+function newDraftId() {
+  return `new-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
+}
+
+function applyPhotoToDraft(
+  current: MealTemplate,
+  slot: MealPhotoSlot,
+  url: string
+): MealTemplate {
+  const existing = current.photos.find((p) => p.slot === slot)
+  const newPhoto: MealPhoto = {
+    id: existing?.id ?? `mp-local-${Date.now()}`,
+    slot,
+    url,
+  }
+  return {
+    ...current,
+    photos: existing
+      ? current.photos.map((p) => (p.slot === slot ? newPhoto : p))
+      : [...current.photos, newPhoto],
+  }
 }
 
 export function MenuLibraryManager() {
@@ -187,20 +215,31 @@ export function MenuLibraryManager() {
     return tagsByMeal[draft.id] ?? getDefaultTags(draft)
   }, [draft, tagsByMeal])
 
-  const selectTemplate = useCallback((template: MealTemplate) => {
-    setSelectedId(template.id)
-    setDraft(templateToDraft(template))
-    setSideInput("")
-    setIsCreating(false)
-    setEditorTab("details")
+  const resetFileInputs = useCallback(() => {
+    for (const el of Object.values(fileInputRefs.current)) {
+      if (el) el.value = ""
+    }
   }, [])
+
+  const selectTemplate = useCallback(
+    (template: MealTemplate) => {
+      setSelectedId(template.id)
+      setDraft(templateToDraft(template))
+      setSideInput("")
+      setIsCreating(false)
+      setEditorTab("details")
+      resetFileInputs()
+    },
+    [resetFileInputs]
+  )
 
   const closePanel = useCallback(() => {
     setSelectedId(null)
     setDraft(null)
     setSideInput("")
     setIsCreating(false)
-  }, [])
+    resetFileInputs()
+  }, [resetFileInputs])
 
   const closeScheduleModal = useCallback(() => setShowScheduleModal(false), [])
   const closePreview = useCallback(() => setPreviewTemplate(null), [])
@@ -214,16 +253,21 @@ export function MenuLibraryManager() {
     const cat = activeCategory !== "all" && activeCategory !== "archived" ? activeCategory : "lunch"
     const blank = emptyTemplate(cat)
     const now = new Date().toISOString()
-    const temp: MealTemplate = { ...blank, id: "new", createdAt: now, updatedAt: now }
+    // Unique draft id per create session so in-flight photo uploads never collide.
+    const temp: MealTemplate = { ...blank, id: newDraftId(), createdAt: now, updatedAt: now }
     setDraft(temp)
     setSelectedId(null)
     setSideInput("")
     setIsCreating(true)
     setEditorTab("details")
+    resetFileInputs()
   }
 
   const handleSave = async () => {
     if (!draft || !draft.name.trim()) return
+    // Never write meal A's draft onto meal B's id after a mid-edit switch.
+    if (!isCreating && selectedId && draft.id !== selectedId) return
+    const saveTargetId = isCreating ? null : selectedId
     const payload = {
       name: draft.name.trim(),
       description: draft.description?.trim() || undefined,
@@ -250,16 +294,19 @@ export function MenuLibraryManager() {
       setSelectedId(created.id)
       setDraft(templateToDraft(created))
       setIsCreating(false)
-    } else if (selectedId) {
-      await updateMealTemplate(selectedId, payload)
-      setDraft(
-        templateToDraft({
-          ...draft,
+    } else if (saveTargetId) {
+      await updateMealTemplate(saveTargetId, payload)
+      setDraft((current) => {
+        if (!current || current.id !== saveTargetId) return current
+        return templateToDraft({
+          ...current,
           ...payload,
-          id: selectedId,
+          id: saveTargetId,
+          photos: current.photos,
+          items: current.items,
           updatedAt: new Date().toISOString(),
         })
-      )
+      })
     }
     setSaveFlash(true)
     setTimeout(() => setSaveFlash(false), 2500)
@@ -268,6 +315,7 @@ export function MenuLibraryManager() {
   const handleScheduleToCalendar = async () => {
     if (!draft?.name.trim() || !scheduleDate) return
     if (!isSchoolLunchDateKey(scheduleDate)) return
+    if (!isCreating && selectedId && draft.id !== selectedId) return
     setScheduleSaving(true)
     try {
       let templateId = selectedId
@@ -344,20 +392,38 @@ export function MenuLibraryManager() {
 
   const handlePhotoUpload = async (slot: MealPhotoSlot, file: File) => {
     if (!draft) return
+    // Capture the meal this upload belongs to; ignore UI apply if the editor moved on.
+    const uploadDraftId = draft.id
+    const persistTemplateId =
+      !isCreating && selectedId && draft.id === selectedId ? selectedId : null
+    const baselinePhotos = draft.photos.map((photo) => ({ ...photo }))
+
     let url: string
     try {
       url = await uploadMealPhoto(file)
     } catch {
       url = URL.createObjectURL(file)
     }
-    const existing = draft.photos.find((p) => p.slot === slot)
-    const newPhoto: MealPhoto = { id: existing?.id ?? `mp-local-${Date.now()}`, slot, url }
-    setDraft({
-      ...draft,
-      photos: existing
-        ? draft.photos.map((p) => (p.slot === slot ? newPhoto : p))
-        : [...draft.photos, newPhoto],
+
+    const nextPhotos = applyPhotoToDraft(
+      { ...draft, id: uploadDraftId, photos: baselinePhotos },
+      slot,
+      url
+    ).photos
+
+    setDraft((current) => {
+      if (!current || current.id !== uploadDraftId) return current
+      return applyPhotoToDraft(current, slot, url)
     })
+
+    // Write only to the meal that started the upload — never whichever card is open now.
+    if (persistTemplateId) {
+      try {
+        await updateMealTemplate(persistTemplateId, { photos: nextPhotos })
+      } catch {
+        // Draft already shows the new URL when still open; full Save can retry.
+      }
+    }
   }
 
   const moveItem = (index: number, direction: -1 | 1) => {
@@ -1154,7 +1220,7 @@ export function MenuLibraryManager() {
                 <div className="space-y-5">
                   <div>
                     <Label>Meal Photos</Label>
-                    <div className="mt-2 grid grid-cols-2 gap-3">
+                    <div key={draft.id} className="mt-2 grid grid-cols-2 gap-3">
                       {PHOTO_SLOTS.map((slot) => {
                         const photo = draft.photos.find((p) => p.slot === slot.id)
                         const isDragging = dragSlot === slot.id
@@ -1187,13 +1253,28 @@ export function MenuLibraryManager() {
                               onChange={(e) => {
                                 const file = e.target.files?.[0]
                                 if (file) handlePhotoUpload(slot.id, file)
+                                // Allow re-selecting the same file after a bad upload.
+                                e.target.value = ""
                               }}
                             />
                             {photo ? (
-                              <div className="aspect-square">
+                              <button
+                                type="button"
+                                onClick={() => fileInputRefs.current[slot.id]?.click()}
+                                className="group relative aspect-square w-full"
+                                title={`Change ${slot.label} photo`}
+                              >
                                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                                <img src={photo.url} alt={slot.label} className="h-full w-full object-cover" />
-                              </div>
+                                <img
+                                  src={photo.url}
+                                  alt={slot.label}
+                                  className="h-full w-full object-cover"
+                                />
+                                <span className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-primary/0 text-xs font-semibold text-white opacity-0 transition group-hover:bg-primary/55 group-hover:opacity-100">
+                                  <Upload className="h-5 w-5" />
+                                  Change photo
+                                </span>
+                              </button>
                             ) : (
                               <button
                                 type="button"
