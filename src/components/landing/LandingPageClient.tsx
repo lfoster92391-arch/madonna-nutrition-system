@@ -49,7 +49,7 @@ export function LandingPageClient() {
               className="mx-auto mt-2 max-w-xl text-sm font-medium leading-snug text-gray-600 sm:text-base"
               style={{ textShadow: "0 1px 2px rgba(255,255,255,0.4)" }}
             >
-              {BRAND.tagline} Pick Parent Access or School Access, then sign in inside that block.
+              {BRAND.tagline} Choose Parent Access or School Access, then open a portal to continue.
             </p>
           </header>
 

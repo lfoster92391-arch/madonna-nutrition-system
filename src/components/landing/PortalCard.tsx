@@ -1,5 +1,6 @@
 "use client"
 
+import { useId } from "react"
 import Link from "next/link"
 import type { LucideIcon } from "lucide-react"
 import { BookOpen, Calculator, ChevronDown, Lock, Users, UtensilsCrossed } from "lucide-react"
@@ -91,6 +92,7 @@ export function AccessBlock({
   onSelect,
   index = 0,
 }: AccessBlockProps) {
+  const reactId = useId()
   const headingId = `access-${title.replace(/\s+/g, "-").toLowerCase()}`
 
   return (
@@ -113,16 +115,19 @@ export function AccessBlock({
         <p className="mt-0.5 text-sm font-medium text-[#475569]">{subtitle}</p>
       </header>
 
-      <div className="flex flex-col gap-2 p-3 sm:p-4">
+      <div className="flex flex-col gap-2 p-3 sm:p-4" role="list">
         {choices.map((choice) => {
           const Icon = choice.icon
           const isOpen = activeKey === choice.key
+          const panelId = `${reactId}-${choice.key}-panel`
+
           return (
-            <div key={choice.key} className="min-w-0">
+            <div key={choice.key} className="min-w-0" role="listitem">
               <button
                 type="button"
                 onClick={() => onSelect(isOpen ? null : choice.key)}
                 aria-expanded={isOpen}
+                aria-controls={panelId}
                 className={cn(
                   "flex w-full min-h-12 items-center gap-3 rounded-xl px-3 py-2.5 text-left transition",
                   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#041B52] focus-visible:ring-offset-2",
@@ -143,14 +148,6 @@ export function AccessBlock({
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="block text-[15px] font-bold leading-tight">{choice.label}</span>
-                  <span
-                    className={cn(
-                      "mt-0.5 block text-[12px] leading-snug max-md:line-clamp-2",
-                      isOpen ? "text-white/85" : "text-[#64748B]"
-                    )}
-                  >
-                    {choice.description}
-                  </span>
                 </span>
                 <ChevronDown
                   className={cn(
@@ -161,25 +158,23 @@ export function AccessBlock({
                 />
               </button>
 
-              {isOpen && (
+              {isOpen ? (
                 <div
+                  id={panelId}
                   className="mt-2 rounded-xl border border-[#041B52]/10 bg-[#F8FAFC] p-3 sm:p-4"
                   role="region"
-                  aria-label={`${choice.label} sign-in`}
+                  aria-label={`${choice.label} actions`}
                 >
+                  <p className="mb-3 text-left text-sm text-[#475569]">{choice.description}</p>
+
                   {choice.href ? (
-                    <div className="space-y-3 text-left">
-                      <p className="text-sm text-[#475569]">
-                        Open the lunch scanner on this device to check students out.
-                      </p>
-                      <Link
-                        href={choice.href}
-                        className="inline-flex min-h-11 w-full items-center justify-center rounded-xl px-4 text-sm font-bold text-white transition hover:opacity-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#041B52] focus-visible:ring-offset-2 sm:w-auto sm:min-w-[180px]"
-                        style={{ backgroundColor: accent }}
-                      >
-                        {choice.enterLabel ?? "Continue"}
-                      </Link>
-                    </div>
+                    <Link
+                      href={choice.href}
+                      className="inline-flex min-h-11 w-full items-center justify-center rounded-xl px-4 text-sm font-bold text-white transition hover:opacity-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#041B52] focus-visible:ring-offset-2 sm:w-auto sm:min-w-[180px]"
+                      style={{ backgroundColor: accent }}
+                    >
+                      {choice.enterLabel ?? "Continue"}
+                    </Link>
                   ) : choice.loginRole && choice.redirectTo ? (
                     <div className="space-y-3">
                       <LoginForm
@@ -187,7 +182,7 @@ export function AccessBlock({
                         redirectTo={choice.redirectTo}
                         variant="embedded"
                       />
-                      {choice.registerRoute && (
+                      {choice.registerRoute ? (
                         <p className="text-center text-sm text-[#64748B]">
                           New here?{" "}
                           <Link
@@ -198,11 +193,11 @@ export function AccessBlock({
                             Create an account
                           </Link>
                         </p>
-                      )}
+                      ) : null}
                     </div>
                   ) : null}
                 </div>
-              )}
+              ) : null}
             </div>
           )
         })}
