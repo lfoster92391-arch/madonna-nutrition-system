@@ -15,7 +15,8 @@ export async function POST(request: Request) {
       return badRequest("Missing image file")
     }
 
-    if (!ALLOWED_TYPES.has(file.type)) {
+    // Phone cameras often omit MIME type; allow empty and sniff by extension.
+    if (file.type && !ALLOWED_TYPES.has(file.type)) {
       return badRequest("Unsupported image type. Use JPEG, PNG, WebP, or GIF.")
     }
 
@@ -32,6 +33,8 @@ export async function POST(request: Request) {
     const buffer = Buffer.from(await file.arrayBuffer())
     await writeFile(path.join(uploadDir, filename), buffer)
 
+    // Prefer client-side data URLs (see meal-photo-upload.ts) for durable storage.
+    // This filesystem path remains for local/dev tools only — it can 404 on ephemeral hosts.
     return NextResponse.json({ url: `/uploads/meals/${filename}` })
   } catch (error) {
     console.error("POST /api/uploads/meal-photos", error)

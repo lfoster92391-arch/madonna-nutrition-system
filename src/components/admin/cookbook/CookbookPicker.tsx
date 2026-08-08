@@ -4,7 +4,7 @@ import { useMemo, useState } from "react"
 import Image from "next/image"
 import { Search, UtensilsCrossed } from "lucide-react"
 import { Input } from "@/components/ui/input"
-import { COOKBOOK_TABS, formatCategoryLabel, getMealCoverPhoto } from "@/lib/meal-templates"
+import { COOKBOOK_TABS, formatCategoryLabel, getMealCoverPhoto, isLocalMealPhotoUrl } from "@/lib/meal-templates"
 import type { MealCategory, MealTemplate } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
@@ -106,7 +106,7 @@ export function CookbookPicker({
                       fill
                       className="object-cover transition group-hover:scale-105"
                       sizes="(max-width: 640px) 50vw, 200px"
-                      unoptimized={cover.startsWith("/uploads/") || cover.startsWith("blob:")}
+                      unoptimized={isLocalMealPhotoUrl(cover)}
                     />
                   ) : (
                     <div className="flex h-full items-center justify-center text-silver-foreground">

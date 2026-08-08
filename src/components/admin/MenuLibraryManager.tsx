@@ -9,6 +9,7 @@ import {
   BarChart3,
   Bell,
   Calendar,
+  Camera,
   ChevronLeft,
   ChevronRight,
   Copy,
@@ -177,7 +178,10 @@ export function MenuLibraryManager() {
   const [schedulePublish, setSchedulePublish] = useState(true)
   const [scheduleSaving, setScheduleSaving] = useState(false)
   const [sideInput, setSideInput] = useState("")
+  const [photoBusySlot, setPhotoBusySlot] = useState<MealPhotoSlot | null>(null)
+  const [photoErrors, setPhotoErrors] = useState<Partial<Record<MealPhotoSlot, string>>>({})
   const fileInputRefs = useRef<Partial<Record<MealPhotoSlot, HTMLInputElement | null>>>({})
+  const cameraInputRefs = useRef<Partial<Record<MealPhotoSlot, HTMLInputElement | null>>>({})
 
   const unreadCount = notifications.filter((n) => !n.read).length
 
@@ -219,6 +223,11 @@ export function MenuLibraryManager() {
     for (const el of Object.values(fileInputRefs.current)) {
       if (el) el.value = ""
     }
+    for (const el of Object.values(cameraInputRefs.current)) {
+      if (el) el.value = ""
+    }
+    setPhotoErrors({})
+    setPhotoBusySlot(null)
   }, [])
 
   const selectTemplate = useCallback(
@@ -398,11 +407,22 @@ export function MenuLibraryManager() {
       !isCreating && selectedId && draft.id === selectedId ? selectedId : null
     const baselinePhotos = draft.photos.map((photo) => ({ ...photo }))
 
+    setPhotoBusySlot(slot)
+    setPhotoErrors((prev) => {
+      const next = { ...prev }
+      delete next[slot]
+      return next
+    })
+
     let url: string
     try {
       url = await uploadMealPhoto(file)
-    } catch {
-      url = URL.createObjectURL(file)
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Could not process that photo — try another image"
+      setPhotoErrors((prev) => ({ ...prev, [slot]: message }))
+      setPhotoBusySlot(null)
+      return
     }
 
     const nextPhotos = applyPhotoToDraft(
@@ -420,10 +440,18 @@ export function MenuLibraryManager() {
     if (persistTemplateId) {
       try {
         await updateMealTemplate(persistTemplateId, { photos: nextPhotos })
-      } catch {
-        // Draft already shows the new URL when still open; full Save can retry.
+      } catch (err) {
+        const message =
+          err instanceof Error
+            ? err.message
+            : "Photo preview updated, but save failed — tap Save Meal to retry"
+        setPhotoErrors((prev) => ({ ...prev, [slot]: message }))
+        setPhotoBusySlot(null)
+        return
       }
     }
+
+    setPhotoBusySlot(null)
   }
 
   const moveItem = (index: number, direction: -1 | 1) => {
@@ -1220,16 +1248,23 @@ export function MenuLibraryManager() {
                 <div className="space-y-5">
                   <div>
                     <Label>Meal Photos</Label>
-                    <div key={draft.id} className="mt-2 grid grid-cols-2 gap-3">
+                    <p className="mt-1 text-xs text-silver-foreground">
+                      Add a stock photo now, then replace it later with a real photo of the meal you
+                      made — Upload or Take photo on any slot.
+                    </p>
+                    <div key={draft.id} className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2">
                       {PHOTO_SLOTS.map((slot) => {
                         const photo = draft.photos.find((p) => p.slot === slot.id)
                         const isDragging = dragSlot === slot.id
+                        const busy = photoBusySlot === slot.id
+                        const error = photoErrors[slot.id]
                         return (
                           <div
                             key={slot.id}
                             className={cn(
-                              "relative overflow-hidden rounded-2xl border-2 border-dashed transition",
-                              isDragging ? "border-success bg-success/5" : "border-silver/60"
+                              "overflow-hidden rounded-2xl border-2 border-dashed transition",
+                              isDragging ? "border-success bg-success/5" : "border-silver/60",
+                              error && "border-danger/50"
                             )}
                             onDragOver={(e) => {
                               e.preventDefault()
@@ -1240,7 +1275,9 @@ export function MenuLibraryManager() {
                               e.preventDefault()
                               setDragSlot(null)
                               const file = e.dataTransfer.files[0]
-                              if (file?.type.startsWith("image/")) handlePhotoUpload(slot.id, file)
+                              if (file && (file.type.startsWith("image/") || !file.type)) {
+                                void handlePhotoUpload(slot.id, file)
+                              }
                             }}
                           >
                             <input
@@ -1252,42 +1289,92 @@ export function MenuLibraryManager() {
                               className="hidden"
                               onChange={(e) => {
                                 const file = e.target.files?.[0]
-                                if (file) handlePhotoUpload(slot.id, file)
-                                // Allow re-selecting the same file after a bad upload.
+                                if (file) void handlePhotoUpload(slot.id, file)
                                 e.target.value = ""
                               }}
                             />
-                            {photo ? (
-                              <button
-                                type="button"
-                                onClick={() => fileInputRefs.current[slot.id]?.click()}
-                                className="group relative aspect-square w-full"
-                                title={`Change ${slot.label} photo`}
-                              >
-                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <input
+                              ref={(el) => {
+                                cameraInputRefs.current[slot.id] = el
+                              }}
+                              type="file"
+                              accept="image/*"
+                              capture="environment"
+                              className="hidden"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0]
+                                if (file) void handlePhotoUpload(slot.id, file)
+                                e.target.value = ""
+                              }}
+                            />
+                            <div className="relative aspect-square w-full bg-silver/10">
+                              {photo ? (
+                                // eslint-disable-next-line @next/next/no-img-element
                                 <img
                                   src={photo.url}
                                   alt={slot.label}
                                   className="h-full w-full object-cover"
+                                  onError={(e) => {
+                                    e.currentTarget.removeAttribute("src")
+                                    setPhotoErrors((prev) => {
+                                      if (prev[slot.id]) return prev
+                                      return {
+                                        ...prev,
+                                        [slot.id]:
+                                          "Photo failed to load — upload or take a new one",
+                                      }
+                                    })
+                                  }}
                                 />
-                                <span className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-primary/0 text-xs font-semibold text-white opacity-0 transition group-hover:bg-primary/55 group-hover:opacity-100">
-                                  <Upload className="h-5 w-5" />
-                                  Change photo
-                                </span>
-                              </button>
-                            ) : (
-                              <button
-                                type="button"
-                                onClick={() => fileInputRefs.current[slot.id]?.click()}
-                                className="flex aspect-square w-full flex-col items-center justify-center gap-1 text-xs text-silver-foreground hover:bg-silver/10"
-                              >
-                                <Upload className="h-5 w-5" />
+                              ) : (
+                                <div className="flex h-full w-full flex-col items-center justify-center gap-1 text-xs text-silver-foreground">
+                                  <ImageIcon className="h-6 w-6" />
+                                  No {slot.label.toLowerCase()} photo
+                                </div>
+                              )}
+                              {busy && (
+                                <div className="absolute inset-0 flex items-center justify-center bg-primary/50 text-sm font-semibold text-white">
+                                  Saving photo…
+                                </div>
+                              )}
+                              <p className="absolute bottom-0 left-0 right-0 bg-primary/70 px-2 py-1 text-center text-[10px] font-bold text-white">
                                 {slot.label}
-                              </button>
-                            )}
-                            <p className="absolute bottom-0 left-0 right-0 bg-primary/70 px-2 py-1 text-center text-[10px] font-bold text-white">
-                              {slot.label}
-                            </p>
+                              </p>
+                            </div>
+                            <div className="flex flex-col gap-2 border-t border-silver/40 bg-white p-2.5">
+                              <div className="flex flex-wrap gap-2">
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="outline"
+                                  className="min-h-10 flex-1 gap-1.5 text-xs font-semibold"
+                                  disabled={busy}
+                                  onClick={() => fileInputRefs.current[slot.id]?.click()}
+                                >
+                                  <Upload className="h-3.5 w-3.5" />
+                                  {photo ? "Replace · Upload" : "Upload"}
+                                </Button>
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  className="min-h-10 flex-1 gap-1.5 text-xs font-semibold"
+                                  style={{ backgroundColor: NAVY }}
+                                  disabled={busy}
+                                  onClick={() => cameraInputRefs.current[slot.id]?.click()}
+                                >
+                                  <Camera className="h-3.5 w-3.5" />
+                                  {photo ? "Replace · Take photo" : "Take photo"}
+                                </Button>
+                              </div>
+                              {error && (
+                                <p
+                                  className="rounded-xl bg-danger/10 px-2.5 py-2 text-xs font-medium text-danger"
+                                  role="alert"
+                                >
+                                  {error}
+                                </p>
+                              )}
+                            </div>
                           </div>
                         )
                       })}
