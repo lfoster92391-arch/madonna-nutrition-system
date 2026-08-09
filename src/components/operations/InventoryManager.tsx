@@ -1,6 +1,7 @@
 "use client"
 
 import { useMemo, useState } from "react"
+import Link from "next/link"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { AlertTriangle, Clock, Package, Trash2 } from "lucide-react"
 import { AdminModulePage } from "@/components/admin/AdminModulePage"
@@ -102,7 +103,7 @@ export function InventoryManager() {
     <AdminModulePage
       section="Operations"
       title="Inventory"
-      description="Stock levels, expiration alerts, storage locations, and movement history."
+      description="What’s on hand. Add groceries in Financials — they show up here automatically."
       icon={Package}
       headerActions={<ImportExportMenu type="inventory" importDisabled />}
       stats={[
@@ -147,62 +148,77 @@ export function InventoryManager() {
           <Card>
             <CardHeader className="flex-row flex-wrap items-center justify-between gap-3">
               <CardTitle>Stock Levels</CardTitle>
-              <Input
-                className="max-w-xs"
-                placeholder="Search items…"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
+              {items.length > 0 && (
+                <Input
+                  className="max-w-xs"
+                  placeholder="Search items…"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                />
+              )}
             </CardHeader>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-silver/60 text-silver-foreground">
-                    <th className="pb-3 pr-4 text-left font-medium">Item</th>
-                    <th className="pb-3 pr-4 text-left font-medium">Location</th>
-                    <th className="pb-3 pr-4 text-left font-medium">Category</th>
-                    <th className="pb-3 pr-4 text-right font-medium">Qty</th>
-                    <th className="pb-3 pr-4 text-right font-medium">Par</th>
-                    <th className="pb-3 pr-4 text-right font-medium">Expires</th>
-                    <th className="pb-3 text-right font-medium">Value</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filtered.map((item) => {
-                    const isLow = item.qty <= item.lowStockThreshold
-                    const isExp = new Date(item.expiration).getTime() - now < week
-                    return (
-                      <tr
-                        key={item.id}
-                        className="cursor-pointer border-b border-silver/30 hover:bg-silver/10"
-                        onClick={() => setSelectedId(item.id)}
-                      >
-                        <td className="py-3 pr-4 font-medium text-primary">
-                          <span className="flex items-center gap-2">
-                            {item.name}
-                            {isLow && <AlertTriangle className="h-4 w-4 text-warning" />}
-                          </span>
-                        </td>
-                        <td className="py-3 pr-4 text-silver-foreground">
-                          {item.storageLocationId ? locMap[item.storageLocationId] ?? "—" : "—"}
-                        </td>
-                        <td className="py-3 pr-4 capitalize">{item.category}</td>
-                        <td className="py-3 pr-4 text-right tabular-nums">
-                          {item.qty} {item.unit}
-                        </td>
-                        <td className="py-3 pr-4 text-right tabular-nums">{item.lowStockThreshold}</td>
-                        <td className={`py-3 pr-4 text-right tabular-nums ${isExp ? "text-warning" : ""}`}>
-                          {item.expiration}
-                        </td>
-                        <td className="py-3 text-right tabular-nums">
-                          {formatCurrency(item.qty * item.cost)}
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
+            {!isLoading && items.length === 0 ? (
+              <div className="mx-4 mb-6 rounded-2xl border border-dashed border-silver/70 bg-silver/10 px-4 py-10 text-center sm:mx-6">
+                <Package className="mx-auto h-10 w-10 text-primary/70" />
+                <p className="mt-3 text-lg font-semibold text-primary">No groceries yet</p>
+                <p className="mt-1 text-sm text-silver-foreground">
+                  Add your first purchase in Financials — it will show up here automatically.
+                </p>
+                <Button asChild className="mt-4" size="lg">
+                  <Link href="/admin/finance?tab=groceries">Add your first purchase</Link>
+                </Button>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-silver/60 text-silver-foreground">
+                      <th className="pb-3 pr-4 text-left font-medium">Item</th>
+                      <th className="pb-3 pr-4 text-left font-medium">Location</th>
+                      <th className="pb-3 pr-4 text-left font-medium">Category</th>
+                      <th className="pb-3 pr-4 text-right font-medium">Qty</th>
+                      <th className="pb-3 pr-4 text-right font-medium">Par</th>
+                      <th className="pb-3 pr-4 text-right font-medium">Expires</th>
+                      <th className="pb-3 text-right font-medium">Value</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filtered.map((item) => {
+                      const isLow = item.qty <= item.lowStockThreshold
+                      const isExp = new Date(item.expiration).getTime() - now < week
+                      return (
+                        <tr
+                          key={item.id}
+                          className="cursor-pointer border-b border-silver/30 hover:bg-silver/10"
+                          onClick={() => setSelectedId(item.id)}
+                        >
+                          <td className="py-3 pr-4 font-medium text-primary">
+                            <span className="flex items-center gap-2">
+                              {item.name}
+                              {isLow && <AlertTriangle className="h-4 w-4 text-warning" />}
+                            </span>
+                          </td>
+                          <td className="py-3 pr-4 text-silver-foreground">
+                            {item.storageLocationId ? locMap[item.storageLocationId] ?? "—" : "—"}
+                          </td>
+                          <td className="py-3 pr-4 capitalize">{item.category}</td>
+                          <td className="py-3 pr-4 text-right tabular-nums">
+                            {item.qty} {item.unit}
+                          </td>
+                          <td className="py-3 pr-4 text-right tabular-nums">{item.lowStockThreshold}</td>
+                          <td className={`py-3 pr-4 text-right tabular-nums ${isExp ? "text-warning" : ""}`}>
+                            {item.expiration}
+                          </td>
+                          <td className="py-3 text-right tabular-nums">
+                            {formatCurrency(item.qty * item.cost)}
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </Card>
         </TabsContent>
 

@@ -48,6 +48,7 @@ export interface ReceivingLine {
   quantity: number
   unit: string
   unitCost?: number
+  totalCost?: number
 }
 
 export type ReceivingStatus = "draft" | "pending_approval" | "approved" | "rejected"

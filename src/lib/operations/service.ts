@@ -238,6 +238,7 @@ export async function updateReceivingRecord(
             data: {
               qty: existingItem.qty + line.quantity,
               lastReceivedAt: new Date(),
+              ...(line.unitCost != null ? { cost: line.unitCost } : {}),
               ...(storageLocationId ? { storageLocationId } : {}),
             },
           })
@@ -294,6 +295,109 @@ export async function updateReceivingRecord(
 
   const updated = await prisma.receivingRecord.findUniqueOrThrow({ where: { id } })
   return { source: "database" as const, record: mapReceivingRecord(updated) }
+}
+
+/**
+ * Record a grocery purchase in one step: create an approved receiving record
+ * and post quantity (and cost) to inventory. Built for cafeteria operators —
+ * no separate approval queue.
+ */
+export async function recordGroceryPurchase(input: {
+  name: string
+  quantity: number
+  unit: string
+  totalCost: number
+  vendor?: string
+  purchasedAt?: string
+  notes?: string
+  createdBy?: string
+}) {
+  requireDatabase()
+
+  const schoolId = await resolveSchoolId()
+  const qty = Math.max(1, Math.round(input.quantity))
+  const unitCost = qty > 0 ? Math.round((input.totalCost / qty) * 100) / 100 : 0
+  const vendorName = input.vendor?.trim() || "Store purchase"
+  const purchasedAt = input.purchasedAt ? new Date(input.purchasedAt) : new Date()
+  if (Number.isNaN(purchasedAt.getTime())) {
+    throw new Error("Invalid purchase date")
+  }
+  const createdBy = input.createdBy ?? "Financials"
+
+  const result = await prisma.$transaction(async (tx) => {
+    const receiving = await tx.receivingRecord.create({
+      data: {
+        vendorName,
+        status: "approved",
+        notes: input.notes?.trim() || undefined,
+        lines: [
+          {
+            name: input.name.trim(),
+            quantity: qty,
+            unit: input.unit.trim() || "ea",
+            unitCost,
+            totalCost: input.totalCost,
+          },
+        ] as unknown as Prisma.InputJsonValue,
+        receivedAt: purchasedAt,
+        approvedAt: new Date(),
+        approvedBy: createdBy,
+        schoolId,
+      },
+    })
+
+    const existingItem = await tx.inventoryItem.findFirst({
+      where: { schoolId, name: { equals: input.name.trim(), mode: "insensitive" } },
+    })
+
+    let item
+    if (existingItem) {
+      item = await tx.inventoryItem.update({
+        where: { id: existingItem.id },
+        data: {
+          qty: existingItem.qty + qty,
+          unit: input.unit.trim() || existingItem.unit,
+          cost: unitCost,
+          vendor: vendorName,
+          lastReceivedAt: purchasedAt,
+        },
+      })
+    } else {
+      item = await tx.inventoryItem.create({
+        data: {
+          name: input.name.trim(),
+          qty,
+          unit: input.unit.trim() || "ea",
+          cost: unitCost,
+          expiration: new Date(purchasedAt.getTime() + 30 * 86400000),
+          category: "Groceries",
+          vendor: vendorName,
+          lastReceivedAt: purchasedAt,
+          schoolId,
+        },
+      })
+    }
+
+    await tx.inventoryMovement.create({
+      data: {
+        type: "receive",
+        quantity: qty,
+        note: `Grocery purchase · ${vendorName}${input.notes ? ` · ${input.notes}` : ""}`,
+        inventoryItemId: item.id,
+        receivingRecordId: receiving.id,
+        schoolId,
+        createdBy,
+      },
+    })
+
+    return { receiving, item }
+  })
+
+  return {
+    source: "database" as const,
+    record: mapReceivingRecord(result.receiving),
+    item: mapInventoryItem(result.item),
+  }
 }
 
 export async function recordInventoryMovement(input: {
@@ -379,23 +483,16 @@ export async function updateProductionOrder(
 }
 
 export async function createReceiptScan(input: { fileName: string; imageUrl?: string }) {
-  const vendorGuess = input.fileName.toLowerCase().includes("sysco")
-    ? "Sysco Foods"
-    : input.fileName.toLowerCase().includes("produce")
-      ? "Local Produce Co."
-      : undefined
-  const ocrText = `[OCR Stub] Parsed ${input.fileName}\nVendor: ${vendorGuess ?? "Unknown"}\nTotal: $---\nLine items pending review`
-
   requireDatabase()
 
   const schoolId = await resolveSchoolId()
+  const ocrText = `Receipt uploaded: ${input.fileName}. Review and match manually — no automatic vendor guess.`
   const row = await prisma.receiptScan.create({
     data: {
       fileName: input.fileName,
       imageUrl: input.imageUrl,
-      vendorGuess,
       ocrText,
-      status: vendorGuess ? "unmatched" : "pending",
+      status: "pending",
       schoolId,
     },
   })

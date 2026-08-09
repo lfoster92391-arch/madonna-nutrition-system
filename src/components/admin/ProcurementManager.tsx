@@ -159,8 +159,8 @@ export function ProcurementManager() {
   return (
     <AdminModulePage
       section="Operations"
-      title="Procurement"
-      description="Manage food-service vendors, purchase receiving, and inventory intake."
+      title="Vendors & deliveries"
+      description="Keep your store and vendor list, then log what arrived."
       icon={Truck}
       headerActions={
         <ImportExportMenu
@@ -185,7 +185,7 @@ export function ProcurementManager() {
       <Tabs defaultValue="vendors" className="space-y-6">
         <TabsList>
           <TabsTrigger value="vendors">Vendors</TabsTrigger>
-          <TabsTrigger value="receiving">Receiving</TabsTrigger>
+          <TabsTrigger value="receiving">Deliveries</TabsTrigger>
         </TabsList>
 
         <TabsContent value="vendors" className="space-y-6">
