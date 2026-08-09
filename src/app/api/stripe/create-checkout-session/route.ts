@@ -28,7 +28,7 @@ export async function POST(request: Request) {
     )
   }
 
-  const { studentId, parentUserId, amountDollars, savePaymentMethod } = parsed.data
+  const { studentId, parentUserId, amountDollars } = parsed.data
 
   try {
     const { schoolId, studentName, billingStudentId, payerRole } =
@@ -46,15 +46,11 @@ export async function POST(request: Request) {
       ? "/staff/account?canceled=1"
       : "/parent/payments?tab=funding&canceled=1"
 
+    // PCI SAQ A: hosted Checkout only. Never save / attach cards for reuse.
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
       payment_method_types: ["card"],
-      ...(savePaymentMethod
-        ? {
-            customer_creation: "always" as const,
-            payment_intent_data: { setup_future_usage: "off_session" as const },
-          }
-        : {}),
+      // Explicitly one-time: no customer_creation, no setup_future_usage.
       line_items: [
         {
           quantity: 1,

@@ -7,6 +7,8 @@ import { requireAdmin } from "@/lib/api/admin-auth"
 import { adminResetPasswordSchema } from "@/lib/api/validation"
 import { badRequest, notFound, serverError, withDatabase } from "@/lib/api/response"
 import { generateTempPassword } from "@/lib/users"
+import { sendSecurityAlert } from "@/lib/security/alerts"
+import { getClientIp, getUserAgent } from "@/lib/security/client-meta"
 
 type RouteParams = { params: Promise<{ id: string }> }
 
@@ -50,6 +52,7 @@ export async function POST(request: Request, { params }: RouteParams) {
         data: { passwordHash, mustChangePassword: forcePasswordChange },
       })
 
+      const target = mapUser(existing)
       await createAuditLog({
         action: "PASSWORD_RESET",
         entity: "user",
@@ -61,9 +64,34 @@ export async function POST(request: Request, { params }: RouteParams) {
           method,
           forcePasswordChange,
           targetUsername: existing.username,
-          targetRole: mapUser(existing).role,
+          targetRole: target.role,
+          ip: getClientIp(request),
+          userAgent: getUserAgent(request),
         },
         newValue: { resetSent: true, forcePasswordChange },
+      })
+
+      void sendSecurityAlert({
+        kind: "admin_password_reset",
+        subject: `Password reset for ${existing.username}`,
+        body: [
+          "An administrator reset a user password.",
+          "",
+          `Target: ${existing.firstName} ${existing.lastName} (${existing.username})`,
+          `Target role: ${target.role}`,
+          `Performed by: ${parsed.data.performedBy}`,
+          `Method: ${method}`,
+          `Force password change: ${forcePasswordChange ? "yes" : "no"}`,
+          `Reason: ${parsed.data.reason ?? "(none)"}`,
+          `IP: ${getClientIp(request)}`,
+          "",
+          "If this was unexpected, review Staff Accounts and the audit log immediately.",
+        ].join("\n"),
+        metadata: {
+          targetUserId: id,
+          targetUsername: existing.username,
+          performedBy: parsed.data.performedBy,
+        },
       })
 
       return NextResponse.json({

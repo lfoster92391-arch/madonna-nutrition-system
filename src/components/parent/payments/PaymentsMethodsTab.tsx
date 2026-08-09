@@ -1,11 +1,12 @@
 "use client"
 
-import { Plus } from "lucide-react"
+import { ShieldCheck } from "lucide-react"
 import { useParentTransactions } from "@/components/parent/useParentTransactions"
 import { PARENT_CARD, PARENT_NAVY } from "@/components/parent/parent-dashboard-styles"
 import { Button } from "@/components/ui/button"
 import { formatTransactionDate } from "@/lib/parent-transactions"
 import { formatCurrency } from "@/lib/utils"
+import { CARD_SAFETY_COPY } from "@/lib/security/card-copy"
 
 type PaymentsMethodsTabProps = {
   onAddFunds: () => void
@@ -17,26 +18,30 @@ export function PaymentsMethodsTab({ onAddFunds }: PaymentsMethodsTabProps) {
 
   return (
     <div className="space-y-4">
-      <div className="grid gap-4 lg:grid-cols-2">
-        <div className={`${PARENT_CARD} p-4 md:p-5`}>
-          <p className="text-sm font-semibold text-[#64748B]">Default method</p>
-          <p className="mt-2 text-base font-bold" style={{ color: PARENT_NAVY }}>
-            Visa ending in 4242
-          </p>
-          <p className="mt-1 text-sm text-[#64748B]">Expires 12/28</p>
-        </div>
-        <div className={`${PARENT_CARD} p-4 md:p-5`}>
-          <p className="text-sm font-semibold text-[#64748B]">Saved cards</p>
-          <ul className="mt-3 space-y-2 text-sm" style={{ color: PARENT_NAVY }}>
-            <li>Visa .... 4242 (Default)</li>
-            <li>Mastercard .... 8210</li>
-          </ul>
-          <Button type="button" variant="outline" className="mt-4 w-full rounded-[10px]" disabled>
-            <Plus className="mr-2 h-4 w-4" />
-            Add card (coming soon)
-          </Button>
+      <div className={`${PARENT_CARD} p-4 md:p-5`}>
+        <div className="flex items-start gap-3">
+          <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0" style={{ color: PARENT_NAVY }} />
+          <div>
+            <p className="text-base font-bold" style={{ color: PARENT_NAVY }}>
+              Cards are never saved
+            </p>
+            <p className="mt-2 text-sm leading-relaxed text-[#64748B]">{CARD_SAFETY_COPY}</p>
+            <p className="mt-2 text-sm text-[#64748B]">
+              Each deposit opens Stripe Checkout so you enter card details fresh. Fuel The Dons
+              never stores your card number or CVV.
+            </p>
+            <Button
+              type="button"
+              className="mt-4 rounded-[10px]"
+              style={{ backgroundColor: PARENT_NAVY }}
+              onClick={onAddFunds}
+            >
+              Add Funds Securely
+            </Button>
+          </div>
         </div>
       </div>
+
       <div className={`${PARENT_CARD} overflow-hidden`}>
         <div className="border-b border-[#C8CDD7] px-4 py-3 md:px-5">
           <h3 className="text-base font-bold" style={{ color: PARENT_NAVY }}>

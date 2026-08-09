@@ -12,10 +12,10 @@ import {
 import { useDemo } from "@/components/providers/DemoProvider"
 import { PARENT_CARD, PARENT_NAVY } from "@/components/parent/parent-dashboard-styles"
 import { Button } from "@/components/ui/button"
-import { CheckboxField } from "@/components/ui/checkbox"
-import { Input, Select } from "@/components/ui/input"
+import { Select } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { formatCurrency } from "@/lib/utils"
+import { CARD_SAFETY_COPY } from "@/lib/security/card-copy"
 
 export function PaymentsFundingTab() {
   const router = useRouter()
@@ -96,6 +96,7 @@ export function PaymentsFundingTab() {
             <p className="mt-1 text-sm text-[#64748B]">
               Select a student, choose an amount, and complete secure checkout.
             </p>
+            <p className="mt-2 text-sm text-[#64748B]">{CARD_SAFETY_COPY}</p>
           </div>
 
           <div>
@@ -134,13 +135,6 @@ export function PaymentsFundingTab() {
               />
             </div>
           </div>
-
-          <CheckboxField
-            id="save-payment-method"
-            label="Save card for future deposits"
-            checked={payment.savePaymentMethod}
-            onCheckedChange={payment.setSavePaymentMethod}
-          />
 
           {payment.error && <p className="text-sm font-medium text-danger">{payment.error}</p>}
 

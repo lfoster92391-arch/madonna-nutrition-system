@@ -19,6 +19,7 @@ import {
   ADMIN_SILVER,
   ADMIN_WHITE,
 } from "@/components/admin/layout/admin-theme"
+import { AdminSecurityNote } from "@/components/admin/AdminSecurityNote"
 import { Button } from "@/components/ui/button"
 import { Card, CardHeader, CardTitle } from "@/components/ui/card"
 
@@ -107,6 +108,7 @@ const GUIDE_STEPS: GuideStep[] = [
       "Find the student → Open profile or Add money to account.",
       "Enter the amount and how they paid (cash, check, or card).",
       "The money is added to their lunch account right away.",
+      "Online parent card payments use Stripe — we never store card numbers.",
     ],
     href: "/admin/imports",
     buttonLabel: "Go to Students",
@@ -153,6 +155,8 @@ export function WorkerNavigationGuide() {
           You do not need to memorize everything — come back here anytime.
         </p>
       </div>
+
+      <AdminSecurityNote />
 
       <div className="mobile-scroll-x flex gap-2 pb-1 sm:flex-wrap sm:gap-3 sm:overflow-visible sm:pb-0">
         {QUICK_LINKS.map(({ label, href, icon: Icon }) => (

@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback } from "react"
+import { useCallback, useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { PaymentsActivityTab } from "@/components/parent/payments/PaymentsActivityTab"
@@ -13,6 +13,7 @@ import {
   PARENT_PAGE_PAD,
   PARENT_SECTION_GAP,
 } from "@/components/parent/parent-dashboard-styles"
+import { clearLegacySavedCardStorage } from "@/lib/parent-billing-prefs"
 
 export type PaymentsTab = "overview" | "activity" | "funding" | "methods"
 
@@ -22,7 +23,7 @@ const TAB_LABELS: Record<PaymentsTab, string> = {
   overview: "Overview",
   activity: "Activity",
   funding: "Funding",
-  methods: "Methods",
+  methods: "Billing",
 }
 
 type PaymentsCenterProps = {
@@ -32,6 +33,10 @@ type PaymentsCenterProps = {
 export function PaymentsCenter({ defaultTab = "overview" }: PaymentsCenterProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
+
+  useEffect(() => {
+    clearLegacySavedCardStorage()
+  }, [])
 
   const tabParam = searchParams.get("tab")
   const resolvedParam =
@@ -64,7 +69,8 @@ export function PaymentsCenter({ defaultTab = "overview" }: PaymentsCenterProps)
           Payments Center
         </h1>
         <p className="mt-2 max-w-3xl text-sm text-[#64748B] md:text-base">
-          Manage family balances, view activity, add funds, and payment methods in one place.
+          Manage family balances, view activity, and add funds. Cards are entered each time
+          through Stripe — we never store your card number.
         </p>
       </header>
 
