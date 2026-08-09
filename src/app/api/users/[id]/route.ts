@@ -9,6 +9,8 @@ import { updateUserSchema, userActionSchema } from "@/lib/api/validation"
 import { badRequest, notFound, serverError, withDatabase } from "@/lib/api/response"
 import type { UserRole } from "@/lib/types"
 import bcrypt from "bcryptjs"
+import { sendSecurityAlert } from "@/lib/security/alerts"
+import { getClientIp, getUserAgent } from "@/lib/security/client-meta"
 
 type RouteParams = { params: Promise<{ id: string }> }
 
@@ -199,6 +201,7 @@ export async function POST(request: Request, { params }: RouteParams) {
         const tempPassword = generateTempPassword()
         const passwordHash = await bcrypt.hash(tempPassword, 10)
         await prisma.user.update({ where: { id }, data: { passwordHash } })
+        const target = mapUser(existing)
         await createAuditLog({
           action: "PASSWORD_RESET",
           entity: "user",
@@ -206,8 +209,31 @@ export async function POST(request: Request, { params }: RouteParams) {
           entityId: id,
           performedBy: parsed.data.performedBy,
           reason: parsed.data.reason,
-          metadata: { method: "temp_password", clerkReady: true, resetSent: true },
+          metadata: {
+            method: "temp_password",
+            clerkReady: true,
+            resetSent: true,
+            ip: getClientIp(request),
+            userAgent: getUserAgent(request),
+          },
           newValue: { resetSent: true },
+        })
+        void sendSecurityAlert({
+          kind: "admin_password_reset",
+          subject: `Password reset for ${existing.username}`,
+          body: [
+            "An administrator reset a user password.",
+            "",
+            `Target: ${existing.firstName} ${existing.lastName} (${existing.username})`,
+            `Target role: ${target.role}`,
+            `Performed by: ${parsed.data.performedBy}`,
+            `IP: ${getClientIp(request)}`,
+          ].join("\n"),
+          metadata: {
+            targetUserId: id,
+            targetUsername: existing.username,
+            performedBy: parsed.data.performedBy,
+          },
         })
         return NextResponse.json({ tempPassword })
       }

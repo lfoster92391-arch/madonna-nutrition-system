@@ -1,5 +1,6 @@
 import { AuditLogTable } from "@/components/admin/AuditLogTable"
 import { AdminModulePage } from "@/components/admin/AdminModulePage"
+import { AdminSecurityNote } from "@/components/admin/AdminSecurityNote"
 import { Headphones } from "lucide-react"
 
 export default function AdminSupportPage() {
@@ -10,7 +11,10 @@ export default function AdminSupportPage() {
       description="Audit trail, system activity, and compliance records."
       icon={Headphones}
     >
-      <AuditLogTable filterUserActions />
+      <div className="space-y-6">
+        <AdminSecurityNote />
+        <AuditLogTable filterUserActions />
+      </div>
     </AdminModulePage>
   )
 }

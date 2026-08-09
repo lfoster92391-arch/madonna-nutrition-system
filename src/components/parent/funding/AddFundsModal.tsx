@@ -92,7 +92,7 @@ export function AddFundsModal({
             </div>
             <p className="mt-1 text-sm text-silver-foreground">
               {stripeConfigured
-                ? "Pay with card via Stripe - we never store your full card number."
+                ? "For your safety, card details are entered each time through Stripe. We never store your card number."
                 : "Card payments unavailable — contact the school office."}
             </p>
           </div>

@@ -286,15 +286,10 @@ export const api = {
       method: "PATCH",
       body: JSON.stringify({ studentId, contact }),
     }),
-  createCheckoutSession: (
-    studentId: string,
-    parentUserId: string,
-    amountDollars: number,
-    savePaymentMethod = false
-  ) =>
+  createCheckoutSession: (studentId: string, parentUserId: string, amountDollars: number) =>
     fetchJson<{ url: string; sessionId: string }>("/api/stripe/create-checkout-session", {
       method: "POST",
-      body: JSON.stringify({ studentId, parentUserId, amountDollars, savePaymentMethod }),
+      body: JSON.stringify({ studentId, parentUserId, amountDollars }),
     }),
     adminImportFamilies: (
       input: {

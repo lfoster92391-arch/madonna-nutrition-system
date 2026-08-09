@@ -17,8 +17,8 @@ import {
 } from "@/lib/payments/schemas"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
-import { CheckboxField } from "@/components/ui/checkbox"
 import { formatCurrency } from "@/lib/utils"
+import { CARD_SAFETY_COPY } from "@/lib/security/card-copy"
 
 export function AddFundsForm() {
   const router = useRouter()
@@ -31,7 +31,6 @@ export function AddFundsForm() {
   const [selectedStudentId, setSelectedStudentId] = useState("")
   const [selectedAmount, setSelectedAmount] = useState<number | "custom">(25)
   const [customAmount, setCustomAmount] = useState("")
-  const [autoReloadEnabled, setAutoReloadEnabled] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [demoSuccess, setDemoSuccess] = useState(false)
@@ -159,7 +158,8 @@ export function AddFundsForm() {
         </p>
         <h1 className="mt-2 text-2xl font-bold text-primary">Deposit Funds</h1>
         <p className="mt-2 max-w-2xl text-silver-foreground">
-          Prepay cafeteria meals for your students. Funds are applied after payment is confirmed.
+          Prepay cafeteria meals for your students. Funds are applied after payment is confirmed.{" "}
+          {CARD_SAFETY_COPY}
         </p>
       </div>
 
@@ -320,27 +320,19 @@ export function AddFundsForm() {
             <div className="mt-6 rounded-2xl border border-silver/40 px-4 py-3">
               <div className="flex items-center gap-2 text-sm font-medium text-primary">
                 <CreditCard className="h-4 w-4" />
-                Payment method
+                Secure checkout
               </div>
               <p className="mt-1 text-sm text-silver-foreground">
-                {stripeConfigured ? "Card checkout via Stripe" : "Card payments unavailable"}
+                {stripeConfigured
+                  ? CARD_SAFETY_COPY
+                  : "Card payments unavailable — contact the school office."}
               </p>
               <Link
-                href="/parent/payments?tab=billing"
+                href="/parent/payments?tab=methods"
                 className="mt-2 inline-block text-xs font-semibold text-primary hover:underline"
               >
-                Billing & payment preferences
+                Billing history
               </Link>
-            </div>
-
-            <div className="mt-6">
-              <CheckboxField
-                id="auto-reload"
-                label="Auto Reload"
-                description="Automatically add funds when balance drops below $5 (coming soon)."
-                checked={autoReloadEnabled}
-                onCheckedChange={setAutoReloadEnabled}
-              />
             </div>
           </Card>
 

@@ -30,7 +30,6 @@ export function useAddFundsPayment(initialStudentId?: string) {
   const [selectedStudentId, setSelectedStudentId] = useState(initialStudentId ?? "")
   const [selectedAmount, setSelectedAmount] = useState<number | "custom">(25)
   const [customAmount, setCustomAmount] = useState("")
-  const [savePaymentMethod, setSavePaymentMethod] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [demoSuccess, setDemoSuccess] = useState(false)
@@ -97,8 +96,7 @@ export function useAddFundsPayment(initialStudentId?: string) {
         const { url } = await api.createCheckoutSession(
           selectedStudentId,
           user.id,
-          amountDollars,
-          savePaymentMethod
+          amountDollars
         )
         window.location.href = url
         return
@@ -126,13 +124,11 @@ export function useAddFundsPayment(initialStudentId?: string) {
     amountDollars,
     stripeConfigured,
     addFunds,
-    savePaymentMethod,
   ])
 
   const resetForm = useCallback(() => {
     setSelectedAmount(25)
     setCustomAmount("")
-    setSavePaymentMethod(false)
     setError(null)
     setDemoSuccess(false)
   }, [])
@@ -147,8 +143,6 @@ export function useAddFundsPayment(initialStudentId?: string) {
     setSelectedAmount,
     customAmount,
     setCustomAmount,
-    savePaymentMethod,
-    setSavePaymentMethod,
     amountDollars,
     amountValid,
     depositHistory,

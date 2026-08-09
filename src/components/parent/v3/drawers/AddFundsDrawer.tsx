@@ -143,7 +143,7 @@ export function AddFundsDrawer({ open, onOpenChange, initialStudentId }: AddFund
             </div>
             <p className="mt-1 text-sm text-[#64748B]">
               {stripeConfigured
-                ? "Pay with card via Stripe. Card details are not stored on our servers."
+                ? "For your safety, card details are entered each time through Stripe. We never store your card number."
                 : "Card payments unavailable — contact the school office."}
             </p>
           </div>

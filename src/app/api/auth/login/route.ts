@@ -11,6 +11,12 @@ import { badRequest, withDatabase } from "@/lib/api/response"
 import { isAllowedTeacherEmail, TEACHER_ACCESS_DENIED_MESSAGE } from "@/config/teacher-auth"
 import { parentHasLinkedStudents } from "@/lib/auth/parent-links"
 import type { UserRole } from "@/lib/types"
+import { getClientIp, getUserAgent } from "@/lib/security/client-meta"
+import {
+  checkLoginAllowed,
+  clearLoginFailures,
+  recordLoginFailure,
+} from "@/lib/security/login-throttle"
 
 function portalMatchesUserRole(
   portalRole: "admin" | "cashier" | "parent" | "staff" | "teacher",
@@ -24,6 +30,38 @@ function portalMatchesUserRole(
   return false
 }
 
+async function rejectFailed(
+  request: Request,
+  loginId: string,
+  portalRole: string,
+  reason: string,
+  clientMessage: string,
+  status: number
+) {
+  const ip = getClientIp(request)
+  const userAgent = getUserAgent(request)
+  const result = await recordLoginFailure({
+    ip,
+    loginId,
+    portalRole,
+    userAgent,
+    reason,
+  })
+  const headers = new Headers()
+  if (result.locked && result.retryAfterSec > 0) {
+    headers.set("Retry-After", String(result.retryAfterSec))
+  }
+  return NextResponse.json(
+    {
+      success: false,
+      error: result.locked
+        ? `Too many failed sign-in attempts. Try again in ${result.retryAfterSec} seconds.`
+        : clientMessage,
+    },
+    { status: result.locked ? 429 : status, headers }
+  )
+}
+
 export async function POST(request: Request) {
   const result = await withDatabase(async () => {
     const body = await request.json()
@@ -34,14 +72,31 @@ export async function POST(request: Request) {
 
     const { username, password, role } = parsed.data
     const loginId = normalizeUsername(username)
+    const ip = getClientIp(request)
+
+    const throttle = checkLoginAllowed(ip, loginId)
+    if (!throttle.allowed) {
+      return NextResponse.json(
+        { success: false, error: throttle.message },
+        {
+          status: 429,
+          headers: { "Retry-After": String(throttle.retryAfterSec) },
+        }
+      )
+    }
+
     const schoolId = await resolveSchoolId()
     const users = (await prisma.user.findMany({ where: { schoolId } })).map(mapUser)
     const user = findUserByLogin(users, loginId)
 
     if (!user) {
-      return NextResponse.json(
-        { success: false, error: "No account found with that username or email." },
-        { status: 401 }
+      return rejectFailed(
+        request,
+        loginId,
+        role,
+        "unknown_user",
+        "No account found with that username or email.",
+        401
       )
     }
 
@@ -58,12 +113,13 @@ export async function POST(request: Request) {
         role === "admin" && user.role === "parent"
           ? " If this is your administrator account, contact IT or run the admin seed to restore access."
           : ""
-      return NextResponse.json(
-        {
-          success: false,
-          error: `This account is registered as ${roleLabel}. Use the ${roleLabel} portal to sign in.${portalHint}`,
-        },
-        { status: 403 }
+      return rejectFailed(
+        request,
+        loginId,
+        role,
+        "wrong_portal",
+        `This account is registered as ${roleLabel}. Use the ${roleLabel} portal to sign in.${portalHint}`,
+        403
       )
     }
 
@@ -76,22 +132,27 @@ export async function POST(request: Request) {
 
     const dbUser = await prisma.user.findUnique({ where: { id: user.id } })
     if (!dbUser?.passwordHash) {
-      return NextResponse.json(
-        { success: false, error: "Password not configured for this account." },
-        { status: 401 }
+      return rejectFailed(
+        request,
+        loginId,
+        role,
+        "no_password",
+        "Password not configured for this account.",
+        401
       )
     }
 
     const valid = await bcrypt.compare(password, dbUser.passwordHash)
     if (!valid) {
-      return NextResponse.json({ success: false, error: "Invalid password." }, { status: 401 })
+      return rejectFailed(request, loginId, role, "bad_password", "Invalid password.", 401)
     }
+
+    clearLoginFailures(ip, loginId)
 
     let needsStudentLink = false
     if (role === "parent") {
       needsStudentLink = !(await parentHasLinkedStudents(user.id))
       if (needsStudentLink) {
-        // Allow login session only for the link flow — portal stays blocked until linked.
         return NextResponse.json({
           success: true,
           mustChangePassword: dbUser.mustChangePassword,

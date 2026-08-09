@@ -1,7 +1,9 @@
 import type { NextConfig } from "next"
+import { SECURITY_HEADERS } from "./src/lib/security/headers"
 
 const nextConfig: NextConfig = {
   devIndicators: false,
+  poweredByHeader: false,
   images: {
     remotePatterns: [
       {
@@ -11,6 +13,17 @@ const nextConfig: NextConfig = {
     ],
     dangerouslyAllowSVG: true,
     unoptimized: false,
+  },
+  async headers() {
+    return [
+      {
+        source: "/:path*",
+        headers: Object.entries(SECURITY_HEADERS).map(([key, value]) => ({
+          key,
+          value,
+        })),
+      },
+    ]
   },
   async redirects() {
     return [
