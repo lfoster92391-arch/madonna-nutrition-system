@@ -18,8 +18,8 @@ const TILES: {
   },
   {
     id: "meal-activity",
-    label: "Meal Activity",
-    description: "Recent purchases for your family",
+    label: "Recent lunches",
+    description: "Lunch scans and cafeteria charges",
     icon: UtensilsCrossed,
   },
   {

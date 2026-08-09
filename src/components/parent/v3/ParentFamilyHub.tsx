@@ -25,6 +25,7 @@ import { FamilyHero } from "@/components/parent/v3/FamilyHero"
 import { FamilyOverviewStrip } from "@/components/parent/v3/FamilyOverviewStrip"
 import { ParentV3Header } from "@/components/parent/v3/ParentV3Header"
 import { RecentActivityFeed } from "@/components/parent/v3/RecentActivityFeed"
+import { RecentLunchesSection } from "@/components/parent/v3/RecentLunchesSection"
 import { StudentCardGrid } from "@/components/parent/v3/StudentCardGrid"
 import {
   PARENT_DRAWER_PARAM,
@@ -150,7 +151,8 @@ function ParentFamilyHubContent() {
         />
       </div>
 
-      <div className={`${V3_MAX_WIDTH} ${V3_PAGE_PAD} pb-10 pt-2`}>
+      <div className={`${V3_MAX_WIDTH} ${V3_PAGE_PAD} ${V3_SECTION_GAP} pb-10 pt-2`}>
+        <RecentLunchesSection />
         <RecentActivityFeed />
       </div>
 

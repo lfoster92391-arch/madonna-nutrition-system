@@ -34,17 +34,24 @@ export function StudentMealsTab({ studentId, studentName }: StudentMealsTabProps
 
   const visibleMeals = showFullHistory ? filteredMeals : filteredMeals.slice(0, PREVIEW_LIMIT)
 
+  const emptyMessage =
+    period === "week"
+      ? "No lunches yet this week."
+      : period === "today"
+        ? "No lunches yet today."
+        : "No lunches in this period."
+
   if (isLoading) {
-    return <p className="text-sm text-silver-foreground">Loading meal history…</p>
+    return <p className="text-sm text-silver-foreground">Loading recent lunches…</p>
   }
 
   return (
     <Card className="rounded-[20px] p-6 shadow-sm md:p-8">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h3 className="text-lg font-bold text-primary">Recent Purchases</h3>
+          <h3 className="text-lg font-bold text-primary">Recent lunches</h3>
           <p className="mt-1 text-sm text-silver-foreground">
-            Meal charges for {studentName}
+            Scan and cafeteria purchases for {studentName}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -70,7 +77,7 @@ export function StudentMealsTab({ studentId, studentName }: StudentMealsTabProps
       </div>
 
       <div className="mt-6 overflow-hidden rounded-[14px] border border-silver/40">
-        <MealPurchasesTable transactions={visibleMeals} />
+        <MealPurchasesTable transactions={visibleMeals} emptyMessage={emptyMessage} />
       </div>
 
       <div className="mt-4 flex flex-wrap items-center gap-3">

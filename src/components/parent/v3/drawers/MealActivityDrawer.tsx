@@ -24,12 +24,12 @@ export function MealActivityDrawer({ open, onOpenChange }: MealActivityDrawerPro
     <ParentDrawerShell
       open={open}
       onOpenChange={onOpenChange}
-      title="Meal Activity"
-      description="Recent meal purchases for your linked students."
+      title="Recent lunches"
+      description="Scan and cafeteria purchases for your linked students."
       wide
     >
       {isLoading ? (
-        <p className="text-sm text-[#64748B]">Loading meal activity…</p>
+        <p className="text-sm text-[#64748B]">Loading recent lunches…</p>
       ) : (
         <div className="space-y-5">
           <div>
@@ -56,6 +56,7 @@ export function MealActivityDrawer({ open, onOpenChange }: MealActivityDrawerPro
             <MealPurchasesTable
               transactions={filteredMeals.slice(0, 25)}
               showStudent={studentFilter === "all"}
+              emptyMessage="No lunches in this period."
             />
           </div>
         </div>
