@@ -190,3 +190,66 @@ export async function creditStaffDeposit(
     return { balanceAfter: Number(balanceAfter) }
   })
 }
+
+export interface DebitStaffMealInput {
+  userId: string
+  schoolId: string
+  amountDollars: number
+  mealLabel: string
+  processedByUserId?: string
+  performedBy?: string
+}
+
+/** Debit a staff/teacher lunch account for a kiosk meal. */
+export async function debitStaffMeal(
+  input: DebitStaffMealInput
+): Promise<{ balanceAfter: number }> {
+  if (!isDatabaseEnabled()) {
+    throw new Error("DATABASE_URL is not configured")
+  }
+
+  const amount = new Prisma.Decimal(input.amountDollars.toFixed(2))
+
+  return prisma.$transaction(async (tx) => {
+    const staffUser = await tx.user.findFirst({
+      where: {
+        id: input.userId,
+        schoolId: input.schoolId,
+        status: "ACTIVE",
+        role: { in: ["STAFF", "TEACHER", "CASHIER", "ADMIN"] },
+      },
+      select: { id: true, accountBalance: true, firstName: true, lastName: true },
+    })
+
+    if (!staffUser) {
+      throw new Error("Staff account not found or disabled")
+    }
+
+    const balanceAfter = staffUser.accountBalance.sub(amount)
+
+    await tx.user.update({
+      where: { id: staffUser.id },
+      data: { accountBalance: balanceAfter },
+    })
+
+    await tx.auditLog.create({
+      data: {
+        action: "MEAL_PURCHASE",
+        entity: "staff_balance",
+        entityType: "user",
+        entityId: staffUser.id,
+        performedBy: input.performedBy ?? input.processedByUserId ?? "kiosk",
+        schoolId: input.schoolId,
+        metadata: {
+          amount: input.amountDollars,
+          mealType: input.mealLabel,
+          source: "kiosk",
+          staffName: `${staffUser.firstName} ${staffUser.lastName}`,
+        },
+        newValue: { accountBalance: Number(balanceAfter) },
+      },
+    })
+
+    return { balanceAfter: Number(balanceAfter) }
+  })
+}

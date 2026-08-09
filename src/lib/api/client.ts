@@ -67,6 +67,16 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ studentId, meal, amount, processedByUserId }),
     }),
+  processStaffMeal: (userId: string, meal: string, amount: number, processedByUserId?: string) =>
+    fetchJson<{
+      balanceAfter: number
+      meal: string
+      amount: number
+      user?: import("@/lib/types").User
+    }>("/api/transactions/staff-meal", {
+      method: "POST",
+      body: JSON.stringify({ userId, meal, amount, processedByUserId }),
+    }),
   recordOfficePayment: (input: {
     studentId: string
     amount: number

@@ -1,9 +1,12 @@
 import { prisma } from "@/lib/prisma"
 import { resolveSchoolId } from "@/lib/db/school"
 import { mapUser } from "@/lib/db/mappers"
+import { scanIdCandidates } from "@/lib/scan/scan-id"
 import type { UserRole } from "@/lib/types"
 
 export { userRoleSupportsBadge } from "@/lib/users"
+
+const BADGE_ELIGIBLE_ROLES = ["STAFF", "TEACHER", "CASHIER", "ADMIN"] as const
 
 export const LAST_ADMIN_ERROR =
   "Cannot demote the last active administrator for this school."
@@ -36,6 +39,22 @@ export async function findUserByBadgeId(badgeId: string) {
   const schoolId = await resolveSchoolId()
   return prisma.user.findFirst({
     where: { schoolId, badgeId },
+  })
+}
+
+/** Resolve a kiosk scan value to a workplace staff/teacher account by badge ID. */
+export async function findUserByScanId(scanId: string) {
+  const schoolId = await resolveSchoolId()
+  const candidates = scanIdCandidates(scanId)
+  if (candidates.length === 0) return null
+
+  return prisma.user.findFirst({
+    where: {
+      schoolId,
+      badgeId: { in: candidates },
+      status: "ACTIVE",
+      role: { in: [...BADGE_ELIGIBLE_ROLES] },
+    },
   })
 }
 

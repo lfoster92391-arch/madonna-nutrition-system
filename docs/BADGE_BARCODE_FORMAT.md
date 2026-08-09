@@ -57,16 +57,28 @@ Optional extended column (not in template header): `barcode` - use when physical
 
 1. **Bulk enroll:** Import CSV, then review validation summary (matched / created / updated / errors).
 2. **Single assign:** Badge roster -> **Assign** -> enter barcode + status.
-3. **Mass print badges:** Admin -> Badge Setup -> select students (or **Print filtered**) -> **Print student badges** -> preview -> **Print now**. Each card shows photo, first/last name, parent email on file, grade, Code 128 barcode, and MD ID. Missing fields still print (placeholder for photo; em dash for blank email/grade).
-4. **Export CSV:** **Export CSV** downloads the current roster for reconciliation or Campus Badge Studio.
-5. **Parent accounts:** Badge import does not create logins; use **Admin -> Imports -> Parents & Family Accounts** to link parents by email.
+3. **Mass print student badges:** Admin -> Badge Setup -> **Student badges** -> select students (or **Print filtered**) -> **Print student badges** -> preview -> **Print now**.
+4. **Mass print staff / teacher badges:** Admin -> Badge Setup -> **Staff & teacher badges**, or Admin -> Imports -> Staff directory -> select people -> **Print staff badges**. Cards show photo, name, email, role, department, Code 128 barcode, and Badge ID.
+5. **Staff / teacher photos:** Staff directory or User Management -> **Open profile** -> **Take photo** (phone camera) or **Upload photo** -> **Save photo**. Photos persist on `User.photo` and print on badges.
+6. **Export CSV:** **Export CSV** downloads the current student roster for reconciliation or Campus Badge Studio.
+7. **Parent accounts:** Badge import does not create logins; use **Admin -> Imports -> Parents & Family Accounts** to link parents by email.
 
 ### Campus Badge Studio note
 
 For production plastic-card printers and FACTS photo sync, **Campus Badge Studio** (`D:\FACTS\FACTSBadgeStudio`) remains the better long-term hardware path. Fuel The Dons mass print is the operator-ready sheet preview for paper/PDF badges today.
 
+## Staff badge scan behavior
+
+The lunch kiosk resolves a scan in this order:
+
+1. Student MD ID / barcode (existing flow)
+2. Staff / teacher / cashier / admin **Badge ID** (`User.badgeId`)
+
+When a staff badge matches an active workplace account, the station shows their lunch balance and can charge a staff meal (debits `User.accountBalance`). Offline mode still supports students only.
+
 ## Troubleshooting
 
-- **"Badge not recognized" at kiosk:** Confirm status is **active** and barcode matches what the scanner sends (test by typing MD ID on the keypad).
+- **"Badge not recognized" at kiosk:** Confirm student status is **active** (or staff account is active with a Badge ID) and the barcode matches what the scanner sends.
 - **Import duplicate barcode:** Another student already has that barcode; resolve in the roster or SIS export.
-- **Offline kiosk:** Active students are cached locally by MD ID; re-sync when back online.
+- **Offline kiosk:** Active students are cached locally by MD ID; re-sync when back online. Staff meals require an online connection.
+- **Missing staff photo on print:** Open the staff/teacher profile, Take or Upload a photo, then Save photo before printing.

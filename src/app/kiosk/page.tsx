@@ -26,13 +26,15 @@ import {
 } from "lucide-react"
 import { useDemo } from "@/components/providers/DemoProvider"
 import { RecordOfficePayment } from "@/components/admin/RecordOfficePayment"
+import { RecordStaffOfficePayment } from "@/components/admin/RecordStaffOfficePayment"
 import { getAllergyBannerStyle, getHighestAllergySeverity } from "@/lib/allergy-display"
 import { BarcodeCameraScanner } from "@/components/scan/BarcodeCameraScanner"
 import { ScanKeypad } from "@/components/scan/ScanKeypad"
 import { OfflineBanner } from "@/components/scan/OfflineBanner"
 import { MEAL_PRICES } from "@/lib/types"
-import type { Student, Transaction } from "@/lib/types"
+import type { Student, Transaction, User } from "@/lib/types"
 import { checkMealCompatibility } from "@/lib/food-safety"
+import { api } from "@/lib/api/client"
 import {
   cachedToStudent,
   findCachedStudent,
@@ -47,7 +49,12 @@ import {
   refreshStudentCacheFromServer,
   syncPendingTransactions,
 } from "@/lib/offline/sync-manager"
-import { findStudentMatchingScan, sanitizeScanInput } from "@/lib/scan/scan-id"
+import {
+  findStaffMatchingScan,
+  findStudentMatchingScan,
+  sanitizeScanInput,
+} from "@/lib/scan/scan-id"
+import { ROLE_LABELS, isWorkplaceUserRole } from "@/lib/users"
 import { cn, formatCurrency } from "@/lib/utils"
 
 const MEAL_RESET_MS = 4000
@@ -144,12 +151,13 @@ function RecentActivityItem({ tx }: { tx: Transaction }) {
 }
 
 export default function ScanStationPage() {
-  const { students, transactions, processMeal } = useDemo()
+  const { students, transactions, processMeal, users } = useDemo()
   const queryClient = useQueryClient()
   const [clock, setClock] = useState(formatKioskTime())
   const [dateStr, setDateStr] = useState("")
   const [scanValue, setScanValue] = useState("")
   const [student, setStudent] = useState<Student | null>(null)
+  const [staffUser, setStaffUser] = useState<User | null>(null)
   const [localBalance, setLocalBalance] = useState(0)
   const [scanStatus, setScanStatus] = useState<ScanPhase>("ready")
   const [flashMessage, setFlashMessage] = useState("")
@@ -175,6 +183,11 @@ export default function ScanStationPage() {
   const mealCompatibility = student ? checkMealCompatibility(student) : null
   const mealBlocked = mealCompatibility === "BLOCKED"
   const primaryAllergy = student?.allergies[0]?.name.toUpperCase() ?? ""
+  const dinerActive = Boolean(student || staffUser)
+  const workplaceUsers = useMemo(
+    () => users.filter((u) => isWorkplaceUserRole(u.role) && u.status === "active"),
+    [users]
+  )
 
   const recentTransactions = useMemo(() => {
     if (isOffline && offlineRecent.length > 0) {
@@ -229,6 +242,7 @@ export default function ScanStationPage() {
       const keepStudent = options?.keepStudent ?? false
       if (!keepStudent) {
         setStudent(null)
+        setStaffUser(null)
         setAddFundsOpen(false)
         setIdleDeadline(null)
         if (idleTimerRef.current) clearTimeout(idleTimerRef.current)
@@ -242,7 +256,7 @@ export default function ScanStationPage() {
   )
 
   const bumpIdleTimer = useCallback(() => {
-    if (!student || addFundsOpen || scanStatus === "complete") {
+    if ((!student && !staffUser) || addFundsOpen || scanStatus === "complete") {
       setIdleDeadline(null)
       if (idleTimerRef.current) clearTimeout(idleTimerRef.current)
       return
@@ -253,15 +267,16 @@ export default function ScanStationPage() {
     idleTimerRef.current = setTimeout(() => {
       setAddFundsOpen(false)
       setStudent(null)
+      setStaffUser(null)
       setScanStatus("ready")
       setScanValue("")
       setIdleDeadline(null)
-      setFlashMessage("Station cleared after idle — scan the next student.")
+      setFlashMessage("Station cleared after idle — scan the next badge.")
       if (flashTimerRef.current) clearTimeout(flashTimerRef.current)
       flashTimerRef.current = setTimeout(() => setFlashMessage(""), FLASH_DISMISS_MS)
       window.setTimeout(focusScan, 50)
     }, FOUND_IDLE_MS)
-  }, [student, addFundsOpen, scanStatus, focusScan])
+  }, [student, staffUser, addFundsOpen, scanStatus, focusScan])
 
   useEffect(() => {
     bumpIdleTimer()
@@ -392,8 +407,37 @@ export default function ScanStationPage() {
         window.setTimeout(focusScan, 50)
         return
       }
+      setStaffUser(null)
       setStudent(found)
       setLocalBalance(found.balance)
+      setScanStatus("found")
+      setScanValue("")
+      setFlashMessage("")
+      setAddFundsOpen(false)
+      window.setTimeout(focusScan, 50)
+    },
+    [focusScan]
+  )
+
+  const loadStaff = useCallback(
+    (found: User) => {
+      if (found.status !== "active") {
+        setScanStatus("error")
+        setFlashMessage("Staff account is disabled.")
+        setScanValue("")
+        window.setTimeout(focusScan, 50)
+        return
+      }
+      if (!found.badgeId?.trim()) {
+        setScanStatus("error")
+        setFlashMessage("No badge ID on this staff account.")
+        setScanValue("")
+        window.setTimeout(focusScan, 50)
+        return
+      }
+      setStudent(null)
+      setStaffUser(found)
+      setLocalBalance(found.accountBalance ?? 0)
       setScanStatus("found")
       setScanValue("")
       setFlashMessage("")
@@ -413,7 +457,7 @@ export default function ScanStationPage() {
         const cached = await findCachedStudent(trimmed)
         if (!cached) {
           setScanStatus("error")
-          setFlashMessage("Student not found. Check MD ID / barcode and try again.")
+          setFlashMessage("Not found offline. Student badges only while offline — try again online for staff.")
           setScanValue("")
           window.setTimeout(focusScan, 50)
           return
@@ -425,6 +469,12 @@ export default function ScanStationPage() {
       const found = findStudentMatchingScan(students, trimmed)
       if (found) {
         loadStudent(found)
+        return
+      }
+
+      const staffLocal = findStaffMatchingScan(workplaceUsers, trimmed)
+      if (staffLocal) {
+        loadStaff(staffLocal)
         return
       }
 
@@ -445,15 +495,28 @@ export default function ScanStationPage() {
           }
         }
       } catch {
-        // Keep kiosk online UX; fall through to not-found message.
+        // Keep kiosk online UX; fall through to staff lookup.
+      }
+
+      try {
+        const res = await fetch(`/api/users/lookup?q=${encodeURIComponent(trimmed)}`)
+        if (res.ok) {
+          const remote = (await res.json()) as User
+          if (remote?.id) {
+            loadStaff(remote)
+            return
+          }
+        }
+      } catch {
+        // Fall through to not-found message.
       }
 
       setScanStatus("error")
-      setFlashMessage("Student not found. Check MD ID / barcode and try again.")
+      setFlashMessage("Badge not found. Check student MD ID / barcode or staff badge ID.")
       setScanValue("")
       window.setTimeout(focusScan, 50)
     },
-    [students, loadStudent, focusScan, isOffline]
+    [students, workplaceUsers, loadStudent, loadStaff, focusScan, isOffline]
   )
 
   function handleScanChange(value: string) {
@@ -464,7 +527,7 @@ export default function ScanStationPage() {
       setScanStatus("scanning")
       scanTimerRef.current = setTimeout(() => lookupStudent(cleaned), 200)
     } else if (cleaned.length === 0) {
-      setScanStatus(student ? "found" : "ready")
+      setScanStatus(dinerActive ? "found" : "ready")
     }
   }
 
@@ -481,7 +544,7 @@ export default function ScanStationPage() {
   function clearScanValue() {
     bumpIdleTimer()
     setScanValue("")
-    setScanStatus(student ? "found" : "ready")
+    setScanStatus(dinerActive ? "found" : "ready")
     window.setTimeout(focusScan, 50)
   }
 
@@ -491,8 +554,37 @@ export default function ScanStationPage() {
   }
 
   async function handleMeal(mealLabel: string, price: number) {
-    if (!student) return
     bumpIdleTimer()
+
+    if (staffUser) {
+      if (isOffline) {
+        setFlashMessage("Staff meals need an online connection. Try again when the network is back.")
+        window.setTimeout(focusScan, 50)
+        return
+      }
+      try {
+        const result = await api.processStaffMeal(staffUser.id, mealLabel, price)
+        setLocalBalance(result.balanceAfter)
+        setStaffUser((prev) =>
+          prev ? { ...prev, accountBalance: result.balanceAfter } : prev
+        )
+        setFlashMessage(`${mealLabel} recorded for ${staffUser.firstName}!`)
+        setScanStatus("complete")
+        setCountdownEnd(Date.now() + MEAL_RESET_MS)
+        if (resetTimerRef.current) clearTimeout(resetTimerRef.current)
+        resetTimerRef.current = setTimeout(resetStation, MEAL_RESET_MS)
+        void queryClient.invalidateQueries({ queryKey: ["users"] })
+        window.setTimeout(focusScan, 50)
+      } catch (error) {
+        setFlashMessage(
+          error instanceof Error ? error.message : "Could not charge staff lunch account."
+        )
+        window.setTimeout(focusScan, 50)
+      }
+      return
+    }
+
+    if (!student) return
     if (mealBlocked) {
       setFlashMessage("MEAL BLOCKED — Allergy conflict. Do not serve today's meal.")
       window.setTimeout(focusScan, 50)
@@ -583,14 +675,20 @@ export default function ScanStationPage() {
 
   const studentMealAvailable =
     student && !mealBlocked && primaryMeals.find((m) => m.type === "student_meal")
+  const staffMealAvailable =
+    staffUser && secondaryMeals.find((m) => m.type === "staff_meal")
 
   function renderMealButton(meal: (typeof MEAL_PRICES)[number], compact = false) {
     const Icon = MEAL_ICONS[meal.type] ?? Utensils
     const gradeRestricted = meal.grades && student && !meal.grades.includes(student.grade)
-    const blocked = mealBlocked
-    const disabled = !student || !!gradeRestricted || blocked
+    const blocked = Boolean(student && mealBlocked)
+    const noDiner = !student && !staffUser
+    const disabled = noDiner || !!gradeRestricted || blocked
     const isStudentMeal = meal.type === "student_meal"
-    const isSelected = !!student && isStudentMeal && !disabled && scanStatus !== "complete"
+    const isStaffMeal = meal.type === "staff_meal"
+    const isSelected =
+      (!!student && isStudentMeal && !disabled && scanStatus !== "complete") ||
+      (!!staffUser && isStaffMeal && !disabled && scanStatus !== "complete")
 
     if (gradeRestricted && meal.type === "ala_carte") return null
 
@@ -649,7 +747,7 @@ export default function ScanStationPage() {
           {blocked && isStudentMeal ? "BLOCKED" : meal.label.toUpperCase()}
         </span>
         {meal.type === "ala_carte" && !compact && (
-          <span className="hidden text-xs font-medium text-[#64748B] sm:block">Available Grades 9ΓÇô12</span>
+          <span className="hidden text-xs font-medium text-[#64748B] sm:block">Available Grades 9–12</span>
         )}
       </button>
     )
@@ -796,6 +894,76 @@ export default function ScanStationPage() {
                 )}
               </div>
             </div>
+          ) : staffUser ? (
+            <div className="flex min-h-0 flex-1 flex-col gap-2 sm:gap-3 md:gap-4">
+              <div className="flex gap-2 sm:gap-3 md:gap-4">
+                {staffUser.photo ? (
+                  <Image
+                    src={staffUser.photo}
+                    alt={`${staffUser.firstName} ${staffUser.lastName}`}
+                    width={120}
+                    height={120}
+                    className="h-[64px] w-[64px] shrink-0 rounded-xl border border-[#AEB6C2] object-cover sm:h-[80px] sm:w-[80px] sm:rounded-2xl md:h-[100px] md:w-[100px] lg:h-[120px] lg:w-[120px]"
+                    unoptimized={staffUser.photo.startsWith("data:")}
+                  />
+                ) : (
+                  <div className="flex h-[64px] w-[64px] shrink-0 items-center justify-center rounded-xl border border-[#AEB6C2] bg-[#F5F6F8] text-lg font-bold text-[#041B52] sm:h-[80px] sm:w-[80px] sm:rounded-2xl md:h-[100px] md:w-[100px] lg:h-[120px] lg:w-[120px]">
+                    {(staffUser.firstName[0] ?? "") + (staffUser.lastName[0] ?? "")}
+                  </div>
+                )}
+                <div className="min-w-0 flex-1">
+                  <h2 className="truncate text-lg font-bold uppercase tracking-tight sm:text-xl md:text-2xl lg:text-3xl">
+                    {staffUser.firstName} {staffUser.lastName}
+                  </h2>
+                  <p className="mt-0.5 flex items-center gap-1.5 text-xs text-[#64748B] sm:mt-1 sm:gap-2 sm:text-sm md:text-base lg:text-lg">
+                    <Users className="h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4 md:h-5 md:w-5" aria-hidden />
+                    {ROLE_LABELS[staffUser.role]}
+                    {staffUser.department ? ` · ${staffUser.department}` : ""}
+                  </p>
+                  <p className="mt-0.5 flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-[#64748B] sm:mt-1 sm:gap-x-2 sm:text-sm md:text-base lg:text-lg">
+                    <IdCard className="h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4 md:h-5 md:w-5" aria-hidden />
+                    <span className="min-w-0 break-all">Badge ID: {staffUser.badgeId}</span>
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-auto shrink-0 rounded-xl border border-[#AEB6C2] bg-white p-2.5 sm:rounded-2xl sm:p-3 md:p-4 lg:p-5">
+                <div className="flex items-center gap-2 sm:gap-3">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#00A83E]/10 sm:h-9 sm:w-9 md:h-10 md:w-10">
+                    <Wallet className="h-4 w-4 text-[#00A83E] sm:h-5 sm:w-5" aria-hidden />
+                  </div>
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-[#64748B] sm:text-xs">
+                    Staff Lunch Balance
+                  </p>
+                </div>
+                <p
+                  className={cn(
+                    "mt-1 text-2xl font-bold tabular-nums sm:mt-2 sm:text-3xl md:text-4xl lg:text-5xl",
+                    localBalance <= 0 ? "text-[#D62828]" : "text-[#00A83E]"
+                  )}
+                >
+                  {formatCurrency(localBalance)}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAddFundsOpen(true)
+                    setIdleDeadline(null)
+                    if (idleTimerRef.current) clearTimeout(idleTimerRef.current)
+                  }}
+                  className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-xl border-2 border-[#00A83E] py-2 text-xs font-bold text-[#00A83E] transition hover:bg-[#00A83E]/5 sm:mt-3 sm:gap-2 sm:rounded-2xl sm:py-2.5 sm:text-sm md:mt-4 md:py-3 md:text-base"
+                >
+                  <Plus className="h-4 w-4 sm:h-5 sm:w-5" aria-hidden />
+                  ADD FUNDS
+                </button>
+                {idleDeadline && !addFundsOpen && scanStatus === "found" && (
+                  <p className="mt-2 text-center text-[10px] font-medium text-[#64748B] sm:text-xs">
+                    Clears in about {Math.max(1, Math.ceil((idleDeadline - Date.now()) / 1000))}s
+                    without activity
+                  </p>
+                )}
+              </div>
+            </div>
           ) : (
             <div className="flex min-h-0 flex-1 flex-col gap-2 sm:gap-3">
               <div className="flex items-center gap-2">
@@ -805,7 +973,7 @@ export default function ScanStationPage() {
                     Ready to scan
                   </p>
                   <p className="text-xs text-[#64748B] sm:text-sm">
-                    Point camera at badge barcode, use a USB scanner, or enter MD ID.
+                    Point camera at a student or staff badge, use a USB scanner, or enter the ID.
                   </p>
                 </div>
               </div>
@@ -844,6 +1012,13 @@ export default function ScanStationPage() {
             </div>
           )}
 
+          {staffMealAvailable && scanStatus !== "complete" && (
+            <div className="mt-1 flex shrink-0 items-center gap-1.5 rounded-xl border border-[#00A83E]/40 bg-[#00A83E]/10 px-2 py-1 sm:mt-1.5 sm:gap-2 sm:rounded-2xl sm:px-2.5 sm:py-1.5 md:mt-2 md:px-3 md:py-2">
+              <BadgeCheck className="h-4 w-4 shrink-0 text-[#00A83E] sm:h-5 sm:w-5" aria-hidden />
+              <p className="text-xs font-semibold text-[#00A83E] sm:text-sm">STAFF MEAL READY</p>
+            </div>
+          )}
+
           {flashMessage && (
             <div
               role="status"
@@ -862,7 +1037,7 @@ export default function ScanStationPage() {
           )}
 
           <div className="mt-auto min-h-0 shrink pt-0.5 sm:pt-1">
-            {student ? (
+            {dinerActive ? (
               <BarcodeCameraScanner
                 className="mb-1.5 sm:mb-2"
                 defaultOpen={false}
@@ -874,7 +1049,7 @@ export default function ScanStationPage() {
               />
             ) : null}
             <p className="text-[10px] font-semibold uppercase tracking-wider text-[#64748B] sm:text-xs">
-              Enter Student ID
+              Enter Badge / Student ID
             </p>
             <div className="relative mt-0.5 sm:mt-1 md:mt-1.5">
               <input
@@ -899,7 +1074,7 @@ export default function ScanStationPage() {
                   }
                 }}
                 className="absolute h-px w-px opacity-0"
-                aria-label="Student badge ID scanner input"
+                aria-label="Badge ID scanner input"
               />
               <div
                 role="textbox"
@@ -909,7 +1084,11 @@ export default function ScanStationPage() {
               >
                 {scanValue || (
                   <span className="text-sm font-normal text-[#64748B] sm:text-base md:text-lg lg:text-xl">
-                    {scanValue === "" && student ? student.id : "Enter ID"}
+                    {scanValue === "" && student
+                      ? student.id
+                      : scanValue === "" && staffUser
+                        ? staffUser.badgeId
+                        : "Enter ID"}
                   </span>
                 )}
               </div>
@@ -989,6 +1168,47 @@ export default function ScanStationPage() {
                 setStudent((prev) => (prev ? { ...prev, balance: balanceAfter } : prev))
                 void queryClient.invalidateQueries({ queryKey: ["students"] })
                 void queryClient.invalidateQueries({ queryKey: ["transactions"] })
+              }}
+            />
+          </div>
+        </div>
+      )}
+
+      {addFundsOpen && staffUser && (
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-3 sm:items-center sm:p-6"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Add money to staff account"
+        >
+          <div className="max-h-[90dvh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-4 shadow-xl sm:p-6">
+            <div className="mb-4 flex items-start justify-between gap-3">
+              <div>
+                <h2 className="text-lg font-bold text-[#041B52]">Add money</h2>
+                <p className="text-sm text-[#64748B]">
+                  Office deposit for {staffUser.firstName} {staffUser.lastName}. Station idle timer
+                  is paused while this form is open.
+                </p>
+              </div>
+              <button
+                type="button"
+                className="rounded-xl border border-[#AEB6C2] px-3 py-2 text-sm font-semibold text-[#041B52]"
+                onClick={() => {
+                  setAddFundsOpen(false)
+                  bumpIdleTimer()
+                }}
+              >
+                Close
+              </button>
+            </div>
+            <RecordStaffOfficePayment
+              staffUser={staffUser}
+              onDone={(balanceAfter) => {
+                setLocalBalance(balanceAfter)
+                setStaffUser((prev) =>
+                  prev ? { ...prev, accountBalance: balanceAfter } : prev
+                )
+                void queryClient.invalidateQueries({ queryKey: ["users"] })
               }}
             />
           </div>

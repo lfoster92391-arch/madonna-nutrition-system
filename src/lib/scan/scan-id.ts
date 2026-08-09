@@ -77,3 +77,21 @@ export function findStudentMatchingScan<T extends { id: string; barcode?: string
 ): T | undefined {
   return students.find((student) => studentMatchesScanId(student, scanId))
 }
+
+export function staffMatchesScanId(
+  user: { badgeId?: string | null },
+  scanId: string
+): boolean {
+  const badgeId = user.badgeId?.trim()
+  if (!badgeId) return false
+  const candidates = new Set(scanIdCandidates(scanId))
+  if (candidates.size === 0) return false
+  return scanIdCandidates(badgeId).some((key) => candidates.has(key))
+}
+
+export function findStaffMatchingScan<T extends { badgeId?: string | null }>(
+  users: T[],
+  scanId: string
+): T | undefined {
+  return users.find((user) => staffMatchesScanId(user, scanId))
+}
