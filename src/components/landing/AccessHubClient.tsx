@@ -5,17 +5,24 @@ import Link from "next/link"
 import { ArrowLeft, ChevronDown } from "lucide-react"
 import { LoginForm } from "@/components/auth/LoginForm"
 import { LandingShell } from "@/components/landing/LandingShell"
-import type { AccessChoice, AccessPortalKey } from "@/components/landing/access-choices"
+import {
+  PARENT_CHOICES,
+  SCHOOL_CHOICES,
+  type AccessPortalKey,
+} from "@/components/landing/access-choices"
 import { BRAND } from "@/config/brand"
 import { cn } from "@/lib/utils"
 
 const NAVY = "#041B52"
 
+type AccessHubKind = "parent" | "school"
+
 interface AccessHubProps {
   title: string
   subtitle: string
   accent: string
-  choices: AccessChoice[]
+  /** Resolve portal choices inside this client module so Lucide icons are not serialized from Server Components. */
+  hub: AccessHubKind
   /** When true and there is a single choice, show login/actions immediately. */
   expandSingleByDefault?: boolean
 }
@@ -24,9 +31,10 @@ export function AccessHubClient({
   title,
   subtitle,
   accent,
-  choices,
+  hub,
   expandSingleByDefault = false,
 }: AccessHubProps) {
+  const choices = hub === "parent" ? PARENT_CHOICES : SCHOOL_CHOICES
   const reactId = useId()
   const headingId = `access-hub-${title.replace(/\s+/g, "-").toLowerCase()}`
   const defaultKey =
