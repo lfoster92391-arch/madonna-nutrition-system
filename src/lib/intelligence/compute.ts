@@ -180,44 +180,41 @@ export async function computeReconciliation(): Promise<ReconciliationData> {
   const today = startOfDay()
   const monthStart = new Date(today.getFullYear(), today.getMonth(), 1)
 
-  const [transactions, templates] = await Promise.all([
+  const [transactions, receiving] = await Promise.all([
     prisma.transaction.findMany({
       where: { schoolId, createdAt: { gte: monthStart } },
       select: { amount: true, mealType: true },
     }),
-    prisma.mealTemplate.findMany({
-      where: { schoolId, isArchived: false },
-      select: { name: true, studentMealPrice: true, alaCartePrice: true },
+    prisma.receivingRecord.findMany({
+      where: {
+        schoolId,
+        status: "approved",
+        OR: [
+          { receivedAt: { gte: monthStart } },
+          { approvedAt: { gte: monthStart } },
+          { AND: [{ receivedAt: null }, { approvedAt: null }, { createdAt: { gte: monthStart } }] },
+        ],
+      },
+      select: { lines: true },
     }),
   ])
 
   const totalRevenue = transactions.reduce((s, t) => s + Number(t.amount), 0)
-  const mealCounts: Record<string, number> = {}
-  transactions.forEach((t) => {
-    mealCounts[t.mealType] = (mealCounts[t.mealType] ?? 0) + 1
-  })
 
-  const mealCosts = templates.slice(0, 6).map((t) => {
-    const price = Number(t.studentMealPrice ?? t.alaCartePrice ?? 4)
-    const ingredientCost = price * 0.55
-    const mealCost = ingredientCost * 1.15
-    const count = mealCounts[t.name] ?? 0
-    const revenue = count * price
-    return {
-      mealName: t.name,
-      ingredientCost: Math.round(ingredientCost * 100) / 100,
-      mealCost: Math.round(mealCost * 100) / 100,
-      revenue: Math.round(revenue * 100) / 100,
-      margin: Math.round((revenue - mealCost * count) * 100) / 100,
-    }
-  })
-
-  const totalExpenses = totalRevenue * 0.73
+  const totalExpenses = receiving.reduce((sum, record) => {
+    if (!Array.isArray(record.lines)) return sum
+    const lines = record.lines as Array<{ quantity?: number; unitCost?: number; totalCost?: number }>
+    const recordTotal = lines.reduce((lineSum, line) => {
+      if (typeof line.totalCost === "number") return lineSum + line.totalCost
+      return lineSum + (Number(line.unitCost) || 0) * (Number(line.quantity) || 0)
+    }, 0)
+    return sum + recordTotal
+  }, 0)
 
   return {
     source: "database",
     rows: [],
-    mealCosts,
+    mealCosts: [],
     totalRevenue: Math.round(totalRevenue * 100) / 100,
     totalExpenses: Math.round(totalExpenses * 100) / 100,
     netMargin: Math.round((totalRevenue - totalExpenses) * 100) / 100,

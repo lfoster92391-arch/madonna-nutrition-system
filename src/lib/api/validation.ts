@@ -344,6 +344,7 @@ export const receivingLineSchema = z.object({
   quantity: z.number().positive(),
   unit: z.string().min(1),
   unitCost: z.number().nonnegative().optional(),
+  totalCost: z.number().nonnegative().optional(),
 })
 
 export const createReceivingSchema = z.object({
@@ -369,6 +370,18 @@ export const inventoryMovementSchema = z.object({
   quantity: z.number().positive(),
   note: z.string().optional(),
   createdBy: z.string().optional(),
+})
+
+/** Simple grocery purchase for cafeteria operators (posts stock immediately). */
+export const groceryPurchaseSchema = z.object({
+  name: z.string().min(1),
+  quantity: z.number().positive(),
+  unit: z.string().min(1),
+  /** Total amount paid for this purchase (not per-unit). */
+  totalCost: z.number().nonnegative(),
+  vendor: z.string().optional(),
+  purchasedAt: z.string().optional(),
+  notes: z.string().optional(),
 })
 
 export const updateProductionSchema = z.object({

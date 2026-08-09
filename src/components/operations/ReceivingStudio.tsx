@@ -49,6 +49,7 @@ export function ReceivingStudio() {
   const [itemName, setItemName] = useState("")
   const [quantity, setQuantity] = useState("1")
   const [unit, setUnit] = useState("ea")
+  const [totalCost, setTotalCost] = useState("")
   const [storageLocationId, setStorageLocationId] = useState("")
   const [notes, setNotes] = useState("")
   const [filter, setFilter] = useState<"all" | "pending_approval" | "approved" | "draft">("all")
@@ -101,6 +102,9 @@ export function ReceivingStudio() {
 
   const handleManualReceive = () => {
     if (!vendorName.trim() || !itemName.trim()) return
+    const qty = Number(quantity) || 1
+    const paid = Number(totalCost)
+    const unitCost = Number.isFinite(paid) && paid >= 0 && qty > 0 ? paid / qty : undefined
     createMutation.mutate({
       vendorName: vendorName.trim(),
       invoiceNumber: invoiceNumber.trim() || undefined,
@@ -111,8 +115,10 @@ export function ReceivingStudio() {
         {
           inventoryItemId: scanResult?.id,
           name: itemName.trim(),
-          quantity: Number(quantity) || 1,
+          quantity: qty,
           unit: unit.trim() || "ea",
+          unitCost,
+          ...(Number.isFinite(paid) && paid >= 0 ? { totalCost: paid } : {}),
         },
       ],
       barcode: barcode.trim() || undefined,
@@ -121,6 +127,7 @@ export function ReceivingStudio() {
     setInvoiceNumber("")
     setItemName("")
     setQuantity("1")
+    setTotalCost("")
     setNotes("")
     setBarcode("")
     setScanResult(null)
@@ -128,10 +135,10 @@ export function ReceivingStudio() {
 
   const handleReceiptUpload = (file: File) => {
     createMutation.mutate({
-      vendorName: file.name.replace(/\.[^.]+$/, "").replace(/[-_]/g, " "),
+      vendorName: "Receipt upload",
       status: "pending_approval",
-      notes: `Uploaded receipt: ${file.name}`,
-      lines: [{ name: "Receipt line items pending OCR", quantity: 1, unit: "lot" }],
+      notes: `Uploaded receipt: ${file.name}. Enter line items when you review.`,
+      lines: [{ name: "Needs review", quantity: 1, unit: "lot" }],
     })
   }
 
@@ -146,12 +153,12 @@ export function ReceivingStudio() {
   return (
     <AdminModulePage
       section="Operations"
-      title="Receiving Studio"
-      description="Barcode scan, receipt upload, and manual receive — post inventory on approval."
+      title="Deliveries"
+      description="Log what arrived from vendors. For quick grocery trips, use Financials → Groceries instead."
       icon={PackageCheck}
       stats={[
-        { label: "Pending Approval", value: String(pending), variant: pending ? "warning" : "success" },
-        { label: "Queue Total", value: String(records.length), hint: "Live data" },
+        { label: "Waiting for approval", value: String(pending), variant: pending ? "warning" : "success" },
+        { label: "All deliveries", value: String(records.length) },
       ]}
     >
       {isLoading && <p className="text-silver-foreground">Loading receiving queue…</p>}
@@ -160,20 +167,16 @@ export function ReceivingStudio() {
         <div className="-mx-6 min-w-0 w-full max-w-full touch-pan-x overflow-x-auto scroll-smooth px-6 pb-1 [-ms-overflow-style:none] [-webkit-overflow-scrolling:touch] [scrollbar-width:none] sm:mx-0 sm:overflow-visible sm:px-0 sm:pb-0 [&::-webkit-scrollbar]:hidden">
           <TabsList className="inline-flex w-max flex-nowrap sm:w-full">
             <TabsTrigger value="queue" className="flex-none shrink-0 snap-start whitespace-nowrap px-4 sm:flex-1 sm:px-6">
-              <span className="sm:hidden">Queue</span>
-              <span className="hidden sm:inline">Receiving Queue</span>
+              Delivery list
             </TabsTrigger>
             <TabsTrigger value="scan" className="flex-none shrink-0 snap-start whitespace-nowrap px-4 sm:flex-1 sm:px-6">
-              <span className="sm:hidden">Scan</span>
-              <span className="hidden sm:inline">Barcode Scan</span>
+              Scan barcode
             </TabsTrigger>
             <TabsTrigger value="manual" className="flex-none shrink-0 snap-start whitespace-nowrap px-4 sm:flex-1 sm:px-6">
-              <span className="sm:hidden">Manual</span>
-              <span className="hidden sm:inline">Manual Receive</span>
+              Enter delivery
             </TabsTrigger>
             <TabsTrigger value="upload" className="flex-none shrink-0 snap-start whitespace-nowrap px-4 sm:flex-1 sm:px-6">
-              <span className="sm:hidden">Upload</span>
-              <span className="hidden sm:inline">Receipt Upload</span>
+              Upload receipt
             </TabsTrigger>
           </TabsList>
         </div>
@@ -256,7 +259,12 @@ export function ReceivingStudio() {
                 </div>
               ))}
               {filtered.length === 0 && (
-                <p className="py-8 text-center text-silver-foreground">No records in this queue.</p>
+                <div className="rounded-2xl border border-dashed border-silver/70 bg-silver/10 px-4 py-10 text-center">
+                  <p className="text-lg font-semibold text-primary">No deliveries yet</p>
+                  <p className="mt-1 text-sm text-silver-foreground">
+                    Enter a delivery below, or add a grocery purchase under Financials → Groceries.
+                  </p>
+                </div>
               )}
             </div>
           </Card>
@@ -315,11 +323,11 @@ export function ReceivingStudio() {
         <TabsContent value="manual">
           <Card>
             <CardHeader>
-              <CardTitle>Manual Receive Form</CardTitle>
+              <CardTitle>Enter a delivery</CardTitle>
             </CardHeader>
             <div className="grid gap-4 sm:grid-cols-2">
               <label className="text-sm sm:col-span-2">
-                Vendor
+                Who delivered it?
                 <select
                   className="mt-1 w-full rounded-xl border border-silver/60 px-3 py-2"
                   value={vendorName}
@@ -334,7 +342,7 @@ export function ReceivingStudio() {
                 </select>
               </label>
               <Input
-                placeholder="Or type vendor name"
+                placeholder="Or type store / vendor name"
                 value={vendorName}
                 onChange={(e) => setVendorName(e.target.value)}
               />
@@ -343,18 +351,32 @@ export function ReceivingStudio() {
                 value={invoiceNumber}
                 onChange={(e) => setInvoiceNumber(e.target.value)}
               />
-              <Input placeholder="Item name" value={itemName} onChange={(e) => setItemName(e.target.value)} />
+              <Input
+                placeholder="What arrived?"
+                value={itemName}
+                onChange={(e) => setItemName(e.target.value)}
+              />
               <div className="flex gap-2">
                 <Input
-                  placeholder="Qty"
+                  placeholder="How many?"
                   type="number"
                   value={quantity}
                   onChange={(e) => setQuantity(e.target.value)}
                 />
                 <Input placeholder="Unit" value={unit} onChange={(e) => setUnit(e.target.value)} />
               </div>
+              <Input
+                className="sm:col-span-2"
+                placeholder="How much did you pay? (optional)"
+                type="number"
+                min={0}
+                step="0.01"
+                inputMode="decimal"
+                value={totalCost}
+                onChange={(e) => setTotalCost(e.target.value)}
+              />
               <label className="text-sm sm:col-span-2">
-                Storage location
+                Where is it stored?
                 <select
                   className="mt-1 w-full rounded-xl border border-silver/60 px-3 py-2"
                   value={storageLocationId}
@@ -376,10 +398,11 @@ export function ReceivingStudio() {
               />
               <Button
                 className="sm:col-span-2"
+                size="lg"
                 onClick={handleManualReceive}
                 disabled={createMutation.isPending}
               >
-                Submit for Approval
+                Save delivery
               </Button>
             </div>
           </Card>
