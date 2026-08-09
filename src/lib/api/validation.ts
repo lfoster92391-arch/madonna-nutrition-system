@@ -48,6 +48,13 @@ export const mealTransactionSchema = z.object({
   processedByUserId: z.string().min(1).optional(),
 })
 
+export const staffMealTransactionSchema = z.object({
+  userId: z.string().min(1),
+  meal: z.string().min(1),
+  amount: z.number().nonnegative(),
+  processedByUserId: z.string().min(1).optional(),
+})
+
 export const officeDepositSchema = z.object({
   studentId: z.string().min(1),
   amount: z.number().positive().max(2000),

@@ -4,6 +4,7 @@ import { useCallback, useMemo, useRef, useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import Papa from "papaparse"
 import Image from "next/image"
+import Link from "next/link"
 import {
   AlertCircle,
   CheckCircle2,
@@ -13,9 +14,12 @@ import {
   Upload,
 } from "lucide-react"
 import { useAuth } from "@/components/providers/AuthProvider"
+import { useDemo } from "@/components/providers/DemoProvider"
 import { BadgeMassPrint } from "@/components/admin/BadgeMassPrint"
+import { StaffBadgeMassPrint } from "@/components/admin/StaffBadgeMassPrint"
 import { ImportExportMenu } from "@/components/admin/import-export/ImportExportMenu"
 import { studentHasRealPhoto } from "@/components/admin/StudentBadgeCard"
+import { staffHasRealPhoto } from "@/components/admin/StaffBadgeCard"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardHeader, CardTitle } from "@/components/ui/card"
@@ -28,6 +32,11 @@ import {
   pickCsvField,
 } from "@/lib/import-export/coerce"
 import { api } from "@/lib/api/client"
+import {
+  formatUserName,
+  isWorkplaceUserRole,
+  ROLE_LABELS,
+} from "@/lib/users"
 import type { Student } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
@@ -46,11 +55,15 @@ async function fetchBadges(): Promise<Student[]> {
   return res.json()
 }
 
+type RosterTab = "students" | "staff"
+
 export function BadgeManager() {
   const { user } = useAuth()
+  const { users } = useDemo()
   const queryClient = useQueryClient()
   const importRef = useRef<HTMLDivElement>(null)
   const fileRef = useRef<HTMLInputElement>(null)
+  const [rosterTab, setRosterTab] = useState<RosterTab>("students")
   const [search, setSearch] = useState("")
   const [statusFilter, setStatusFilter] = useState<"all" | Student["badgeStatus"]>("all")
   const [assignMdId, setAssignMdId] = useState<string | null>(null)
@@ -72,13 +85,19 @@ export function BadgeManager() {
   >([])
   const [createIncompleteStubs, setCreateIncompleteStubs] = useState(true)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [staffSelectedIds, setStaffSelectedIds] = useState<Set<string>>(new Set())
   const [printMode, setPrintMode] = useState(false)
+  const [staffPrintMode, setStaffPrintMode] = useState(false)
 
   const { data: badges = [], isLoading } = useQuery({
     queryKey: ["badges"],
     queryFn: fetchBadges,
   })
 
+  const staffUsers = useMemo(
+    () => users.filter((u) => isWorkplaceUserRole(u.role) && u.status === "active"),
+    [users]
+  )
   const assignMutation = useMutation({
     mutationFn: async (payload: { mdId: string; barcode?: string; badgeStatus: Student["badgeStatus"] }) => {
       const res = await fetch(`/api/badges/${encodeURIComponent(payload.mdId)}`, {
@@ -122,8 +141,30 @@ export function BadgeManager() {
     [badges, selectedIds]
   )
 
+  const filteredStaff = useMemo(() => {
+    return staffUsers.filter((u) => {
+      if (!search.trim()) return true
+      const q = search.toLowerCase()
+      return (
+        u.firstName.toLowerCase().includes(q) ||
+        u.lastName.toLowerCase().includes(q) ||
+        u.email.toLowerCase().includes(q) ||
+        (u.department?.toLowerCase().includes(q) ?? false) ||
+        (u.badgeId ?? "").includes(q)
+      )
+    })
+  }, [staffUsers, search])
+
+  const selectedStaff = useMemo(
+    () => staffUsers.filter((u) => staffSelectedIds.has(u.id)),
+    [staffUsers, staffSelectedIds]
+  )
+
   const allFilteredSelected =
     filtered.length > 0 && filtered.every((s) => selectedIds.has(s.id))
+
+  const allFilteredStaffSelected =
+    filteredStaff.length > 0 && filteredStaff.every((u) => staffSelectedIds.has(u.id))
 
   const exportRows = useMemo(
     () =>
@@ -169,9 +210,35 @@ export function BadgeManager() {
     })
   }
 
+  const toggleStaffSelect = (id: string) => {
+    setStaffSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const toggleSelectAllFilteredStaff = () => {
+    setStaffSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (allFilteredStaffSelected) {
+        for (const u of filteredStaff) next.delete(u.id)
+      } else {
+        for (const u of filteredStaff) next.add(u.id)
+      }
+      return next
+    })
+  }
+
   const openPrintPreview = (ids?: Set<string>) => {
     if (ids) setSelectedIds(ids)
     setPrintMode(true)
+  }
+
+  const openStaffPrintPreview = (ids?: Set<string>) => {
+    if (ids) setStaffSelectedIds(ids)
+    setStaffPrintMode(true)
   }
 
   const handleImportFile = async (file: File) => {
@@ -256,8 +323,184 @@ export function BadgeManager() {
     )
   }
 
+  if (staffPrintMode) {
+    return (
+      <StaffBadgeMassPrint
+        users={selectedStaff}
+        onClose={() => setStaffPrintMode(false)}
+      />
+    )
+  }
+
   return (
     <div className="space-y-6">
+      <div className="flex flex-wrap gap-2">
+        <Button
+          size="sm"
+          variant={rosterTab === "students" ? "default" : "outline"}
+          onClick={() => {
+            setRosterTab("students")
+            setSearch("")
+          }}
+        >
+          Student badges
+        </Button>
+        <Button
+          size="sm"
+          variant={rosterTab === "staff" ? "default" : "outline"}
+          onClick={() => {
+            setRosterTab("staff")
+            setSearch("")
+          }}
+        >
+          Staff &amp; teacher badges
+        </Button>
+      </div>
+
+      {rosterTab === "staff" ? (
+        <>
+          <div className="rounded-2xl border-2 border-primary/20 bg-white p-3 shadow-sm sm:p-5">
+            <div className="flex flex-wrap items-start justify-between gap-3 sm:gap-4">
+              <div className="min-w-0 max-w-xl">
+                <h2 className="text-base font-bold text-primary sm:text-lg">Print staff badges</h2>
+                <p className="mt-1 text-sm text-silver-foreground">
+                  Same card size as students. Photos come from each staff or teacher profile —{" "}
+                  <Link href="/admin/imports?tab=staff" className="font-semibold text-primary underline">
+                    Staff directory
+                  </Link>{" "}
+                  → Open profile → Take photo or Upload → Save photo.
+                </p>
+                <p className="mt-2 text-sm font-medium text-primary">
+                  {staffSelectedIds.size === 0
+                    ? "No one selected yet."
+                    : `${staffSelectedIds.size} selected for printing.`}
+                </p>
+              </div>
+              <div className="flex w-full flex-wrap gap-2 sm:w-auto">
+                <Button
+                  variant="outline"
+                  className="min-h-11 flex-1 sm:flex-none"
+                  onClick={() => openStaffPrintPreview(new Set(filteredStaff.map((u) => u.id)))}
+                  disabled={filteredStaff.length === 0}
+                >
+                  Print filtered ({filteredStaff.length})
+                </Button>
+                <Button
+                  size="lg"
+                  className="min-h-11 flex-1 sm:flex-none"
+                  onClick={() => openStaffPrintPreview()}
+                  disabled={staffSelectedIds.size === 0}
+                >
+                  <Printer className="mr-2 h-5 w-5" />
+                  Print staff badges
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          <div className="relative w-full min-w-0 sm:max-w-md">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-silver-foreground" />
+            <Input
+              className="pl-9"
+              placeholder="Search by name, department, or badge ID…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+
+          <Card>
+            <CardHeader>
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <IdCard className="h-5 w-5" />
+                  Staff &amp; teacher roster ({filteredStaff.length})
+                </CardTitle>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={toggleSelectAllFilteredStaff}
+                  disabled={filteredStaff.length === 0}
+                >
+                  {allFilteredStaffSelected ? "Clear selection" : "Select all filtered"}
+                </Button>
+              </div>
+            </CardHeader>
+            <div className="mobile-scroll-x px-3 pb-6 sm:px-6">
+              <table className="w-full min-w-[720px] text-sm">
+                <thead>
+                  <tr className="border-b text-left text-silver-foreground">
+                    <th className="pb-3 pr-3">
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4 accent-primary"
+                        checked={allFilteredStaffSelected}
+                        onChange={toggleSelectAllFilteredStaff}
+                        aria-label="Select all filtered staff"
+                      />
+                    </th>
+                    <th className="pb-3 pr-3">Photo</th>
+                    <th className="pb-3 pr-3">Name</th>
+                    <th className="pb-3 pr-3">Role</th>
+                    <th className="pb-3 pr-3">Department</th>
+                    <th className="pb-3 pr-3">Badge ID</th>
+                    <th className="pb-3">Photo ready</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredStaff.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="py-8 text-center text-silver-foreground">
+                        No staff or teachers found. Import them under Staff directory first.
+                      </td>
+                    </tr>
+                  ) : null}
+                  {filteredStaff.map((u) => (
+                    <tr key={u.id} className="border-b border-silver/40">
+                      <td className="py-3 pr-3">
+                        <input
+                          type="checkbox"
+                          className="h-4 w-4 accent-primary"
+                          checked={staffSelectedIds.has(u.id)}
+                          onChange={() => toggleStaffSelect(u.id)}
+                          aria-label={`Select ${formatUserName(u)}`}
+                        />
+                      </td>
+                      <td className="py-3 pr-3">
+                        {staffHasRealPhoto(u.photo) ? (
+                          <Image
+                            src={u.photo!}
+                            alt=""
+                            width={40}
+                            height={40}
+                            className="h-10 w-10 rounded-lg object-cover"
+                            unoptimized={u.photo!.startsWith("data:")}
+                          />
+                        ) : (
+                          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-silver/30 text-[10px] font-semibold text-silver-foreground">
+                            —
+                          </div>
+                        )}
+                      </td>
+                      <td className="py-3 pr-3 font-medium text-primary">{formatUserName(u)}</td>
+                      <td className="py-3 pr-3">{ROLE_LABELS[u.role]}</td>
+                      <td className="py-3 pr-3">{u.department || "—"}</td>
+                      <td className="py-3 pr-3 font-mono">{u.badgeId || "—"}</td>
+                      <td className="py-3">
+                        {staffHasRealPhoto(u.photo) ? (
+                          <Badge variant="success">Yes</Badge>
+                        ) : (
+                          <Badge variant="warning">Add photo</Badge>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+        </>
+      ) : (
+        <>
       <div className="rounded-2xl border-2 border-primary/20 bg-white p-3 shadow-sm sm:p-5">
         <div className="flex flex-wrap items-start justify-between gap-3 sm:gap-4">
           <div className="min-w-0 max-w-xl">
@@ -569,6 +812,8 @@ export function BadgeManager() {
           </div>
         )}
       </div>
+        </>
+      )}
     </div>
   )
 }

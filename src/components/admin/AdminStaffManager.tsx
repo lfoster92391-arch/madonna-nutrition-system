@@ -4,10 +4,11 @@ import { useMemo, useRef, useState } from "react"
 import Image from "next/image"
 import Link from "next/link"
 import { useQueryClient } from "@tanstack/react-query"
-import { Camera, DollarSign, Pencil, Plus, Search, Upload, UserRound } from "lucide-react"
+import { Camera, DollarSign, IdCard, Pencil, Plus, Printer, Search, Upload, UserRound } from "lucide-react"
 import { useDemo } from "@/components/providers/DemoProvider"
 import { useAuth } from "@/components/providers/AuthProvider"
 import { RecordStaffOfficePayment } from "@/components/admin/RecordStaffOfficePayment"
+import { StaffBadgeMassPrint } from "@/components/admin/StaffBadgeMassPrint"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardHeader, CardTitle } from "@/components/ui/card"
@@ -75,6 +76,8 @@ export function AdminStaffManager({
   const [photoBusy, setPhotoBusy] = useState(false)
   const [photoMessage, setPhotoMessage] = useState<string | null>(null)
   const [pendingPhoto, setPendingPhoto] = useState<string | null>(null)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [printMode, setPrintMode] = useState(false)
   const [form, setForm] = useState({
     firstName: "",
     lastName: "",
@@ -111,8 +114,42 @@ export function AdminStaffManager({
     })
   }, [staffUsers, search, roleFilter])
 
+  const selectedUsers = useMemo(
+    () => staffUsers.filter((u) => selectedIds.has(u.id)),
+    [staffUsers, selectedIds]
+  )
+
+  const allFilteredSelected =
+    filtered.length > 0 && filtered.every((u) => selectedIds.has(u.id))
+
   const performedBy = authUser?.displayName ?? authUser?.username ?? "System Admin"
   const adminUserId = authUser?.id ?? ""
+
+  function toggleSelect(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  function toggleSelectAllFiltered() {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (allFilteredSelected) {
+        for (const u of filtered) next.delete(u.id)
+      } else {
+        for (const u of filtered) next.add(u.id)
+      }
+      return next
+    })
+  }
+
+  function openPrintPreview(ids?: Set<string>) {
+    if (ids) setSelectedIds(ids)
+    setPrintMode(true)
+  }
 
   function resetForm() {
     setForm({
@@ -303,7 +340,9 @@ export function AdminStaffManager({
       const dataUrl = await readFileAsDataUrl(file)
       const compressed = await compressImageDataUrl(dataUrl)
       setPendingPhoto(compressed)
-      setPhotoMessage("Preview ready. Tap Save photo or Save changes to keep it on this profile.")
+      setPhotoMessage(
+        "Preview ready. Tap Save photo or Save changes — it will show on their printed badge."
+      )
     } catch {
       setPhotoMessage("Could not read that image. Try another file.")
     }
@@ -326,7 +365,7 @@ export function AdminStaffManager({
         photo: compressed,
       })
       setPendingPhoto(null)
-      setPhotoMessage("Photo saved.")
+      setPhotoMessage("Photo saved for badges")
       void queryClient.invalidateQueries({ queryKey: ["users"] })
     } catch (error) {
       setPhotoMessage(
@@ -344,6 +383,15 @@ export function AdminStaffManager({
 
   const editingPhoto = pendingPhoto ?? editing?.photo
 
+  if (printMode) {
+    return (
+      <StaffBadgeMassPrint
+        users={selectedUsers}
+        onClose={() => setPrintMode(false)}
+      />
+    )
+  }
+
   return (
     <div className="space-y-6">
       <input
@@ -357,7 +405,7 @@ export function AdminStaffManager({
         ref={cameraInputRef}
         type="file"
         accept="image/*"
-        capture="user"
+        capture="environment"
         className="hidden"
         onChange={(e) => void handlePhotoUpload(e)}
       />
@@ -366,8 +414,8 @@ export function AdminStaffManager({
         <div>
           <h2 className="text-xl font-semibold text-primary">Staff directory</h2>
           <p className="text-sm text-silver-foreground">
-            After you import staff, they show up here. Tap <strong>Open profile</strong> to edit
-            details or add a photo.
+            Staff and teachers appear here after import. Tap <strong>Open profile</strong> to edit
+            details, take or upload a photo, and set a Badge ID for lunch-line scanning.
           </p>
         </div>
         <div className="flex flex-wrap gap-3">
@@ -384,22 +432,74 @@ export function AdminStaffManager({
           <Button variant="outline" asChild>
             <Link href="/admin/users">All user accounts</Link>
           </Button>
+          <Button variant="outline" asChild>
+            <Link href="/admin/badges">
+              <IdCard className="h-4 w-4" />
+              Badge Setup
+            </Link>
+          </Button>
+        </div>
+      </div>
+
+      <div className="rounded-2xl border-2 border-primary/20 bg-white p-3 shadow-sm sm:p-5">
+        <div className="flex flex-wrap items-start justify-between gap-3 sm:gap-4">
+          <div className="min-w-0 max-w-xl">
+            <h3 className="text-base font-bold text-primary sm:text-lg">Print staff badges</h3>
+            <p className="mt-1 text-sm text-silver-foreground">
+              Select people below (or print the filtered list), then preview the same 3&quot; ×
+              2¾&quot; cards used for students — photo, name, role, department, and barcode.
+            </p>
+            <p className="mt-2 text-sm font-medium text-primary">
+              {selectedIds.size === 0
+                ? "No one selected yet."
+                : `${selectedIds.size} selected for printing.`}
+            </p>
+          </div>
+          <div className="flex w-full flex-wrap gap-2 sm:w-auto">
+            <Button
+              variant="outline"
+              className="min-h-11 flex-1 sm:flex-none"
+              onClick={() => openPrintPreview(new Set(filtered.map((u) => u.id)))}
+              disabled={filtered.length === 0}
+            >
+              Print filtered ({filtered.length})
+            </Button>
+            <Button
+              size="lg"
+              className="min-h-11 flex-1 sm:flex-none"
+              onClick={() => openPrintPreview()}
+              disabled={selectedIds.size === 0}
+            >
+              <Printer className="mr-2 h-5 w-5" />
+              Print staff badges
+            </Button>
+          </div>
         </div>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <UserRound className="h-5 w-5" />
-            Staff accounts ({filtered.length})
-          </CardTitle>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <CardTitle className="flex items-center gap-2">
+              <UserRound className="h-5 w-5" />
+              Staff accounts ({filtered.length})
+            </CardTitle>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={toggleSelectAllFiltered}
+              disabled={filtered.length === 0}
+            >
+              {allFilteredSelected ? "Clear selection" : "Select all filtered"}
+            </Button>
+          </div>
         </CardHeader>
         <div className="mb-4 flex flex-wrap gap-3 px-3 sm:gap-4 sm:px-6">
           <div className="relative w-full min-w-0 flex-1 sm:min-w-[240px]">
             <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-silver-foreground" />
             <Input
               className="pl-12"
-              placeholder="Search by name, email, or department…"
+              placeholder="Search by name, email, department, or badge ID…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
@@ -427,14 +527,24 @@ export function AdminStaffManager({
           </div>
         </div>
         <div className="mobile-scroll-x px-3 pb-6 sm:px-6">
-          <table className="w-full min-w-[720px] text-sm">
+          <table className="w-full min-w-[820px] text-sm">
             <thead>
               <tr className="border-b border-silver/60 text-silver-foreground">
+                <th className="pb-3 pr-3">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4 accent-primary"
+                    checked={allFilteredSelected}
+                    onChange={toggleSelectAllFiltered}
+                    aria-label="Select all filtered staff"
+                  />
+                </th>
                 <th className="pb-3 pr-4 text-left font-medium">Photo</th>
                 <th className="pb-3 pr-4 text-left font-medium">Name</th>
                 <th className="pb-3 pr-4 text-left font-medium">Email</th>
                 <th className="pb-3 pr-4 text-left font-medium">Role</th>
                 <th className="pb-3 pr-4 text-left font-medium">Department</th>
+                <th className="pb-3 pr-4 text-left font-medium">Badge ID</th>
                 <th className="pb-3 pr-4 text-left font-medium">Status</th>
                 <th className="pb-3 text-right font-medium">Actions</th>
               </tr>
@@ -442,7 +552,7 @@ export function AdminStaffManager({
             <tbody>
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-10 text-center text-silver-foreground">
+                  <td colSpan={9} className="py-10 text-center text-silver-foreground">
                     <p className="text-base font-medium text-primary">No staff yet</p>
                     <p className="mt-1">
                       Import a spreadsheet below, or tap <strong>Add staff</strong> to create one
@@ -461,6 +571,15 @@ export function AdminStaffManager({
                   key={u.id}
                   className={`border-b border-silver/30 ${u.status === "disabled" ? "opacity-60" : ""}`}
                 >
+                  <td className="py-3 pr-3">
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 accent-primary"
+                      checked={selectedIds.has(u.id)}
+                      onChange={() => toggleSelect(u.id)}
+                      aria-label={`Select ${formatUserName(u)} for badge print`}
+                    />
+                  </td>
                   <td className="py-3 pr-4">
                     <button
                       type="button"
@@ -484,6 +603,7 @@ export function AdminStaffManager({
                     <Badge variant="default">{ROLE_LABELS[u.role]}</Badge>
                   </td>
                   <td className="py-3 pr-4">{u.department || "—"}</td>
+                  <td className="py-3 pr-4 font-mono">{u.badgeId || "—"}</td>
                   <td className="py-3 pr-4">
                     <Badge variant={u.status === "active" ? "success" : "danger"}>
                       {u.status}
@@ -529,8 +649,8 @@ export function AdminStaffManager({
               <CardTitle>{editing ? "Staff profile" : "Add staff"}</CardTitle>
               {editing && (
                 <p className="text-sm text-silver-foreground">
-                  Update contact details and photo. Photos help identify staff on badges and in the
-                  directory.
+                  Update contact details and photo. Photos print on staff badges and show in the
+                  directory — same flow as students.
                 </p>
               )}
             </CardHeader>
@@ -596,11 +716,20 @@ export function AdminStaffManager({
               )}
               {userRoleSupportsBadge(editing?.role ?? form.role) && (
                 <div>
-                  <Label>Badge ID</Label>
+                  <Label>Badge ID (4–6 digits)</Label>
                   <Input
+                    inputMode="numeric"
+                    pattern="\d*"
+                    placeholder="e.g. 90004"
                     value={form.badgeId}
-                    onChange={(e) => setForm({ ...form, badgeId: e.target.value })}
+                    onChange={(e) =>
+                      setForm({ ...form, badgeId: e.target.value.replace(/\D/g, "") })
+                    }
                   />
+                  <p className="mt-1 text-xs text-silver-foreground">
+                    Printed as the barcode. Staff can scan this at the lunch line when they have a
+                    lunch balance.
+                  </p>
                 </div>
               )}
               {editing && (
@@ -655,9 +784,10 @@ export function AdminStaffManager({
             {editing && (
               <div className="mt-6 space-y-4 border-t border-silver/40 px-6 pt-6">
                 <div>
-                  <h3 className="text-lg font-semibold text-primary">Profile photo</h3>
+                  <h3 className="text-lg font-semibold text-primary">Badge photo</h3>
                   <p className="text-sm text-silver-foreground">
-                    Take a photo or upload a picture, then tap Save photo.
+                    Take a photo with your phone camera or upload a picture, then tap Save photo.
+                    It appears on printed badges right away.
                   </p>
                 </div>
                 <div className="flex flex-wrap items-start gap-5">
@@ -716,7 +846,7 @@ export function AdminStaffManager({
                 {photoMessage && (
                   <p
                     className={`rounded-xl px-4 py-3 text-sm font-medium ${
-                      photoMessage === "Photo saved."
+                      photoMessage === "Photo saved for badges"
                         ? "border border-emerald-200 bg-emerald-50 text-emerald-900"
                         : "bg-silver/20 text-primary"
                     }`}

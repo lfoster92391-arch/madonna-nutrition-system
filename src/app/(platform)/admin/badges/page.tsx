@@ -9,16 +9,20 @@ export default function AdminBadgesPage() {
     <AdminModulePage
       section="Get Started"
       title="Badge Setup"
-      description="Configure student scan badges, ID photos, and mass-print badge sheets for cafeteria stations."
+      description="Configure student and staff scan badges, ID photos, and mass-print badge sheets for cafeteria stations."
       icon={IdCard}
     >
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-silver/60 bg-white p-3 shadow-sm sm:mb-6 sm:p-4">
         <p className="min-w-0 text-sm text-silver-foreground">
-          Badge photos come from each student&apos;s profile. To add or change a photo:{" "}
+          Student photos:{" "}
           <Link href="/admin/imports" className="font-semibold text-primary underline">
             Students
           </Link>{" "}
-          → Open profile → Take photo or Upload photo → Save. Barcode format: 4–6 digits.
+          → Open profile → Take photo or Upload → Save. Staff &amp; teacher photos:{" "}
+          <Link href="/admin/imports?tab=staff" className="font-semibold text-primary underline">
+            Staff directory
+          </Link>{" "}
+          → Open profile → Take photo or Upload → Save photo. Barcode format: 4–6 digits.
         </p>
         <Button asChild className="w-full sm:w-auto">
           <Link href="/scan">

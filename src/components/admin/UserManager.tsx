@@ -3,12 +3,14 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
 import {
+  Camera,
   Check,
   ChevronDown,
   Copy,
   MoreHorizontal,
   Plus,
   Search,
+  Upload,
   UserX,
 } from "lucide-react"
 import { useAuth } from "@/components/providers/AuthProvider"
@@ -21,9 +23,20 @@ import { Input, Label } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { AuditLogTable } from "@/components/admin/AuditLogTable"
+import { api } from "@/lib/api/client"
+import { compressImageDataUrl } from "@/lib/images/compress-data-url"
 import { formatUserName, ROLE_LABELS, userRoleSupportsBadge } from "@/lib/users"
 import type { User, UserRole } from "@/lib/types"
 import { cn } from "@/lib/utils"
+
+function readFileAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(reader.result as string)
+    reader.onerror = reject
+    reader.readAsDataURL(file)
+  })
+}
 
 const ROLES: UserRole[] = ["admin", "cashier", "parent", "staff", "teacher"]
 
@@ -190,6 +203,11 @@ export function UserManager() {
   const [copied, setCopied] = useState(false)
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null)
   const [saving, setSaving] = useState(false)
+  const [pendingPhoto, setPendingPhoto] = useState<string | null>(null)
+  const [photoBusy, setPhotoBusy] = useState(false)
+  const [photoMessage, setPhotoMessage] = useState<string | null>(null)
+  const photoInputRef = useRef<HTMLInputElement>(null)
+  const cameraInputRef = useRef<HTMLInputElement>(null)
 
   const performedBy = authUser?.displayName ?? "System Admin"
   const adminUserId = authUser?.id ?? ""
@@ -252,6 +270,8 @@ export function UserManager() {
   function openAdd() {
     setSelected(null)
     setForm(emptyForm())
+    setPendingPhoto(null)
+    setPhotoMessage(null)
     setMode("add")
   }
 
@@ -271,7 +291,49 @@ export function UserManager() {
       password: "",
       forcePasswordChange: true,
     })
+    setPendingPhoto(null)
+    setPhotoMessage(null)
     setMode("edit")
+  }
+
+  async function handlePhotoUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    e.target.value = ""
+    if (!file || !selected) return
+    try {
+      const dataUrl = await readFileAsDataUrl(file)
+      const compressed = await compressImageDataUrl(dataUrl)
+      setPendingPhoto(compressed)
+      setPhotoMessage(
+        "Preview ready. Tap Save photo — it will show on their printed badge."
+      )
+    } catch {
+      setPhotoMessage("Could not read that image. Try another file.")
+    }
+  }
+
+  async function handleSavePhoto() {
+    if (!selected) return
+    if (!pendingPhoto) {
+      setPhotoMessage("Take or upload a photo first, then tap Save photo.")
+      return
+    }
+    setPhotoBusy(true)
+    setPhotoMessage(null)
+    try {
+      const compressed = await compressImageDataUrl(pendingPhoto)
+      const updated = await api.uploadUserPhoto(selected.id, compressed)
+      setSelected({ ...updated, photo: compressed })
+      setPendingPhoto(null)
+      setPhotoMessage("Photo saved for badges")
+      showToast("Photo saved for badges")
+    } catch (error) {
+      setPhotoMessage(
+        error instanceof Error ? error.message : "Could not save the photo. Try a smaller image."
+      )
+    } finally {
+      setPhotoBusy(false)
+    }
   }
 
   function openToggleStatus(user: User) {
@@ -928,6 +990,89 @@ export function UserManager() {
                         Require password change on next login
                       </span>
                     </label>
+                  </div>
+                )}
+
+                {mode === "edit" && userRoleSupportsBadge(form.role) && selected && (
+                  <div className="space-y-3 rounded-2xl border border-silver/50 p-4">
+                    <input
+                      ref={photoInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => void handlePhotoUpload(e)}
+                    />
+                    <input
+                      ref={cameraInputRef}
+                      type="file"
+                      accept="image/*"
+                      capture="environment"
+                      className="hidden"
+                      onChange={(e) => void handlePhotoUpload(e)}
+                    />
+                    <div>
+                      <p className="font-semibold text-primary">Badge photo</p>
+                      <p className="text-sm text-silver-foreground">
+                        Same as students: Take photo or Upload, then Save photo. Teachers and staff
+                        use this photo on printed badges.
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap items-start gap-4">
+                      {(pendingPhoto ?? selected.photo) ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={pendingPhoto ?? selected.photo}
+                          alt={formatUserName(selected)}
+                          className="h-28 w-28 rounded-2xl border border-silver/50 object-cover"
+                        />
+                      ) : (
+                        <div className="flex h-28 w-28 items-center justify-center rounded-2xl border border-dashed border-silver/60 bg-silver/10 text-center text-xs font-medium text-silver-foreground">
+                          No photo yet
+                        </div>
+                      )}
+                      <div className="flex min-w-[200px] flex-1 flex-col gap-2">
+                        <Button
+                          type="button"
+                          className="min-h-12"
+                          disabled={photoBusy || saving}
+                          onClick={() => cameraInputRef.current?.click()}
+                        >
+                          <Camera className="h-4 w-4" />
+                          Take photo
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="min-h-12"
+                          disabled={photoBusy || saving}
+                          onClick={() => photoInputRef.current?.click()}
+                        >
+                          <Upload className="h-4 w-4" />
+                          Upload photo
+                        </Button>
+                        <Button
+                          type="button"
+                          className="min-h-12"
+                          disabled={photoBusy || saving}
+                          onClick={() => void handleSavePhoto()}
+                        >
+                          {photoBusy ? "Saving…" : "Save photo"}
+                        </Button>
+                      </div>
+                    </div>
+                    {photoMessage && (
+                      <p
+                        className={cn(
+                          "rounded-xl px-3 py-2 text-sm font-medium",
+                          photoMessage === "Photo saved for badges"
+                            ? "border border-emerald-200 bg-emerald-50 text-emerald-900"
+                            : "bg-silver/20 text-primary"
+                        )}
+                        role="status"
+                      >
+                        {photoMessage}
+                      </p>
+                    )}
                   </div>
                 )}
 

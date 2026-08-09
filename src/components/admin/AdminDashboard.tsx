@@ -73,7 +73,7 @@ const SECTIONS: LauncherSection[] = [
       },
       {
         title: "Badge Setup",
-        description: "Link barcodes and view badge photos from each student profile.",
+        description: "Link barcodes and print student or staff badge photos from each profile.",
         href: "/admin/badges",
         icon: IdCard,
         importExportType: "badges",

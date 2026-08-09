@@ -116,12 +116,13 @@ const GUIDE_STEPS: GuideStep[] = [
   },
   {
     number: 7,
-    title: "Staff logins (setup)",
-    plain: "Create accounts so workers can sign in.",
+    title: "Staff & teacher badges (setup)",
+    plain: "Create accounts, add photos, and print lunch badges.",
     details: [
-      "Open Staff Accounts to import or add cafeteria staff.",
-      "After import, tap Open profile to edit details or add a photo.",
-      "Cashiers can run the lunch line; admins can change menus and students.",
+      "Open Staff Accounts to import or add cafeteria staff and teachers.",
+      "Tap Open profile → Take photo or Upload photo → Save photo (same as students).",
+      "Set a 4–6 digit Badge ID, then print from Staff directory or Badge Setup → Staff & teacher badges.",
+      "Staff can scan their badge at the lunch line when they have a lunch balance.",
     ],
     href: "/admin/imports?tab=staff",
     buttonLabel: "Manage Staff Accounts",
