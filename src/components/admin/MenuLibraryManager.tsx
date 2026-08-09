@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useOverlayLock } from "@/hooks/useOverlayLock"
 import {
   Archive,
@@ -169,6 +169,7 @@ export function MenuLibraryManager() {
   const [tagsByMeal, setTagsByMeal] = useState<Record<string, string[]>>({})
   const [dragSlot, setDragSlot] = useState<MealPhotoSlot | null>(null)
   const [saveFlash, setSaveFlash] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
   const [showScheduleModal, setShowScheduleModal] = useState(false)
   const [scheduleDate, setScheduleDate] = useState(() => {
     const d = new Date()
@@ -180,8 +181,37 @@ export function MenuLibraryManager() {
   const [sideInput, setSideInput] = useState("")
   const [photoBusySlot, setPhotoBusySlot] = useState<MealPhotoSlot | null>(null)
   const [photoErrors, setPhotoErrors] = useState<Partial<Record<MealPhotoSlot, string>>>({})
+  const [isMobileViewport, setIsMobileViewport] = useState(false)
   const fileInputRefs = useRef<Partial<Record<MealPhotoSlot, HTMLInputElement | null>>>({})
   const cameraInputRefs = useRef<Partial<Record<MealPhotoSlot, HTMLInputElement | null>>>({})
+  const draftRef = useRef<MealTemplate | null>(null)
+  const saveInFlightRef = useRef(false)
+  const saveFlashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  draftRef.current = draft
+
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 1023px)")
+    const update = () => setIsMobileViewport(mq.matches)
+    update()
+    mq.addEventListener("change", update)
+    return () => mq.removeEventListener("change", update)
+  }, [])
+
+  useEffect(() => {
+    return () => {
+      if (saveFlashTimerRef.current) clearTimeout(saveFlashTimerRef.current)
+    }
+  }, [])
+
+  const flashSaved = useCallback(() => {
+    if (saveFlashTimerRef.current) clearTimeout(saveFlashTimerRef.current)
+    setSaveFlash(true)
+    saveFlashTimerRef.current = setTimeout(() => {
+      setSaveFlash(false)
+      saveFlashTimerRef.current = null
+    }, 2500)
+  }, [])
 
   const unreadCount = notifications.filter((n) => !n.read).length
 
@@ -230,6 +260,14 @@ export function MenuLibraryManager() {
     setPhotoBusySlot(null)
   }, [])
 
+  const clearSaveFlash = useCallback(() => {
+    if (saveFlashTimerRef.current) {
+      clearTimeout(saveFlashTimerRef.current)
+      saveFlashTimerRef.current = null
+    }
+    setSaveFlash(false)
+  }, [])
+
   const selectTemplate = useCallback(
     (template: MealTemplate) => {
       setSelectedId(template.id)
@@ -237,9 +275,10 @@ export function MenuLibraryManager() {
       setSideInput("")
       setIsCreating(false)
       setEditorTab("details")
+      clearSaveFlash()
       resetFileInputs()
     },
-    [resetFileInputs]
+    [clearSaveFlash, resetFileInputs]
   )
 
   const closePanel = useCallback(() => {
@@ -247,16 +286,21 @@ export function MenuLibraryManager() {
     setDraft(null)
     setSideInput("")
     setIsCreating(false)
+    clearSaveFlash()
     resetFileInputs()
-  }, [resetFileInputs])
+  }, [clearSaveFlash, resetFileInputs])
 
   const closeScheduleModal = useCallback(() => setShowScheduleModal(false), [])
   const closePreview = useCallback(() => setPreviewTemplate(null), [])
 
   // Nested overlays: only the topmost should own Escape / scroll lock.
+  // Desktop side panel is not an overlay — skip body lock to avoid scroll jumps on save.
   useOverlayLock(!!previewTemplate, closePreview)
   useOverlayLock(showScheduleModal && !previewTemplate, closeScheduleModal)
-  useOverlayLock(!!draft && !showScheduleModal && !previewTemplate, closePanel)
+  useOverlayLock(
+    !!draft && isMobileViewport && !showScheduleModal && !previewTemplate,
+    closePanel
+  )
 
   const handleCreate = () => {
     const cat = activeCategory !== "all" && activeCategory !== "archived" ? activeCategory : "lunch"
@@ -269,100 +313,143 @@ export function MenuLibraryManager() {
     setSideInput("")
     setIsCreating(true)
     setEditorTab("details")
+    clearSaveFlash()
     resetFileInputs()
   }
 
-  const handleSave = async () => {
-    if (!draft || !draft.name.trim()) return
-    // Never write meal A's draft onto meal B's id after a mid-edit switch.
-    if (!isCreating && selectedId && draft.id !== selectedId) return
-    const saveTargetId = isCreating ? null : selectedId
-    const payload = {
-      name: draft.name.trim(),
-      description: draft.description?.trim() || undefined,
-      category: draft.category,
-      mealType: draft.mealType,
-      allergens: draft.allergens,
-      nutritionNotes: draft.nutritionNotes?.trim() || undefined,
-      portionNotes: draft.portionNotes?.trim() || undefined,
-      gradeAvailability: draft.gradeAvailability,
-      ingredients: draft.ingredients,
-      isReusable: draft.isReusable,
-      isFavorite: draft.isFavorite,
-      isPublished: draft.isPublished,
-      isArchived: draft.isArchived,
-      studentMealPrice: draft.studentMealPrice,
-      alaCartePrice: draft.alaCartePrice,
-      staffMealPrice: draft.staffMealPrice,
-      items: draft.items.map((item, i) => ({ ...item, sortOrder: i })),
-      photos: draft.photos,
-    }
+  const buildSavePayload = (source: MealTemplate) => ({
+    name: source.name.trim(),
+    description: source.description?.trim() || undefined,
+    category: source.category,
+    mealType: source.mealType,
+    allergens: source.allergens,
+    nutritionNotes: source.nutritionNotes?.trim() || undefined,
+    portionNotes: source.portionNotes?.trim() || undefined,
+    gradeAvailability: source.gradeAvailability,
+    ingredients: source.ingredients,
+    isReusable: source.isReusable,
+    isFavorite: source.isFavorite,
+    isPublished: source.isPublished,
+    isArchived: source.isArchived,
+    studentMealPrice: source.studentMealPrice,
+    alaCartePrice: source.alaCartePrice,
+    staffMealPrice: source.staffMealPrice,
+    items: source.items.map((item, i) => ({ ...item, sortOrder: i })),
+    photos: source.photos.map((photo) => ({ ...photo })),
+  })
 
-    if (isCreating) {
-      const created = await addMealTemplate(payload)
-      setSelectedId(created.id)
-      setDraft(templateToDraft(created))
-      setIsCreating(false)
-    } else if (saveTargetId) {
-      await updateMealTemplate(saveTargetId, payload)
-      setDraft((current) => {
-        if (!current || current.id !== saveTargetId) return current
-        return templateToDraft({
-          ...current,
-          ...payload,
-          id: saveTargetId,
-          photos: current.photos,
-          items: current.items,
-          updatedAt: new Date().toISOString(),
+  const handleSave = async () => {
+    const latest = draftRef.current
+    if (!latest || !latest.name.trim()) return
+    if (saveInFlightRef.current || photoBusySlot) return
+    // Never write meal A's draft onto meal B's id after a mid-edit switch.
+    if (!isCreating && selectedId && latest.id !== selectedId) return
+
+    const saveTargetId = isCreating ? null : selectedId
+    const creating = isCreating
+    const payload = buildSavePayload(latest)
+
+    saveInFlightRef.current = true
+    setIsSaving(true)
+    try {
+      if (creating) {
+        const created = await addMealTemplate(payload)
+        // Stay on the same editor session: adopt server id without wiping in-flight edits.
+        setSelectedId(created.id)
+        setIsCreating(false)
+        setDraft((current) => {
+          if (!current || current.id !== latest.id) return current
+          return {
+            ...current,
+            id: created.id,
+            createdAt: created.createdAt,
+            updatedAt: created.updatedAt,
+            // Prefer live draft (photos may have finished during the await).
+            photos: current.photos,
+            items: current.items,
+          }
         })
-      })
+      } else if (saveTargetId) {
+        // Re-read draft so a photo that finished during the click is included.
+        const fresh = draftRef.current
+        const finalPayload =
+          fresh && fresh.id === saveTargetId ? buildSavePayload(fresh) : payload
+        await updateMealTemplate(saveTargetId, finalPayload)
+        setDraft((current) => {
+          if (!current || current.id !== saveTargetId) return current
+          return {
+            ...current,
+            ...finalPayload,
+            id: saveTargetId,
+            photos: current.photos,
+            items: current.items,
+            updatedAt: new Date().toISOString(),
+          }
+        })
+      }
+      flashSaved()
+    } finally {
+      saveInFlightRef.current = false
+      setIsSaving(false)
     }
-    setSaveFlash(true)
-    setTimeout(() => setSaveFlash(false), 2500)
   }
 
   const handleScheduleToCalendar = async () => {
-    if (!draft?.name.trim() || !scheduleDate) return
+    const latest = draftRef.current
+    if (!latest?.name.trim() || !scheduleDate) return
     if (!isSchoolLunchDateKey(scheduleDate)) return
-    if (!isCreating && selectedId && draft.id !== selectedId) return
+    if (!isCreating && selectedId && latest.id !== selectedId) return
+    if (saveInFlightRef.current || photoBusySlot || scheduleSaving) return
+
+    saveInFlightRef.current = true
     setScheduleSaving(true)
     try {
       let templateId = selectedId
       if (isCreating || !templateId) {
         const payload = {
-          name: draft.name.trim(),
-          description: draft.description?.trim() || undefined,
-          category: draft.category,
-          mealType: draft.mealType,
-          allergens: draft.allergens,
-          nutritionNotes: draft.nutritionNotes?.trim() || undefined,
-          portionNotes: draft.portionNotes?.trim() || undefined,
-          gradeAvailability: draft.gradeAvailability,
-          ingredients: draft.ingredients,
-          isReusable: draft.isReusable,
-          isFavorite: draft.isFavorite,
+          ...buildSavePayload(latest),
           isPublished: true,
-          isArchived: draft.isArchived,
-          studentMealPrice: draft.studentMealPrice,
-          alaCartePrice: draft.alaCartePrice,
-          staffMealPrice: draft.staffMealPrice,
-          items: draft.items.map((item, i) => ({ ...item, sortOrder: i })),
-          photos: draft.photos,
         }
         const created = await addMealTemplate(payload)
         templateId = created.id
         setSelectedId(created.id)
-        setDraft(templateToDraft(created))
         setIsCreating(false)
+        setDraft((current) => {
+          if (!current || current.id !== latest.id) return current
+          return {
+            ...current,
+            id: created.id,
+            createdAt: created.createdAt,
+            updatedAt: created.updatedAt,
+            isPublished: true,
+            photos: current.photos,
+            items: current.items,
+          }
+        })
       } else {
-        await handleSave()
+        const fresh = draftRef.current
+        const finalPayload =
+          fresh && fresh.id === templateId ? buildSavePayload(fresh) : buildSavePayload(latest)
+        await updateMealTemplate(templateId, finalPayload)
+        setDraft((current) => {
+          if (!current || current.id !== templateId) return current
+          return {
+            ...current,
+            ...finalPayload,
+            id: templateId,
+            photos: current.photos,
+            items: current.items,
+            updatedAt: new Date().toISOString(),
+          }
+        })
       }
 
-      const itemsList = draft.items.map((i) => i.name).join(", ")
+      const scheduled = draftRef.current ?? latest
+      const itemsList = scheduled.items.map((i) => i.name).join(", ")
       await addCalendarEvent({
-        title: draft.name.trim(),
+        title: scheduled.name.trim(),
         date: scheduleDate,
-        description: draft.description?.trim() || itemsList || undefined,
+        description: scheduled.description?.trim() || itemsList || undefined,
         category: "menu_day",
         mealTemplateId: templateId!,
         publishStatus: schedulePublish ? "published" : "draft",
@@ -370,9 +457,9 @@ export function MenuLibraryManager() {
       })
       await updateMealTemplate(templateId!, { lastUsedAt: new Date().toISOString() })
       setShowScheduleModal(false)
-      setSaveFlash(true)
-      setTimeout(() => setSaveFlash(false), 2500)
+      flashSaved()
     } finally {
+      saveInFlightRef.current = false
       setScheduleSaving(false)
     }
   }
@@ -532,16 +619,11 @@ export function MenuLibraryManager() {
               Create and customize meals — save to your library, then send to the lunch calendar.
             </p>
           </div>
-          <div className="flex flex-wrap items-center gap-3 sm:gap-4">
-            {saveFlash && (
-              <span className="rounded-xl bg-success/10 px-3 py-2 text-sm font-semibold text-success">
-                Meal saved
-              </span>
-            )}
+          <div className="flex min-w-0 flex-wrap items-center gap-3 sm:gap-4">
             <ImportExportMenu type="menu" importDisabled />
             <Button
               onClick={handleCreate}
-              className="min-h-11 rounded-2xl px-5 font-bold uppercase tracking-wide sm:px-6"
+              className="min-h-11 shrink-0 rounded-2xl px-5 font-bold uppercase tracking-wide sm:px-6"
               style={{ backgroundColor: NAVY }}
             >
               <Plus className="h-4 w-4" />
@@ -730,12 +812,19 @@ export function MenuLibraryManager() {
                   const cover = getMealCoverPhoto(template.photos)
                   const selected = selectedId === template.id
                   return (
-                    <button
+                    <div
                       key={template.id}
-                      type="button"
+                      role="button"
+                      tabIndex={0}
                       onClick={() => selectTemplate(template)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault()
+                          selectTemplate(template)
+                        }
+                      }}
                       className={cn(
-                        "group overflow-hidden rounded-2xl border bg-white text-left transition",
+                        "group cursor-pointer overflow-hidden rounded-2xl border bg-white text-left transition",
                         selected
                           ? "border-primary shadow-md ring-2 ring-primary/20"
                           : "border-silver/60 hover:border-primary/40 hover:shadow-md"
@@ -786,7 +875,7 @@ export function MenuLibraryManager() {
                           {formatLastUsedLabel(template.lastUsedAt)}
                         </p>
                       </div>
-                    </button>
+                    </div>
                   )
                 })}
             </div>
@@ -796,12 +885,19 @@ export function MenuLibraryManager() {
                 const cover = getMealCoverPhoto(template.photos)
                 const selected = selectedId === template.id
                 return (
-                  <button
+                  <div
                     key={template.id}
-                    type="button"
+                    role="button"
+                    tabIndex={0}
                     onClick={() => selectTemplate(template)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault()
+                        selectTemplate(template)
+                      }
+                    }}
                     className={cn(
-                      "flex w-full gap-4 overflow-hidden rounded-2xl border bg-white p-3 text-left transition hover:shadow-md",
+                      "flex w-full cursor-pointer gap-4 overflow-hidden rounded-2xl border bg-white p-3 text-left transition hover:shadow-md",
                       selected ? "border-primary ring-2 ring-primary/20" : "border-silver/60"
                     )}
                   >
@@ -815,9 +911,9 @@ export function MenuLibraryManager() {
                         </div>
                       )}
                     </div>
-                    <div className="flex flex-1 flex-col justify-center">
+                    <div className="flex min-w-0 flex-1 flex-col justify-center">
                       <div className="flex items-center gap-2">
-                        <h3 className="font-bold" style={{ color: NAVY }}>
+                        <h3 className="truncate font-bold" style={{ color: NAVY }}>
                           {template.name}
                         </h3>
                         {isNewMeal(template) && (
@@ -837,6 +933,7 @@ export function MenuLibraryManager() {
                       type="button"
                       onClick={(e) => toggleFavorite(e, template)}
                       className="self-center p-2"
+                      aria-label={template.isFavorite ? "Remove favorite" : "Add favorite"}
                     >
                       <Heart
                         className={cn(
@@ -845,7 +942,7 @@ export function MenuLibraryManager() {
                         )}
                       />
                     </button>
-                  </button>
+                  </div>
                 )
               })}
             </div>
@@ -902,13 +999,13 @@ export function MenuLibraryManager() {
               aria-modal="true"
               aria-label={isCreating ? "Create meal" : "Edit meal"}
               className={cn(
-                "flex flex-col border-silver/60 bg-white",
+                "flex min-w-0 flex-col overflow-hidden border-silver/60 bg-white",
                 "fixed inset-x-0 bottom-0 top-0 z-[60] w-full max-w-none border-0",
-                "lg:static lg:inset-auto lg:z-auto lg:w-[420px] lg:shrink-0 lg:border-l"
+                "lg:static lg:inset-auto lg:z-auto lg:w-[420px] lg:max-w-[420px] lg:shrink-0 lg:border-l"
               )}
             >
-            <div className="flex items-start justify-between gap-3 border-b border-silver/40 px-4 py-4 sm:px-6 sm:py-5">
-              <div className="min-w-0">
+            <div className="flex min-w-0 items-start justify-between gap-3 border-b border-silver/40 px-4 py-4 sm:px-6 sm:py-5">
+              <div className="min-w-0 flex-1">
                 <h2 className="truncate text-lg font-bold sm:text-xl" style={{ color: NAVY }}>
                   {draft.name || "New Meal"}
                 </h2>
@@ -929,33 +1026,35 @@ export function MenuLibraryManager() {
             </div>
 
             {/* Tabs */}
-            <div className="-mx-0 flex overflow-x-auto border-b border-silver/40 px-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:px-6">
-              {(
-                [
-                  { id: "details", label: "Details" },
-                  { id: "photos", label: "Photos & Items" },
-                  { id: "nutrition", label: "Nutrition" },
-                  { id: "pricing", label: "Pricing" },
-                ] as const
-              ).map((tab) => (
-                <button
-                  key={tab.id}
-                  type="button"
-                  onClick={() => setEditorTab(tab.id)}
-                  className={cn(
-                    "shrink-0 border-b-2 px-3 py-3 text-sm font-semibold transition",
-                    editorTab === tab.id
-                      ? "border-primary text-primary"
-                      : "border-transparent text-silver-foreground hover:text-primary"
-                  )}
-                  style={editorTab === tab.id ? { borderColor: NAVY, color: NAVY } : undefined}
-                >
-                  {tab.label}
-                </button>
-              ))}
+            <div className="min-w-0 overflow-x-auto border-b border-silver/40 px-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:px-6">
+              <div className="flex min-w-0 gap-1">
+                {(
+                  [
+                    { id: "details", label: "Details" },
+                    { id: "photos", label: "Photos & Items" },
+                    { id: "nutrition", label: "Nutrition" },
+                    { id: "pricing", label: "Pricing" },
+                  ] as const
+                ).map((tab) => (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => setEditorTab(tab.id)}
+                    className={cn(
+                      "shrink-0 border-b-2 px-3 py-3 text-sm font-semibold transition",
+                      editorTab === tab.id
+                        ? "border-primary text-primary"
+                        : "border-transparent text-silver-foreground hover:text-primary"
+                    )}
+                    style={editorTab === tab.id ? { borderColor: NAVY, color: NAVY } : undefined}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto px-4 py-5 sm:px-6">
+            <div className="min-w-0 flex-1 overflow-x-hidden overflow-y-auto px-4 py-5 sm:px-6">
               {editorTab === "details" && (
                 <div className="space-y-5">
                   <div>
@@ -1089,7 +1188,7 @@ export function MenuLibraryManager() {
                         Edit Order
                       </button>
                     </div>
-                    <div className="flex gap-2 overflow-x-auto pb-1">
+                    <div className="-mx-0 flex min-w-0 gap-2 overflow-x-auto pb-1">
                       {PHOTO_SLOTS.filter((s) => s.id !== "additional").map((slot) => {
                         const photo = draft.photos.find((p) => p.slot === slot.id)
                         const item = draft.items.find((_, i) => {
@@ -1133,7 +1232,7 @@ export function MenuLibraryManager() {
                     <p className="mb-2 text-xs text-silver-foreground">
                       Type a side dish and press Add or Enter.
                     </p>
-                    <div className="flex gap-2">
+                    <div className="flex min-w-0 flex-wrap gap-2">
                       <Input
                         value={sideInput}
                         onChange={(e) => setSideInput(e.target.value)}
@@ -1144,7 +1243,7 @@ export function MenuLibraryManager() {
                           }
                         }}
                         placeholder="e.g. Green beans, Dinner roll…"
-                        className="h-11 flex-1"
+                        className="h-11 min-w-0 flex-1 basis-[12rem]"
                       />
                       <Button
                         type="button"
@@ -1252,7 +1351,7 @@ export function MenuLibraryManager() {
                       Add a stock photo now, then replace it later with a real photo of the meal you
                       made — Upload or Take photo on any slot.
                     </p>
-                    <div key={draft.id} className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div className="mt-3 grid min-w-0 grid-cols-1 gap-4">
                       {PHOTO_SLOTS.map((slot) => {
                         const photo = draft.photos.find((p) => p.slot === slot.id)
                         const isDragging = dragSlot === slot.id
@@ -1262,7 +1361,7 @@ export function MenuLibraryManager() {
                           <div
                             key={slot.id}
                             className={cn(
-                              "overflow-hidden rounded-2xl border-2 border-dashed transition",
+                              "min-w-0 overflow-hidden rounded-2xl border-2 border-dashed transition",
                               isDragging ? "border-success bg-success/5" : "border-silver/60",
                               error && "border-danger/50"
                             )}
@@ -1341,29 +1440,31 @@ export function MenuLibraryManager() {
                                 {slot.label}
                               </p>
                             </div>
-                            <div className="flex flex-col gap-2 border-t border-silver/40 bg-white p-2.5">
-                              <div className="flex flex-wrap gap-2">
+                            <div className="flex min-w-0 flex-col gap-2 border-t border-silver/40 bg-white p-3">
+                              <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-2">
                                 <Button
                                   type="button"
                                   size="sm"
                                   variant="outline"
-                                  className="min-h-10 flex-1 gap-1.5 text-xs font-semibold"
-                                  disabled={busy}
+                                  className="min-h-10 w-full max-w-full min-w-0 justify-center gap-1.5 overflow-hidden px-2 text-xs font-semibold"
+                                  disabled={busy || isSaving}
+                                  aria-label={photo ? `Replace ${slot.label} photo via upload` : `Upload ${slot.label} photo`}
                                   onClick={() => fileInputRefs.current[slot.id]?.click()}
                                 >
-                                  <Upload className="h-3.5 w-3.5" />
-                                  {photo ? "Replace · Upload" : "Upload"}
+                                  <Upload className="h-3.5 w-3.5 shrink-0" />
+                                  <span className="truncate">{photo ? "Replace" : "Upload"}</span>
                                 </Button>
                                 <Button
                                   type="button"
                                   size="sm"
-                                  className="min-h-10 flex-1 gap-1.5 text-xs font-semibold"
+                                  className="min-h-10 w-full max-w-full min-w-0 justify-center gap-1.5 overflow-hidden px-2 text-xs font-semibold"
                                   style={{ backgroundColor: NAVY }}
-                                  disabled={busy}
+                                  disabled={busy || isSaving}
+                                  aria-label={photo ? `Replace ${slot.label} photo with camera` : `Take ${slot.label} photo`}
                                   onClick={() => cameraInputRefs.current[slot.id]?.click()}
                                 >
-                                  <Camera className="h-3.5 w-3.5" />
-                                  {photo ? "Replace · Take photo" : "Take photo"}
+                                  <Camera className="h-3.5 w-3.5 shrink-0" />
+                                  <span className="truncate">Take photo</span>
                                 </Button>
                               </div>
                               {error && (
@@ -1386,7 +1487,7 @@ export function MenuLibraryManager() {
                     <p className="mb-2 text-xs text-silver-foreground">
                       Type a side dish name, then Add or press Enter. Reorder with the arrows.
                     </p>
-                    <div className="mb-3 flex gap-2">
+                    <div className="mb-3 flex min-w-0 flex-wrap gap-2">
                       <Input
                         value={sideInput}
                         onChange={(e) => setSideInput(e.target.value)}
@@ -1397,7 +1498,7 @@ export function MenuLibraryManager() {
                           }
                         }}
                         placeholder="e.g. Corn, Fruit cup, Salad…"
-                        className="h-11 flex-1"
+                        className="h-11 min-w-0 flex-1 basis-[12rem]"
                       />
                       <Button
                         type="button"
@@ -1611,47 +1712,70 @@ export function MenuLibraryManager() {
             </div>
 
             {/* Footer actions */}
-            <div className="flex flex-wrap gap-2 border-t border-silver/40 px-4 py-4 sm:px-6">
-              <Button
-                variant="outline"
-                size="sm"
-                className="min-h-11 min-w-[calc(50%-0.25rem)] flex-1 uppercase tracking-wide sm:min-w-0"
-                disabled={!selectedId || isCreating}
-                onClick={handleDuplicate}
+            <div className="min-w-0 shrink-0 border-t border-silver/40 px-4 py-4 sm:px-6">
+              <p
+                className={cn(
+                  "mb-3 min-h-5 text-sm font-semibold transition-opacity",
+                  isSaving || saveFlash ? "opacity-100" : "opacity-0",
+                  saveFlash ? "text-success" : "text-silver-foreground"
+                )}
+                role="status"
+                aria-live="polite"
               >
-                <Copy className="h-4 w-4" />
-                Duplicate
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="min-h-11 min-w-[calc(50%-0.25rem)] flex-1 uppercase tracking-wide sm:min-w-0"
-                disabled={!draft}
-                onClick={() => draft && setPreviewTemplate(draft)}
-              >
-                <Eye className="h-4 w-4" />
-                Preview
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="min-h-11 min-w-[calc(50%-0.25rem)] flex-1 uppercase tracking-wide sm:min-w-0"
-                disabled={!draft?.name.trim()}
-                onClick={() => setShowScheduleModal(true)}
-              >
-                <Calendar className="h-4 w-4" />
-                Send to Calendar
-              </Button>
-              <Button
-                size="sm"
-                className="min-h-11 min-w-[calc(50%-0.25rem)] flex-1 uppercase tracking-wide sm:min-w-0"
-                style={{ backgroundColor: NAVY }}
-                disabled={!draft?.name.trim()}
-                onClick={handleSave}
-              >
-                <Save className="h-4 w-4" />
-                {isCreating ? "Save Meal" : "Save Changes"}
-              </Button>
+                {isSaving ? "Saving…" : saveFlash ? "Meal saved" : "\u00a0"}
+              </p>
+              <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-3">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="min-h-11 w-full max-w-full min-w-0 justify-center overflow-hidden px-2.5 uppercase tracking-wide"
+                  disabled={!selectedId || isCreating || isSaving}
+                  onClick={handleDuplicate}
+                >
+                  <Copy className="h-4 w-4 shrink-0" />
+                  <span className="truncate">Duplicate</span>
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="min-h-11 w-full max-w-full min-w-0 justify-center overflow-hidden px-2.5 uppercase tracking-wide"
+                  disabled={!draft || isSaving}
+                  onClick={() => draft && setPreviewTemplate(draft)}
+                >
+                  <Eye className="h-4 w-4 shrink-0" />
+                  <span className="truncate">Preview</span>
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="col-span-2 min-h-11 w-full max-w-full min-w-0 justify-center overflow-hidden px-2.5 uppercase tracking-wide"
+                  disabled={!draft?.name.trim() || isSaving || !!photoBusySlot}
+                  onClick={() => setShowScheduleModal(true)}
+                >
+                  <Calendar className="h-4 w-4 shrink-0" />
+                  <span className="truncate">Send to Calendar</span>
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="min-h-11 w-full max-w-full min-w-0 justify-center overflow-hidden px-2.5 uppercase tracking-wide"
+                  onClick={closePanel}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  size="sm"
+                  className="min-h-11 w-full max-w-full min-w-0 justify-center overflow-hidden px-2.5 uppercase tracking-wide"
+                  style={{ backgroundColor: NAVY }}
+                  disabled={!draft?.name.trim() || isSaving || !!photoBusySlot}
+                  onClick={() => void handleSave()}
+                >
+                  <Save className="h-4 w-4 shrink-0" />
+                  <span className="truncate">
+                    {isSaving ? "Saving…" : isCreating ? "Save Meal" : "Save Changes"}
+                  </span>
+                </Button>
+              </div>
             </div>
             </aside>
           </>
@@ -1765,17 +1889,27 @@ export function MenuLibraryManager() {
                 </div>
               </label>
             </div>
-            <div className="mt-6 flex gap-3">
+            <div className="mt-6 flex min-w-0 flex-col-reverse gap-3 sm:flex-row">
               <Button
-                className="min-h-11 flex-1"
+                variant="outline"
+                className="min-h-11 w-full min-w-0 flex-1"
+                disabled={scheduleSaving}
+                onClick={closeScheduleModal}
+              >
+                Cancel
+              </Button>
+              <Button
+                className="min-h-11 w-full min-w-0 flex-1"
                 style={{ backgroundColor: NAVY }}
-                disabled={!scheduleDate || scheduleSaving || !isSchoolLunchDateKey(scheduleDate)}
-                onClick={handleScheduleToCalendar}
+                disabled={
+                  !scheduleDate ||
+                  scheduleSaving ||
+                  !isSchoolLunchDateKey(scheduleDate) ||
+                  !!photoBusySlot
+                }
+                onClick={() => void handleScheduleToCalendar()}
               >
                 {scheduleSaving ? "Scheduling…" : schedulePublish ? "Schedule & Publish" : "Schedule"}
-              </Button>
-              <Button variant="outline" className="min-h-11 flex-1" onClick={closeScheduleModal}>
-                Cancel
               </Button>
             </div>
           </div>
