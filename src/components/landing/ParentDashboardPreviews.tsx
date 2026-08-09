@@ -4,7 +4,7 @@ import { useEffect, useId, useState, type ReactNode } from "react"
 import { CreditCard, LayoutDashboard, UtensilsCrossed, X } from "lucide-react"
 import * as DialogPrimitive from "@radix-ui/react-dialog"
 import { Dialog, DialogPortal, DialogTitle } from "@/components/ui/dialog"
-import { cn } from "@/lib/utils"
+import { cn, formatCurrency } from "@/lib/utils"
 
 const NAVY = "#041B52"
 const GREEN = "#0D7A3B"
@@ -82,7 +82,7 @@ function HomeMockup() {
 
         <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
           {[
-            { label: "Family Balance", value: "$42.50", color: NAVY },
+            { label: "Family Balance", value: formatCurrency(42.5), color: NAVY },
             { label: "Students", value: "2", color: NAVY },
             { label: "Action Needed", value: "0", color: NAVY },
           ].map((card) => (
@@ -110,8 +110,8 @@ function HomeMockup() {
           </p>
           <div className="grid gap-2">
             {[
-              { name: "Emma Anderson", grade: "10", balance: "$28.00", ok: true },
-              { name: "Jake Anderson", grade: "8", balance: "$14.50", ok: true },
+              { name: "Emma Anderson", grade: "10", balance: formatCurrency(28), ok: true },
+              { name: "Jake Anderson", grade: "8", balance: formatCurrency(14.5), ok: true },
             ].map((student) => (
               <div
                 key={student.name}
@@ -169,8 +169,8 @@ function OrderLunchMockup() {
           <div className="mt-3 space-y-2.5">
             {[
               { label: "Student", value: "Emma Anderson" },
-              { label: "Date (published menu)", value: "Mon, Mar 16 — Pizza Day" },
-              { label: "Meal", value: "Main Meal ($1.00 / slice)" },
+              { label: "Date (published menu)", value: "Mon, Mar 16 - Pizza Day" },
+              { label: "Meal", value: `Main Meal (${formatCurrency(1)} / slice)` },
             ].map((field) => (
               <div key={field.label} className="min-w-0">
                 <p className="text-[10px] font-semibold text-[#64748B]">{field.label}</p>
@@ -187,7 +187,7 @@ function OrderLunchMockup() {
               className="rounded-lg px-3 py-2 text-xs font-semibold"
               style={{ backgroundColor: "rgba(13,122,59,0.08)", color: GREEN }}
             >
-              Pizza Day — 2 slices — $2.00
+              <>Pizza Day - 2 slices - {formatCurrency(2)}</>
             </div>
 
             <div
@@ -205,7 +205,7 @@ function OrderLunchMockup() {
 
 function AddFundsMockup() {
   return (
-    <BrowserChrome title="/parent — Add Funds">
+    <BrowserChrome title="/parent - Add Funds">
       <MockHeader />
       <div className="space-y-3 p-3 sm:p-4">
         <div>
@@ -223,7 +223,7 @@ function AddFundsMockup() {
         >
           <p className="text-[10px] font-medium text-[#64748B]">Current balance</p>
           <p className="mt-0.5 text-xl font-bold tabular-nums" style={{ color: "#16A34A" }}>
-            $28.00
+            {formatCurrency(28)}
           </p>
         </div>
 
@@ -232,7 +232,7 @@ function AddFundsMockup() {
             Amount
           </p>
           <div className="grid grid-cols-4 gap-1.5">
-            {["$10", "$20", "$25", "$50"].map((amount, i) => (
+            {[10, 20, 25, 50].map((amount, i) => (
               <div
                 key={amount}
                 className="flex h-9 min-w-0 items-center justify-center rounded-lg border text-xs font-bold"
@@ -242,7 +242,7 @@ function AddFundsMockup() {
                     : { borderColor: SILVER, color: NAVY }
                 }
               >
-                {amount}
+                {formatCurrency(amount)}
               </div>
             ))}
           </div>
@@ -254,7 +254,7 @@ function AddFundsMockup() {
             Secure checkout
           </div>
           <p className="mt-1 text-[10px] leading-snug text-[#64748B] sm:text-[11px]">
-            Card details are entered each time through Stripe — we never store your card number.
+            Card details are entered each time through Stripe - we never store your card number.
           </p>
         </div>
 
@@ -263,7 +263,7 @@ function AddFundsMockup() {
           style={{ backgroundColor: NAVY }}
         >
           <CreditCard className="h-3.5 w-3.5 shrink-0" />
-          Pay $20.00 with card
+          Pay {formatCurrency(20)} with card
         </div>
       </div>
     </BrowserChrome>
@@ -285,7 +285,7 @@ const PREVIEWS: Preview[] = [
   },
   {
     id: "add-funds",
-    caption: "Pay with card (Stripe — not saved)",
+    caption: "Pay with card (Stripe - not saved)",
     icon: CreditCard,
     Mockup: AddFundsMockup,
   },
@@ -322,7 +322,7 @@ function PreviewLightbox({
           onInteractOutside={onClose}
         >
           <DialogTitle id={titleId} className="sr-only">
-            {preview.caption} — full screen preview
+            {preview.caption} - full screen preview
           </DialogTitle>
 
           <div className="flex shrink-0 items-start justify-between gap-3 px-4 pb-2 pt-[max(env(safe-area-inset-top),1rem)] sm:px-6">
@@ -397,7 +397,7 @@ export function ParentDashboardPreviews() {
                 What your dashboard looks like
               </h2>
               <p className="mt-2 text-base font-medium text-[#475569] sm:text-lg">
-                A quick look at the parent portal — kids, lunch orders, and secure card payments.
+                A quick look at the parent portal - kids, lunch orders, and secure card payments.
                 Tap a preview for full screen on a TV or projector.
               </p>
             </div>

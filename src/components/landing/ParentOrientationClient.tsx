@@ -16,6 +16,7 @@ import { ParentDashboardPreviews } from "@/components/landing/ParentDashboardPre
 import { BRAND } from "@/config/brand"
 import { getItHelpDeskMailto, IT_HELP_DESK_EMAIL, IT_HELP_DESK_LABEL } from "@/config/it-help"
 import { CARD_SAFETY_COPY_SHORT } from "@/lib/security/card-copy"
+import { formatCurrency } from "@/lib/utils"
 
 const NAVY = "#041B52"
 const GREEN = "#0D7A3B"
@@ -28,7 +29,7 @@ const STEPS = [
     plain: "Start at Parent Access. Tap Create an account.",
     details: [
       "Use your own email and a password you will remember.",
-      "This account is for parents and guardians — not students.",
+      "This account is for parents and guardians - not students.",
     ],
     icon: UserPlus,
   },
@@ -61,7 +62,7 @@ const STEPS = [
     details: [
       "Use Order Lunch for regular meal days.",
       "On Pizza Day, choose how many slices you want.",
-      "Orders use the student’s lunch balance.",
+      "Orders use the student's lunch balance.",
     ],
     icon: UtensilsCrossed,
     pizzaNote: true,
@@ -72,7 +73,7 @@ const STEPS = [
     plain: "Email the IT Help Desk. We are happy to help.",
     details: [
       `Contact ${IT_HELP_DESK_LABEL}: ${IT_HELP_DESK_EMAIL}`,
-      "Include your name and your student’s name if you can.",
+      "Include your name and your student's name if you can.",
     ],
     icon: HelpCircle,
     help: true,
@@ -86,23 +87,23 @@ const SAFETY_FAQS = [
   },
   {
     q: "Why do I re-enter my card each time?",
-    a: "On purpose — for your safety. Entering the card fresh through Stripe means we do not keep card numbers on file. It takes a moment and protects your family.",
+    a: "On purpose - for your safety. Entering the card fresh through Stripe means we do not keep card numbers on file. It takes a moment and protects your family.",
   },
   {
     q: "Is the website secure?",
     a: "Yes. The site uses encrypted HTTPS connections. Unusual activity can trigger security alerts to the IT Help Desk so issues are reviewed quickly.",
   },
   {
-    q: "Who can see my student’s information?",
+    q: "Who can see my student's information?",
     a: "You must link your student to your parent account first. Without that link, you cannot open their lunch account. Other parents cannot see your kids.",
   },
   {
-    q: "Who can see my kids’ balances?",
+    q: "Who can see my kids' balances?",
     a: "Only you (on the linked parent account) and authorized school cafeteria staff who need it to run lunch. Other families cannot see your balances.",
   },
   {
     q: "How do I get help?",
-    a: `Email the ${IT_HELP_DESK_LABEL} at ${IT_HELP_DESK_EMAIL}. Include your name and your student’s name when you can.`,
+    a: `Email the ${IT_HELP_DESK_LABEL} at ${IT_HELP_DESK_EMAIL}. Include your name and your student's name when you can.`,
   },
 ] as const
 
@@ -143,7 +144,7 @@ export function ParentOrientationClient() {
             className="inline-flex min-h-14 w-full max-w-sm items-center justify-center rounded-2xl px-6 text-lg font-bold text-white shadow-[0_8px_24px_rgba(4,27,82,0.22)] transition hover:opacity-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#041B52] focus-visible:ring-offset-2 sm:w-auto sm:min-w-[220px]"
             style={{ backgroundColor: PARENT_ACCENT }}
           >
-            Start here — Parent Access
+            Start here - Parent Access
           </Link>
           <Link
             href="/login/parent/register"
@@ -224,7 +225,7 @@ export function ParentOrientationClient() {
                       style={{ backgroundColor: "rgba(13,122,59,0.08)", color: GREEN }}
                     >
                       <Pizza className="h-5 w-5 shrink-0" aria-hidden />
-                      Pizza Day slices are $1.00 each when Pizza Day is on the menu.
+                      Pizza Day slices are {formatCurrency(1)} each when Pizza Day is on the menu.
                     </p>
                   ) : null}
 

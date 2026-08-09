@@ -422,7 +422,7 @@ export function BadgeManager() {
       {assignMdId && (
         <Card className="border-primary/30">
           <CardHeader>
-            <CardTitle className="text-base">Assign badge â€” MD ID {assignMdId}</CardTitle>
+            <CardTitle className="text-base">Assign badge - MD ID {assignMdId}</CardTitle>
           </CardHeader>
           <div className="grid gap-4 px-6 pb-6 sm:grid-cols-3">
             <div>
