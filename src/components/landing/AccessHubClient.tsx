@@ -63,6 +63,24 @@ export function AccessHubClient({
         >
           {subtitle}
         </p>
+        {hub === "parent" ? (
+          <div className="mt-3 flex flex-col items-center gap-2 sm:flex-row sm:justify-center sm:gap-3">
+            <Link
+              href="/orientation"
+              className="inline-flex min-h-11 items-center justify-center rounded-xl border-2 bg-white/85 px-4 text-sm font-bold transition hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#041B52] focus-visible:ring-offset-2 sm:text-base"
+              style={{ color: NAVY, borderColor: NAVY }}
+            >
+              New here? Start with Orientation
+            </Link>
+            <Link
+              href="/orientation#safety"
+              className="inline-flex min-h-10 items-center text-sm font-semibold underline-offset-2 hover:underline sm:text-base"
+              style={{ color: NAVY }}
+            >
+              Questions about safety?
+            </Link>
+          </div>
+        ) : null}
         <p className="mt-3">
           <Link
             href="/"
