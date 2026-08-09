@@ -29,6 +29,23 @@ function readFileAsDataUrl(file: File): Promise<string> {
   })
 }
 
+function parseBalanceInput(value: string): number {
+  const n = Number.parseFloat(value.trim())
+  return Number.isFinite(n) ? n : 0
+}
+
+function formatBalanceInput(value: number): string {
+  return Number.isFinite(value) ? String(value) : "0"
+}
+
+function balanceInputsEqual(input: string, balance: number): boolean {
+  return parseBalanceInput(input) === balance
+}
+
+function isMobileViewport(): boolean {
+  return typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches
+}
+
 export function AdminStudentManager({
   embedded = false,
   importsTab = false,
@@ -62,6 +79,7 @@ export function AdminStudentManager({
   const photoInputRef = useRef<HTMLInputElement>(null)
   const cameraInputRef = useRef<HTMLInputElement>(null)
   const importWizardRef = useRef<HTMLDivElement>(null)
+  const managerCardRef = useRef<HTMLDivElement>(null)
   const managerPanelRef = useRef<HTMLDivElement>(null)
 
   /** Required fields only — empty optional fields (homeroom, balance) never block Save. */
@@ -78,7 +96,7 @@ export function AdminStudentManager({
       form.lastName !== editing.lastName ||
       form.grade !== editing.grade ||
       form.homeroom !== (editing.homeroom ?? "") ||
-      form.balance !== String(editing.balance)
+      !balanceInputsEqual(form.balance, editing.balance)
     : Boolean(
         form.id.trim() ||
           form.firstName.trim() ||
@@ -150,13 +168,13 @@ export function AdminStudentManager({
     try {
       if (editing) {
         const targetId = editing.id
-        const nextBalance = parseFloat(form.balance) || 0
+        const nextBalance = parseBalanceInput(form.balance)
         const fieldsChanged =
           form.firstName !== editing.firstName ||
           form.lastName !== editing.lastName ||
           form.grade !== editing.grade ||
           form.homeroom !== (editing.homeroom ?? "") ||
-          form.balance !== String(editing.balance)
+          !balanceInputsEqual(form.balance, editing.balance)
 
         let saved = editing
         if (fieldsChanged) {
@@ -192,18 +210,20 @@ export function AdminStudentManager({
           lastName: saved.lastName,
           grade: saved.grade,
           homeroom: saved.homeroom ?? "",
-          balance: String(saved.balance),
+          balance: formatBalanceInput(saved.balance),
         })
+        void queryClient.invalidateQueries({ queryKey: ["students"] })
         setFormMessage("Updated.")
       } else {
         const newId = form.id.trim()
+        const newBalance = parseBalanceInput(form.balance)
         await addStudent({
           id: newId,
           firstName: form.firstName.trim(),
           lastName: form.lastName.trim(),
           grade: form.grade.trim(),
           homeroom: form.homeroom.trim(),
-          balance: parseFloat(form.balance) || 0,
+          balance: newBalance,
           photo: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=400&auto=format&fit=crop",
           allergies: [],
           dietaryRestrictions: [],
@@ -217,7 +237,7 @@ export function AdminStudentManager({
           lastName: form.lastName.trim(),
           grade: form.grade.trim(),
           homeroom: form.homeroom.trim(),
-          balance: parseFloat(form.balance) || 0,
+          balance: newBalance,
           photo: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=400&auto=format&fit=crop",
           allergies: [],
           dietaryRestrictions: [],
@@ -229,10 +249,9 @@ export function AdminStudentManager({
           lastName: form.lastName.trim(),
           grade: form.grade.trim(),
           homeroom: form.homeroom.trim(),
-          balance: String(parseFloat(form.balance) || 0),
+          balance: formatBalanceInput(newBalance),
         })
         setPhotoMessage("Student saved. Now take or upload a photo for badges (optional but helpful).")
-        managerPanelRef.current?.scrollTo?.({ top: 0 })
       }
     } catch (error) {
       setFormMessage(
@@ -257,9 +276,8 @@ export function AdminStudentManager({
       lastName: student.lastName,
       grade: student.grade,
       homeroom: student.homeroom ?? "",
-      balance: student.balance.toString(),
+      balance: formatBalanceInput(student.balance),
     })
-    managerPanelRef.current?.scrollTo?.({ top: 0 })
   }
 
   // Keep open profile balance/photo in sync after Add money or list refresh
@@ -276,8 +294,8 @@ export function AdminStudentManager({
         : prev
     )
     setForm((prev) => {
-      if (prev.balance !== String(priorBalance)) return prev
-      return { ...prev, balance: String(fresh.balance) }
+      if (!balanceInputsEqual(prev.balance, priorBalance)) return prev
+      return { ...prev, balance: formatBalanceInput(fresh.balance) }
     })
   }, [students, editing?.id, editing?.balance, editing?.photo])
 
@@ -408,9 +426,9 @@ export function AdminStudentManager({
   const sheetOpen = Boolean(showAdd || editing || showOfficePaymentPanel)
   const paymentFromProfile = showOfficePaymentPanel && Boolean(editing || showAdd)
 
-  // Keep main from swallowing gestures while a mobile sheet is open
+  // Mobile fullscreen sheet only — never lock desktop main scroll (PR #33 regression).
   useEffect(() => {
-    if (!sheetOpen) return
+    if (!sheetOpen || !isMobileViewport()) return
     const main = document.querySelector(".admin-portal main") as HTMLElement | null
     if (!main) return
     const prev = main.style.overflowY
@@ -419,6 +437,24 @@ export function AdminStudentManager({
       main.style.overflowY = prev
     }
   }, [sheetOpen])
+
+  // After profile/add/payment replaces the list, bring Student Manager to the top.
+  useEffect(() => {
+    if (!sheetOpen) return
+    const frame = requestAnimationFrame(() => {
+      const main = document.querySelector(".admin-portal main") as HTMLElement | null
+      const card = managerCardRef.current
+      if (main && card) {
+        const mainTop = main.getBoundingClientRect().top
+        const cardTop = card.getBoundingClientRect().top
+        main.scrollTo({ top: Math.max(0, main.scrollTop + (cardTop - mainTop) - 12), behavior: "smooth" })
+      } else {
+        card?.scrollIntoView({ behavior: "smooth", block: "start" })
+      }
+      managerPanelRef.current?.scrollTo?.({ top: 0 })
+    })
+    return () => cancelAnimationFrame(frame)
+  }, [sheetOpen, editing?.id, showAdd, showOfficePaymentPanel])
 
   function handlePanelBack() {
     if (paymentFromProfile) {
@@ -523,7 +559,10 @@ export function AdminStudentManager({
         )}
 
         <div className="grid gap-6 lg:grid-cols-3">
-          <Card className="relative min-w-0 overflow-hidden p-0 lg:col-span-2">
+          <div ref={managerCardRef} className="min-w-0 lg:col-span-2">
+          <Card
+            className={`relative min-w-0 p-0 ${sheetOpen ? "overflow-visible" : "overflow-hidden"}`}
+          >
             {sheetOpen ? (
               <div
                 ref={managerPanelRef}
@@ -638,21 +677,35 @@ export function AdminStudentManager({
                             }}
                           />
                         </div>
-                        <div className="rounded-2xl border border-primary/15 bg-primary/[0.03] p-3 md:col-span-2 lg:col-span-1">
+                        <div className="rounded-2xl border border-primary/15 bg-primary/[0.03] p-3 md:col-span-2 lg:col-span-3">
                           <Label htmlFor="student-balance">Balance</Label>
-                          <Input
-                            id="student-balance"
-                            inputMode="decimal"
-                            value={form.balance}
-                            onChange={(e) => {
-                              setFormMessage(null)
-                              setForm({ ...form, balance: e.target.value })
-                            }}
-                            className="mt-1 text-lg font-semibold tabular-nums"
-                          />
+                          <div className="mt-1 flex flex-col gap-3 sm:flex-row sm:items-center">
+                            <Input
+                              id="student-balance"
+                              inputMode="decimal"
+                              value={form.balance}
+                              onChange={(e) => {
+                                setFormMessage(null)
+                                setForm({ ...form, balance: e.target.value })
+                              }}
+                              className="text-lg font-semibold tabular-nums sm:max-w-xs"
+                            />
+                            {editing && (
+                              <Button
+                                type="button"
+                                size="lg"
+                                className="min-h-12 font-semibold sm:min-w-[8rem]"
+                                disabled={saving || photoBusy || !formValid}
+                                onClick={() => void handleSave()}
+                              >
+                                {saving ? "Saving…" : "Update"}
+                              </Button>
+                            )}
+                          </div>
                           <p className="mt-1 text-xs text-silver-foreground">
-                            Edit and tap Update to set the lunch account balance. Prefer Add money
-                            when cash or a check is received in the office.
+                            Edit the amount and tap Update to PATCH the lunch account balance
+                            immediately. Prefer Add money when cash or a check is received in the
+                            office.
                           </p>
                         </div>
                       </div>
@@ -975,6 +1028,7 @@ export function AdminStudentManager({
               </>
             )}
           </Card>
+          </div>
 
           <Card>
             <CardHeader>
@@ -1005,7 +1059,7 @@ export function AdminStudentManager({
           </Card>
         </div>
 
-        {showImportWizard && (
+        {showImportWizard && !sheetOpen && (
           <DesktopOnly>
             <div ref={importWizardRef}>
               <CsvImportWizard />
