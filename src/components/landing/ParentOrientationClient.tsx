@@ -12,6 +12,7 @@ import {
   UtensilsCrossed,
 } from "lucide-react"
 import { LandingShell } from "@/components/landing/LandingShell"
+import { ParentDashboardPreviews } from "@/components/landing/ParentDashboardPreviews"
 import { BRAND } from "@/config/brand"
 import { getItHelpDeskMailto, IT_HELP_DESK_EMAIL, IT_HELP_DESK_LABEL } from "@/config/it-help"
 import { CARD_SAFETY_COPY_SHORT } from "@/lib/security/card-copy"
@@ -242,6 +243,8 @@ export function ParentOrientationClient() {
           )
         })}
       </ol>
+
+      <ParentDashboardPreviews />
 
       <section
         id="safety"
