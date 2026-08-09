@@ -116,7 +116,7 @@ function stepNumberBg(step: (typeof STEPS)[number]): string {
 
 export function ParentOrientationClient() {
   return (
-    <LandingShell align="start">
+    <LandingShell align="start" contentMaxClassName="max-w-[1180px]">
       <header className="mb-6 w-full min-w-0 text-center md:mb-8">
         <p
           className="text-lg font-bold uppercase tracking-[0.2em] sm:text-xl md:text-2xl"

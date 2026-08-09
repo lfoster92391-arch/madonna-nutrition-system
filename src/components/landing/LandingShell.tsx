@@ -7,9 +7,12 @@ export function LandingShell({
   children,
   /** Use `start` for long scroll guides (e.g. Parent Orientation). */
   align = "end",
+  /** Wider content column for dense sections (e.g. orientation dashboard previews). */
+  contentMaxClassName = "max-w-[920px]",
 }: {
   children: ReactNode
   align?: "end" | "start"
+  contentMaxClassName?: string
 }) {
   return (
     <div className="relative min-h-screen min-h-[100dvh] w-full overflow-x-hidden">
@@ -30,7 +33,7 @@ export function LandingShell({
             : "justify-end pb-[8vh] max-md:justify-start max-md:pb-[max(env(safe-area-inset-bottom),1.25rem)] max-md:pt-[max(env(safe-area-inset-top),1rem)] sm:pb-[10vh] lg:pb-[12vh]"
         )}
       >
-        <div className="flex w-full min-w-0 max-w-[920px] flex-col items-center text-center">
+        <div className={cn("flex w-full min-w-0 flex-col items-center text-center", contentMaxClassName)}>
           {children}
           <p className="mt-6 text-sm font-medium text-[#475569]">
             Need help?{" "}
