@@ -53,5 +53,20 @@ export function formatTransactionDate(timestamp: string): string {
 }
 
 export function formatTransactionDateTime(timestamp: string): string {
-  return new Date(timestamp).toLocaleString()
+  return new Date(timestamp).toLocaleString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  })
+}
+
+/** Human-readable meal/description label from stored mealType. */
+export function formatMealLabel(meal: string): string {
+  const trimmed = meal?.trim()
+  if (!trimmed) return "Lunch"
+  return trimmed
+    .replace(/[_-]+/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase())
 }
