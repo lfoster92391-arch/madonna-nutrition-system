@@ -57,6 +57,6 @@ export const DEFAULT_PUBLISHED_VERSION = {
   versionNumber: 1,
   status: "PUBLISHED" as const,
   effectiveDate: new Date("2025-08-01").toISOString(),
-  expiresAt: new Date("2027-07-31").toISOString(),
+  expiresAt: null,
   content: DEFAULT_AGREEMENT_CONTENT,
 }

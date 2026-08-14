@@ -6,7 +6,10 @@ import { CheckCircle2 } from "lucide-react"
 import { AgreementPreview } from "@/components/agreements/AgreementPreview"
 import { useAuth } from "@/components/providers/AuthProvider"
 import { DEFAULT_AGREEMENT_CONTENT, DEFAULT_PUBLISHED_VERSION } from "@/config/agreement-defaults"
-import { AGREEMENT_STATUS_CHANGED_EVENT } from "@/components/agreements/useAgreementStatus"
+import {
+  AGREEMENT_STATUS_CHANGED_EVENT,
+  markCafeteriaAgreementAccepted,
+} from "@/components/agreements/useAgreementStatus"
 import type { AgreementContent } from "@/config/agreement-defaults"
 import type { AgreementVersionDto } from "@/lib/agreements/types"
 import { Button } from "@/components/ui/button"
@@ -32,7 +35,7 @@ export function ParentAgreementSigningPage() {
   useEffect(() => {
     async function load() {
       try {
-        const res = await fetch("/api/agreements/current")
+        const res = await fetch("/api/agreements/current", { cache: "no-store" })
         const data = await res.json()
         setVersion(data)
       } catch {
@@ -76,11 +79,22 @@ export function ParentAgreementSigningPage() {
       if (!res.ok) {
         throw new Error(data.error ?? "Unable to sign agreement")
       }
-      setReceipt(data.receipt?.message ?? "Agreement signed successfully.")
+
+      markCafeteriaAgreementAccepted(user.id)
       window.dispatchEvent(
-        new CustomEvent(AGREEMENT_STATUS_CHANGED_EVENT, { detail: { accepted: true } })
+        new CustomEvent(AGREEMENT_STATUS_CHANGED_EVENT, {
+          detail: { accepted: true, userId: user.id },
+        })
       )
+      setReceipt(data.receipt?.message ?? "Agreement signed successfully.")
       setSigned(true)
+
+      await fetch(`/api/agreements/status?parentUserId=${encodeURIComponent(user.id)}`, {
+        credentials: "include",
+        cache: "no-store",
+        headers: { "Cache-Control": "no-cache" },
+      }).catch(() => null)
+
       router.replace("/parent")
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to sign agreement")

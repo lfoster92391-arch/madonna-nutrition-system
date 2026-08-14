@@ -121,7 +121,7 @@ async function main() {
     update: {
       status: "PUBLISHED",
       content: DEFAULT_AGREEMENT_CONTENT,
-      expiresAt: new Date("2027-07-31"),
+      expiresAt: null,
     },
     create: {
       schoolId: school.id,
@@ -129,7 +129,7 @@ async function main() {
       versionNumber: 1,
       status: "PUBLISHED",
       effectiveDate: new Date("2025-08-01"),
-      expiresAt: new Date("2027-07-31"),
+      expiresAt: null,
       content: DEFAULT_AGREEMENT_CONTENT,
       publishedAt: new Date(),
       publishedBy: "seed",

@@ -28,7 +28,9 @@ export function computeStudentAgreementStatus(input: {
     return "RENEWAL_NEEDED"
   }
 
-  if (input.signatureStatus === "SIGNED" && input.signedAt) {
+  // Calendar expiry on the current published version must not force renewal.
+  // Parents re-sign only when admin publishes a new version.
+  if (input.signatureStatus === "SIGNED") {
     if (input.versionExpiresAt) {
       const msUntilExpiry = input.versionExpiresAt.getTime() - now.getTime()
       const daysUntilExpiry = msUntilExpiry / (1000 * 60 * 60 * 24)

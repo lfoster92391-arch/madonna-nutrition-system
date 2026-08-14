@@ -60,3 +60,10 @@ export interface StudentAgreementStatusDto {
   versionLabel: string | null
   signedAt: string | null
 }
+
+export interface ParentAgreementStatusDto {
+  requiresSignature: boolean
+  accepted: boolean
+  currentVersion: AgreementVersionDto | null
+  students: StudentAgreementStatusDto[]
+}

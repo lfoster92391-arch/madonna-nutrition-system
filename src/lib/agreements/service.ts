@@ -9,6 +9,7 @@ import type {
   AgreementDashboardRow,
   AgreementSignatureDto,
   AgreementVersionDto,
+  ParentAgreementStatusDto,
   StudentAgreementStatusDto,
 } from "@/lib/agreements/types"
 
@@ -229,42 +230,60 @@ export async function archiveAgreementVersion(
   return mapVersion(version)
 }
 
-async function resolveParentLinkedStudentIds(parentUserId: string): Promise<{
+function acceptedCurrentPublishedVersion(
+  acceptedAt: Date | null | undefined,
+  acceptedVersionId: string | null | undefined,
+  currentVersionId: string
+): boolean {
+  if (!acceptedAt) return false
+  return acceptedVersionId === currentVersionId
+}
+
+type ResolvedParentAccount = {
+  userId: string
   parentId: string
   parentEmail: string
   parentName: string
   studentIds: string[]
-}> {
+  cafeteriaAgreementAcceptedAt: Date | null
+  cafeteriaAgreementVersionId: string | null
+  parentAcceptedAt: Date | null
+  parentAcceptedVersionId: string | null
+}
+
+/** Upsert a Parent row for any User so signing/status never 400 on a missing Parent. */
+async function resolveParentAccount(parentUserId: string): Promise<ResolvedParentAccount | null> {
   const user = await prisma.user.findUnique({
     where: { id: parentUserId },
     select: {
+      id: true,
       email: true,
       firstName: true,
       lastName: true,
       linkedStudentIds: true,
-      role: true,
+      cafeteriaAgreementAcceptedAt: true,
+      cafeteriaAgreementVersionId: true,
     },
   })
-  if (!user || user.role !== "PARENT") {
-    throw new Error("Parent user not found")
-  }
+  if (!user) return null
 
+  const parentName = `${user.firstName} ${user.lastName}`.trim() || user.email
   const parent = await prisma.parent.upsert({
     where: { email: user.email.toLowerCase() },
-    update: { name: `${user.firstName} ${user.lastName}` },
-    create: { email: user.email.toLowerCase(), name: `${user.firstName} ${user.lastName}` },
+    update: { name: parentName },
+    create: { email: user.email.toLowerCase(), name: parentName },
   })
 
   const linkedFromUser = user.linkedStudentIds ?? []
-  const studentsFromLinks = await prisma.student.findMany({
-    where: {
-      OR: [
-        { id: { in: linkedFromUser } },
-        { externalId: { in: linkedFromUser } },
-      ],
-    },
-    select: { id: true },
-  })
+  const studentsFromLinks =
+    linkedFromUser.length === 0
+      ? []
+      : await prisma.student.findMany({
+          where: {
+            OR: [{ id: { in: linkedFromUser } }, { externalId: { in: linkedFromUser } }],
+          },
+          select: { id: true },
+        })
 
   const studentsFromParent = await prisma.parentStudent.findMany({
     where: { parentId: parent.id },
@@ -272,18 +291,24 @@ async function resolveParentLinkedStudentIds(parentUserId: string): Promise<{
   })
 
   const studentIds = [
-    ...new Set([
-      ...studentsFromLinks.map((s) => s.id),
-      ...studentsFromParent.map((s) => s.studentId),
-    ]),
+    ...new Set([...studentsFromLinks.map((s) => s.id), ...studentsFromParent.map((s) => s.studentId)]),
   ]
 
   return {
+    userId: user.id,
     parentId: parent.id,
     parentEmail: parent.email,
     parentName: parent.name,
     studentIds,
+    cafeteriaAgreementAcceptedAt: user.cafeteriaAgreementAcceptedAt,
+    cafeteriaAgreementVersionId: user.cafeteriaAgreementVersionId,
+    parentAcceptedAt: parent.cafeteriaAgreementAcceptedAt,
+    parentAcceptedVersionId: parent.cafeteriaAgreementVersionId,
   }
+}
+
+export async function ensureParentRecordForUser(parentUserId: string): Promise<void> {
+  await resolveParentAccount(parentUserId)
 }
 
 export async function signAgreement(input: {
@@ -310,11 +335,30 @@ export async function signAgreement(input: {
     throw new Error("No published agreement version available")
   }
 
-  const { parentId, parentEmail, studentIds } = await resolveParentLinkedStudentIds(
-    input.parentUserId
-  )
+  const account = await resolveParentAccount(input.parentUserId)
+  if (!account) {
+    throw new Error("Parent user not found")
+  }
 
+  const { parentId, parentEmail, studentIds } = account
   const signedAt = new Date()
+
+  // Persist on User first so Chromebooks without cookies still pass the gate.
+  await prisma.user.update({
+    where: { id: input.parentUserId },
+    data: {
+      cafeteriaAgreementAcceptedAt: signedAt,
+      cafeteriaAgreementVersionId: published.id,
+    },
+  })
+
+  await prisma.parent.update({
+    where: { id: parentId },
+    data: {
+      cafeteriaAgreementAcceptedAt: signedAt,
+      cafeteriaAgreementVersionId: published.id,
+    },
+  })
 
   const signature = await prisma.agreementSignature.create({
     data: {
@@ -329,22 +373,6 @@ export async function signAgreement(input: {
       ipAddress: input.ipAddress,
       status: "SIGNED",
       schoolId,
-    },
-  })
-
-  await prisma.user.update({
-    where: { id: input.parentUserId },
-    data: {
-      cafeteriaAgreementAcceptedAt: signedAt,
-      cafeteriaAgreementVersionId: published.id,
-    },
-  })
-
-  await prisma.parent.update({
-    where: { id: parentId },
-    data: {
-      cafeteriaAgreementAcceptedAt: signedAt,
-      cafeteriaAgreementVersionId: published.id,
     },
   })
 
@@ -426,16 +454,11 @@ export async function signAgreement(input: {
 }
 
 export async function getParentAgreementStatus(
-  parentUserId: string,
-  options?: { cookieParentUserId?: string | null }
-): Promise<{
-  requiresSignature: boolean
-  currentVersion: AgreementVersionDto | null
-  students: StudentAgreementStatusDto[]
-}> {
+  parentUserId: string
+): Promise<ParentAgreementStatusDto> {
   const currentVersion = await getCurrentPublishedAgreement()
   if (!currentVersion) {
-    return { requiresSignature: false, currentVersion: null, students: [] }
+    return { requiresSignature: false, accepted: true, currentVersion: null, students: [] }
   }
 
   const parentUser = await prisma.user.findUnique({
@@ -446,42 +469,52 @@ export async function getParentAgreementStatus(
     },
   })
 
-  const { parentId, studentIds } = await resolveParentLinkedStudentIds(parentUserId)
+  const acceptedOnUser = acceptedCurrentPublishedVersion(
+    parentUser?.cafeteriaAgreementAcceptedAt,
+    parentUser?.cafeteriaAgreementVersionId,
+    currentVersion.id
+  )
 
-  const parentRow = await prisma.parent.findUnique({
-    where: { id: parentId },
-    select: {
-      cafeteriaAgreementAcceptedAt: true,
-      cafeteriaAgreementVersionId: true,
-    },
-  })
+  let account: ResolvedParentAccount | null = null
+  try {
+    account = await resolveParentAccount(parentUserId)
+  } catch (error) {
+    console.warn("[agreements/status] parent record resolve failed; using User acceptance", error)
+  }
 
-  const signature = await prisma.agreementSignature.findFirst({
-    where: {
-      parentId,
-      agreementVersionId: currentVersion.id,
-      status: "SIGNED",
-    },
-    orderBy: { signedAt: "desc" },
-  })
+  const acceptedOnParent = acceptedCurrentPublishedVersion(
+    account?.parentAcceptedAt,
+    account?.parentAcceptedVersionId,
+    currentVersion.id
+  )
 
-  const acceptedOnUser =
-    parentUser?.cafeteriaAgreementVersionId === currentVersion.id &&
-    parentUser.cafeteriaAgreementAcceptedAt != null
-  const acceptedOnParent =
-    parentRow?.cafeteriaAgreementVersionId === currentVersion.id &&
-    parentRow.cafeteriaAgreementAcceptedAt != null
+  const signature =
+    account != null
+      ? await prisma.agreementSignature.findFirst({
+          where: {
+            agreementVersionId: currentVersion.id,
+            status: "SIGNED",
+            OR: [{ parentId: account.parentId }, { parentUserId }],
+          },
+          orderBy: { signedAt: "desc" },
+        })
+      : await prisma.agreementSignature.findFirst({
+          where: {
+            parentUserId,
+            agreementVersionId: currentVersion.id,
+            status: "SIGNED",
+          },
+          orderBy: { signedAt: "desc" },
+        })
+
   const acceptedViaSignature = signature?.status === "SIGNED"
-  const acceptedViaCookie =
-    options?.cookieParentUserId === parentUserId &&
-    (acceptedOnUser || acceptedOnParent || acceptedViaSignature)
-
-  const acceptedForCurrentVersion =
-    acceptedOnUser || acceptedOnParent || acceptedViaSignature || acceptedViaCookie
+  const accepted = acceptedOnUser || acceptedOnParent || acceptedViaSignature
+  const studentIds = account?.studentIds ?? []
 
   if (studentIds.length === 0) {
     return {
-      requiresSignature: !acceptedForCurrentVersion,
+      requiresSignature: !accepted,
+      accepted,
       currentVersion,
       students: [],
     }
@@ -495,13 +528,13 @@ export async function getParentAgreementStatus(
   const studentStatuses: StudentAgreementStatusDto[] = students.map((student) => {
     const status = computeStudentAgreementStatus({
       hasPublishedVersion: true,
-      signatureStatus: acceptedForCurrentVersion ? "SIGNED" : (signature?.status ?? null),
+      signatureStatus: accepted ? "SIGNED" : (signature?.status ?? null),
       versionExpiresAt: currentVersion.expiresAt ? new Date(currentVersion.expiresAt) : null,
       versionEffectiveDate: new Date(currentVersion.effectiveDate),
       signedAt:
         signature?.signedAt ??
         parentUser?.cafeteriaAgreementAcceptedAt ??
-        parentRow?.cafeteriaAgreementAcceptedAt ??
+        account?.parentAcceptedAt ??
         null,
     })
     return {
@@ -512,21 +545,17 @@ export async function getParentAgreementStatus(
       signedAt:
         signature?.signedAt?.toISOString() ??
         parentUser?.cafeteriaAgreementAcceptedAt?.toISOString() ??
-        parentRow?.cafeteriaAgreementAcceptedAt?.toISOString() ??
+        account?.parentAcceptedAt?.toISOString() ??
         null,
     }
   })
 
-  const requiresSignature =
-    !acceptedForCurrentVersion &&
-    studentStatuses.some(
-      (s) =>
-        s.status === "AGREEMENT_REQUIRED" ||
-        s.status === "RENEWAL_NEEDED" ||
-        s.status === "REVOKED"
-    )
-
-  return { requiresSignature, currentVersion, students: studentStatuses }
+  return {
+    requiresSignature: !accepted,
+    accepted,
+    currentVersion,
+    students: studentStatuses,
+  }
 }
 
 export async function listAgreementDashboard(input?: {
