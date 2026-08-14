@@ -220,8 +220,8 @@ export interface MealPrice {
 }
 
 export const MEAL_PRICES: MealPrice[] = [
-  { type: "student_meal", label: "Student Meal", price: 3.25 },
-  { type: "staff_meal", label: "Staff Meal", price: 2.0 },
+  { type: "student_meal", label: "Student Meal", price: 7 },
+  { type: "staff_meal", label: "Staff Meal", price: 7 },
   { type: "ala_carte", label: "À La Carte", price: 4.5, grades: ["9", "10", "11", "12"] },
   { type: "milk", label: "Milk Only", price: 0.75 },
 ]

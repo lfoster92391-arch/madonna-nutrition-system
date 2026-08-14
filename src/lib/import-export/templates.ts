@@ -202,7 +202,7 @@ export const IMPORT_EXPORT_TEMPLATES: Record<ImportExportType, ImportExportTempl
     ],
     sampleRow: {
       mealType: "Full Lunch",
-      price: "4.50",
+      price: "7.00",
       subsidyEligible: "yes",
       effectiveDate: "2026-08-01",
     },

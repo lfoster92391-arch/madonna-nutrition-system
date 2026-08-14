@@ -8,6 +8,7 @@ import {
   Brain,
   ChefHat,
   ChevronLeft,
+  ClipboardList,
   Headphones,
   LayoutDashboard,
   LogOut,
@@ -15,6 +16,7 @@ import {
   Settings,
   ShieldAlert,
   Truck,
+  Tv,
   UtensilsCrossed,
   User,
   Wallet,
@@ -41,6 +43,17 @@ const NAV_ITEMS: Array<{
   matchPrefixes?: string[]
 }> = [
   { label: "Dashboard", href: "/admin", icon: LayoutDashboard, exact: true },
+  {
+    label: "Kitchen board",
+    href: "/admin/kitchen",
+    icon: Tv,
+    exact: true,
+  },
+  {
+    label: "Today’s lunch line",
+    href: "/admin/kitchen/orders",
+    icon: ClipboardList,
+  },
   // Menu = lunch calendar (not Cookbook)
   {
     label: "Menu",

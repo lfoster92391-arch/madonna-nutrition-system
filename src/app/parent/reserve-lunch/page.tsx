@@ -29,12 +29,11 @@ import {
   pizzaSliceTotal,
 } from "@/lib/pizza-day"
 
-type MealType = "MAIN" | "SIDE" | "ALA_CARTE" | "MILK"
+type MealType = "MAIN" | "SIDE" | "MILK"
 
 const MEAL_OPTIONS: { value: MealType; label: string; defaultPrice: number }[] = [
   { value: "MAIN", label: "Main Meal", defaultPrice: DEFAULT_ONBOARDING_PRICING.mainMealPrice },
   { value: "SIDE", label: "Side", defaultPrice: DEFAULT_ONBOARDING_PRICING.sideMealPrice },
-  { value: "ALA_CARTE", label: "A La Carte", defaultPrice: DEFAULT_ONBOARDING_PRICING.alaCartePrice },
   { value: "MILK", label: "Milk", defaultPrice: DEFAULT_ONBOARDING_PRICING.milkPrice },
 ]
 
@@ -43,7 +42,7 @@ interface ReservationRow {
   studentId: string
   studentName: string
   date: string
-  mealType: MealType
+  mealType: string
   price: number
   sliceCount?: number | null
   totalAmount?: number | null
@@ -93,7 +92,7 @@ function ParentReserveLunchContent() {
   const pizzaDay = mealType === "MAIN" && isPizzaDayName(selectedMenu?.title)
   const orderTotal = pizzaDay
     ? pizzaSliceTotal(sliceCount)
-    : MEAL_OPTIONS.find((m) => m.value === mealType)?.defaultPrice ?? 3
+    : MEAL_OPTIONS.find((m) => m.value === mealType)?.defaultPrice ?? DEFAULT_ONBOARDING_PRICING.mainMealPrice
 
   const submitLabel = useMemo(() => {
     if (!selectedDate) return "Order lunch"

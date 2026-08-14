@@ -135,6 +135,7 @@ const QUICK_LINKS: Array<{ label: string; href: string; icon: LucideIcon }> = [
   { label: "Menu", href: "/admin/menu", icon: UtensilsCrossed },
   { label: "Students", href: "/admin/imports", icon: Upload },
   { label: "Badges", href: "/admin/badges", icon: IdCard },
+  { label: "Kitchen board", href: "/admin/kitchen", icon: ChefHat },
   { label: "Lunch Line", href: "/scan", icon: ScanLine },
 ]
 

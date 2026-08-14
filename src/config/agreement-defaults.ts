@@ -30,7 +30,7 @@ By enrolling in cafeteria services, you acknowledge and agree to the following:
 
 • Failure to maintain a signed agreement, current balance, or accurate student profile may result in suspension of cafeteria privileges until resolved.`,
   pricing: {
-    mainMeal: 3,
+    mainMeal: 7,
     premiumSides: 2,
     lightMeal: 1,
     drinks: 1,
@@ -57,6 +57,6 @@ export const DEFAULT_PUBLISHED_VERSION = {
   versionNumber: 1,
   status: "PUBLISHED" as const,
   effectiveDate: new Date("2025-08-01").toISOString(),
-  expiresAt: new Date("2026-07-31").toISOString(),
+  expiresAt: new Date("2027-07-31").toISOString(),
   content: DEFAULT_AGREEMENT_CONTENT,
 }

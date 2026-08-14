@@ -129,6 +129,18 @@ const SECTIONS: LauncherSection[] = [
         importExportType: "inventory",
       },
       {
+        title: "Kitchen board",
+        description: "TV view of who ordered lunch, who was served, and pizza slice totals.",
+        href: "/admin/kitchen",
+        icon: ChefHat,
+      },
+      {
+        title: "Today’s lunch line",
+        description: "How many people are eating today and what was ordered — before you prep.",
+        href: "/admin/kitchen/orders",
+        icon: ChefHat,
+      },
+      {
         title: "Production Center",
         description: "Daily prep sheets and kitchen workflow.",
         href: "/admin/production",
