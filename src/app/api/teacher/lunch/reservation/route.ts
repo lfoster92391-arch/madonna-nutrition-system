@@ -6,7 +6,7 @@ import { badRequest } from "@/lib/api/response"
 import { withTeacherAccess } from "@/lib/teacher/api"
 import { todayDateOnly, toDbPaymentMethod, fromDbPaymentMethod } from "@/lib/teacher/db"
 import { TEACHER_LUNCH_DEFAULTS } from "@/lib/teacher/defaults"
-import { resolveMainMealPricing } from "@/lib/pizza-day"
+import { canonicalMainMealPricing } from "@/lib/lunch-pricing"
 
 const reservationSchema = z.object({
   teacherId: z.string().min(1),
@@ -72,7 +72,7 @@ export async function POST(request: Request) {
   const parsed = reservationSchema.safeParse(body)
   if (!parsed.success) return badRequest("Invalid reservation payload", parsed.error.flatten())
 
-  const { teacherId, paymentMethod, action, mealName, mealPrice, sliceCount } = parsed.data
+  const { teacherId, paymentMethod, action, mealName, sliceCount } = parsed.data
 
   return withTeacherAccess(teacherId, async (teacher) => {
     const schoolId = await resolveSchoolId()
@@ -97,10 +97,9 @@ export async function POST(request: Request) {
 
     const resolvedMealName =
       mealName ?? menuEvent?.title ?? TEACHER_LUNCH_DEFAULTS.mealName
-    const pricing = resolveMainMealPricing({
+    const pricing = canonicalMainMealPricing({
       menuTitle: resolvedMealName,
       sliceCount,
-      fallbackPrice: mealPrice ?? TEACHER_LUNCH_DEFAULTS.mealPrice,
     })
 
     const reservation = await prisma.teacherLunchReservation.upsert({

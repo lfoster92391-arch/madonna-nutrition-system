@@ -9,7 +9,7 @@ import { prisma } from "@/lib/prisma"
 import { badRequest, forbidden, notFound, serverError, withDatabase } from "@/lib/api/response"
 import { getSessionUserId } from "@/lib/api/session-auth"
 import { isWeekendDateKey, WEEKEND_MENU_DAY_MESSAGE } from "@/lib/calendar"
-import { resolveMainMealPricing } from "@/lib/pizza-day"
+import { canonicalMainMealPricing } from "@/lib/lunch-pricing"
 
 const createReservationSchema = z.object({
   parentUserId: z.string().min(1),
@@ -173,10 +173,9 @@ export async function POST(request: Request) {
 
       const pricing =
         mealType === "MAIN"
-          ? resolveMainMealPricing({
+          ? canonicalMainMealPricing({
               menuTitle: menuEvent.title,
               sliceCount,
-              fallbackPrice: price,
             })
           : {
               isPizzaDay: false as const,

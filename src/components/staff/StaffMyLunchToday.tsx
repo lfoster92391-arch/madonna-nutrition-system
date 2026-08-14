@@ -15,6 +15,7 @@ import {
   pizzaSliceTotal,
 } from "@/lib/pizza-day"
 import { formatCurrency } from "@/lib/utils"
+import { STUDENT_LUNCH_PRICE } from "@/config/onboarding-pricing"
 
 type StaffLunchReservation = {
   id: string
@@ -161,7 +162,9 @@ export function StaffMyLunchToday() {
             {pizzaDay ? (
               <PizzaSlicePicker sliceCount={sliceCount} onChange={setSliceCount} />
             ) : (
-              <p className="text-sm text-silver-foreground">Confirm to reserve today’s staff lunch.</p>
+              <p className="text-sm text-silver-foreground">
+                Confirm to reserve today’s staff lunch · {formatCurrency(STUDENT_LUNCH_PRICE)}.
+              </p>
             )}
             {error ? <p className="text-sm text-[#D62828]">{error}</p> : null}
             <div className="flex flex-wrap gap-2">

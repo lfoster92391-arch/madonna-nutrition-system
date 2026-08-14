@@ -1,7 +1,9 @@
+import { STUDENT_LUNCH_PRICE } from "@/config/onboarding-pricing"
+
 /** Default teacher lunch reservation field values when not stored in DB. */
 export const TEACHER_LUNCH_DEFAULTS = {
   mealName: "Staff Lunch",
-  mealPrice: 7,
+  mealPrice: STUDENT_LUNCH_PRICE,
   mealPhotoUrl:
     "https://images.unsplash.com/photo-1604908176997-431cef8a0b38?q=80&w=400&auto=format&fit=crop",
   pickupLocation: "Main Cafeteria",

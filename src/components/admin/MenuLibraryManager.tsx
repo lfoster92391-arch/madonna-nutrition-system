@@ -107,7 +107,7 @@ function emptyTemplate(category: MealCategory = "lunch"): Omit<MealTemplate, "id
     isArchived: false,
     studentMealPrice: 7,
     alaCartePrice: 4.5,
-    staffMealPrice: 2.0,
+    staffMealPrice: 7,
     items: [],
     photos: [],
   }

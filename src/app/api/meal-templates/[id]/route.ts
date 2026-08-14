@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma"
 import { mapMealTemplate } from "@/lib/db/mappers"
 import { resolveSchoolId } from "@/lib/db/school"
 import { mealTemplateSchema } from "@/lib/api/validation"
+import { STUDENT_LUNCH_PRICE } from "@/config/onboarding-pricing"
+import { isPizzaDayName } from "@/lib/pizza-day"
 import { badRequest, notFound, serverError, withDatabase } from "@/lib/api/response"
 
 type RouteParams = { params: Promise<{ id: string }> }
@@ -27,6 +29,16 @@ export async function PATCH(request: Request, { params }: RouteParams) {
       if (!existing) return notFound("Meal template not found")
 
       const data = parsed.data
+      const templateName = data.name ?? existing.name
+      const pizzaDay = isPizzaDayName(templateName)
+      const category = data.category ?? existing.category
+      const forceMainLunch =
+        !pizzaDay &&
+        (category === "lunch" ||
+          data.studentMealPrice != null ||
+          data.staffMealPrice != null ||
+          existing.studentMealPrice != null ||
+          existing.staffMealPrice != null)
 
       if (data.items) {
         await prisma.mealTemplateItem.deleteMany({ where: { mealTemplateId: id } })
@@ -52,9 +64,9 @@ export async function PATCH(request: Request, { params }: RouteParams) {
           isPublished: data.isPublished,
           isArchived: data.isArchived,
           lastUsedAt: data.isArchived === false ? existing.lastUsedAt : existing.lastUsedAt,
-          studentMealPrice: data.studentMealPrice,
+          studentMealPrice: forceMainLunch ? STUDENT_LUNCH_PRICE : data.studentMealPrice,
           alaCartePrice: data.alaCartePrice,
-          staffMealPrice: data.staffMealPrice,
+          staffMealPrice: forceMainLunch ? STUDENT_LUNCH_PRICE : data.staffMealPrice,
           items: data.items
             ? {
                 create: data.items.map((item) => ({

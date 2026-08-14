@@ -41,6 +41,7 @@ import type {
   UserRole,
   UserStatus,
 } from "@/lib/types"
+import { displayTemplateLunchPrice } from "@/lib/lunch-pricing"
 
 type StudentWithRelations = DbStudent & {
   allergies: DbAllergy[]
@@ -291,9 +292,17 @@ export function mapMealTemplate(template: MealTemplateWithRelations): MealTempla
     isPublished: template.isPublished,
     isArchived: template.isArchived,
     lastUsedAt: template.lastUsedAt?.toISOString(),
-    studentMealPrice: template.studentMealPrice != null ? Number(template.studentMealPrice) : undefined,
+    studentMealPrice: displayTemplateLunchPrice(
+      template.name,
+      template.studentMealPrice != null ? Number(template.studentMealPrice) : undefined,
+      template.category
+    ),
     alaCartePrice: template.alaCartePrice != null ? Number(template.alaCartePrice) : undefined,
-    staffMealPrice: template.staffMealPrice != null ? Number(template.staffMealPrice) : undefined,
+    staffMealPrice: displayTemplateLunchPrice(
+      template.name,
+      template.staffMealPrice != null ? Number(template.staffMealPrice) : undefined,
+      template.category
+    ),
     items: template.items
       .slice()
       .sort((a, b) => a.sortOrder - b.sortOrder)

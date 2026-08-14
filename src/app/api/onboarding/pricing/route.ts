@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { DEFAULT_ONBOARDING_PRICING } from "@/config/onboarding-pricing"
+import { DEFAULT_ONBOARDING_PRICING, STUDENT_LUNCH_PRICE } from "@/config/onboarding-pricing"
 import { withDatabase } from "@/lib/api/response"
 import { resolveSchoolId } from "@/lib/db/school"
 import { prisma } from "@/lib/prisma"
@@ -10,7 +10,7 @@ export async function GET() {
     const pricing = await prisma.onboardingPricing.findUnique({ where: { schoolId } })
     if (!pricing) return NextResponse.json(DEFAULT_ONBOARDING_PRICING)
     return NextResponse.json({
-      mainMealPrice: Number(pricing.mainMealPrice),
+      mainMealPrice: STUDENT_LUNCH_PRICE,
       sideMealPrice: Number(pricing.sideMealPrice),
       alaCartePrice: Number(pricing.alaCartePrice),
       milkPrice: Number(pricing.milkPrice),

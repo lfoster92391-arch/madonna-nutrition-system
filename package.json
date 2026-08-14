@@ -14,6 +14,7 @@
     "db:seed": "tsx prisma/seed.ts",
     "db:seed-lisa": "tsx scripts/seed-lisa-admin.mjs",
     "db:disable-demo-students": "tsx scripts/disable-demo-students.ts",
+    "db:sync-lunch-prices": "tsx scripts/sync-lunch-prices.ts",
     "db:studio": "prisma studio",
     "postinstall": "prisma generate"
   },

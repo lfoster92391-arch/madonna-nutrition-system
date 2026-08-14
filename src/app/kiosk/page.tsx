@@ -36,6 +36,8 @@ import { OfflineBanner } from "@/components/scan/OfflineBanner"
 import { MEAL_PRICES } from "@/lib/types"
 import type { Student, Transaction, User } from "@/lib/types"
 import { checkMealCompatibility } from "@/lib/food-safety"
+import { isPublicCalendarEvent, todayDateKey } from "@/lib/calendar-publish"
+import { isPizzaDayName, PIZZA_SLICE_UNIT_PRICE } from "@/lib/pizza-day"
 import { api } from "@/lib/api/client"
 import {
   cachedToStudent,
@@ -149,7 +151,7 @@ function RecentActivityItem({ tx }: { tx: Transaction }) {
 }
 
 export default function ScanStationPage() {
-  const { students, transactions, processMeal, users } = useDemo()
+  const { students, transactions, processMeal, users, calendarEvents } = useDemo()
   const { user } = useAuth()
   const queryClient = useQueryClient()
   const [clock, setClock] = useState(formatKioskTime())
@@ -192,9 +194,22 @@ export default function ScanStationPage() {
       .slice(0, 3)
   }, [transactions, isOffline, offlineRecent])
 
-  const primaryMeals = MEAL_PRICES.filter((m) => m.type === "student_meal")
-  const secondaryMeals = MEAL_PRICES.filter((m) => m.type === "staff_meal" || m.type === "milk")
-  const cashierAlaCarte = MEAL_PRICES.find((m) => m.type === "ala_carte")
+  const kioskMeals = useMemo(() => {
+    const today = todayDateKey()
+    const todayMenu = calendarEvents.find(
+      (e) => e.date === today && e.category === "menu_day" && isPublicCalendarEvent(e)
+    )
+    const pizzaDay = isPizzaDayName(todayMenu?.title)
+    return MEAL_PRICES.map((meal) =>
+      pizzaDay && (meal.type === "student_meal" || meal.type === "staff_meal")
+        ? { ...meal, price: PIZZA_SLICE_UNIT_PRICE }
+        : meal
+    )
+  }, [calendarEvents])
+
+  const primaryMeals = kioskMeals.filter((m) => m.type === "student_meal")
+  const secondaryMeals = kioskMeals.filter((m) => m.type === "staff_meal" || m.type === "milk")
+  const cashierAlaCarte = kioskMeals.find((m) => m.type === "ala_carte")
 
   useEffect(() => {
     const updateClock = () => {
@@ -678,6 +693,17 @@ export default function ScanStationPage() {
         >
           {blocked && isStudentMeal ? "BLOCKED" : meal.label.toUpperCase()}
         </span>
+        {!blocked && (
+          <span
+            className={cn(
+              "font-semibold tabular-nums",
+              compact ? "text-[10px] sm:text-xs" : "text-xs sm:text-sm",
+              isSelected ? "text-white/90" : "text-[#64748B]"
+            )}
+          >
+            {formatCurrency(meal.price)}
+          </span>
+        )}
         {meal.type === "ala_carte" && !compact && (
           <span className="hidden text-xs font-medium text-[#64748B] sm:block">Available Grades 9–12</span>
         )}

@@ -6,6 +6,8 @@ import { mealTransactionSchema } from "@/lib/api/validation"
 import { badRequest, notFound, serverError, withDatabase } from "@/lib/api/response"
 import { requireCashierOrApiKey } from "@/lib/api/session-auth"
 import { maybeSendLowBalanceAlerts } from "@/lib/email/low-balance-alerts"
+import { canonicalMainMealPricing, isMainLunchKioskMeal } from "@/lib/lunch-pricing"
+import { todayDateOnly } from "@/lib/teacher/db"
 
 export async function POST(request: Request) {
   const result = await withDatabase(async () => {
@@ -27,6 +29,17 @@ export async function POST(request: Request) {
 
       const schoolId = auth.schoolId
 
+      const todayMenu = isMainLunchKioskMeal(meal)
+        ? await prisma.calendarEvent.findFirst({
+            where: { schoolId, date: todayDateOnly(), category: "menu_day" },
+            orderBy: { createdAt: "desc" },
+            select: { title: true },
+          })
+        : null
+      const chargedAmount = isMainLunchKioskMeal(meal)
+        ? canonicalMainMealPricing({ menuTitle: todayMenu?.title }).totalAmount
+        : amount
+
       if (processedByUserId) {
         const cashier = await prisma.user.findFirst({
           where: { id: processedByUserId, schoolId, status: "ACTIVE" },
@@ -36,7 +49,7 @@ export async function POST(request: Request) {
         }
       }
 
-      const balanceAfter = Number(student.balance) - amount
+      const balanceAfter = Number(student.balance) - chargedAmount
       const previousBalance = Number(student.balance)
 
       const [updatedStudent, transaction] = await prisma.$transaction([
@@ -50,7 +63,7 @@ export async function POST(request: Request) {
             schoolId,
             processedByUserId: processedByUserId ?? null,
             mealType: meal,
-            amount,
+            amount: chargedAmount,
             balanceAfter,
           },
           include: {
