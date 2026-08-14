@@ -60,8 +60,9 @@ const STEPS = [
     title: "Order lunch",
     plain: "Reserve meals. Order Pizza Day slices when it applies.",
     details: [
+      "Regular lunch is $7.00.",
       "Use Order Lunch for regular meal days.",
-      "On Pizza Day, choose how many slices you want.",
+      "On Pizza Day, choose how many slices you want ($1.00 each).",
       "Orders use the student's lunch balance.",
     ],
     icon: UtensilsCrossed,

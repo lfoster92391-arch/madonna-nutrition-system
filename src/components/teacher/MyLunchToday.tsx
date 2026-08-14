@@ -16,6 +16,7 @@ import {
   pizzaSliceTotal,
 } from "@/lib/pizza-day"
 import { formatCurrency } from "@/lib/utils"
+import { STUDENT_LUNCH_PRICE } from "@/config/onboarding-pricing"
 import type { TeacherPaymentMethod } from "@/lib/teacher/types"
 
 const PAYMENT_LABELS: Record<TeacherPaymentMethod, string> = {
@@ -84,7 +85,9 @@ export function MyLunchToday() {
             {pizzaDay ? (
               <PizzaSlicePicker sliceCount={sliceCount} onChange={setSliceCount} />
             ) : (
-              <p className="text-sm text-silver-foreground">Confirm to reserve today’s staff lunch.</p>
+              <p className="text-sm text-silver-foreground">
+                Confirm to reserve today’s staff lunch · {formatCurrency(STUDENT_LUNCH_PRICE)}.
+              </p>
             )}
             <div className="flex flex-wrap gap-2">
               <Button disabled={submitting} onClick={() => void handleReserve()}>

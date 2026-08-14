@@ -1,6 +1,7 @@
 import type { Prisma } from "@prisma/client"
 import type { AgreementContent } from "@/config/agreement-defaults"
 import { DEFAULT_AGREEMENT_CONTENT } from "@/config/agreement-defaults"
+import { STUDENT_LUNCH_PRICE } from "@/config/onboarding-pricing"
 import { createAuditLog } from "@/lib/db/audit"
 import { resolveSchoolId } from "@/lib/db/school"
 import { prisma } from "@/lib/prisma"
@@ -18,7 +19,7 @@ function parseContent(raw: unknown): AgreementContent {
   return {
     mealSignUpPolicy: c.mealSignUpPolicy ?? DEFAULT_AGREEMENT_CONTENT.mealSignUpPolicy,
     pricing: {
-      mainMeal: c.pricing?.mainMeal ?? DEFAULT_AGREEMENT_CONTENT.pricing.mainMeal,
+      mainMeal: STUDENT_LUNCH_PRICE,
       premiumSides: c.pricing?.premiumSides ?? DEFAULT_AGREEMENT_CONTENT.pricing.premiumSides,
       lightMeal: c.pricing?.lightMeal ?? DEFAULT_AGREEMENT_CONTENT.pricing.lightMeal,
       drinks: c.pricing?.drinks ?? DEFAULT_AGREEMENT_CONTENT.pricing.drinks,

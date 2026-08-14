@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma"
 import { mapMealTemplate } from "@/lib/db/mappers"
 import { resolveSchoolId } from "@/lib/db/school"
 import { mealTemplateSchema } from "@/lib/api/validation"
+import { STUDENT_LUNCH_PRICE } from "@/config/onboarding-pricing"
+import { isPizzaDayName } from "@/lib/pizza-day"
 import { badRequest, serverError, withDatabase } from "@/lib/api/response"
 
 const includeRelations = {
@@ -50,9 +52,17 @@ export async function POST(request: Request) {
           isFavorite: data.isFavorite ?? false,
           isPublished: data.isPublished ?? false,
           isArchived: data.isArchived ?? false,
-          studentMealPrice: data.studentMealPrice,
+          studentMealPrice: isPizzaDayName(data.name)
+            ? data.studentMealPrice
+            : data.category === "lunch" || data.studentMealPrice != null
+              ? STUDENT_LUNCH_PRICE
+              : data.studentMealPrice,
           alaCartePrice: data.alaCartePrice,
-          staffMealPrice: data.staffMealPrice,
+          staffMealPrice: isPizzaDayName(data.name)
+            ? data.staffMealPrice
+            : data.category === "lunch" || data.staffMealPrice != null
+              ? STUDENT_LUNCH_PRICE
+              : data.staffMealPrice,
           schoolId,
           items: {
             create: (data.items ?? []).map((item) => ({
