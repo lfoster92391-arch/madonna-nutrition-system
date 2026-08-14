@@ -10,6 +10,7 @@ import { loginSchema } from "@/lib/api/validation"
 import { badRequest, withDatabase } from "@/lib/api/response"
 import { isAllowedTeacherEmail, TEACHER_ACCESS_DENIED_MESSAGE } from "@/config/teacher-auth"
 import { parentHasLinkedStudents } from "@/lib/auth/parent-links"
+import { ensureParentRecordForUser } from "@/lib/agreements/service"
 import type { UserRole } from "@/lib/types"
 import { getClientIp, getUserAgent } from "@/lib/security/client-meta"
 import {
@@ -151,6 +152,7 @@ export async function POST(request: Request) {
 
     let needsStudentLink = false
     if (role === "parent") {
+      await ensureParentRecordForUser(user.id)
       needsStudentLink = !(await parentHasLinkedStudents(user.id))
       if (needsStudentLink) {
         return NextResponse.json({

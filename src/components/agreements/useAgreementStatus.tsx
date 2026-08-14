@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { usePathname, useRouter } from "next/navigation"
 import { useAuth } from "@/components/providers/AuthProvider"
 import { useDemo } from "@/components/providers/DemoProvider"
@@ -9,8 +9,19 @@ import type { AgreementVersionDto } from "@/lib/agreements/types"
 
 export const AGREEMENT_STATUS_CHANGED_EVENT = "agreement-status-changed"
 
+const sessionAcceptedUserIds = new Set<string>()
+
+export function markCafeteriaAgreementAccepted(userId: string) {
+  if (userId) sessionAcceptedUserIds.add(userId)
+}
+
+function isSessionAccepted(userId: string | undefined) {
+  return Boolean(userId && sessionAcceptedUserIds.has(userId))
+}
+
 interface AgreementStatusState {
   requiresSignature: boolean
+  accepted: boolean
   currentVersion: AgreementVersionDto | null
   students: StudentAgreementStatusDto[]
   loading: boolean
@@ -19,8 +30,10 @@ interface AgreementStatusState {
 export function useAgreementStatus() {
   const { user, isLoading: authLoading } = useAuth()
   const { isLoading: demoLoading } = useDemo()
+  const requestIdRef = useRef(0)
   const [state, setState] = useState<AgreementStatusState>({
     requiresSignature: false,
+    accepted: false,
     currentVersion: null,
     students: [],
     loading: true,
@@ -35,6 +48,7 @@ export function useAgreementStatus() {
     if (!user?.id) {
       setState({
         requiresSignature: false,
+        accepted: false,
         currentVersion: null,
         students: [],
         loading: true,
@@ -42,21 +56,48 @@ export function useAgreementStatus() {
       return
     }
 
+    const requestId = ++requestIdRef.current
+    const userId = user.id
+    const alreadyAccepted = isSessionAccepted(userId)
+
     try {
-      const res = await fetch(`/api/agreements/status?parentUserId=${encodeURIComponent(user.id)}`, {
+      const res = await fetch(`/api/agreements/status?parentUserId=${encodeURIComponent(userId)}`, {
         credentials: "include",
+        cache: "no-store",
+        headers: { "Cache-Control": "no-cache" },
       })
-      if (!res.ok) throw new Error("Failed to load agreement status")
+      if (requestId !== requestIdRef.current) return
+
+      if (!res.ok) {
+        setState((prev) => ({
+          ...prev,
+          requiresSignature: alreadyAccepted ? false : prev.requiresSignature,
+          accepted: alreadyAccepted || prev.accepted,
+          loading: false,
+        }))
+        return
+      }
+
       const data = await res.json()
+      if (requestId !== requestIdRef.current) return
+
+      const acceptedFromDb = Boolean(data.accepted) || data.requiresSignature === false
+      if (acceptedFromDb) markCafeteriaAgreementAccepted(userId)
+
+      const accepted = alreadyAccepted || isSessionAccepted(userId) || acceptedFromDb
       setState({
-        requiresSignature: Boolean(data.requiresSignature),
+        requiresSignature: accepted ? false : Boolean(data.requiresSignature),
+        accepted,
         currentVersion: data.currentVersion,
         students: data.students ?? [],
         loading: false,
       })
     } catch {
+      if (requestId !== requestIdRef.current) return
       setState((prev) => ({
         ...prev,
+        requiresSignature: alreadyAccepted ? false : prev.requiresSignature,
+        accepted: alreadyAccepted || prev.accepted,
         loading: false,
       }))
     }
@@ -68,15 +109,22 @@ export function useAgreementStatus() {
 
   useEffect(() => {
     const handler = (event: Event) => {
-      const detail = (event as CustomEvent<{ accepted?: boolean }>).detail
-      if (detail?.accepted) {
-        setState((prev) => ({ ...prev, requiresSignature: false, loading: false }))
+      const detail = (event as CustomEvent<{ accepted?: boolean; userId?: string }>).detail
+      const userId = detail?.userId || user?.id
+      if (detail?.accepted && userId) {
+        markCafeteriaAgreementAccepted(userId)
+        setState((prev) => ({
+          ...prev,
+          requiresSignature: false,
+          accepted: true,
+          loading: false,
+        }))
       }
       void refresh()
     }
     window.addEventListener(AGREEMENT_STATUS_CHANGED_EVENT, handler)
     return () => window.removeEventListener(AGREEMENT_STATUS_CHANGED_EVENT, handler)
-  }, [refresh])
+  }, [refresh, user?.id])
 
   return { ...state, refresh }
 }
@@ -87,18 +135,19 @@ export function ParentAgreementGuard({ children }: { children: React.ReactNode }
   const pathname = usePathname()
   const router = useRouter()
   const { user, isLoading: authLoading } = useAuth()
-  const { requiresSignature, loading } = useAgreementStatus()
+  const { requiresSignature, accepted, loading } = useAgreementStatus()
 
   const gateLoading = loading || authLoading || !user?.id
   const onSigningRoute = AGREEMENT_SIGNING_PATHS.has(pathname ?? "")
+  const blocked = requiresSignature && !accepted && !isSessionAccepted(user?.id)
 
   useEffect(() => {
     if (gateLoading) return
     if (onSigningRoute) return
-    if (requiresSignature) {
+    if (blocked) {
       router.replace("/parent/agreements")
     }
-  }, [gateLoading, requiresSignature, onSigningRoute, router])
+  }, [gateLoading, blocked, onSigningRoute, router])
 
   if (gateLoading) {
     return (
@@ -108,7 +157,7 @@ export function ParentAgreementGuard({ children }: { children: React.ReactNode }
     )
   }
 
-  if (requiresSignature && !onSigningRoute) {
+  if (blocked && !onSigningRoute) {
     return null
   }
 

@@ -37,7 +37,7 @@ export function AdminAgreementsPage() {
   const [draftContent, setDraftContent] = useState<AgreementContent>(DEFAULT_AGREEMENT_CONTENT)
   const [draftLabel, setDraftLabel] = useState("V1")
   const [effectiveDate, setEffectiveDate] = useState("2025-08-01")
-  const [expiresAt, setExpiresAt] = useState("2026-07-31")
+  const [expiresAt, setExpiresAt] = useState("")
   const [toast, setToast] = useState<string | null>(null)
   const [previewRecord, setPreviewRecord] = useState<AgreementDashboardRow | null>(null)
 
@@ -314,12 +314,15 @@ export function AdminAgreementsPage() {
                   />
                 </div>
                 <div>
-                  <Label>Expires</Label>
+                  <Label>Expires (optional)</Label>
                   <Input
                     type="date"
                     value={expiresAt}
                     onChange={(e) => setExpiresAt(e.target.value)}
                   />
+                  <p className="mt-1 text-xs text-[#64748B]">
+                    Leave blank so this published version stays current until you publish a new one.
+                  </p>
                 </div>
               </div>
 
