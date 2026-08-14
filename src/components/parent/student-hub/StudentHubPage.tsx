@@ -12,6 +12,7 @@ import { StudentHubHeader, type FilterStatus } from "@/components/parent/student
 import { StudentHubQuickActions } from "@/components/parent/student-hub/StudentHubQuickActions"
 import { PARENT_PAGE_PAD, PARENT_SECTION_GAP } from "@/components/parent/parent-dashboard-styles"
 import { isDietaryFormBlocking } from "@/lib/types"
+import { STUDENT_LUNCH_PRICE } from "@/config/onboarding-pricing"
 
 export function StudentHubPage() {
   const router = useRouter()
@@ -49,7 +50,7 @@ export function StudentHubPage() {
   }, 0)
 
   const mealParticipation = Math.round(
-    (students.filter((s) => s.balance >= 3.25).length / Math.max(students.length, 1)) * 100
+    (students.filter((s) => s.balance >= STUDENT_LUNCH_PRICE).length / Math.max(students.length, 1)) * 100
   )
 
   const filteredStudents = useMemo(() => {

@@ -20,7 +20,7 @@ export function useAgreementStatus() {
   const { user, isLoading: authLoading } = useAuth()
   const { isLoading: demoLoading } = useDemo()
   const [state, setState] = useState<AgreementStatusState>({
-    requiresSignature: true,
+    requiresSignature: false,
     currentVersion: null,
     students: [],
     loading: true,
@@ -34,7 +34,7 @@ export function useAgreementStatus() {
 
     if (!user?.id) {
       setState({
-        requiresSignature: true,
+        requiresSignature: false,
         currentVersion: null,
         students: [],
         loading: true,
@@ -43,7 +43,9 @@ export function useAgreementStatus() {
     }
 
     try {
-      const res = await fetch(`/api/agreements/status?parentUserId=${encodeURIComponent(user.id)}`)
+      const res = await fetch(`/api/agreements/status?parentUserId=${encodeURIComponent(user.id)}`, {
+        credentials: "include",
+      })
       if (!res.ok) throw new Error("Failed to load agreement status")
       const data = await res.json()
       setState({
@@ -53,12 +55,10 @@ export function useAgreementStatus() {
         loading: false,
       })
     } catch {
-      setState({
-        requiresSignature: true,
-        currentVersion: null,
-        students: [],
+      setState((prev) => ({
+        ...prev,
         loading: false,
-      })
+      }))
     }
   }, [user?.id, demoLoading, authLoading])
 
@@ -67,7 +67,11 @@ export function useAgreementStatus() {
   }, [refresh])
 
   useEffect(() => {
-    const handler = () => {
+    const handler = (event: Event) => {
+      const detail = (event as CustomEvent<{ accepted?: boolean }>).detail
+      if (detail?.accepted) {
+        setState((prev) => ({ ...prev, requiresSignature: false, loading: false }))
+      }
       void refresh()
     }
     window.addEventListener(AGREEMENT_STATUS_CHANGED_EVENT, handler)
@@ -77,7 +81,7 @@ export function useAgreementStatus() {
   return { ...state, refresh }
 }
 
-const AGREEMENT_SIGNING_PATH = "/parent/agreements"
+const AGREEMENT_SIGNING_PATHS = new Set(["/parent/agreements", "/parent/agreement"])
 
 export function ParentAgreementGuard({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
@@ -86,13 +90,13 @@ export function ParentAgreementGuard({ children }: { children: React.ReactNode }
   const { requiresSignature, loading } = useAgreementStatus()
 
   const gateLoading = loading || authLoading || !user?.id
-  const onSigningRoute = pathname === AGREEMENT_SIGNING_PATH
+  const onSigningRoute = AGREEMENT_SIGNING_PATHS.has(pathname ?? "")
 
   useEffect(() => {
     if (gateLoading) return
     if (onSigningRoute) return
     if (requiresSignature) {
-      router.replace(AGREEMENT_SIGNING_PATH)
+      router.replace("/parent/agreements")
     }
   }, [gateLoading, requiresSignature, onSigningRoute, router])
 

@@ -6,6 +6,7 @@ import Link from "next/link"
 import { useQueryClient } from "@tanstack/react-query"
 import {
   AlertTriangle,
+  ArrowLeft,
   BadgeCheck,
   Check,
   CheckCircle2,
@@ -25,6 +26,7 @@ import {
   Wine,
 } from "lucide-react"
 import { useDemo } from "@/components/providers/DemoProvider"
+import { useAuth } from "@/components/providers/AuthProvider"
 import { RecordOfficePayment } from "@/components/admin/RecordOfficePayment"
 import { RecordStaffOfficePayment } from "@/components/admin/RecordStaffOfficePayment"
 import { getAllergyBannerStyle, getHighestAllergySeverity } from "@/lib/allergy-display"
@@ -57,11 +59,7 @@ import {
 import { ROLE_LABELS, isWorkplaceUserRole } from "@/lib/users"
 import { cn, formatCurrency } from "@/lib/utils"
 
-const MEAL_RESET_MS = 4000
-const ERROR_RESET_MS = 3500
 const FLASH_DISMISS_MS = 3500
-/** Idle time on the found-student panel before clearing (paused while Add Money is open). */
-const FOUND_IDLE_MS = 90_000
 
 const MEAL_ICONS: Record<string, typeof Utensils> = {
   student_meal: Utensils,
@@ -152,6 +150,7 @@ function RecentActivityItem({ tx }: { tx: Transaction }) {
 
 export default function ScanStationPage() {
   const { students, transactions, processMeal, users } = useDemo()
+  const { user } = useAuth()
   const queryClient = useQueryClient()
   const [clock, setClock] = useState(formatKioskTime())
   const [dateStr, setDateStr] = useState("")
@@ -161,22 +160,16 @@ export default function ScanStationPage() {
   const [localBalance, setLocalBalance] = useState(0)
   const [scanStatus, setScanStatus] = useState<ScanPhase>("ready")
   const [flashMessage, setFlashMessage] = useState("")
-  const [countdownEnd, setCountdownEnd] = useState<number | null>(null)
-  const [tick, setTick] = useState(0)
   const [isOffline, setIsOffline] = useState(false)
   const [isSyncing, setIsSyncing] = useState(false)
   const [syncMessage, setSyncMessage] = useState("")
   const [pendingCount, setPendingCount] = useState(0)
   const [offlineRecent, setOfflineRecent] = useState<Transaction[]>([])
   const [addFundsOpen, setAddFundsOpen] = useState(false)
-  const [idleDeadline, setIdleDeadline] = useState<number | null>(null)
 
   const scanInputRef = useRef<HTMLInputElement>(null)
   const scanTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const resetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const errorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const flashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const highestSeverity = student ? getHighestAllergySeverity(student.allergies) : null
   const bannerStyle = highestSeverity ? getAllergyBannerStyle(highestSeverity) : null
@@ -184,6 +177,7 @@ export default function ScanStationPage() {
   const mealBlocked = mealCompatibility === "BLOCKED"
   const primaryAllergy = student?.allergies[0]?.name.toUpperCase() ?? ""
   const dinerActive = Boolean(student || staffUser)
+  const cashierCanSellAlaCarte = user?.role === "cashier" || user?.role === "admin"
   const workplaceUsers = useMemo(
     () => users.filter((u) => isWorkplaceUserRole(u.role) && u.status === "active"),
     [users]
@@ -198,14 +192,9 @@ export default function ScanStationPage() {
       .slice(0, 3)
   }, [transactions, isOffline, offlineRecent])
 
-  const nextScanSeconds = useMemo(() => {
-    if (countdownEnd === null) return null
-    void tick
-    return Math.max(0, (countdownEnd - Date.now()) / 1000)
-  }, [countdownEnd, tick])
-
-  const primaryMeals = MEAL_PRICES.filter((m) => m.type === "student_meal" || m.type === "ala_carte")
+  const primaryMeals = MEAL_PRICES.filter((m) => m.type === "student_meal")
   const secondaryMeals = MEAL_PRICES.filter((m) => m.type === "staff_meal" || m.type === "milk")
+  const cashierAlaCarte = MEAL_PRICES.find((m) => m.type === "ala_carte")
 
   useEffect(() => {
     const updateClock = () => {
@@ -217,12 +206,6 @@ export default function ScanStationPage() {
     const timer = setInterval(updateClock, 1000)
     return () => clearInterval(timer)
   }, [])
-
-  useEffect(() => {
-    if (countdownEnd === null) return
-    const timer = setInterval(() => setTick((t) => t + 1), 100)
-    return () => clearInterval(timer)
-  }, [countdownEnd])
 
   useEffect(() => {
     if (!student) return
@@ -244,46 +227,13 @@ export default function ScanStationPage() {
         setStudent(null)
         setStaffUser(null)
         setAddFundsOpen(false)
-        setIdleDeadline(null)
-        if (idleTimerRef.current) clearTimeout(idleTimerRef.current)
       }
       setScanStatus(keepStudent ? "found" : "ready")
       setScanValue("")
-      setCountdownEnd(null)
       window.setTimeout(focusScan, 50)
     },
     [focusScan]
   )
-
-  const bumpIdleTimer = useCallback(() => {
-    if ((!student && !staffUser) || addFundsOpen || scanStatus === "complete") {
-      setIdleDeadline(null)
-      if (idleTimerRef.current) clearTimeout(idleTimerRef.current)
-      return
-    }
-    const deadline = Date.now() + FOUND_IDLE_MS
-    setIdleDeadline(deadline)
-    if (idleTimerRef.current) clearTimeout(idleTimerRef.current)
-    idleTimerRef.current = setTimeout(() => {
-      setAddFundsOpen(false)
-      setStudent(null)
-      setStaffUser(null)
-      setScanStatus("ready")
-      setScanValue("")
-      setIdleDeadline(null)
-      setFlashMessage("Station cleared after idle — scan the next badge.")
-      if (flashTimerRef.current) clearTimeout(flashTimerRef.current)
-      flashTimerRef.current = setTimeout(() => setFlashMessage(""), FLASH_DISMISS_MS)
-      window.setTimeout(focusScan, 50)
-    }, FOUND_IDLE_MS)
-  }, [student, staffUser, addFundsOpen, scanStatus, focusScan])
-
-  useEffect(() => {
-    bumpIdleTimer()
-    return () => {
-      if (idleTimerRef.current) clearTimeout(idleTimerRef.current)
-    }
-  }, [bumpIdleTimer])
 
   useEffect(() => {
     if (addFundsOpen) return
@@ -367,22 +317,13 @@ export default function ScanStationPage() {
   }, [finishSync])
 
   useEffect(() => {
-    if (!flashMessage) return
+    if (!flashMessage || scanStatus === "error") return
     if (flashTimerRef.current) clearTimeout(flashTimerRef.current)
     flashTimerRef.current = setTimeout(() => setFlashMessage(""), FLASH_DISMISS_MS)
     return () => {
       if (flashTimerRef.current) clearTimeout(flashTimerRef.current)
     }
-  }, [flashMessage])
-
-  useEffect(() => {
-    if (scanStatus !== "error") return
-    if (errorTimerRef.current) clearTimeout(errorTimerRef.current)
-    errorTimerRef.current = setTimeout(() => armScanner(), ERROR_RESET_MS)
-    return () => {
-      if (errorTimerRef.current) clearTimeout(errorTimerRef.current)
-    }
-  }, [scanStatus, armScanner])
+  }, [flashMessage, scanStatus])
 
   const loadStudent = useCallback(
     (found: Student) => {
@@ -532,29 +473,25 @@ export default function ScanStationPage() {
   }
 
   function appendDigit(digit: string) {
-    bumpIdleTimer()
     handleScanChange(scanValue + digit)
   }
 
   function deleteLastDigit() {
-    bumpIdleTimer()
     handleScanChange(scanValue.slice(0, -1))
   }
 
   function clearScanValue() {
-    bumpIdleTimer()
     setScanValue("")
     setScanStatus(dinerActive ? "found" : "ready")
     window.setTimeout(focusScan, 50)
   }
 
-  function resetStation() {
-    if (resetTimerRef.current) clearTimeout(resetTimerRef.current)
+  function goBackToKeypad() {
+    setFlashMessage("")
     armScanner()
   }
 
   async function handleMeal(mealLabel: string, price: number) {
-    bumpIdleTimer()
 
     if (staffUser) {
       if (isOffline) {
@@ -569,10 +506,7 @@ export default function ScanStationPage() {
           prev ? { ...prev, accountBalance: result.balanceAfter } : prev
         )
         setFlashMessage(`${mealLabel} recorded for ${staffUser.firstName}!`)
-        setScanStatus("complete")
-        setCountdownEnd(Date.now() + MEAL_RESET_MS)
-        if (resetTimerRef.current) clearTimeout(resetTimerRef.current)
-        resetTimerRef.current = setTimeout(resetStation, MEAL_RESET_MS)
+        setScanStatus("found")
         void queryClient.invalidateQueries({ queryKey: ["users"] })
         window.setTimeout(focusScan, 50)
       } catch (error) {
@@ -618,10 +552,7 @@ export default function ScanStationPage() {
         ...prev,
       ])
       setFlashMessage(`${mealLabel} recorded for ${student.firstName}! (offline)`)
-      setScanStatus("complete")
-      setCountdownEnd(Date.now() + MEAL_RESET_MS)
-      if (resetTimerRef.current) clearTimeout(resetTimerRef.current)
-      resetTimerRef.current = setTimeout(resetStation, MEAL_RESET_MS)
+      setScanStatus("found")
       window.setTimeout(focusScan, 50)
     }
 
@@ -634,10 +565,7 @@ export default function ScanStationPage() {
     if (tx) {
       setLocalBalance(tx.balanceAfter)
       setFlashMessage(`${mealLabel} recorded for ${student.firstName}!`)
-      setScanStatus("complete")
-      setCountdownEnd(Date.now() + MEAL_RESET_MS)
-      if (resetTimerRef.current) clearTimeout(resetTimerRef.current)
-      resetTimerRef.current = setTimeout(resetStation, MEAL_RESET_MS)
+      setScanStatus("found")
       window.setTimeout(focusScan, 50)
       return
     }
@@ -653,7 +581,9 @@ export default function ScanStationPage() {
         ? "COMPLETE"
         : scanStatus === "error"
           ? "NOT FOUND"
-          : "READY TO SCAN"
+          : dinerActive
+            ? "READY"
+            : "READY TO SCAN"
 
   const statusColor =
     isOffline && scanStatus !== "error" && scanStatus !== "complete"
@@ -668,10 +598,12 @@ export default function ScanStationPage() {
     scanStatus === "scanning"
       ? "Reading badge — hold still"
       : scanStatus === "error"
-        ? "Badge not recognized — try again (station stays ready)"
+        ? "Badge not recognized — tap Back to try the next student"
         : scanStatus === "complete"
           ? flashMessage || "Transaction recorded"
-          : "Point camera at badge barcode, or enter ID"
+          : dinerActive
+            ? "Tap Back when you are ready for the next student"
+            : "Point camera at badge barcode, or enter ID"
 
   const studentMealAvailable =
     student && !mealBlocked && primaryMeals.find((m) => m.type === "student_meal")
@@ -690,7 +622,7 @@ export default function ScanStationPage() {
       (!!student && isStudentMeal && !disabled && scanStatus !== "complete") ||
       (!!staffUser && isStaffMeal && !disabled && scanStatus !== "complete")
 
-    if (gradeRestricted && meal.type === "ala_carte") return null
+    if (gradeRestricted && meal.type === "ala_carte" && !cashierCanSellAlaCarte) return null
 
     return (
       <button
@@ -778,17 +710,23 @@ export default function ScanStationPage() {
               >
                 {statusLabel}
               </p>
-              {nextScanSeconds !== null && nextScanSeconds > 0 && (
-                <p className="text-xs font-semibold text-[#00A83E] sm:text-sm lg:text-base">
-                  Next Scan: {nextScanSeconds.toFixed(1)}s
-                </p>
-              )}
             </div>
             <p className="truncate text-xs text-white/70 sm:text-sm lg:text-base">{statusSubtitle}</p>
           </div>
         </div>
 
         <div className="flex shrink-0 items-center gap-2 sm:gap-3 md:gap-4 lg:gap-6">
+          {(dinerActive || scanStatus === "error") && (
+            <button
+              type="button"
+              onClick={goBackToKeypad}
+              className="flex items-center gap-1.5 rounded-xl border border-white bg-white px-3 py-2 text-sm font-bold text-[#041B52] transition hover:bg-white/90 sm:gap-2 sm:rounded-2xl sm:px-4 sm:py-2.5 sm:text-base md:text-lg"
+            >
+              <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" aria-hidden />
+              Back
+              <span className="hidden font-semibold text-[#64748B] sm:inline">· Next student</span>
+            </button>
+          )}
           <div className="text-right text-white">
             <p className="text-base font-bold tabular-nums sm:text-lg md:text-xl lg:text-3xl">{clock}</p>
             <p className="hidden text-xs text-white/70 md:block md:text-sm">{dateStr}</p>
@@ -878,20 +816,12 @@ export default function ScanStationPage() {
                   type="button"
                   onClick={() => {
                     setAddFundsOpen(true)
-                    setIdleDeadline(null)
-                    if (idleTimerRef.current) clearTimeout(idleTimerRef.current)
                   }}
                   className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-xl border-2 border-[#00A83E] py-2 text-xs font-bold text-[#00A83E] transition hover:bg-[#00A83E]/5 sm:mt-3 sm:gap-2 sm:rounded-2xl sm:py-2.5 sm:text-sm md:mt-4 md:py-3 md:text-base"
                 >
                   <Plus className="h-4 w-4 sm:h-5 sm:w-5" aria-hidden />
                   ADD FUNDS
                 </button>
-                {idleDeadline && !addFundsOpen && scanStatus === "found" && (
-                  <p className="mt-2 text-center text-[10px] font-medium text-[#64748B] sm:text-xs">
-                    Clears in about {Math.max(1, Math.ceil((idleDeadline - Date.now()) / 1000))}s
-                    without activity
-                  </p>
-                )}
               </div>
             </div>
           ) : staffUser ? (
@@ -948,20 +878,12 @@ export default function ScanStationPage() {
                   type="button"
                   onClick={() => {
                     setAddFundsOpen(true)
-                    setIdleDeadline(null)
-                    if (idleTimerRef.current) clearTimeout(idleTimerRef.current)
                   }}
                   className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-xl border-2 border-[#00A83E] py-2 text-xs font-bold text-[#00A83E] transition hover:bg-[#00A83E]/5 sm:mt-3 sm:gap-2 sm:rounded-2xl sm:py-2.5 sm:text-sm md:mt-4 md:py-3 md:text-base"
                 >
                   <Plus className="h-4 w-4 sm:h-5 sm:w-5" aria-hidden />
                   ADD FUNDS
                 </button>
-                {idleDeadline && !addFundsOpen && scanStatus === "found" && (
-                  <p className="mt-2 text-center text-[10px] font-medium text-[#64748B] sm:text-xs">
-                    Clears in about {Math.max(1, Math.ceil((idleDeadline - Date.now()) / 1000))}s
-                    without activity
-                  </p>
-                )}
               </div>
             </div>
           ) : (
@@ -992,12 +914,21 @@ export default function ScanStationPage() {
 
         <section className="flex min-h-0 w-full flex-1 flex-col overflow-hidden p-1.5 sm:p-2.5 md:p-3 lg:w-[45%] lg:shrink-0 lg:p-4">
           <p className="shrink-0 text-[10px] font-semibold uppercase tracking-wider text-[#64748B] sm:text-xs">
-            Select Meal
+            Select lunch
           </p>
 
           <div className="mobile-scroll-x mt-1 flex shrink-0 gap-1 pb-0.5 sm:mt-1.5 sm:gap-1.5 md:mt-2 md:gap-2 md:overflow-visible">
             {primaryMeals.map((meal) => renderMealButton(meal))}
           </div>
+
+          {cashierCanSellAlaCarte && cashierAlaCarte && student ? (
+            <div className="mt-1.5 shrink-0 rounded-xl border border-[#041B52]/20 bg-[#F7F8FB] p-2 sm:mt-2 sm:p-2.5">
+              <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-[#64748B] sm:text-xs">
+                Cashier only — a la carte
+              </p>
+              {renderMealButton(cashierAlaCarte, true)}
+            </div>
+          ) : null}
 
           {secondaryMeals.length > 0 && (
             <div className="mobile-scroll-x mt-1 flex shrink-0 gap-1 pb-0.5 sm:mt-1.5 sm:gap-1.5 md:mt-2 md:gap-2 md:overflow-visible">
@@ -1037,17 +968,6 @@ export default function ScanStationPage() {
           )}
 
           <div className="mt-auto min-h-0 shrink pt-0.5 sm:pt-1">
-            {dinerActive ? (
-              <BarcodeCameraScanner
-                className="mb-1.5 sm:mb-2"
-                defaultOpen={false}
-                paused={scanStatus === "scanning" || scanStatus === "complete"}
-                onDetect={(raw) => {
-                  setScanStatus("scanning")
-                  void lookupStudent(raw)
-                }}
-              />
-            ) : null}
             <p className="text-[10px] font-semibold uppercase tracking-wider text-[#64748B] sm:text-xs">
               Enter Badge / Student ID
             </p>
@@ -1144,8 +1064,8 @@ export default function ScanStationPage() {
               <div>
                 <h2 className="text-lg font-bold text-[#041B52]">Add money</h2>
                 <p className="text-sm text-[#64748B]">
-                  Office deposit for {student.firstName} {student.lastName}. Station idle timer is
-                  paused while this form is open.
+                  Office deposit for {student.firstName} {student.lastName}. Tap Back when you are
+                  ready for the next student.
                 </p>
               </div>
               <button
@@ -1153,7 +1073,6 @@ export default function ScanStationPage() {
                 className="rounded-xl border border-[#AEB6C2] px-3 py-2 text-sm font-semibold text-[#041B52]"
                 onClick={() => {
                   setAddFundsOpen(false)
-                  bumpIdleTimer()
                 }}
               >
                 Close
@@ -1186,8 +1105,8 @@ export default function ScanStationPage() {
               <div>
                 <h2 className="text-lg font-bold text-[#041B52]">Add money</h2>
                 <p className="text-sm text-[#64748B]">
-                  Office deposit for {staffUser.firstName} {staffUser.lastName}. Station idle timer
-                  is paused while this form is open.
+                  Office deposit for {staffUser.firstName} {staffUser.lastName}. Tap Back when you
+                  are ready for the next student.
                 </p>
               </div>
               <button
@@ -1195,7 +1114,6 @@ export default function ScanStationPage() {
                 className="rounded-xl border border-[#AEB6C2] px-3 py-2 text-sm font-semibold text-[#041B52]"
                 onClick={() => {
                   setAddFundsOpen(false)
-                  bumpIdleTimer()
                 }}
               >
                 Close

@@ -1,5 +1,8 @@
+/** Regular student/staff lunch (Pizza Day stays $1/slice). */
+export const STUDENT_LUNCH_PRICE = 7
+
 export const DEFAULT_ONBOARDING_PRICING = {
-  mainMealPrice: 3.0,
+  mainMealPrice: STUDENT_LUNCH_PRICE,
   sideMealPrice: 2.0,
   alaCartePrice: 4.5,
   milkPrice: 0.75,

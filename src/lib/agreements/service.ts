@@ -313,9 +313,8 @@ export async function signAgreement(input: {
   const { parentId, parentEmail, studentIds } = await resolveParentLinkedStudentIds(
     input.parentUserId
   )
-  if (studentIds.length === 0) {
-    throw new Error("No linked students found for this parent account")
-  }
+
+  const signedAt = new Date()
 
   const signature = await prisma.agreementSignature.create({
     data: {
@@ -326,10 +325,26 @@ export async function signAgreement(input: {
       relationship: input.relationship.trim(),
       typedSignature: input.typedSignature.trim(),
       studentIds,
-      signedAt: new Date(),
+      signedAt,
       ipAddress: input.ipAddress,
       status: "SIGNED",
       schoolId,
+    },
+  })
+
+  await prisma.user.update({
+    where: { id: input.parentUserId },
+    data: {
+      cafeteriaAgreementAcceptedAt: signedAt,
+      cafeteriaAgreementVersionId: published.id,
+    },
+  })
+
+  await prisma.parent.update({
+    where: { id: parentId },
+    data: {
+      cafeteriaAgreementAcceptedAt: signedAt,
+      cafeteriaAgreementVersionId: published.id,
     },
   })
 
@@ -339,7 +354,7 @@ export async function signAgreement(input: {
       update: {
         agreementVersionId: published.id,
         agreementSignatureId: signature.id,
-        signedAt: signature.signedAt,
+        signedAt,
         signatureData: input.typedSignature.trim(),
         status: "SIGNED",
         acceptedTerms: true,
@@ -350,7 +365,7 @@ export async function signAgreement(input: {
         schoolId,
         agreementVersionId: published.id,
         agreementSignatureId: signature.id,
-        signedAt: signature.signedAt,
+        signedAt,
         signatureData: input.typedSignature.trim(),
         status: "SIGNED",
         acceptedTerms: true,
@@ -411,7 +426,8 @@ export async function signAgreement(input: {
 }
 
 export async function getParentAgreementStatus(
-  parentUserId: string
+  parentUserId: string,
+  options?: { cookieParentUserId?: string | null }
 ): Promise<{
   requiresSignature: boolean
   currentVersion: AgreementVersionDto | null
@@ -419,13 +435,26 @@ export async function getParentAgreementStatus(
 }> {
   const currentVersion = await getCurrentPublishedAgreement()
   if (!currentVersion) {
-    return { requiresSignature: true, currentVersion: null, students: [] }
+    return { requiresSignature: false, currentVersion: null, students: [] }
   }
 
+  const parentUser = await prisma.user.findUnique({
+    where: { id: parentUserId },
+    select: {
+      cafeteriaAgreementAcceptedAt: true,
+      cafeteriaAgreementVersionId: true,
+    },
+  })
+
   const { parentId, studentIds } = await resolveParentLinkedStudentIds(parentUserId)
-  if (studentIds.length === 0) {
-    return { requiresSignature: true, currentVersion, students: [] }
-  }
+
+  const parentRow = await prisma.parent.findUnique({
+    where: { id: parentId },
+    select: {
+      cafeteriaAgreementAcceptedAt: true,
+      cafeteriaAgreementVersionId: true,
+    },
+  })
 
   const signature = await prisma.agreementSignature.findFirst({
     where: {
@@ -436,6 +465,28 @@ export async function getParentAgreementStatus(
     orderBy: { signedAt: "desc" },
   })
 
+  const acceptedOnUser =
+    parentUser?.cafeteriaAgreementVersionId === currentVersion.id &&
+    parentUser.cafeteriaAgreementAcceptedAt != null
+  const acceptedOnParent =
+    parentRow?.cafeteriaAgreementVersionId === currentVersion.id &&
+    parentRow.cafeteriaAgreementAcceptedAt != null
+  const acceptedViaSignature = signature?.status === "SIGNED"
+  const acceptedViaCookie =
+    options?.cookieParentUserId === parentUserId &&
+    (acceptedOnUser || acceptedOnParent || acceptedViaSignature)
+
+  const acceptedForCurrentVersion =
+    acceptedOnUser || acceptedOnParent || acceptedViaSignature || acceptedViaCookie
+
+  if (studentIds.length === 0) {
+    return {
+      requiresSignature: !acceptedForCurrentVersion,
+      currentVersion,
+      students: [],
+    }
+  }
+
   const students = await prisma.student.findMany({
     where: { id: { in: studentIds } },
     select: { id: true, firstName: true, lastName: true },
@@ -444,23 +495,36 @@ export async function getParentAgreementStatus(
   const studentStatuses: StudentAgreementStatusDto[] = students.map((student) => {
     const status = computeStudentAgreementStatus({
       hasPublishedVersion: true,
-      signatureStatus: signature?.status ?? null,
+      signatureStatus: acceptedForCurrentVersion ? "SIGNED" : (signature?.status ?? null),
       versionExpiresAt: currentVersion.expiresAt ? new Date(currentVersion.expiresAt) : null,
       versionEffectiveDate: new Date(currentVersion.effectiveDate),
-      signedAt: signature?.signedAt ?? null,
+      signedAt:
+        signature?.signedAt ??
+        parentUser?.cafeteriaAgreementAcceptedAt ??
+        parentRow?.cafeteriaAgreementAcceptedAt ??
+        null,
     })
     return {
       studentId: student.id,
       studentName: `${student.firstName} ${student.lastName}`,
       status,
       versionLabel: currentVersion.versionLabel,
-      signedAt: signature?.signedAt?.toISOString() ?? null,
+      signedAt:
+        signature?.signedAt?.toISOString() ??
+        parentUser?.cafeteriaAgreementAcceptedAt?.toISOString() ??
+        parentRow?.cafeteriaAgreementAcceptedAt?.toISOString() ??
+        null,
     }
   })
 
-  const requiresSignature = studentStatuses.some(
-    (s) => s.status === "AGREEMENT_REQUIRED" || s.status === "RENEWAL_NEEDED" || s.status === "REVOKED"
-  )
+  const requiresSignature =
+    !acceptedForCurrentVersion &&
+    studentStatuses.some(
+      (s) =>
+        s.status === "AGREEMENT_REQUIRED" ||
+        s.status === "RENEWAL_NEEDED" ||
+        s.status === "REVOKED"
+    )
 
   return { requiresSignature, currentVersion, students: studentStatuses }
 }
@@ -559,12 +623,17 @@ export async function getStudentAgreementStatusById(
     include: { agreementSignature: true },
   })
 
+  const signedStatus =
+    lunchAgreement?.agreementSignature?.status === "SIGNED" || lunchAgreement?.status === "SIGNED"
+      ? "SIGNED"
+      : (lunchAgreement?.agreementSignature?.status ?? null)
+
   const status = computeStudentAgreementStatus({
     hasPublishedVersion: true,
-    signatureStatus: lunchAgreement?.agreementSignature?.status ?? null,
+    signatureStatus: signedStatus,
     versionExpiresAt: currentVersion.expiresAt ? new Date(currentVersion.expiresAt) : null,
     versionEffectiveDate: new Date(currentVersion.effectiveDate),
-    signedAt: lunchAgreement?.signedAt ?? null,
+    signedAt: lunchAgreement?.signedAt ?? lunchAgreement?.agreementSignature?.signedAt ?? null,
   })
 
   return {

@@ -3,6 +3,10 @@ import { z } from "zod"
 import { badRequest, withDatabase } from "@/lib/api/response"
 import { getClientIp } from "@/lib/agreements/ip"
 import { signAgreement } from "@/lib/agreements/service"
+import {
+  AGREEMENT_ACCEPTED_COOKIE,
+  AGREEMENT_COOKIE_MAX_AGE_SECONDS,
+} from "@/lib/agreements/cookie"
 import { sendAgreementSignedEmail } from "@/lib/email"
 import { prisma } from "@/lib/prisma"
 
@@ -49,7 +53,7 @@ export async function POST(request: Request) {
         }
       }
 
-      return NextResponse.json(
+      const response = NextResponse.json(
         {
           signature,
           receipt: {
@@ -69,6 +73,16 @@ export async function POST(request: Request) {
         },
         { status: 201 }
       )
+      response.cookies.set({
+        name: AGREEMENT_ACCEPTED_COOKIE,
+        value: parsed.data.parentUserId,
+        httpOnly: true,
+        sameSite: "lax",
+        secure: process.env.NODE_ENV === "production",
+        path: "/",
+        maxAge: AGREEMENT_COOKIE_MAX_AGE_SECONDS,
+      })
+      return response
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unable to sign agreement"
       return badRequest(message)

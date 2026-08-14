@@ -115,6 +115,9 @@ export async function POST(request: Request) {
       }
 
       const { parentUserId, studentId, date, mealType, price, sliceCount } = parsed.data
+      if (mealType === "ALA_CARTE") {
+        return badRequest("A la carte is only sold at the cashier station, not as a parent order.")
+      }
 
       try {
         await assertParentOwnsStudent(parentUserId, studentId)

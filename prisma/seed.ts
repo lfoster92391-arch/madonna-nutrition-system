@@ -102,10 +102,10 @@ async function main() {
 
   await prisma.onboardingPricing.upsert({
     where: { schoolId: school.id },
-    update: {},
+    update: { mainMealPrice: 7.0 },
     create: {
       schoolId: school.id,
-      mainMealPrice: 3.0,
+      mainMealPrice: 7.0,
       sideMealPrice: 2.0,
       alaCartePrice: 4.5,
       milkPrice: 0.75,
@@ -121,6 +121,7 @@ async function main() {
     update: {
       status: "PUBLISHED",
       content: DEFAULT_AGREEMENT_CONTENT,
+      expiresAt: new Date("2027-07-31"),
     },
     create: {
       schoolId: school.id,
@@ -128,7 +129,7 @@ async function main() {
       versionNumber: 1,
       status: "PUBLISHED",
       effectiveDate: new Date("2025-08-01"),
-      expiresAt: new Date("2026-07-31"),
+      expiresAt: new Date("2027-07-31"),
       content: DEFAULT_AGREEMENT_CONTENT,
       publishedAt: new Date(),
       publishedBy: "seed",

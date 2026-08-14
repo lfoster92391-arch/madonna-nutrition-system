@@ -1,11 +1,13 @@
 import { NextResponse } from "next/server"
 import { badRequest, notFound, withDatabase } from "@/lib/api/response"
 import { getParentAgreementStatus, getStudentAgreementStatusById } from "@/lib/agreements/service"
+import { parseAgreementAcceptedCookie } from "@/lib/agreements/cookie"
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
   const parentUserId = searchParams.get("parentUserId")
   const studentId = searchParams.get("studentId")
+  const cookieParentUserId = parseAgreementAcceptedCookie(request.headers.get("cookie"))
 
   const result = await withDatabase(async () => {
     if (studentId) {
@@ -19,7 +21,7 @@ export async function GET(request: Request) {
     }
 
     try {
-      const status = await getParentAgreementStatus(parentUserId)
+      const status = await getParentAgreementStatus(parentUserId, { cookieParentUserId })
       return NextResponse.json(status)
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unable to load agreement status"

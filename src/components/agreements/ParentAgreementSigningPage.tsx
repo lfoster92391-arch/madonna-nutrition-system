@@ -62,6 +62,7 @@ export function ParentAgreementSigningPage() {
     try {
       const res = await fetch("/api/agreements/sign", {
         method: "POST",
+        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           parentUserId: user.id,
@@ -76,8 +77,11 @@ export function ParentAgreementSigningPage() {
         throw new Error(data.error ?? "Unable to sign agreement")
       }
       setReceipt(data.receipt?.message ?? "Agreement signed successfully.")
-      window.dispatchEvent(new Event(AGREEMENT_STATUS_CHANGED_EVENT))
+      window.dispatchEvent(
+        new CustomEvent(AGREEMENT_STATUS_CHANGED_EVENT, { detail: { accepted: true } })
+      )
       setSigned(true)
+      router.replace("/parent")
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to sign agreement")
     } finally {

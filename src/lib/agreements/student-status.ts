@@ -28,19 +28,14 @@ export function computeStudentAgreementStatus(input: {
     return "RENEWAL_NEEDED"
   }
 
-  if (input.versionExpiresAt && input.versionExpiresAt < now) {
-    return "RENEWAL_NEEDED"
-  }
-
-  if (input.versionExpiresAt) {
-    const msUntilExpiry = input.versionExpiresAt.getTime() - now.getTime()
-    const daysUntilExpiry = msUntilExpiry / (1000 * 60 * 60 * 24)
-    if (daysUntilExpiry <= EXPIRING_WINDOW_DAYS && daysUntilExpiry > 0) {
-      return "EXPIRING"
-    }
-  }
-
   if (input.signatureStatus === "SIGNED" && input.signedAt) {
+    if (input.versionExpiresAt) {
+      const msUntilExpiry = input.versionExpiresAt.getTime() - now.getTime()
+      const daysUntilExpiry = msUntilExpiry / (1000 * 60 * 60 * 24)
+      if (daysUntilExpiry <= EXPIRING_WINDOW_DAYS && daysUntilExpiry > 0) {
+        return "EXPIRING"
+      }
+    }
     return "SIGNED"
   }
 
