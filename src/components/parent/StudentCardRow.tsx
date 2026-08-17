@@ -8,6 +8,7 @@ import { useDemo } from "@/components/providers/DemoProvider"
 import { DietaryFormStatusBadge } from "@/components/parent/DietaryFormStatusBadge"
 import { AddFundsModal } from "@/components/parent/funding/AddFundsModal"
 import { ParentEmptyState } from "@/components/parent/ParentEmptyState"
+import { ParentStudentPhotoUpload } from "@/components/parent/ParentStudentPhotoUpload"
 import { PARENT_CARD, PARENT_NAVY } from "@/components/parent/parent-dashboard-styles"
 import { Button } from "@/components/ui/button"
 import { useParentLinkedStudents } from "@/hooks/useParentLinkedStudents"
@@ -85,6 +86,18 @@ export function StudentCardRow({ onAddFunds }: StudentCardRowProps = {}) {
                   >
                     Add Funds
                   </Button>
+                </div>
+
+                <div className="mt-5 border-t border-[#C8CDD7] pt-4">
+                  <p className="mb-3 text-sm font-semibold" style={{ color: PARENT_NAVY }}>
+                    Lunch badge photo
+                  </p>
+                  <ParentStudentPhotoUpload
+                    studentId={student.id}
+                    studentName={student.firstName}
+                    currentPhoto={student.photo}
+                    compact
+                  />
                 </div>
               </article>
             )

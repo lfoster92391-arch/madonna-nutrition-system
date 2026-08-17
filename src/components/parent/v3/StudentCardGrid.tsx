@@ -8,6 +8,7 @@ import { useDemo } from "@/components/providers/DemoProvider"
 import { DietaryFormStatusBadge } from "@/components/parent/DietaryFormStatusBadge"
 import { useParentTransactions } from "@/components/parent/useParentTransactions"
 import { useParentLinkedStudents } from "@/hooks/useParentLinkedStudents"
+import { ParentStudentPhotoUpload } from "@/components/parent/ParentStudentPhotoUpload"
 import { V3_CARD, V3_CARD_BORDER, V3_NAVY } from "@/components/parent/v3/parent-v3-theme"
 import { Button } from "@/components/ui/button"
 import { formatCurrency, cn } from "@/lib/utils"
@@ -159,6 +160,22 @@ export function StudentCardGrid({ onAddFunds }: StudentCardGridProps) {
                   <dd className="font-medium text-[#041B52]">{activity?.updatedLabel}</dd>
                 </div>
               </dl>
+
+              <div
+                className={cn(V3_CARD, V3_CARD_BORDER, "mt-3 p-4")}
+                onClick={(e) => e.stopPropagation()}
+                onKeyDown={(e) => e.stopPropagation()}
+              >
+                <p className="mb-3 text-sm font-semibold" style={{ color: V3_NAVY }}>
+                  Lunch badge photo
+                </p>
+                <ParentStudentPhotoUpload
+                  studentId={student.id}
+                  studentName={student.firstName}
+                  currentPhoto={student.photo}
+                  compact
+                />
+              </div>
             </div>
           )
         })}
