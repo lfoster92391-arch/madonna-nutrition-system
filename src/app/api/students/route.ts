@@ -44,6 +44,7 @@ export async function POST(request: Request) {
           externalId: data.id,
           firstName: data.firstName,
           lastName: data.lastName,
+          email: data.email?.trim() ? data.email.trim().toLowerCase() : null,
           grade: data.grade,
           homeroom: data.homeroom,
           balance: data.balance,

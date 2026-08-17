@@ -124,6 +124,34 @@ export function normalizeStudentImportRow(row: unknown): unknown {
   const input = row as Record<string, unknown>
   const out: Record<string, unknown> = { ...input }
 
+  // Directory exports: "Student Name" / "Email #1"
+  if (
+    (out.studentName === undefined || asTrimmedString(out.studentName) === "") &&
+    out["Student Name"] !== undefined
+  ) {
+    out.studentName = out["Student Name"]
+  }
+  if ((out.email === undefined || asTrimmedString(out.email) === "") && out["Email #1"] !== undefined) {
+    out.email = out["Email #1"]
+  }
+  if ((out.email === undefined || asTrimmedString(out.email) === "") && out.Email !== undefined) {
+    out.email = out.Email
+  }
+
+  // Split "Last, First" into first/last when those columns are empty
+  if (
+    out.studentName !== undefined &&
+    asTrimmedString(out.studentName) !== "" &&
+    (asTrimmedString(out.firstName) === "" || asTrimmedString(out.lastName) === "")
+  ) {
+    const raw = asTrimmedString(out.studentName)
+    if (raw.includes(",")) {
+      const [last, ...rest] = raw.split(",")
+      if (asTrimmedString(out.lastName) === "") out.lastName = (last ?? "").trim()
+      if (asTrimmedString(out.firstName) === "") out.firstName = rest.join(",").trim()
+    }
+  }
+
   if (out.badgeStatus === undefined || asTrimmedString(out.badgeStatus) === "") {
     if (out.active !== undefined && asTrimmedString(out.active) !== "") {
       out.badgeStatus = out.active

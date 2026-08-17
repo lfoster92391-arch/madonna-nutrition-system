@@ -23,6 +23,7 @@ import {
   assertCsvFile,
   normalizeBadgeStatusValue,
 } from "@/lib/import-export/coerce"
+import { parseStudentDisplayName, resolveImportGrade } from "@/lib/students/grade-from-email"
 import { Button } from "@/components/ui/button"
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label, Select } from "@/components/ui/input"
@@ -31,8 +32,9 @@ import type { ImportLog, ParentContact, Student } from "@/lib/types"
 const studentSchema = z.object({
   id: z.string().min(1).optional(),
   mdId: z.string().min(1).optional(),
-  firstName: z.string().min(1),
-  lastName: z.string().min(1),
+  firstName: z.string().min(1).optional(),
+  lastName: z.string().min(1).optional(),
+  studentName: z.string().min(1).optional(),
   email: z.union([z.string().email(), z.literal("")]).optional(),
   grade: z.string().optional(),
   homeroom: z.string().optional(),
@@ -53,7 +55,22 @@ const studentSchema = z.object({
   photoUrl: z.string().optional(),
   allergies: z.string().optional(),
   dietaryRestrictions: z.string().optional(),
-}).refine((d) => Boolean(d.id || d.mdId), { message: "mdId or id is required" })
+}).superRefine((d, ctx) => {
+  const hasId = Boolean(d.id || d.mdId)
+  const hasEmail = Boolean(d.email?.trim())
+  if (!hasId && !hasEmail) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: "mdId/id or email is required" })
+  }
+  const hasNames =
+    (Boolean(d.firstName?.trim()) && Boolean(d.lastName?.trim())) ||
+    Boolean(d.studentName?.trim())
+  if (!hasNames) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "firstName+lastName or studentName is required",
+    })
+  }
+})
 
 type ImportStep = "upload" | "mapping" | "validation" | "preview" | "complete"
 type FieldKey =
@@ -61,6 +78,7 @@ type FieldKey =
   | "mdId"
   | "firstName"
   | "lastName"
+  | "studentName"
   | "email"
   | "grade"
   | "homeroom"
@@ -74,10 +92,11 @@ type FieldKey =
   | "allergies"
   | "dietaryRestrictions"
 
-/** Minimum identity fields; everything else is optional and empty values bypass. */
+/** Soft-required mapping hints; identity can be mdId OR email + names/studentName. */
 const REQUIRED_FIELDS: FieldKey[] = ["mdId", "firstName", "lastName"]
 const OPTIONAL_FIELDS: FieldKey[] = [
   "id",
+  "studentName",
   "email",
   "grade",
   "homeroom",
@@ -97,7 +116,8 @@ const AUTO_MAP_ALIASES: Record<FieldKey, string[]> = {
   mdId: ["mdid", "md_id", "madonnaid", "badgenumber", "badge_number", "studentnumber"],
   firstName: ["firstname", "first_name", "first"],
   lastName: ["lastname", "last_name", "last"],
-  email: ["email", "studentemail", "student_email"],
+  studentName: ["studentname", "student_name", "name", "fullname"],
+  email: ["email", "studentemail", "student_email", "email1", "email#1"],
   grade: ["grade", "gradelevel"],
   homeroom: ["homeroom", "home_room", "room"],
   balance: ["balance", "accountbalance"],
@@ -231,12 +251,22 @@ export function CsvImportWizard() {
         return
       }
 
-      const studentId = result.data.id || result.data.mdId!
+      let firstName = result.data.firstName?.trim() || ""
+      let lastName = result.data.lastName?.trim() || ""
+      if ((!firstName || !lastName) && result.data.studentName?.trim()) {
+        const parsedName = parseStudentDisplayName(result.data.studentName)
+        if (!firstName) firstName = parsedName.firstName
+        if (!lastName) lastName = parsedName.lastName
+      }
+
+      const email = result.data.email?.trim() || undefined
+      const gradeInfo = resolveImportGrade(email, result.data.grade)
+      const studentId = result.data.id || result.data.mdId || email || `${lastName}-${firstName}`
       const parentContacts: ParentContact[] = []
       if (result.data.parentEmail) {
         const parentName =
           result.data.parent?.trim() ||
-          `${result.data.firstName} ${result.data.lastName} Parent`
+          `${firstName} ${lastName} Parent`
         parentContacts.push({
           name: parentName,
           email: result.data.parentEmail,
@@ -247,21 +277,23 @@ export function CsvImportWizard() {
 
       const student: Student = {
         id: studentId,
-        firstName: result.data.firstName,
-        lastName: result.data.lastName,
-        grade: result.data.grade?.trim() || "",
+        firstName,
+        lastName,
+        email,
+        grade: gradeInfo.grade,
         homeroom: result.data.homeroom,
         balance: result.data.balance ?? 0,
-        badgeStatus: result.data.badgeStatus,
+        badgeStatus: gradeInfo.shouldArchive ? "inactive" : result.data.badgeStatus,
         photo: result.data.photoUrl || result.data.photo || "",
         allergies: parseAllergies(result.data.allergies),
         dietaryRestrictions: result.data.dietaryRestrictions
           ? result.data.dietaryRestrictions.split(/[,;]/).map((d) => d.trim()).filter(Boolean)
           : [],
         parentContacts,
+        disabled: gradeInfo.shouldArchive,
       }
 
-      if (existingIds.has(studentId)) {
+      if (result.data.mdId && existingIds.has(result.data.mdId)) {
         duplicates.push(index + 2)
         updates.push(student)
         return
@@ -281,9 +313,10 @@ export function CsvImportWizard() {
     if (!user?.id) return
     const rowsToImport = [...validRows, ...updateExistingRows]
     const rows = rowsToImport.map((student) => ({
-      mdId: student.id,
+      mdId: student.id.startsWith("MD") || /^\d+$/.test(student.id) ? student.id : undefined,
       firstName: student.firstName,
       lastName: student.lastName,
+      email: student.email ?? "",
       grade: student.grade,
       homeroom: student.homeroom ?? "",
       balance: student.balance,
@@ -403,7 +436,8 @@ export function CsvImportWizard() {
           <Upload className="h-10 w-10 text-silver-foreground" />
           <p className="mt-4 font-medium text-primary">Drag & drop SIS export CSV here</p>
           <p className="mt-1 text-sm text-silver-foreground">
-            Required: mdId, firstName, lastName. Optional (empty OK): email, grade, badgeStatus, balance, parent, parentEmail, photo, photoUrl
+            Identity: mdId or school email, plus names (or Student Name as Last, First). Grade is set from
+            email class year (e.g. …27@weirtonmadonna.org → 12th).
           </p>
           <input
             type="file"
