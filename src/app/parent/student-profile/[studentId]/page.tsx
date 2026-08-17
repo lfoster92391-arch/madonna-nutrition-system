@@ -1,7 +1,6 @@
 "use client"
 
 import { use, useMemo, useState } from "react"
-import Image from "next/image"
 import { notFound, useSearchParams } from "next/navigation"
 import { useAuth } from "@/components/providers/AuthProvider"
 import { useDemo } from "@/components/providers/DemoProvider"
@@ -9,6 +8,7 @@ import { AnnualReviewBanner } from "@/components/parent/AnnualReviewBanner"
 import { DietaryFormStatusCard } from "@/components/parent/DietaryFormStatusCard"
 import { FoodSafetyCenterForm } from "@/components/parent/FoodSafetyCenterForm"
 import { ParentBackLink } from "@/components/parent/ParentBackLink"
+import { ParentStudentPhotoUpload } from "@/components/parent/ParentStudentPhotoUpload"
 import { StudentMealsTab } from "@/components/parent/meals/StudentMealsTab"
 import { StudentTransactionsTab } from "@/components/parent/meals/StudentTransactionsTab"
 import { StudentBalanceAlertSection } from "@/components/parent/student-profile/StudentBalanceAlertSection"
@@ -93,35 +93,35 @@ export default function StudentProfilePage({
                 pendingSubmission={pendingSubmission}
               />
             <Card className="rounded-[20px] p-8 shadow-sm">
-              <div className="flex flex-col items-center gap-6 md:flex-row md:items-start">
-                <Image
-                  src={student.photo}
-                  alt={student.firstName}
-                  width={140}
-                  height={140}
-                  className="rounded-[20px] border-2 border-silver/60 object-cover"
-                />
-                <div className="flex-1 space-y-4">
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <div>
-                      <p className="text-sm text-silver-foreground">Full Name</p>
-                      <p className="text-lg font-semibold text-primary">
-                        {student.firstName} {student.lastName}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-silver-foreground">MD ID</p>
-                      <p className="font-mono text-sm font-semibold text-primary">{student.id}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-silver-foreground">Grade</p>
-                      <p className="text-lg font-semibold text-primary">{student.grade}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-silver-foreground">Homeroom</p>
-                      <p className="text-lg font-semibold text-primary">{student.homeroom ?? "—"}</p>
-                    </div>
+              <div className="space-y-6">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <p className="text-sm text-silver-foreground">Full Name</p>
+                    <p className="text-lg font-semibold text-primary">
+                      {student.firstName} {student.lastName}
+                    </p>
                   </div>
+                  <div>
+                    <p className="text-sm text-silver-foreground">MD ID</p>
+                    <p className="font-mono text-sm font-semibold text-primary">{student.id}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-silver-foreground">Grade</p>
+                    <p className="text-lg font-semibold text-primary">{student.grade}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-silver-foreground">Homeroom</p>
+                    <p className="text-lg font-semibold text-primary">{student.homeroom ?? "—"}</p>
+                  </div>
+                </div>
+
+                <div className="border-t border-silver/40 pt-6">
+                  <h3 className="mb-4 text-lg font-bold text-primary">Lunch badge photo</h3>
+                  <ParentStudentPhotoUpload
+                    studentId={student.id}
+                    studentName={student.firstName}
+                    currentPhoto={student.photo}
+                  />
                 </div>
               </div>
 

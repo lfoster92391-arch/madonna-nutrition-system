@@ -2,8 +2,15 @@ import { NextResponse } from "next/server"
 import { mapStudent } from "@/lib/db/mappers"
 import { findStudentByExternalId, studentInclude } from "@/lib/db/students"
 import { studentPhotoUploadSchema } from "@/lib/api/validation"
-import { badRequest, notFound, serverError, withDatabase } from "@/lib/api/response"
+import {
+  badRequest,
+  forbidden,
+  notFound,
+  serverError,
+  withDatabase,
+} from "@/lib/api/response"
 import { requireMutatingSession } from "@/lib/api/session-auth"
+import { assertParentOwnsStudent, ParentAccessError } from "@/lib/auth/parent-access"
 import { prisma } from "@/lib/prisma"
 
 type RouteParams = { params: Promise<{ id: string }> }
@@ -11,7 +18,7 @@ type RouteParams = { params: Promise<{ id: string }> }
 export async function POST(request: Request, { params }: RouteParams) {
   const result = await withDatabase(async () => {
     try {
-      const auth = await requireMutatingSession(request, ["ADMIN"])
+      const auth = await requireMutatingSession(request, ["ADMIN", "PARENT"])
       if ("error" in auth) return auth.error
 
       const { id } = await params
@@ -19,6 +26,17 @@ export async function POST(request: Request, { params }: RouteParams) {
       const parsed = studentPhotoUploadSchema.safeParse(body)
       if (!parsed.success) {
         return badRequest("Invalid photo payload", parsed.error.flatten())
+      }
+
+      if (auth.user.role === "PARENT") {
+        try {
+          await assertParentOwnsStudent(auth.user.id, id)
+        } catch (error) {
+          if (error instanceof ParentAccessError) {
+            return forbidden("You can only update photos for your linked students")
+          }
+          throw error
+        }
       }
 
       const existing = await findStudentByExternalId(id)
