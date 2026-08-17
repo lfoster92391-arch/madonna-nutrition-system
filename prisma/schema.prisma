@@ -108,6 +108,8 @@ model Student {
   badgeStatus         BadgeStatus @default(PENDING)
   firstName           String
   lastName            String
+  /** School email (e.g. tuser27@weirtonmadonna.org); drives grade-from-email. */
+  email               String?
   photo               String?
   grade               String
   homeroom            String?
@@ -132,6 +134,7 @@ model Student {
 
   @@unique([schoolId, externalId])
   @@unique([schoolId, barcode])
+  @@unique([schoolId, email])
 }
 
 model Allergy {

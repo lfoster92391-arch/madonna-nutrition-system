@@ -399,6 +399,20 @@ export const api = {
       method: "POST",
       body: JSON.stringify(input),
     }),
+  refreshStudentGrades: (input: { adminUserId: string; performedBy?: string }) =>
+    fetchJson<{
+      scanned: number
+      gradesUpdated: number
+      archived: number
+      reactivated: number
+      skippedNoEmail: number
+      skippedUnparseable: number
+      unchanged: number
+      seniorGraduationYear: number
+    }>("/api/admin/students/refresh-grades", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
   adminImportVendors: (input: { adminUserId: string; rows: Record<string, unknown>[] }) =>
     fetchJson<{
       created: number

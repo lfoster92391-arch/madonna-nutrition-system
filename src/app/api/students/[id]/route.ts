@@ -64,6 +64,12 @@ export async function PATCH(request: Request, { params }: RouteParams) {
           data: {
             firstName: data.firstName,
             lastName: data.lastName,
+            email:
+              data.email !== undefined
+                ? data.email.trim()
+                  ? data.email.trim().toLowerCase()
+                  : null
+                : undefined,
             grade: data.grade,
             homeroom: data.homeroom,
             balance: data.balance,

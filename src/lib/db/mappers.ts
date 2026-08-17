@@ -139,6 +139,7 @@ export function mapStudent(student: StudentWithRelations): Student {
     id: student.externalId,
     firstName: student.firstName,
     lastName: student.lastName,
+    email: student.email ?? undefined,
     photo:
       student.photo ??
       "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=400&auto=format&fit=crop",

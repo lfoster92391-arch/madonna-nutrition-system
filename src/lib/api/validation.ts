@@ -3,7 +3,7 @@ import { isWeekendDateKey, WEEKEND_MENU_DAY_MESSAGE } from "@/lib/calendar"
 import {
   asTrimmedString,
   importBadgeStatusDefaultActive,
-  importMoneyDefault0,
+  importMoney,
   importOptionalBadgeStatus,
   importOptionalEmail,
   importOptionalString,
@@ -27,6 +27,7 @@ export const studentSchema = z.object({
   id: z.string().min(1),
   firstName: z.string().min(1),
   lastName: z.string().min(1),
+  email: z.string().email().optional().or(z.literal("")),
   grade: z.string().min(1),
   homeroom: z.string().optional(),
   balance: z.number(),
@@ -500,33 +501,57 @@ export const badgeImportRequestSchema = z.object({
 })
 
 /**
- * Student SIS import row.
- * Required identity: mdId + firstName + lastName.
- * Empty optional fields (email, grade, balance, parent*, photo*, badgeStatus) bypass / default safely.
+ * Student SIS / directory import row.
+ * Identity: mdId OR email (mdId auto-allocated when missing), plus first/last
+ * (or combined studentName as "Last, First").
+ * Grade is derived from school email class-year suffix when present.
  */
-export const studentImportRowSchema = z.object({
-  mdId: importRequiredString,
-  firstName: importRequiredString,
-  lastName: importRequiredString,
-  /** Student email — accepted when present; empty bypasses (no Student.email column). */
-  email: importOptionalEmail,
-  grade: z.preprocess((val) => {
-    const s = asTrimmedString(val)
-    return s === "" ? "" : s
-  }, z.string()),
-  homeroom: importOptionalString,
-  balance: importMoneyDefault0,
-  /** Maps to Student.badgeStatus; empty → active. Also accepts active/isActive aliases via wizard. */
-  badgeStatus: importBadgeStatusDefaultActive,
-  photo: importOptionalString,
-  photoUrl: importOptionalString,
-  parent: importOptionalString,
-  parentName: importOptionalString,
-  parentEmail: importOptionalEmail,
-  parentPhone: importOptionalString,
-  allergies: importOptionalString,
-  dietaryRestrictions: importOptionalString,
-})
+export const studentImportRowSchema = z
+  .object({
+    mdId: importOptionalString,
+    firstName: importOptionalString,
+    lastName: importOptionalString,
+    /** Combined directory name e.g. "Arthurs, Thomas". */
+    studentName: importOptionalString,
+    /** Student school email — drives grade-from-email when *@weirtonmadonna.org. */
+    email: importOptionalEmail,
+    grade: z.preprocess((val) => {
+      const s = asTrimmedString(val)
+      return s === "" ? "" : s
+    }, z.string()),
+    homeroom: importOptionalString,
+    /** When omitted/blank on update, existing balance is preserved; creates default to 0. */
+    balance: importMoney,
+    /** Maps to Student.badgeStatus; empty → active. Also accepts active/isActive aliases via wizard. */
+    badgeStatus: importBadgeStatusDefaultActive,
+    photo: importOptionalString,
+    photoUrl: importOptionalString,
+    parent: importOptionalString,
+    parentName: importOptionalString,
+    parentEmail: importOptionalEmail,
+    parentPhone: importOptionalString,
+    allergies: importOptionalString,
+    dietaryRestrictions: importOptionalString,
+  })
+  .superRefine((row, ctx) => {
+    const hasNames =
+      (Boolean(row.firstName?.trim()) && Boolean(row.lastName?.trim())) ||
+      Boolean(row.studentName?.trim())
+    if (!hasNames) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "firstName+lastName or studentName is required",
+        path: ["firstName"],
+      })
+    }
+    if (!row.mdId?.trim() && !row.email?.trim()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "mdId or email is required",
+        path: ["mdId"],
+      })
+    }
+  })
 
 export const studentImportRequestSchema = z.object({
   adminUserId: z.string().min(1),

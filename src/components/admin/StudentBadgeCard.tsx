@@ -20,7 +20,7 @@ export function studentHasRealPhoto(photo?: string | null): boolean {
 }
 
 export function studentEmailForBadge(student: Student): string {
-  return student.parentContacts?.[0]?.email?.trim() ?? ""
+  return student.email?.trim() || student.parentContacts?.[0]?.email?.trim() || ""
 }
 
 function badgeStatusLabel(status?: Student["badgeStatus"]): string {

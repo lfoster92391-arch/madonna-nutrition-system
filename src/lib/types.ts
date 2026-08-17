@@ -142,6 +142,8 @@ export interface Student {
   id: string
   firstName: string
   lastName: string
+  /** School email; class year suffix drives grade-from-email */
+  email?: string
   photo: string
   grade: string
   homeroom?: string
