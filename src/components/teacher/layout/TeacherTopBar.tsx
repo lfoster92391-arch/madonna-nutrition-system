@@ -13,6 +13,7 @@ import {
   UtensilsCrossed,
 } from "lucide-react"
 import { useAuth } from "@/components/providers/AuthProvider"
+import { PortalRoleSwitcher } from "@/components/auth/PortalRoleSwitcher"
 import { useTeacherData } from "@/components/providers/TeacherDataProvider"
 import { useTeacherLayout } from "@/components/teacher/layout/teacher-layout-context"
 import { SCHOOL } from "@/config/school"
@@ -83,6 +84,7 @@ export function TeacherTopBar() {
       </div>
 
       <div className="ml-auto flex items-center gap-1.5 sm:gap-2">
+        <PortalRoleSwitcher />
         <button
           type="button"
           className="flex min-h-11 min-w-11 items-center justify-center rounded-2xl border shadow-sm transition hover:bg-[#0A1E3F]/5 md:hidden"

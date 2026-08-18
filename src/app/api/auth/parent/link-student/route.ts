@@ -3,13 +3,14 @@ import { parentLinkStudentSchema } from "@/lib/api/validation"
 import { badRequest, serverError, withDatabase } from "@/lib/api/response"
 import { linkParentUserToStudent, parentHasLinkedStudents } from "@/lib/auth/parent-links"
 import { requireMutatingSession } from "@/lib/api/session-auth"
+import { PARENT_PORTAL_DB_ROLES } from "@/lib/auth/portal-roles"
 
 export const runtime = "nodejs"
 
 export async function POST(request: Request) {
   const result = await withDatabase(async () => {
     try {
-      const auth = await requireMutatingSession(request, ["PARENT"])
+      const auth = await requireMutatingSession(request, [...PARENT_PORTAL_DB_ROLES])
       if ("error" in auth) return auth.error
 
       const body = await request.json()
@@ -45,7 +46,7 @@ export async function POST(request: Request) {
 export async function GET(request: Request) {
   const result = await withDatabase(async () => {
     try {
-      const auth = await requireMutatingSession(request, ["PARENT"])
+      const auth = await requireMutatingSession(request, [...PARENT_PORTAL_DB_ROLES])
       if ("error" in auth) return auth.error
 
       const hasLinkedStudents = await parentHasLinkedStudents(auth.user.id)

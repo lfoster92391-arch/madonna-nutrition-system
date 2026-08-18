@@ -3,12 +3,13 @@
 import { useEffect, useState } from "react"
 import { usePathname, useRouter } from "next/navigation"
 import { useAuth } from "@/components/providers/AuthProvider"
+import { canAccessParentPortal } from "@/lib/auth/portal-roles"
 
 const LINK_PATH = "/login/parent/link"
 
 /**
- * Parent portal requires at least one linked student.
- * Incomplete accounts are sent to the link page; the portal itself stays closed.
+ * Parent-only accounts need at least one linked student.
+ * Staff/admin/teachers who are also parents can open the parent portal and link children there.
  */
 export function ParentAuthGuard({ children }: { children: React.ReactNode }) {
   const { user, isLoading, logout } = useAuth()
@@ -20,12 +21,14 @@ export function ParentAuthGuard({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (isLoading) return
 
-    if (!user || user.role !== "parent") {
+    if (!user || !canAccessParentPortal(user)) {
       router.replace("/login/parent")
       return
     }
 
-    if (user.needsStudentLink) {
+    const workplaceParent = user.role !== "parent"
+
+    if (user.needsStudentLink && !workplaceParent) {
       router.replace(LINK_PATH)
       return
     }
@@ -41,6 +44,10 @@ export function ParentAuthGuard({ children }: { children: React.ReactNode }) {
         const data = (await res.json().catch(() => ({}))) as { hasLinkedStudents?: boolean }
         if (cancelled) return
         if (!res.ok || !data.hasLinkedStudents) {
+          if (workplaceParent) {
+            setAllowed(true)
+            return
+          }
           setAllowed(false)
           router.replace(LINK_PATH)
           return
@@ -48,8 +55,12 @@ export function ParentAuthGuard({ children }: { children: React.ReactNode }) {
         setAllowed(true)
       } catch {
         if (!cancelled) {
-          setAllowed(false)
-          router.replace(LINK_PATH)
+          if (workplaceParent) {
+            setAllowed(true)
+          } else {
+            setAllowed(false)
+            router.replace(LINK_PATH)
+          }
         }
       } finally {
         if (!cancelled) setLinkChecked(true)
@@ -70,7 +81,7 @@ export function ParentAuthGuard({ children }: { children: React.ReactNode }) {
     )
   }
 
-  if (!user || user.role !== "parent" || !allowed) return null
+  if (!user || !canAccessParentPortal(user) || !allowed) return null
 
   return <>{children}</>
 }

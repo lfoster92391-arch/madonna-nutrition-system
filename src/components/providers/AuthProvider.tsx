@@ -12,7 +12,6 @@ import {
 import { useDemo } from "@/components/providers/DemoProvider"
 import { clearLegacySessionCaches } from "@/lib/demo/session"
 import { formatUserName, normalizeUsername } from "@/lib/users"
-import type { UserRole } from "@/lib/types"
 
 export type PortalRole = "cashier" | "parent" | "admin" | "staff" | "teacher" | null
 
@@ -24,6 +23,7 @@ interface AuthUser {
   email: string
   mustChangePassword?: boolean
   needsStudentLink?: boolean
+  linkedStudentIds?: string[]
 }
 
 export interface LoginResult {
@@ -113,6 +113,8 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
             displayName: formatUserName(live),
             email: live.email,
             mustChangePassword: live.mustChangePassword ?? false,
+            linkedStudentIds: live.linkedStudentIds ?? [],
+            needsStudentLink: session.needsStudentLink,
           }
           setUser(reconciled)
           setMustChangePassword(Boolean(reconciled.mustChangePassword))
@@ -168,7 +170,7 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
           error?: string
           mustChangePassword?: boolean
           needsStudentLink?: boolean
-          user?: AuthUser
+          user?: AuthUser & { linkedStudentIds?: string[] }
         }
         try {
           data = raw ? (JSON.parse(raw) as typeof data) : {}
@@ -201,6 +203,7 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
           email: authUser.email,
           mustChangePassword: data.mustChangePassword,
           needsStudentLink: Boolean(data.needsStudentLink),
+          linkedStudentIds: authUser.linkedStudentIds ?? [],
         }
 
         setUser(session)

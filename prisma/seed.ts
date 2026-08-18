@@ -9,6 +9,7 @@ import bcrypt from "bcryptjs"
 import { PrismaClient, UserRole, UserStatus } from "@prisma/client"
 import { DEFAULT_AGREEMENT_CONTENT } from "../src/config/agreement-defaults"
 import { DEFAULT_CALENDAR_SETTINGS } from "../src/config/calendar-defaults"
+import { upsertStaffParentAccounts } from "../src/lib/auth/staff-parent-accounts"
 
 const prisma = new PrismaClient()
 
@@ -136,9 +137,14 @@ async function main() {
     },
   })
 
+  const staffParent = await upsertStaffParentAccounts(prisma, school.id)
+  for (const row of staffParent) {
+    console.log(`Staff-parent ${row.action}: ${row.email} (${row.username}) role=${row.role}`)
+  }
+
   console.log("Bootstrap seed completed for", school.name)
   console.log("Admin login: username itlisa OR email lisamorris@weirtonmadonna.org")
-  console.log("No demo students, staff, menus, or inventory were created.")
+  console.log("No demo students, menus, or inventory were created.")
 }
 
 main()

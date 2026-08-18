@@ -35,7 +35,11 @@ export async function assertParentOwnsStudent(
   })
 
   const linkedIds = user?.linkedStudentIds ?? []
-  const canLinkViaUser = user?.role === "PARENT" || user?.role === "STAFF"
+  const canLinkViaUser =
+    user?.role === "PARENT" ||
+    user?.role === "STAFF" ||
+    user?.role === "ADMIN" ||
+    user?.role === "TEACHER"
   const ownsViaUser =
     Boolean(canLinkViaUser) &&
     (linkedIds.includes(student.id) || linkedIds.includes(student.externalId))
@@ -45,12 +49,12 @@ export async function assertParentOwnsStudent(
       schoolId: student.schoolId,
       studentName: `${student.firstName} ${student.lastName}`,
       billingStudentId: student.id,
-      payerRole: user!.role === "STAFF" ? "STAFF" : "PARENT",
+      payerRole: user!.role === "PARENT" ? "PARENT" : "STAFF",
     }
   }
 
-  // Parent model join is parent-only (staff uses User.linkedStudentIds only).
-  if (user?.role === "PARENT" && user.email) {
+  // ParentStudent join for any parent-capable account (staff/admin dual-role included).
+  if (canLinkViaUser && user?.email) {
     const parent = await prisma.parent.findUnique({
       where: { email: user.email },
       select: {

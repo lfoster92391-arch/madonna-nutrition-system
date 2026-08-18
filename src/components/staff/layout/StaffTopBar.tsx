@@ -4,6 +4,7 @@ import { useMemo } from "react"
 import Link from "next/link"
 import { Bell, ChevronDown, Menu, MessageSquare, User } from "lucide-react"
 import { useAuth } from "@/components/providers/AuthProvider"
+import { PortalRoleSwitcher } from "@/components/auth/PortalRoleSwitcher"
 import { useStaffData } from "@/components/providers/StaffDataProvider"
 import { useStaffLayout } from "@/components/staff/layout/staff-layout-context"
 import { SCHOOL } from "@/config/school"
@@ -74,6 +75,7 @@ export function StaffTopBar() {
       </div>
 
       <div className="ml-auto flex items-center gap-1.5 sm:gap-2">
+        <PortalRoleSwitcher />
         <TopBarIconButton icon={Bell} label="Notifications" />
         <Link href="/staff/messages">
           <TopBarIconButton icon={MessageSquare} label="Messages" />

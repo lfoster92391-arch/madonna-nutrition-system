@@ -105,8 +105,8 @@ export function StaffSettingsView() {
           Your children
         </h2>
         <p className="mt-2 text-sm text-silver-foreground">
-          Connect a student account so you can see balances and add lunch funds from the staff
-          portal.
+          Connect a student account so you can see balances and add lunch funds. If you are also a
+          parent, use the Parent / Staff switch in the top bar to open the parent portal.
         </p>
 
         {loadingChildren ? (

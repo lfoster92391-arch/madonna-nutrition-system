@@ -10,6 +10,7 @@ import { loginSchema } from "@/lib/api/validation"
 import { badRequest, withDatabase } from "@/lib/api/response"
 import { isAllowedTeacherEmail, TEACHER_ACCESS_DENIED_MESSAGE } from "@/config/teacher-auth"
 import { parentHasLinkedStudents } from "@/lib/auth/parent-links"
+import { portalMatchesAccount } from "@/lib/auth/portal-roles"
 import { ensureParentRecordForUser } from "@/lib/agreements/service"
 import type { UserRole } from "@/lib/types"
 import { getClientIp, getUserAgent } from "@/lib/security/client-meta"
@@ -21,14 +22,9 @@ import {
 
 function portalMatchesUserRole(
   portalRole: "admin" | "cashier" | "parent" | "staff" | "teacher",
-  userRole: UserRole
+  user: { role: UserRole; email?: string | null; linkedStudentIds?: string[] | null }
 ): boolean {
-  if (portalRole === "admin") return userRole === "admin"
-  if (portalRole === "cashier") return userRole === "cashier"
-  if (portalRole === "parent") return userRole === "parent"
-  if (portalRole === "staff") return userRole === "staff"
-  if (portalRole === "teacher") return userRole === "teacher"
-  return false
+  return portalMatchesAccount(portalRole, user)
 }
 
 async function rejectFailed(
@@ -108,7 +104,7 @@ export async function POST(request: Request) {
       )
     }
 
-    if (!portalMatchesUserRole(role, user.role)) {
+    if (!portalMatchesUserRole(role, user)) {
       const roleLabel = ROLE_LABELS[user.role]
       const portalHint =
         role === "admin" && user.role === "parent"
@@ -162,9 +158,10 @@ export async function POST(request: Request) {
           user: {
             id: user.id,
             username: user.username,
-            role,
+            role: user.role,
             displayName: `${user.firstName} ${user.lastName}`,
             email: user.email,
+            linkedStudentIds: user.linkedStudentIds ?? [],
           },
         })
       }
@@ -177,9 +174,10 @@ export async function POST(request: Request) {
       user: {
         id: user.id,
         username: user.username,
-        role,
+        role: user.role,
         displayName: `${user.firstName} ${user.lastName}`,
         email: user.email,
+        linkedStudentIds: user.linkedStudentIds ?? [],
       },
     })
   })
