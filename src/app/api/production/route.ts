@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { badRequest, serverError } from "@/lib/api/response"
+import { requireMutatingSession } from "@/lib/api/session-auth"
 import { updateProductionSchema } from "@/lib/api/validation"
 import { getProductionData, updateProductionOrder } from "@/lib/operations/service"
 
@@ -15,6 +16,9 @@ export async function GET() {
 
 export async function PATCH(request: Request) {
   try {
+    const auth = await requireMutatingSession(request, ["ADMIN", "STAFF", "CASHIER"])
+    if ("error" in auth) return auth.error
+
     const body = await request.json()
     const parsed = updateProductionSchema.safeParse(body)
     if (!parsed.success) return badRequest("Invalid update", parsed.error.flatten())

@@ -5,6 +5,7 @@ import { findStudentByScanId } from "@/lib/db/students"
 import { syncBatchSchema } from "@/lib/api/validation"
 import { badRequest, serverError, withDatabase } from "@/lib/api/response"
 import { requireCashierOrApiKey } from "@/lib/api/session-auth"
+import { deductInventoryForSale } from "@/lib/operations/sale-deduction"
 
 export async function POST(request: Request) {
   const result = await withDatabase(async () => {
@@ -88,6 +89,16 @@ export async function POST(request: Request) {
           }
 
           synced++
+          try {
+            await deductInventoryForSale({
+              schoolId,
+              soldName: item.mealType,
+              soldLabel: `${student.firstName} ${student.lastName} · ${item.mealType}`,
+              createdBy: item.processedByName ?? "Station",
+            })
+          } catch (error) {
+            console.error("Inventory sale deduction failed", error)
+          }
         } catch (error) {
           console.error("sync-batch item failed:", item.clientTxId, error)
           failedIds.push(item.clientTxId)

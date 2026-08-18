@@ -26,7 +26,7 @@ export interface OpsInventoryItem {
   schoolId: string
 }
 
-export type InventoryMovementType = "receive" | "adjust" | "transfer" | "production" | "waste"
+export type InventoryMovementType = "receive" | "adjust" | "transfer" | "production" | "waste" | "usage"
 
 export interface InventoryMovement {
   id: string

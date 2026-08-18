@@ -374,10 +374,11 @@ export const updateReceivingSchema = z.object({
 
 export const inventoryMovementSchema = z.object({
   inventoryItemId: z.string().min(1),
-  type: z.enum(["receive", "adjust", "transfer", "production", "waste"]),
+  type: z.enum(["receive", "adjust", "transfer", "production", "waste", "usage"]),
   quantity: z.number().positive(),
   note: z.string().optional(),
   createdBy: z.string().optional(),
+  loggedAt: z.string().optional(),
 })
 
 /** Simple grocery purchase for cafeteria operators (posts stock immediately). */

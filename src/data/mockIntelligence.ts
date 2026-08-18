@@ -55,6 +55,12 @@ export const mockWaste: WasteData = {
   breakdown: { prepared: 0, served: 0, saved: 0, expired: 0, discarded: 0 },
   trend: { labels: [], values: [] },
   topItems: [],
+  dailyTotalQty: 0,
+  weeklyTotalQty: 0,
+  dailyEstimatedCost: 0,
+  weeklyEstimatedCost: 0,
+  reasons: [],
+  wastePercent: 0,
   refreshedAt: refreshedAt(),
 }
 

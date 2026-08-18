@@ -73,6 +73,11 @@ export function analyticsToCsv(data: AnalyticsData): string {
     ["Waste Saved", b.saved],
     ["Waste Expired", b.expired],
     ["Waste Discarded", b.discarded],
+    ["Waste Today Qty", data.waste.dailyTotalQty],
+    ["Waste Today Cost", data.waste.dailyEstimatedCost],
+    ["Waste Week Qty", data.waste.weeklyTotalQty],
+    ["Waste Week Cost", data.waste.weeklyEstimatedCost],
+    ["Waste Percent", data.waste.wastePercent],
   ]
   const vendorRows = data.vendors.map((v) => [
     v.vendor,

@@ -1,4 +1,4 @@
-async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
+export function getSessionHeaders(): Record<string, string> {
   const sessionHeaders: Record<string, string> = {}
   if (typeof window !== "undefined") {
     try {
@@ -11,12 +11,15 @@ async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
       // ignore invalid session payload
     }
   }
+  return sessionHeaders
+}
 
+async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, {
     ...init,
     headers: {
       "Content-Type": "application/json",
-      ...sessionHeaders,
+      ...getSessionHeaders(),
       ...init?.headers,
     },
   })
@@ -432,5 +435,28 @@ export const api = {
     fetchJson<import("@/lib/types").User>(`/api/users/${encodeURIComponent(id)}/photo`, {
       method: "POST",
       body: JSON.stringify({ photo }),
+    }),
+  getInventory: () =>
+    fetchJson<{
+      source: string
+      items: import("@/lib/operations/types").OpsInventoryItem[]
+      movements: import("@/lib/operations/types").InventoryMovement[]
+      storageLocations: import("@/lib/operations/types").StorageLocation[]
+    }>("/api/inventory"),
+  recordInventoryMovement: (input: {
+    inventoryItemId: string
+    type: import("@/lib/operations/types").InventoryMovementType
+    quantity: number
+    note?: string
+    createdBy?: string
+    loggedAt?: string
+  }) =>
+    fetchJson<{
+      source: string
+      movement: import("@/lib/operations/types").InventoryMovement
+      item: import("@/lib/operations/types").OpsInventoryItem
+    }>("/api/inventory", {
+      method: "POST",
+      body: JSON.stringify({ action: "movement", ...input }),
     }),
 }

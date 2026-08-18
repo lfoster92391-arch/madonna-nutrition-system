@@ -4,6 +4,7 @@ import { mapUser } from "@/lib/db/mappers"
 import { staffMealTransactionSchema } from "@/lib/api/validation"
 import { badRequest, notFound, serverError, withDatabase } from "@/lib/api/response"
 import { requireCashierOrApiKey } from "@/lib/api/session-auth"
+import { deductInventoryForSale } from "@/lib/operations/sale-deduction"
 import { prisma } from "@/lib/prisma"
 
 export async function POST(request: Request) {
@@ -40,6 +41,21 @@ export async function POST(request: Request) {
         const user = await prisma.user.findFirst({
           where: { id: userId, schoolId: auth.schoolId },
         })
+        const createdBy =
+          "user" in auth && auth.user
+            ? `${auth.user.firstName} ${auth.user.lastName}`.trim()
+            : "Kiosk"
+        const staffName = user ? `${user.firstName} ${user.lastName}`.trim() : "Staff"
+        try {
+          await deductInventoryForSale({
+            schoolId: auth.schoolId,
+            soldName: meal,
+            soldLabel: `${staffName} · ${meal}`,
+            createdBy,
+          })
+        } catch (error) {
+          console.error("Inventory sale deduction failed", error)
+        }
         return NextResponse.json(
           {
             balanceAfter: credit.balanceAfter,
