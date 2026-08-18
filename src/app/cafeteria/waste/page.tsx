@@ -190,6 +190,9 @@ export default function WastePage() {
               Sign in as cafeteria staff so waste can come off live inventory.
             </p>
           )}
+          <button
+            type="submit"
+            disabled={mutation.isPending}
             className="rounded-xl bg-blue-600 px-5 py-3 font-semibold transition hover:bg-blue-500 disabled:opacity-50"
           >
             {mutation.isPending ? "Saving…" : "Log waste"}
