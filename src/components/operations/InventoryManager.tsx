@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import type { InventoryMovement, OpsInventoryItem, StorageLocation } from "@/lib/operations/types"
 import { formatCurrency } from "@/lib/utils"
+import { getSessionHeaders } from "@/lib/api/client"
 
 interface InventoryData {
   source: string
@@ -40,7 +41,7 @@ export function InventoryManager() {
     mutationFn: async (payload: Record<string, unknown>) => {
       const res = await fetch("/api/inventory", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...getSessionHeaders() },
         body: JSON.stringify({ action: "movement", ...payload }),
       })
       if (!res.ok) throw new Error("Failed to record movement")
@@ -73,7 +74,7 @@ export function InventoryManager() {
     )
   }, [items, search])
 
-  const now = new Date("2026-06-14").getTime()
+  const now = Date.now()
   const week = 7 * 86400000
 
   const lowStock = items.filter((i) => i.qty <= i.lowStockThreshold)

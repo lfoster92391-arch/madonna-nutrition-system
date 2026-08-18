@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import { useQuery } from "@tanstack/react-query"
 import { useEffect, useState } from "react"
 
 import {
@@ -20,14 +21,16 @@ import {
 } from "lucide-react"
 
 import { students } from "@/data/mockstudents"
-import { mockInventory } from "@/data/mockInventory"
-import { mockWaste } from "@/data/mockWaste"
 import { mockNotifications } from "@/data/mockNotifications"
 import { mockActivity } from "@/data/mockActivity"
+import { api } from "@/lib/api/client"
 
 export default function CafeteriaPage() {
-  const [currentTime, setCurrentTime] =
-    useState("")
+  const [currentTime, setCurrentTime] = useState("")
+  const { data: inventoryData } = useQuery({
+    queryKey: ["inventory"],
+    queryFn: () => api.getInventory(),
+  })
 
   useEffect(() => {
     const updateTime = () => {
@@ -50,16 +53,14 @@ export default function CafeteriaPage() {
     (student: any) => student.balance < 5
   )
 
-  const lowStockItems = mockInventory.filter(
-    (item) =>
-      item.quantity <= item.lowStockThreshold
-  )
+  const liveItems = inventoryData?.items ?? []
+  const liveMovements = inventoryData?.movements ?? []
 
-  const totalWaste = mockWaste.reduce(
-    (total, item) =>
-      total + item.quantityWasted,
-    0
-  )
+  const lowStockItems = liveItems.filter((item) => item.qty <= item.lowStockThreshold)
+
+  const totalWaste = liveMovements
+    .filter((m) => m.type === "waste")
+    .reduce((total, item) => total + Math.abs(item.quantity), 0)
 
   const criticalNotifications =
     mockNotifications.filter(
@@ -155,15 +156,11 @@ export default function CafeteriaPage() {
       description:
         "Immediate food safety review required.",
     },
-
-    {
-      title:
-        "Chicken Patties Inventory Shortage",
-      severity: "High",
-      description:
-        "Restock recommended before next lunch period.",
-    },
-
+    ...lowStockItems.slice(0, 3).map((item) => ({
+      title: `${item.name} running low`,
+      severity: "High" as const,
+      description: `${item.qty} ${item.unit} on the shelf — restock before the next lunch period.`,
+    })),
     {
       title:
         "5 Student Accounts Approaching Negative Balance",
@@ -445,7 +442,7 @@ export default function CafeteriaPage() {
                   </div>
 
                   <div className="mt-2 text-3xl font-bold text-red-300">
-                    {totalWaste}
+                    {inventoryData ? totalWaste : "—"}
                   </div>
 
                 </div>
@@ -457,7 +454,7 @@ export default function CafeteriaPage() {
                   </div>
 
                   <div className="mt-2 text-3xl font-bold text-red-400">
-                    {lowStockItems.length}
+                    {inventoryData ? lowStockItems.length : "—"}
                   </div>
 
                 </div>

@@ -29,7 +29,7 @@ export default function AdminAnalyticsPage() {
   const waste = data?.waste.breakdown
   const wasteChart = waste
     ? {
-        labels: ["Prepared", "Served", "Saved", "Expired", "Discarded"],
+        labels: ["Overproduction", "Served", "Leftover", "Spoiled", "Tray / other"],
         datasets: [{
           data: [waste.prepared, waste.served, waste.saved, waste.expired, waste.discarded],
           backgroundColor: [chartColors.navy, chartColors.green, chartColors.silver, "#F59E0B", chartColors.red],
@@ -63,12 +63,39 @@ export default function AdminAnalyticsPage() {
             </TabsList>
 
             <TabsContent value="waste" className="space-y-6">
+              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                <MetricCard
+                  label="Today"
+                  value={`${data.waste.dailyTotalQty} units`}
+                  hint={formatCurrency(data.waste.dailyEstimatedCost)}
+                />
+                <MetricCard
+                  label="This week"
+                  value={`${data.waste.weeklyTotalQty} units`}
+                  hint={formatCurrency(data.waste.weeklyEstimatedCost)}
+                />
+                <MetricCard
+                  label="Waste share"
+                  value={`${data.waste.wastePercent}%`}
+                  hint="Of kitchen pull-down this week"
+                  variant={data.waste.wastePercent > 5 ? "warning" : "success"}
+                />
+                <MetricCard
+                  label="Top reason"
+                  value={data.waste.reasons[0]?.reason ?? "None yet"}
+                  hint={
+                    data.waste.reasons[0]
+                      ? `${data.waste.reasons[0].qty} units · ${formatCurrency(data.waste.reasons[0].estimatedCost)}`
+                      : "Log waste in cafeteria to see totals"
+                  }
+                />
+              </div>
               <div className="grid gap-6 lg:grid-cols-2">
                 {wasteChart && (
                   <Card className="rounded-[20px] border-[#AEB6C2]/60">
                     <CardHeader>
                       <CardTitle className="text-[#041B52]">Waste Breakdown</CardTitle>
-                      <CardDescription>Prepared vs served vs saved vs expired vs discarded</CardDescription>
+                      <CardDescription>Overproduction, leftover, spoiled, and tray waste from live logs</CardDescription>
                     </CardHeader>
                     <div className="mx-auto h-64 w-64 pb-4">
                       <Doughnut data={wasteChart} options={{ responsive: true, maintainAspectRatio: false }} />
@@ -84,7 +111,7 @@ export default function AdminAnalyticsPage() {
                       data={{
                         labels: data.waste.trend.labels,
                         datasets: [{
-                          label: "Waste %",
+                          label: "Waste qty",
                           data: data.waste.trend.values,
                           backgroundColor: chartColors.red,
                           borderRadius: 8,
@@ -100,16 +127,35 @@ export default function AdminAnalyticsPage() {
                   <CardTitle className="text-[#041B52]">Top Waste Items</CardTitle>
                 </CardHeader>
                 <div className="space-y-2 px-6 pb-6">
+                  {data.waste.topItems.length === 0 && (
+                    <p className="text-sm text-[#AEB6C2]">No waste logged this week.</p>
+                  )}
                   {data.waste.topItems.map((item) => (
                     <div key={item.name} className="flex justify-between rounded-xl border border-[#AEB6C2]/40 px-4 py-3">
                       <div>
                         <p className="font-medium text-[#041B52]">{item.name}</p>
-                        <p className="text-sm text-[#AEB6C2]">{item.reason}</p>
+                        <p className="text-sm text-[#AEB6C2]">
+                          {item.reason}
+                          {item.estimatedCost != null ? ` · ${formatCurrency(item.estimatedCost)}` : ""}
+                        </p>
                       </div>
                       <Badge variant="outline">{item.qty} units</Badge>
                     </div>
                   ))}
                 </div>
+                {data.waste.reasons.length > 0 && (
+                  <div className="space-y-2 px-6 pb-6">
+                    <p className="text-sm font-medium text-[#041B52]">Reasons this week</p>
+                    {data.waste.reasons.map((row) => (
+                      <div key={row.reason} className="flex justify-between text-sm text-[#041B52]">
+                        <span className="capitalize">{row.reason}</span>
+                        <span>
+                          {row.qty} · {formatCurrency(row.estimatedCost)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </Card>
             </TabsContent>
 

@@ -50,7 +50,7 @@ export async function computeDashboard(): Promise<DashboardData> {
   const weekAgo = new Date(today)
   weekAgo.setDate(weekAgo.getDate() - 7)
 
-  const [transactions, inventory, signups] = await Promise.all([
+  const [transactions, inventory, signups, wasteData] = await Promise.all([
     prisma.transaction.findMany({
       where: { schoolId, createdAt: { gte: weekAgo } },
       select: { amount: true, mealType: true, createdAt: true },
@@ -59,6 +59,7 @@ export async function computeDashboard(): Promise<DashboardData> {
     prisma.studentLunchSignup.count({
       where: { schoolId, date: { gte: today } },
     }),
+    computeWaste(),
   ])
 
   const todayTx = transactions.filter((t) => t.createdAt >= today)
@@ -93,7 +94,7 @@ export async function computeDashboard(): Promise<DashboardData> {
         signups + todayTx.length > 0
           ? `${signups + todayTx.length} meals projected from signups + today`
           : "No meal data yet",
-      wastePercent: 0,
+      wastePercent: wasteData.wastePercent,
       participationCount: todayTx.length,
       lowStockCount,
       totalInventoryItems: inventory.length,
@@ -223,13 +224,197 @@ export async function computeReconciliation(): Promise<ReconciliationData> {
 }
 
 export async function computeWaste(): Promise<WasteData> {
+  const schoolId = await resolveSchoolId()
+  const today = startOfDay()
+  const weekAgo = new Date(today)
+  weekAgo.setDate(weekAgo.getDate() - 7)
+
+  const [wasteMovements, outgoingMovements, productionOrders] = await Promise.all([
+    prisma.inventoryMovement.findMany({
+      where: { schoolId, type: "waste", createdAt: { gte: weekAgo } },
+      include: { inventoryItem: { select: { name: true, cost: true } } },
+      orderBy: { createdAt: "desc" },
+    }),
+    prisma.inventoryMovement.findMany({
+      where: {
+        schoolId,
+        type: { in: ["waste", "usage", "production"] },
+        createdAt: { gte: weekAgo },
+      },
+      select: { type: true, quantity: true },
+    }),
+    prisma.productionOrder.findMany({
+      where: { schoolId, updatedAt: { gte: weekAgo } },
+      select: { wasteLog: true, updatedAt: true },
+    }),
+  ])
+
+  const itemIds = new Set<string>()
+  type WasteRow = {
+    itemId: string
+    name: string
+    qty: number
+    cost: number
+    reason: string
+    at: Date
+  }
+  const rows: WasteRow[] = wasteMovements.map((m) => {
+    itemIds.add(m.inventoryItemId)
+    return {
+      itemId: m.inventoryItemId,
+      name: m.inventoryItem.name,
+      qty: Math.abs(m.quantity),
+      cost: Number(m.inventoryItem.cost) || 0,
+      reason: parseWasteReason(m.note),
+      at: m.createdAt,
+    }
+  })
+
+  const movementKeys = new Set(
+    wasteMovements.map(
+      (m) => `${m.inventoryItemId}:${Math.abs(m.quantity)}:${m.createdAt.toISOString().slice(0, 16)}`
+    )
+  )
+
+  for (const order of productionOrders) {
+    const log = Array.isArray(order.wasteLog) ? order.wasteLog : []
+    for (const entry of log) {
+      if (!entry || typeof entry !== "object") continue
+      const rec = entry as { itemId?: string; quantity?: number; note?: string; at?: string }
+      const itemId = rec.itemId
+      const qty = Math.abs(Number(rec.quantity) || 0)
+      if (!itemId || qty <= 0) continue
+      const at = rec.at ? new Date(rec.at) : order.updatedAt
+      if (Number.isNaN(at.getTime()) || at < weekAgo) continue
+      const key = `${itemId}:${qty}:${at.toISOString().slice(0, 16)}`
+      if (movementKeys.has(key)) continue
+      itemIds.add(itemId)
+      rows.push({
+        itemId,
+        name: "",
+        qty,
+        cost: 0,
+        reason: parseWasteReason(rec.note),
+        at,
+      })
+    }
+  }
+
+  if (itemIds.size > 0) {
+    const missingNames = rows.filter((r) => !r.name).map((r) => r.itemId)
+    if (missingNames.length > 0) {
+      const items = await prisma.inventoryItem.findMany({
+        where: { id: { in: [...new Set(missingNames)] } },
+        select: { id: true, name: true, cost: true },
+      })
+      const map = Object.fromEntries(items.map((i) => [i.id, i]))
+      for (const row of rows) {
+        if (!row.name && map[row.itemId]) {
+          row.name = map[row.itemId].name
+          row.cost = Number(map[row.itemId].cost) || 0
+        }
+      }
+    }
+  }
+
+  const estimated = (row: WasteRow) => Math.round(row.qty * row.cost * 100) / 100
+  const todayRows = rows.filter((r) => r.at >= today)
+  const weekRows = rows.filter((r) => r.at >= weekAgo)
+
+  const sumQty = (list: WasteRow[]) => list.reduce((s, r) => s + r.qty, 0)
+  const sumCost = (list: WasteRow[]) =>
+    Math.round(list.reduce((s, r) => s + estimated(r), 0) * 100) / 100
+
+  const reasonMap = new Map<string, { qty: number; estimatedCost: number }>()
+  for (const row of weekRows) {
+    const current = reasonMap.get(row.reason) ?? { qty: 0, estimatedCost: 0 }
+    current.qty += row.qty
+    current.estimatedCost += estimated(row)
+    reasonMap.set(row.reason, current)
+  }
+
+  const itemMap = new Map<string, { qty: number; reason: string; estimatedCost: number }>()
+  for (const row of weekRows) {
+    const key = row.name || "Unknown item"
+    const current = itemMap.get(key) ?? { qty: 0, reason: row.reason, estimatedCost: 0 }
+    current.qty += row.qty
+    current.estimatedCost += estimated(row)
+    if (row.qty >= (itemMap.get(key)?.qty ?? 0)) current.reason = row.reason
+    itemMap.set(key, current)
+  }
+
+  const topItems = [...itemMap.entries()]
+    .sort((a, b) => b[1].qty - a[1].qty)
+    .slice(0, 8)
+    .map(([name, v]) => ({
+      name,
+      qty: v.qty,
+      reason: v.reason,
+      estimatedCost: Math.round(v.estimatedCost * 100) / 100,
+    }))
+
+  const labels = dayLabels(7)
+  const trendValues = labels.map((_, idx) => {
+    const d = new Date(today)
+    d.setDate(d.getDate() - (6 - idx))
+    const next = new Date(d)
+    next.setDate(next.getDate() + 1)
+    return weekRows.filter((r) => r.at >= d && r.at < next).reduce((s, r) => s + r.qty, 0)
+  })
+
+  const spoiledQty = weekRows.filter((r) => r.reason === "spoiled").reduce((s, r) => s + r.qty, 0)
+  const leftoverQty = weekRows.filter((r) => r.reason === "leftover").reduce((s, r) => s + r.qty, 0)
+  const overproductionQty = weekRows
+    .filter((r) => r.reason === "overproduction")
+    .reduce((s, r) => s + r.qty, 0)
+  const discardedQty = weekRows
+    .filter((r) => r.reason === "tray waste" || r.reason === "other")
+    .reduce((s, r) => s + r.qty, 0)
+
+  const wasteQty = outgoingMovements
+    .filter((m) => m.type === "waste")
+    .reduce((s, m) => s + Math.abs(m.quantity), 0)
+  const outgoingQty = outgoingMovements.reduce((s, m) => s + Math.abs(m.quantity), 0)
+  const wastePercent = outgoingQty > 0 ? Math.round((wasteQty / outgoingQty) * 100) : 0
+
   return {
     source: "database",
-    breakdown: { prepared: 0, served: 0, saved: 0, expired: 0, discarded: 0 },
-    trend: { labels: [], values: [] },
-    topItems: [],
+    breakdown: {
+      prepared: overproductionQty,
+      served: 0,
+      saved: leftoverQty,
+      expired: spoiledQty,
+      discarded: discardedQty,
+    },
+    trend: { labels, values: trendValues },
+    topItems,
+    dailyTotalQty: sumQty(todayRows),
+    weeklyTotalQty: sumQty(weekRows),
+    dailyEstimatedCost: sumCost(todayRows),
+    weeklyEstimatedCost: sumCost(weekRows),
+    reasons: [...reasonMap.entries()]
+      .sort((a, b) => b[1].qty - a[1].qty)
+      .map(([reason, v]) => ({
+        reason,
+        qty: v.qty,
+        estimatedCost: Math.round(v.estimatedCost * 100) / 100,
+      })),
+    wastePercent,
     refreshedAt: new Date().toISOString(),
   }
+}
+
+const WASTE_REASONS = ["leftover", "tray waste", "overproduction", "spoiled", "other"] as const
+
+function parseWasteReason(note?: string | null): string {
+  const n = (note ?? "").toLowerCase()
+  for (const reason of WASTE_REASONS) {
+    if (n.includes(reason)) return reason
+  }
+  if (n.includes("expir") || n.includes("spoil")) return "spoiled"
+  if (n.includes("production") || n.includes("overprod")) return "overproduction"
+  if (n.includes("tray")) return "tray waste"
+  return "other"
 }
 
 export async function computeAnalytics(): Promise<AnalyticsData> {

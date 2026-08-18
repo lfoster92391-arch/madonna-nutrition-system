@@ -74,7 +74,7 @@ export async function getOperationsSnapshot(): Promise<OperationsSnapshot> {
         prisma.inventoryMovement.findMany({
           where: { schoolId },
           orderBy: { createdAt: "desc" },
-          take: 100,
+          take: 250,
         }),
         prisma.receivingRecord.findMany({
           where: { schoolId },
@@ -406,8 +406,12 @@ export async function recordInventoryMovement(input: {
   quantity: number
   note?: string
   createdBy?: string
+  loggedAt?: string
 }) {
-  const qtyDelta = input.type === "waste" || input.type === "production" ? -Math.abs(input.quantity) : input.quantity
+  const qtyDelta =
+    input.type === "waste" || input.type === "production" || input.type === "usage"
+      ? -Math.abs(input.quantity)
+      : input.quantity
 
   requireDatabase()
 
@@ -416,6 +420,9 @@ export async function recordInventoryMovement(input: {
     where: { id: input.inventoryItemId, schoolId },
   })
   if (!item) throw new Error("Inventory item not found")
+
+  const loggedAt = input.loggedAt ? new Date(input.loggedAt) : undefined
+  const createdAt = loggedAt && !Number.isNaN(loggedAt.getTime()) ? loggedAt : undefined
 
   const [movement, updated] = await prisma.$transaction([
     prisma.inventoryMovement.create({
@@ -427,6 +434,7 @@ export async function recordInventoryMovement(input: {
         storageLocationId: item.storageLocationId,
         schoolId,
         createdBy: input.createdBy ?? "Kitchen",
+        ...(createdAt ? { createdAt } : {}),
       },
     }),
     prisma.inventoryItem.update({

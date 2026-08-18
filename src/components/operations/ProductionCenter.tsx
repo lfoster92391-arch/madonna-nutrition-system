@@ -10,6 +10,7 @@ import { Card, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import type { ProductionOrder } from "@/lib/operations/types"
+import { getSessionHeaders } from "@/lib/api/client"
 
 interface ProductionData {
   source: string
@@ -52,7 +53,7 @@ export function ProductionCenter() {
     mutationFn: async (payload: Record<string, unknown>) => {
       const res = await fetch("/api/production", {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...getSessionHeaders() },
         body: JSON.stringify(payload),
       })
       if (!res.ok) throw new Error("Failed to update production order")

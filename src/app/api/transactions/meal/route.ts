@@ -7,6 +7,7 @@ import { badRequest, notFound, serverError, withDatabase } from "@/lib/api/respo
 import { requireCashierOrApiKey } from "@/lib/api/session-auth"
 import { maybeSendLowBalanceAlerts } from "@/lib/email/low-balance-alerts"
 import { canonicalMainMealPricing, isMainLunchKioskMeal } from "@/lib/lunch-pricing"
+import { deductInventoryForSale } from "@/lib/operations/sale-deduction"
 import { todayDateOnly } from "@/lib/teacher/db"
 
 export async function POST(request: Request) {
@@ -74,6 +75,24 @@ export async function POST(request: Request) {
       ])
 
       void updatedStudent
+
+      const createdBy =
+        "user" in auth && auth.user
+          ? `${auth.user.firstName} ${auth.user.lastName}`.trim()
+          : transaction.processedBy
+            ? `${transaction.processedBy.firstName} ${transaction.processedBy.lastName}`.trim()
+            : "Kiosk"
+
+      try {
+        await deductInventoryForSale({
+          schoolId,
+          soldName: meal,
+          soldLabel: `${student.firstName} ${student.lastName} · ${meal}`,
+          createdBy,
+        })
+      } catch (error) {
+        console.error("Inventory sale deduction failed", error)
+      }
 
       void maybeSendLowBalanceAlerts({
         schoolId,

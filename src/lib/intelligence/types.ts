@@ -74,7 +74,13 @@ export interface WasteData {
   source: DataSource
   breakdown: { prepared: number; served: number; saved: number; expired: number; discarded: number }
   trend: ChartSeries
-  topItems: Array<{ name: string; qty: number; reason: string }>
+  topItems: Array<{ name: string; qty: number; reason: string; estimatedCost?: number }>
+  dailyTotalQty: number
+  weeklyTotalQty: number
+  dailyEstimatedCost: number
+  weeklyEstimatedCost: number
+  reasons: Array<{ reason: string; qty: number; estimatedCost: number }>
+  wastePercent: number
   refreshedAt: string
 }
 
