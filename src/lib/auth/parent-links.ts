@@ -1,7 +1,8 @@
 import { prisma } from "@/lib/prisma"
 import { isDatabaseEnabled } from "@/lib/db/config"
+import { isParentCapableDbRole } from "@/lib/auth/portal-roles"
 
-/** Resolve whether a parent user has at least one linked student (User or ParentStudent). */
+/** Resolve whether a parent-capable user has at least one linked student (User or ParentStudent). */
 export async function parentHasLinkedStudents(userId: string): Promise<boolean> {
   if (!isDatabaseEnabled()) return false
 
@@ -10,7 +11,7 @@ export async function parentHasLinkedStudents(userId: string): Promise<boolean> 
     select: { role: true, email: true, linkedStudentIds: true },
   })
 
-  if (!user || user.role !== "PARENT") return false
+  if (!user || !isParentCapableDbRole(user.role)) return false
 
   if ((user.linkedStudentIds ?? []).length > 0) return true
 
@@ -47,7 +48,7 @@ export async function linkParentUserToStudent(input: {
     },
   })
 
-  if (!user || user.role !== "PARENT") {
+  if (!user || !isParentCapableDbRole(user.role)) {
     throw new Error("Only parent accounts can link students")
   }
 

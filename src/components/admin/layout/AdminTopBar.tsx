@@ -12,6 +12,7 @@ import {
   User,
 } from "lucide-react"
 import { useAuth } from "@/components/providers/AuthProvider"
+import { PortalRoleSwitcher } from "@/components/auth/PortalRoleSwitcher"
 import { BRAND } from "@/config/brand"
 import { SCHOOL } from "@/config/school"
 import { useAdminLayout } from "@/components/admin/layout/admin-layout-context"
@@ -110,6 +111,7 @@ export function AdminTopBar() {
       </div>
 
       <div className="ml-auto flex items-center gap-1.5 sm:gap-2 md:gap-3">
+        <PortalRoleSwitcher />
         <button
           type="button"
           className="flex min-h-11 min-w-11 items-center justify-center rounded-xl border shadow-sm transition hover:bg-[#0A1E3F]/5 lg:hidden"

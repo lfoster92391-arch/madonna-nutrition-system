@@ -4,6 +4,7 @@ import Image from "next/image"
 import Link from "next/link"
 import { Bell, Settings, User } from "lucide-react"
 import { PARENT_NAVY } from "@/components/parent/parent-dashboard-styles"
+import { PortalRoleSwitcher } from "@/components/auth/PortalRoleSwitcher"
 
 type ParentTopNavProps = {
   alertCount?: number
@@ -33,6 +34,7 @@ export function ParentTopNav({ alertCount = 0, title = "Parent Dashboard" }: Par
         </h1>
 
         <div className="flex shrink-0 items-center gap-0.5 sm:gap-1">
+          <PortalRoleSwitcher className="mr-1" />
           <Link
             href="/parent?drawer=alerts"
             className="relative flex min-h-11 min-w-11 items-center justify-center rounded-[10px] transition hover:bg-[#041B52]/5"

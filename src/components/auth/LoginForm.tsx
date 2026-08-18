@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { Eye, EyeOff, HelpCircle, Lock, User } from "lucide-react"
 import Image from "next/image"
 import { useAuth, type PortalRole } from "@/components/providers/AuthProvider"
+import { canAccessParentPortal } from "@/lib/auth/portal-roles"
 import { BRAND } from "@/config/brand"
 import { getItHelpDeskMailto, IT_HELP_DESK_LABEL } from "@/config/it-help"
 import { Button } from "@/components/ui/button"
@@ -40,13 +41,15 @@ export function LoginForm({ role, redirectTo, variant = "page" }: LoginFormProps
   const embedded = variant === "embedded"
 
   useEffect(() => {
-    if (user?.role === role) {
-      if (role === "parent" && user.needsStudentLink) {
-        router.replace("/login/parent/link")
-        return
-      }
-      router.replace(redirectTo)
+    if (!user) return
+    const matchesPortal =
+      user.role === role || (role === "parent" && canAccessParentPortal(user))
+    if (!matchesPortal) return
+    if (role === "parent" && user.needsStudentLink) {
+      router.replace("/login/parent/link")
+      return
     }
+    router.replace(redirectTo)
   }, [user, role, redirectTo, router])
 
   async function handleSignIn(e: React.FormEvent) {
