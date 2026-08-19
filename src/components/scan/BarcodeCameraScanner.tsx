@@ -354,7 +354,7 @@ export function BarcodeCameraScanner({
             flash ? "border-[#00A83E] ring-4 ring-[#00A83E]/40" : "border-[#041B52]/30"
           )}
         >
-          <div className="relative aspect-[4/3] w-full min-h-[220px] sm:min-h-[280px] md:min-h-[320px] lg:min-h-[360px]">
+          <div className="relative h-[min(36svh,220px)] w-full sm:h-[min(38svh,260px)] md:h-[min(40svh,300px)] lg:h-auto lg:min-h-[280px] lg:aspect-[4/3]">
             <video
               ref={videoRef}
               className="absolute inset-0 h-full w-full object-cover"

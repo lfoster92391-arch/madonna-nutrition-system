@@ -48,8 +48,8 @@ export function MustChangePasswordGate({ children }: { children: React.ReactNode
   return (
     <>
       {children}
-      <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4">
-        <div className="w-full max-w-md rounded-2xl border border-silver/60 bg-white p-6 shadow-lg">
+      <div className="fixed inset-0 z-[100] flex items-center justify-center overflow-y-auto bg-black/50 p-4">
+        <div className="my-auto max-h-[min(90dvh,36rem)] w-full max-w-md overflow-y-auto rounded-2xl border border-silver/60 bg-white p-6 shadow-lg">
           <h2 className="text-lg font-bold text-primary">Change your password</h2>
           <p className="mt-2 text-sm text-silver-foreground">
             Your account was created through a bulk import. Set a new password before continuing.

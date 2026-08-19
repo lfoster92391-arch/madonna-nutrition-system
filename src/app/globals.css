@@ -187,9 +187,33 @@ body {
   --scan-silver: #aeb6c2;
   --scan-text: #111827;
   /* Keypad sizing — mobile → desktop (~10% smaller than prior v2) */
-  --scan-keypad-min-h: 47px;
+  --scan-keypad-min-h: 44px;
   --scan-keypad-gap: 4px;
   --scan-keypad-font: 0.9rem;
+}
+
+/* Fill the visual viewport without collapsing when 100vh ≠ visible height (iOS chrome).
+   Small screens scroll; large screens lock to the station height. */
+.scan-station-v2-shell {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  width: 100%;
+  min-height: 100vh;
+  min-height: 100svh;
+  min-height: 100dvh;
+  height: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (min-width: 1024px) {
+  .scan-station-v2-shell {
+    height: 100dvh;
+    max-height: 100dvh;
+    overflow: hidden;
+  }
 }
 
 @media (min-width: 640px) {
