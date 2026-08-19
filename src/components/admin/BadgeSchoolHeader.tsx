@@ -23,10 +23,10 @@ export function BadgeSchoolHeader({ subtitle }: BadgeSchoolHeaderProps) {
           className="h-[0.40in] w-[0.40in] shrink-0 object-contain object-left"
         />
         <div className="min-w-0 flex-1 leading-none">
-          <p className="whitespace-nowrap text-[13px] font-bold uppercase tracking-[0.04em]">
+          <p className="whitespace-nowrap text-[13.5px] font-bold uppercase tracking-[0.04em]">
             Madonna High School
           </p>
-          <p className="mt-1 truncate text-[8px] font-semibold uppercase tracking-[0.12em] opacity-90">
+          <p className="mt-[0.03in] truncate text-[9px] font-semibold uppercase tracking-wide opacity-90">
             {subtitle}
           </p>
         </div>
