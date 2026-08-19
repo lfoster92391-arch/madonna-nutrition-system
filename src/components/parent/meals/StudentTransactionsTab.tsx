@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { formatTransactionDateTime } from "@/lib/parent-transactions"
 import { formatCurrency } from "@/lib/utils"
+import { formatSignedTransactionAmount, isCreditDeposit, transactionListTypeLabel } from "@/lib/transactions/display"
 
 type StudentTransactionsTabProps = {
   studentId: string
@@ -56,23 +57,22 @@ export function StudentTransactionsTab({ studentId, studentName }: StudentTransa
               </thead>
               <tbody>
                 {studentTransactions.map((tx) => {
-                  const isDeposit = tx.type === "deposit"
+                  const isCredit = isCreditDeposit(tx)
                   return (
                     <tr key={tx.id} className="border-b border-silver/20 last:border-0">
                       <td className="px-4 py-3 text-silver-foreground md:px-6">
                         {formatTransactionDateTime(tx.timestamp)}
                       </td>
                       <td className="px-4 py-3 capitalize text-silver-foreground md:px-6">
-                        {isDeposit ? "Deposit" : "Meal"}
+                        {transactionListTypeLabel(tx)}
                       </td>
                       <td className="px-4 py-3 text-silver-foreground md:px-6">{tx.meal}</td>
                       <td
                         className={`px-4 py-3 text-right font-bold tabular-nums md:px-6 ${
-                          isDeposit ? "text-success" : "text-primary"
+                          isCredit ? "text-success" : "text-primary"
                         }`}
                       >
-                        {isDeposit ? "+" : "−"}
-                        {formatCurrency(tx.amount)}
+                        {formatSignedTransactionAmount(tx)}
                       </td>
                       <td className="px-4 py-3 text-right tabular-nums text-silver-foreground md:px-6">
                         {formatCurrency(tx.balanceAfter)}

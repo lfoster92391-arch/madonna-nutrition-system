@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server"
-import { creditStaffDeposit } from "@/lib/db/deposits"
+import {
+  creditStaffDeposit,
+  debitStaffBalance,
+  isBalanceDebitError,
+} from "@/lib/db/deposits"
 import { mapUser } from "@/lib/db/mappers"
 import { staffDepositSchema } from "@/lib/api/validation"
 import { badRequest, notFound, serverError, withDatabase } from "@/lib/api/response"
@@ -18,7 +22,7 @@ export async function POST(request: Request) {
         return badRequest("Invalid staff payment", parsed.error.flatten())
       }
 
-      const { userId, amount, method, note } = parsed.data
+      const { userId, amount, method, note, action } = parsed.data
       const staffUser = await prisma.user.findFirst({
         where: {
           id: userId,
@@ -32,26 +36,40 @@ export async function POST(request: Request) {
         return notFound("Staff account not found")
       }
 
-      const credit = await creditStaffDeposit({
-        userId: staffUser.id,
-        schoolId: auth.schoolId,
-        amountDollars: amount,
-        performedBy: auth.user.id,
-        processedByUserId: auth.user.id,
-        method,
-        note,
-      })
+      const ledger =
+        action === "subtract"
+          ? await debitStaffBalance({
+              userId: staffUser.id,
+              schoolId: auth.schoolId,
+              amountDollars: amount,
+              performedBy: auth.user.id,
+              processedByUserId: auth.user.id,
+              note,
+            })
+          : await creditStaffDeposit({
+              userId: staffUser.id,
+              schoolId: auth.schoolId,
+              amountDollars: amount,
+              performedBy: auth.user.id,
+              processedByUserId: auth.user.id,
+              method,
+              note,
+            })
 
       const updated = await prisma.user.findUnique({ where: { id: staffUser.id } })
 
       return NextResponse.json(
         {
-          balanceAfter: credit.balanceAfter,
+          balanceAfter: ledger.balanceAfter,
+          amountDebited: "amountDebited" in ledger ? ledger.amountDebited : undefined,
           user: updated ? mapUser(updated) : undefined,
         },
         { status: 201 }
       )
     } catch (error) {
+      if (isBalanceDebitError(error)) {
+        return badRequest(error.message)
+      }
       console.error("POST /api/transactions/staff-deposit", error)
       return serverError()
     }

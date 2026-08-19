@@ -8,6 +8,7 @@ import { SCHOOL } from "@/config/school"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { formatCurrency } from "@/lib/utils"
+import { formatSignedTransactionAmount, isCreditDeposit, transactionListTypeLabel } from "@/lib/transactions/display"
 
 export function ParentTransactionsList() {
   const { user } = useAuth()
@@ -59,7 +60,7 @@ export function ParentTransactionsList() {
               </thead>
               <tbody>
                 {familyTransactions.map((tx) => {
-                  const isDeposit = tx.type === "deposit"
+                  const isCredit = isCreditDeposit(tx)
                   return (
                     <tr key={tx.id} className="border-b border-silver/20 last:border-0">
                       <td className="px-6 py-4 text-silver-foreground">
@@ -67,16 +68,15 @@ export function ParentTransactionsList() {
                       </td>
                       <td className="px-6 py-4 font-medium text-primary">{tx.studentName}</td>
                       <td className="px-6 py-4 capitalize text-silver-foreground">
-                        {isDeposit ? "Deposit" : "Meal"}
+                        {transactionListTypeLabel(tx)}
                       </td>
                       <td className="px-6 py-4 text-silver-foreground">{tx.meal}</td>
                       <td
                         className={`px-6 py-4 text-right font-bold tabular-nums ${
-                          isDeposit ? "text-success" : "text-primary"
+                          isCredit ? "text-success" : "text-primary"
                         }`}
                       >
-                        {isDeposit ? "+" : "−"}
-                        {formatCurrency(tx.amount)}
+                        {formatSignedTransactionAmount(tx)}
                       </td>
                       <td className="px-6 py-4 text-right tabular-nums text-silver-foreground">
                         {formatCurrency(tx.balanceAfter)}

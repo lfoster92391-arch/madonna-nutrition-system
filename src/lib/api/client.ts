@@ -85,27 +85,32 @@ export const api = {
     amount: number
     method?: "cash" | "check" | "card" | "other"
     note?: string
+    action?: "add" | "subtract"
   }) =>
-    fetchJson<import("@/lib/types").Transaction & { balanceAfter?: number }>(
-      "/api/transactions/office-deposit",
-      {
-        method: "POST",
-        body: JSON.stringify(input),
+    fetchJson<
+      import("@/lib/types").Transaction & {
+        balanceAfter?: number
+        amountDebited?: number
       }
-    ),
+    >("/api/transactions/office-deposit", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
   recordStaffOfficePayment: (input: {
     userId: string
     amount: number
     method?: "cash" | "check" | "card" | "other"
     note?: string
+    action?: "add" | "subtract"
   }) =>
-    fetchJson<{ balanceAfter: number; user?: import("@/lib/types").User }>(
-      "/api/transactions/staff-deposit",
-      {
-        method: "POST",
-        body: JSON.stringify(input),
-      }
-    ),
+    fetchJson<{
+      balanceAfter: number
+      amountDebited?: number
+      user?: import("@/lib/types").User
+    }>("/api/transactions/staff-deposit", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
   syncBatch: (
     transactions: Array<{
       clientTxId: string

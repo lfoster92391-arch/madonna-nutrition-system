@@ -7,6 +7,7 @@ import { useParentTransactions } from "@/components/parent/useParentTransactions
 import { PARENT_CARD, PARENT_NAVY } from "@/components/parent/parent-dashboard-styles"
 import { Button } from "@/components/ui/button"
 import { formatTransactionDate } from "@/lib/parent-transactions"
+import { formatSignedTransactionAmount, isCreditDeposit } from "@/lib/transactions/display"
 import { formatCurrency } from "@/lib/utils"
 import { getTransactionTypeLabel, isWithinCurrentMonth } from "./payment-helpers"
 
@@ -133,7 +134,7 @@ export function PaymentsOverviewTab({ onAddFunds }: PaymentsOverviewTabProps) {
         ) : (
           <ul className="divide-y divide-[#C8CDD7]/60">
             {recentActivity.map((tx) => {
-              const isDeposit = tx.type === "deposit"
+              const isCredit = isCreditDeposit(tx)
               return (
                 <li
                   key={tx.id}
@@ -149,12 +150,11 @@ export function PaymentsOverviewTab({ onAddFunds }: PaymentsOverviewTabProps) {
                   </div>
                   <span
                     className={`shrink-0 text-sm font-bold tabular-nums ${
-                      isDeposit ? "text-success" : ""
+                      isCredit ? "text-success" : ""
                     }`}
-                    style={!isDeposit ? { color: PARENT_NAVY } : undefined}
+                    style={!isCredit ? { color: PARENT_NAVY } : undefined}
                   >
-                    {isDeposit ? "+" : "−"}
-                    {formatCurrency(tx.amount)}
+                    {formatSignedTransactionAmount(tx)}
                   </span>
                 </li>
               )

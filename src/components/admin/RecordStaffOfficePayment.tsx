@@ -2,9 +2,9 @@
 
 import { useState } from "react"
 import { useQueryClient } from "@tanstack/react-query"
-import { CheckCircle2, DollarSign } from "lucide-react"
+import { CheckCircle2, DollarSign, Minus } from "lucide-react"
 import { api } from "@/lib/api/client"
-import { formatCurrency } from "@/lib/utils"
+import { cn, formatCurrency } from "@/lib/utils"
 import { formatUserName } from "@/lib/users"
 import type { User } from "@/lib/types"
 import { Button } from "@/components/ui/button"
@@ -12,6 +12,7 @@ import { Input, Label, Select } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 
 type PaymentMethod = "cash" | "check" | "card" | "other"
+type FundsAction = "add" | "subtract"
 
 const METHOD_OPTIONS: Array<{ value: PaymentMethod; label: string }> = [
   { value: "cash", label: "Cash" },
@@ -22,19 +23,30 @@ const METHOD_OPTIONS: Array<{ value: PaymentMethod; label: string }> = [
 
 export function RecordStaffOfficePayment({
   staffUser,
+  initialAction = "add",
   onDone,
 }: {
   staffUser: User
+  initialAction?: FundsAction
   onDone?: (balanceAfter: number) => void
 }) {
   const queryClient = useQueryClient()
+  const [action, setAction] = useState<FundsAction>(initialAction)
   const [amount, setAmount] = useState("")
   const [method, setMethod] = useState<PaymentMethod>("cash")
   const [note, setNote] = useState("")
   const [busy, setBusy] = useState(false)
+  const [confirming, setConfirming] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const [balance, setBalance] = useState(staffUser.accountBalance ?? 0)
+
+  function switchAction(next: FundsAction) {
+    setAction(next)
+    setConfirming(false)
+    setError(null)
+    setSuccess(null)
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -47,30 +59,67 @@ export function RecordStaffOfficePayment({
       return
     }
 
+    if (action === "subtract") {
+      if (balance <= 0) {
+        setError("Nothing to take off. Balance is already $0 or less.")
+        return
+      }
+      if (!confirming) {
+        setConfirming(true)
+        return
+      }
+    }
+
     setBusy(true)
     try {
       const result = await api.recordStaffOfficePayment({
         userId: staffUser.id,
         amount: dollars,
-        method,
+        method: action === "add" ? method : undefined,
         note: note.trim() || undefined,
+        action,
       })
       const balanceAfter =
-        typeof result.balanceAfter === "number" ? result.balanceAfter : balance + dollars
+        typeof result.balanceAfter === "number"
+          ? result.balanceAfter
+          : action === "add"
+            ? balance + dollars
+            : Math.max(0, balance - dollars)
+      const takenOff =
+        typeof result.amountDebited === "number" ? result.amountDebited : Math.min(dollars, balance)
       setBalance(balanceAfter)
-      setSuccess(
-        `Payment recorded. ${formatUserName(staffUser)} now has ${formatCurrency(balanceAfter)} on their lunch account.`
-      )
+      if (action === "subtract") {
+        const clampedNote =
+          takenOff < dollars
+            ? ` Took ${formatCurrency(takenOff)} off (cannot go below $0).`
+            : ""
+        setSuccess(
+          `Took ${formatCurrency(takenOff)} off. ${formatUserName(staffUser)} now has ${formatCurrency(balanceAfter)} on their lunch account.${clampedNote}`
+        )
+      } else {
+        setSuccess(
+          `Payment recorded. ${formatUserName(staffUser)} now has ${formatCurrency(balanceAfter)} on their lunch account.`
+        )
+      }
       setAmount("")
       setNote("")
+      setConfirming(false)
       void queryClient.invalidateQueries({ queryKey: ["users"] })
       onDone?.(balanceAfter)
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not record payment. Try again.")
+      setConfirming(false)
+      setError(err instanceof Error ? err.message : "Could not update the lunch account. Try again.")
     } finally {
       setBusy(false)
     }
   }
+
+  const dollarsPreview = Number.parseFloat(amount)
+  const takeOffAmount =
+    Number.isFinite(dollarsPreview) && dollarsPreview > 0
+      ? Math.min(dollarsPreview, Math.max(0, balance))
+      : 0
+  const balanceAfterPreview = Math.max(0, balance - takeOffAmount)
 
   return (
     <form onSubmit={(e) => void handleSubmit(e)} className="space-y-4">
@@ -79,41 +128,89 @@ export function RecordStaffOfficePayment({
         <strong className="tabular-nums">{formatCurrency(balance)}</strong>
       </p>
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-2 gap-2">
+        <button
+          type="button"
+          className={cn(
+            "min-h-11 rounded-xl border-2 px-3 py-2 text-sm font-semibold",
+            action === "add"
+              ? "border-primary bg-primary text-white"
+              : "border-silver bg-white text-primary"
+          )}
+          onClick={() => switchAction("add")}
+        >
+          Add money
+        </button>
+        <button
+          type="button"
+          className={cn(
+            "min-h-11 rounded-xl border-2 px-3 py-2 text-sm font-semibold",
+            action === "subtract"
+              ? "border-primary bg-primary text-white"
+              : "border-silver bg-white text-primary"
+          )}
+          onClick={() => switchAction("subtract")}
+        >
+          Take money off
+        </button>
+      </div>
+
+      {action === "subtract" && (
+        <p className="text-sm text-silver-foreground">
+          Use this for a correction, refund, or typing mistake. This is not a lunch charge. The
+          account will not go below $0.
+        </p>
+      )}
+
+      <div className={cn("grid gap-4", action === "add" ? "sm:grid-cols-2" : "")}>
         <div>
-          <Label htmlFor="staff-pay-amount">Amount paid ($)</Label>
+          <Label htmlFor="staff-pay-amount">
+            {action === "add" ? "Amount paid ($)" : "Amount to take off ($)"}
+          </Label>
           <Input
             id="staff-pay-amount"
             inputMode="decimal"
             placeholder="25.00"
             value={amount}
-            onChange={(e) => setAmount(e.target.value)}
+            onChange={(e) => {
+              setAmount(e.target.value)
+              setConfirming(false)
+            }}
             autoComplete="off"
           />
         </div>
-        <div>
-          <Label htmlFor="staff-pay-method">How did they pay?</Label>
-          <Select
-            id="staff-pay-method"
-            value={method}
-            onChange={(e) => setMethod(e.target.value as PaymentMethod)}
-          >
-            {METHOD_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </Select>
-        </div>
+        {action === "add" && (
+          <div>
+            <Label htmlFor="staff-pay-method">How did they pay?</Label>
+            <Select
+              id="staff-pay-method"
+              value={method}
+              onChange={(e) => setMethod(e.target.value as PaymentMethod)}
+            >
+              {METHOD_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </Select>
+          </div>
+        )}
       </div>
 
       <div>
         <Label htmlFor="staff-pay-note">Note (optional)</Label>
         <Textarea
           id="staff-pay-note"
-          placeholder="Check #1234, receipt, etc."
+          placeholder={
+            action === "add"
+              ? "Check #1234, receipt, etc."
+              : "Why you are taking money off — refund, duplicate deposit, etc."
+          }
           value={note}
-          onChange={(e) => setNote(e.target.value)}
+          onChange={(e) => {
+            setNote(e.target.value)
+            setConfirming(false)
+          }}
           rows={2}
         />
       </div>
@@ -133,10 +230,40 @@ export function RecordStaffOfficePayment({
         </p>
       )}
 
-      <Button type="submit" size="lg" className="min-h-12 w-full text-base sm:w-auto" disabled={busy}>
-        <DollarSign className="h-4 w-4" />
-        {busy ? "Saving…" : "Add money to staff account"}
-      </Button>
+      {action === "subtract" && confirming ? (
+        <div className="space-y-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+          <p className="text-sm text-amber-950">
+            Take {formatCurrency(takeOffAmount)} off {formatUserName(staffUser)}&apos;s lunch
+            account? New balance will be {formatCurrency(balanceAfterPreview)}. This is a
+            correction, not a meal charge.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="lg"
+              className="min-h-12"
+              disabled={busy}
+              onClick={() => setConfirming(false)}
+            >
+              Back
+            </Button>
+            <Button type="submit" size="lg" className="min-h-12" disabled={busy}>
+              <Minus className="h-4 w-4" />
+              {busy ? "Saving…" : "Confirm take money off"}
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <Button type="submit" size="lg" className="min-h-12 w-full text-base sm:w-auto" disabled={busy}>
+          {action === "add" ? <DollarSign className="h-4 w-4" /> : <Minus className="h-4 w-4" />}
+          {busy
+            ? "Saving…"
+            : action === "add"
+              ? "Add money to staff account"
+              : "Take money off"}
+        </Button>
+      )}
     </form>
   )
 }

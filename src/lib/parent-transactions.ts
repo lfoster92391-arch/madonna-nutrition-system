@@ -7,7 +7,7 @@ export function isMealTransaction(tx: Transaction): boolean {
 }
 
 export function isDepositTransaction(tx: Transaction): boolean {
-  return tx.type === "deposit"
+  return tx.type === "deposit" && tx.amount >= 0
 }
 
 export function sortTransactionsNewestFirst(transactions: Transaction[]): Transaction[] {
