@@ -326,6 +326,25 @@ body {
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
+
+  .student-badge-card .badge-print-name {
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+}
+
+/* Full name on one line: slightly smaller + tighter tracking so typical names fit. */
+.student-badge-card .badge-print-name {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.025em;
 }
 
 /* On-screen badge preview: keep physical size but allow horizontal pan on phones */
