@@ -69,6 +69,7 @@ const MEAL_ICONS: Record<string, typeof Utensils> = {
   staff_meal: Users,
   ala_carte: ShoppingBag,
   milk: Wine,
+  juice: CupSoda,
 }
 
 type ScanPhase = "ready" | "scanning" | "found" | "complete" | "error"
@@ -213,7 +214,8 @@ export default function ScanStationPage() {
   }, [calendarEvents])
 
   const primaryMeals = kioskMeals.filter((m) => m.type === "student_meal")
-  const secondaryMeals = kioskMeals.filter((m) => m.type === "staff_meal" || m.type === "milk")
+  const drinkExtras = kioskMeals.filter((m) => m.type === "milk" || m.type === "juice")
+  const staffMeals = staffUser ? kioskMeals.filter((m) => m.type === "staff_meal") : []
   const cashierAlaCarte = kioskMeals.find((m) => m.type === "ala_carte")
 
   useEffect(() => {
@@ -511,7 +513,10 @@ export default function ScanStationPage() {
     armScanner()
   }
 
-  async function handleMeal(mealLabel: string, price: number) {
+  async function handleMeal(mealLabel: string, price: number, mealType?: string) {
+    if (mealType === "staff_meal" && !staffUser) {
+      return
+    }
 
     if (staffUser) {
       if (isOffline) {
@@ -539,7 +544,8 @@ export default function ScanStationPage() {
     }
 
     if (!student) return
-    if (mealBlocked) {
+    const isStudentLunch = mealType === "student_meal" || mealLabel === "Student Meal"
+    if (mealBlocked && isStudentLunch) {
       setFlashMessage("MEAL BLOCKED — Allergy conflict. Do not serve today's meal.")
       window.setTimeout(focusScan, 50)
       return
@@ -627,17 +633,21 @@ export default function ScanStationPage() {
 
   const studentMealAvailable =
     student && !mealBlocked && primaryMeals.find((m) => m.type === "student_meal")
-  const staffMealAvailable =
-    staffUser && secondaryMeals.find((m) => m.type === "staff_meal")
+  const staffMealAvailable = staffUser && staffMeals.find((m) => m.type === "staff_meal")
 
   function renderMealButton(meal: (typeof MEAL_PRICES)[number], compact = false) {
     const Icon = MEAL_ICONS[meal.type] ?? Utensils
     const gradeRestricted = meal.grades && student && !meal.grades.includes(student.grade)
-    const blocked = Boolean(student && mealBlocked)
+    const blocked = Boolean(
+      student &&
+        mealBlocked &&
+        (meal.type === "student_meal" || meal.type === "staff_meal")
+    )
     const noDiner = !student && !staffUser
     const disabled = noDiner || !!gradeRestricted || blocked
     const isStudentMeal = meal.type === "student_meal"
     const isStaffMeal = meal.type === "staff_meal"
+    if (isStaffMeal && !staffUser) return null
     const isSelected =
       (!!student && isStudentMeal && !disabled && scanStatus !== "complete") ||
       (!!staffUser && isStaffMeal && !disabled && scanStatus !== "complete")
@@ -649,7 +659,7 @@ export default function ScanStationPage() {
         key={meal.type}
         type="button"
         disabled={disabled}
-        onClick={() => handleMeal(meal.label, meal.price)}
+        onClick={() => handleMeal(meal.label, meal.price, meal.type)}
         className={cn(
           "relative flex flex-col items-center justify-center rounded-xl border transition disabled:cursor-not-allowed disabled:opacity-40 sm:rounded-2xl",
           compact
@@ -989,9 +999,15 @@ export default function ScanStationPage() {
             </div>
           ) : null}
 
-          {secondaryMeals.length > 0 && (
+          {staffMeals.length > 0 && (
             <div className="mobile-scroll-x mt-1 flex shrink-0 gap-1 pb-0.5 sm:mt-1.5 sm:gap-1.5 md:mt-2 md:gap-2 md:overflow-visible">
-              {secondaryMeals.map((meal) => renderMealButton(meal, true))}
+              {staffMeals.map((meal) => renderMealButton(meal, true))}
+            </div>
+          )}
+
+          {drinkExtras.length > 0 && (
+            <div className="mobile-scroll-x mt-1 flex shrink-0 gap-1 pb-0.5 sm:mt-1.5 sm:gap-1.5 md:mt-2 md:gap-2 md:overflow-visible">
+              {drinkExtras.map((meal) => renderMealButton(meal, true))}
             </div>
           )}
 

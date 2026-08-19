@@ -103,13 +103,13 @@ async function main() {
 
   await prisma.onboardingPricing.upsert({
     where: { schoolId: school.id },
-    update: { mainMealPrice: 7.0 },
+    update: { mainMealPrice: 7.0, milkPrice: 1.0 },
     create: {
       schoolId: school.id,
       mainMealPrice: 7.0,
       sideMealPrice: 2.0,
       alaCartePrice: 4.5,
-      milkPrice: 0.75,
+      milkPrice: 1.0,
       agreementText:
         "Madonna High School Food Services Agreement — parents maintain accurate dietary info and current cafeteria balances.",
       emergencyPolicyText:
