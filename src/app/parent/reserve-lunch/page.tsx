@@ -22,7 +22,10 @@ import { Label, Select } from "@/components/ui/input"
 import { formatCurrency } from "@/lib/utils"
 import { filterPublicCalendarEvents, todayDateKey } from "@/lib/calendar-publish"
 import { isSchoolLunchDateKey } from "@/lib/calendar"
-import { DEFAULT_ONBOARDING_PRICING } from "@/config/onboarding-pricing"
+import {
+  DEFAULT_ONBOARDING_PRICING,
+  MILK_JUICE_PRICE,
+} from "@/config/onboarding-pricing"
 import {
   DEFAULT_PIZZA_SLICES,
   isPizzaDayName,
@@ -34,7 +37,7 @@ type MealType = "MAIN" | "SIDE" | "MILK"
 const MEAL_OPTIONS: { value: MealType; label: string; defaultPrice: number }[] = [
   { value: "MAIN", label: "Main Meal", defaultPrice: DEFAULT_ONBOARDING_PRICING.mainMealPrice },
   { value: "SIDE", label: "Side", defaultPrice: DEFAULT_ONBOARDING_PRICING.sideMealPrice },
-  { value: "MILK", label: "Milk", defaultPrice: DEFAULT_ONBOARDING_PRICING.milkPrice },
+  { value: "MILK", label: "Milk", defaultPrice: MILK_JUICE_PRICE },
 ]
 
 interface ReservationRow {

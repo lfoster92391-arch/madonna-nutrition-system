@@ -1,4 +1,4 @@
-import { STUDENT_LUNCH_PRICE } from "@/config/onboarding-pricing"
+import { MILK_JUICE_PRICE, STUDENT_LUNCH_PRICE } from "@/config/onboarding-pricing"
 
 export type AllergySeverity = "severe" | "moderate" | "informational"
 
@@ -227,7 +227,8 @@ export const MEAL_PRICES: MealPrice[] = [
   { type: "student_meal", label: "Student Meal", price: STUDENT_LUNCH_PRICE },
   { type: "staff_meal", label: "Staff Meal", price: STUDENT_LUNCH_PRICE },
   { type: "ala_carte", label: "À La Carte", price: 4.5, grades: ["9", "10", "11", "12"] },
-  { type: "milk", label: "Milk Only", price: 0.75 },
+  { type: "milk", label: "Milk", price: MILK_JUICE_PRICE },
+  { type: "juice", label: "Juice", price: MILK_JUICE_PRICE },
 ]
 
 export type CalendarEventCategory =

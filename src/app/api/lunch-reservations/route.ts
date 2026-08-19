@@ -10,12 +10,13 @@ import { badRequest, forbidden, notFound, serverError, withDatabase } from "@/li
 import { getSessionUserId } from "@/lib/api/session-auth"
 import { isWeekendDateKey, WEEKEND_MENU_DAY_MESSAGE } from "@/lib/calendar"
 import { canonicalMainMealPricing } from "@/lib/lunch-pricing"
+import { MILK_JUICE_PRICE } from "@/config/onboarding-pricing"
 
 const createReservationSchema = z.object({
   parentUserId: z.string().min(1),
   studentId: z.string().min(1),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  mealType: z.enum(["MAIN", "SIDE", "ALA_CARTE", "MILK"]),
+  mealType: z.enum(["MAIN", "SIDE", "ALA_CARTE", "MILK", "JUICE"]),
   price: z.number().nonnegative(),
   sliceCount: z.number().int().positive().max(10).optional(),
 })
@@ -177,12 +178,19 @@ export async function POST(request: Request) {
               menuTitle: menuEvent.title,
               sliceCount,
             })
-          : {
-              isPizzaDay: false as const,
-              sliceCount: null,
-              unitPrice: null,
-              totalAmount: price,
-            }
+          : mealType === "MILK" || mealType === "JUICE"
+            ? {
+                isPizzaDay: false as const,
+                sliceCount: null,
+                unitPrice: null,
+                totalAmount: MILK_JUICE_PRICE,
+              }
+            : {
+                isPizzaDay: false as const,
+                sliceCount: null,
+                unitPrice: null,
+                totalAmount: price,
+              }
 
       const reservation = await prisma.lunchReservation.upsert({
         where: {
