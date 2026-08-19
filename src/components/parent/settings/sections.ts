@@ -17,7 +17,7 @@ export const FAMILY_SETTINGS_SECTIONS: {
   { id: "students", label: "Students" },
   { id: "privacy", label: "Privacy" },
   { id: "security", label: "Security" },
-  { id: "support", label: "Support" },
+  { id: "support", label: "Support Center" },
 ]
 
 export const DEFAULT_FAMILY_SETTINGS_SECTION: FamilySettingsSectionId = "profile"

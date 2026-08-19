@@ -1,13 +1,10 @@
 "use client"
 
-import { HelpCircle, Mail } from "lucide-react"
+import { HelpCircle } from "lucide-react"
 import { Card } from "@/components/ui/card"
 import { STAFF_BG, STAFF_NAVY, STAFF_SILVER } from "@/components/staff/layout/staff-theme"
-import {
-  getItHelpDeskMailto,
-  IT_HELP_DESK_EMAIL,
-  IT_HELP_DESK_LABEL,
-} from "@/config/it-help"
+import { SupportContactList } from "@/components/support/SupportNeedHelp"
+import { formatSupportNames } from "@/config/support-contacts"
 
 export function StaffHelpView() {
   return (
@@ -29,27 +26,12 @@ export function StaffHelpView() {
           Need help?
         </h2>
         <p className="mt-3 text-sm text-silver-foreground">
-          Contact {IT_HELP_DESK_LABEL} for badge issues, account questions, or lunch schedule
+          Contact {formatSupportNames()} for badge issues, account questions, or lunch schedule
           updates. Staff can view their own cafeteria account balance and published menu
           information.
         </p>
-        <div className="mt-6 space-y-3 text-sm">
-          <a
-            href={getItHelpDeskMailto()}
-            className="flex items-center gap-2 font-medium underline-offset-2 hover:underline"
-            style={{ color: STAFF_NAVY }}
-          >
-            <Mail className="h-4 w-4" style={{ color: STAFF_SILVER }} />
-            {IT_HELP_DESK_LABEL}
-          </a>
-          <a
-            href={getItHelpDeskMailto()}
-            className="flex items-center gap-2 underline-offset-2 hover:underline"
-            style={{ color: STAFF_NAVY }}
-          >
-            <Mail className="h-4 w-4" style={{ color: STAFF_SILVER }} />
-            {IT_HELP_DESK_EMAIL}
-          </a>
+        <div className="mt-6">
+          <SupportContactList linkStyle={{ color: STAFF_NAVY }} />
         </div>
       </Card>
     </div>

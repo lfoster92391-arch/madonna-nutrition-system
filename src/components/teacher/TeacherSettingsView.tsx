@@ -4,11 +4,8 @@ import { Bell, Mail, User } from "lucide-react"
 import { useTeacherData } from "@/components/providers/TeacherDataProvider"
 import { Card } from "@/components/ui/card"
 import { TEACHER_NAVY, TEACHER_SILVER } from "@/components/teacher/layout/teacher-theme"
-import {
-  getItHelpDeskMailto,
-  IT_HELP_DESK_EMAIL,
-  IT_HELP_DESK_LABEL,
-} from "@/config/it-help"
+import { SupportContactList } from "@/components/support/SupportNeedHelp"
+import { formatSupportNames } from "@/config/support-contacts"
 
 export function TeacherSettingsView() {
   const { profile } = useTeacherData()
@@ -91,24 +88,11 @@ export function TeacherSettingsView() {
           Support
         </h2>
         <p className="mt-3 text-sm text-silver-foreground">
-          For lunch portal help, email{" "}
-          <a
-            href={getItHelpDeskMailto()}
-            className="font-semibold underline-offset-2 hover:underline"
-            style={{ color: TEACHER_NAVY }}
-          >
-            {IT_HELP_DESK_LABEL}
-          </a>{" "}
-          (
-          <a
-            href={getItHelpDeskMailto()}
-            className="underline-offset-2 hover:underline"
-            style={{ color: TEACHER_NAVY }}
-          >
-            {IT_HELP_DESK_EMAIL}
-          </a>
-          ).
+          For lunch portal help, email {formatSupportNames()}.
         </p>
+        <div className="mt-4">
+          <SupportContactList linkStyle={{ color: TEACHER_NAVY }} />
+        </div>
       </Card>
     </div>
   )

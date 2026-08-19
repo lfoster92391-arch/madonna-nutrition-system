@@ -14,7 +14,7 @@ import {
 import { LandingShell } from "@/components/landing/LandingShell"
 import { ParentDashboardPreviews } from "@/components/landing/ParentDashboardPreviews"
 import { BRAND } from "@/config/brand"
-import { getItHelpDeskMailto, IT_HELP_DESK_EMAIL, IT_HELP_DESK_LABEL } from "@/config/it-help"
+import { formatSupportDirectory, formatSupportNames, getSupportMailto, SUPPORT_CONTACTS } from "@/config/support-contacts"
 import { CARD_SAFETY_COPY_SHORT } from "@/lib/security/card-copy"
 import { formatCurrency } from "@/lib/utils"
 
@@ -71,9 +71,9 @@ const STEPS = [
   {
     number: 5,
     title: "Need help?",
-    plain: "Email the IT Help Desk. We are happy to help.",
+    plain: `Email ${formatSupportNames()}. We are happy to help.`,
     details: [
-      `Contact ${IT_HELP_DESK_LABEL}: ${IT_HELP_DESK_EMAIL}`,
+      ...SUPPORT_CONTACTS.map((c) => `${c.name}: ${c.email}`),
       "Include your name and your student's name if you can.",
     ],
     icon: HelpCircle,
@@ -92,7 +92,7 @@ const SAFETY_FAQS = [
   },
   {
     q: "Is the website secure?",
-    a: "Yes. The site uses encrypted HTTPS connections. Unusual activity can trigger security alerts to the IT Help Desk so issues are reviewed quickly.",
+    a: "Yes. The site uses encrypted HTTPS connections. Unusual activity can trigger security alerts to Mrs. Morris so issues are reviewed quickly.",
   },
   {
     q: "Who can see my student's information?",
@@ -104,7 +104,7 @@ const SAFETY_FAQS = [
   },
   {
     q: "How do I get help?",
-    a: `Email the ${IT_HELP_DESK_LABEL} at ${IT_HELP_DESK_EMAIL}. Include your name and your student's name when you can.`,
+    a: `Email ${formatSupportDirectory()}. Include your name and your student's name when you can.`,
   },
 ] as const
 
@@ -231,13 +231,18 @@ export function ParentOrientationClient() {
                   ) : null}
 
                   {"help" in step && step.help ? (
-                    <a
-                      href={getItHelpDeskMailto()}
-                      className="inline-flex min-h-12 items-center justify-center rounded-xl px-5 text-base font-bold text-white transition hover:opacity-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#041B52] focus-visible:ring-offset-2"
-                      style={{ backgroundColor: GREEN }}
-                    >
-                      Email {IT_HELP_DESK_LABEL}
-                    </a>
+                    <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+                      {SUPPORT_CONTACTS.map((contact) => (
+                        <a
+                          key={contact.email}
+                          href={getSupportMailto(contact.email)}
+                          className="inline-flex min-h-12 items-center justify-center rounded-xl px-5 text-base font-bold text-white transition hover:opacity-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#041B52] focus-visible:ring-offset-2"
+                          style={{ backgroundColor: GREEN }}
+                        >
+                          Email {contact.name}
+                        </a>
+                      ))}
+                    </div>
                   ) : null}
                 </div>
               </div>
@@ -296,13 +301,18 @@ export function ParentOrientationClient() {
               ))}
             </dl>
 
-            <a
-              href={getItHelpDeskMailto()}
-              className="inline-flex min-h-12 items-center justify-center rounded-xl px-5 text-base font-bold text-white transition hover:opacity-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#041B52] focus-visible:ring-offset-2"
-              style={{ backgroundColor: GREEN }}
-            >
-              Email {IT_HELP_DESK_LABEL}
-            </a>
+            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+              {SUPPORT_CONTACTS.map((contact) => (
+                <a
+                  key={contact.email}
+                  href={getSupportMailto(contact.email)}
+                  className="inline-flex min-h-12 items-center justify-center rounded-xl px-5 text-base font-bold text-white transition hover:opacity-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#041B52] focus-visible:ring-offset-2"
+                  style={{ backgroundColor: GREEN }}
+                >
+                  Email {contact.name}
+                </a>
+              ))}
+            </div>
           </div>
         </div>
       </section>

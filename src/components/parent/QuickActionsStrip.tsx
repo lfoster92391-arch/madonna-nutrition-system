@@ -21,11 +21,7 @@ import {
   getAssetPilotEduUrl,
   getFactsFamilyLoginUrl,
 } from "@/config/parent-external-links"
-import {
-  getItHelpDeskMailto,
-  IT_HELP_DESK_EMAIL,
-  IT_HELP_DESK_LABEL,
-} from "@/config/it-help"
+import { SUPPORT_CONTACTS, getSupportMailto } from "@/config/support-contacts"
 
 type QuickActionsStripProps = {
   onAddFunds?: () => void
@@ -196,12 +192,15 @@ export function QuickActionsStrip({
                 />
               }
             />
-            <ExternalLinkTile
-              href={getItHelpDeskMailto()}
-              label={IT_HELP_DESK_LABEL}
-              subtitle={IT_HELP_DESK_EMAIL}
-              icon={<Mail className="h-6 w-6" style={{ color: PARENT_NAVY }} />}
-            />
+            {SUPPORT_CONTACTS.map((contact) => (
+              <ExternalLinkTile
+                key={contact.email}
+                href={getSupportMailto(contact.email)}
+                label={contact.name}
+                subtitle={contact.email}
+                icon={<Mail className="h-6 w-6" style={{ color: PARENT_NAVY }} />}
+              />
+            ))}
           </div>
         </div>
       </div>

@@ -1,8 +1,8 @@
 import { sendEmail } from "@/lib/email"
-import { IT_HELP_DESK_EMAIL } from "@/config/it-help"
+import { PRIMARY_SUPPORT_EMAIL } from "@/config/support-contacts"
 
 export function getSecurityAlertEmail(): string {
-  return process.env.SECURITY_ALERT_EMAIL?.trim() || IT_HELP_DESK_EMAIL
+  return process.env.SECURITY_ALERT_EMAIL?.trim() || PRIMARY_SUPPORT_EMAIL
 }
 
 export type SecurityAlertKind =
@@ -11,7 +11,7 @@ export type SecurityAlertKind =
   | "admin_new_device_login"
   | "stripe_dispute"
 
-/** Fire-and-forget style security notice to IT Help Desk. */
+/** Fire-and-forget style security notice to Mrs. Morris. */
 export async function sendSecurityAlert(input: {
   kind: SecurityAlertKind
   subject: string

@@ -18,7 +18,7 @@ Office “card” deposits only record that cash/check/card was taken in person 
 | Payment authorization & receipt | Yes | Receives paid session id + amount |
 | Student lunch balances | No | Yes (school ledger) |
 | Saved cards for reuse | Disabled by design | Not offered |
-| Disputes / chargebacks | Yes (events) | Emails IT Help Desk when webhook fires |
+| Disputes / chargebacks | Yes (events) | Emails Mrs. Morris when webhook fires |
 
 ## Defense in depth (what we implement)
 
@@ -27,7 +27,7 @@ Office “card” deposits only record that cash/check/card was taken in person 
 3. **Auth** — Login rate limiting with temporary lockout / backoff after repeated failures. Failed attempts are audit-logged.
 4. **Encryption at rest** — Postgres/Supabase disk encryption for the database we control. Passwords are stored as bcrypt hashes. We do not store SSN or card PAN fields.
 5. **Audit log** — Admin password resets, balance/fund changes, and user create/update/disable actions are recorded.
-6. **Intrusion / suspicious-activity email** — Alerts go to IT Help Desk (`lisamorris@weirtonmadonna.org`, overridable via `SECURITY_ALERT_EMAIL`) for:
+6. **Intrusion / suspicious-activity email** — Alerts go to Mrs. Morris (`lisamorris@weirtonmadonna.org`, overridable via `SECURITY_ALERT_EMAIL`) for:
    - Burst failed logins
    - Admin password resets
    - Admin login from a new device fingerprint (best-effort)

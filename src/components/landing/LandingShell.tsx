@@ -1,5 +1,5 @@
 import type { ReactNode } from "react"
-import { getItHelpDeskMailto, IT_HELP_DESK_LABEL } from "@/config/it-help"
+import { SupportNeedHelp } from "@/components/support/SupportNeedHelp"
 import { cn } from "@/lib/utils"
 
 /** Shared Fuel The Dons landing chrome (background + safe-area framing). */
@@ -35,16 +35,10 @@ export function LandingShell({
       >
         <div className={cn("flex w-full min-w-0 flex-col items-center text-center", contentMaxClassName)}>
           {children}
-          <p className="mt-6 text-sm font-medium text-[#475569]">
-            Need help?{" "}
-            <a
-              href={getItHelpDeskMailto()}
-              className="font-semibold underline-offset-2 hover:underline"
-              style={{ color: "#041B52" }}
-            >
-              {IT_HELP_DESK_LABEL}
-            </a>
-          </p>
+          <SupportNeedHelp
+            className="mt-6 text-sm font-medium text-[#475569]"
+            linkStyle={{ color: "#041B52" }}
+          />
         </div>
       </main>
     </div>
