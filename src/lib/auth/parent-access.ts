@@ -56,7 +56,7 @@ export async function assertParentOwnsStudent(
   // ParentStudent join for any parent-capable account (staff/admin dual-role included).
   if (canLinkViaUser && user?.email) {
     const parent = await prisma.parent.findUnique({
-      where: { email: user.email },
+      where: { email: user.email.toLowerCase() },
       select: {
         students: {
           where: { studentId: student.id },

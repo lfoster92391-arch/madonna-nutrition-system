@@ -2,6 +2,26 @@ import { prisma } from "@/lib/prisma"
 import { isDatabaseEnabled } from "@/lib/db/config"
 import { isParentCapableDbRole } from "@/lib/auth/portal-roles"
 
+export type LinkedStudentSummary = {
+  id: string
+  firstName: string
+  lastName: string
+  grade: string
+  homeroom: string | null
+  balance: number
+}
+
+async function loadParentStudentExternalIds(email: string | null | undefined): Promise<string[]> {
+  if (!email) return []
+  const parent = await prisma.parent.findFirst({
+    where: { email: { equals: email, mode: "insensitive" } },
+    select: {
+      students: { select: { student: { select: { externalId: true } } } },
+    },
+  })
+  return parent?.students.map((row) => row.student.externalId) ?? []
+}
+
 /** Resolve whether a parent-capable user has at least one linked student (User or ParentStudent). */
 export async function parentHasLinkedStudents(userId: string): Promise<boolean> {
   if (!isDatabaseEnabled()) return false
@@ -15,14 +35,52 @@ export async function parentHasLinkedStudents(userId: string): Promise<boolean> 
 
   if ((user.linkedStudentIds ?? []).length > 0) return true
 
-  if (!user.email) return false
+  const parentIds = await loadParentStudentExternalIds(user.email)
+  return parentIds.length > 0
+}
 
-  const parent = await prisma.parent.findUnique({
-    where: { email: user.email.toLowerCase() },
-    select: { id: true, _count: { select: { students: true } } },
+export async function getParentLinkedStudentSummaries(
+  userId: string
+): Promise<LinkedStudentSummary[]> {
+  if (!isDatabaseEnabled()) return []
+
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { role: true, schoolId: true, email: true, linkedStudentIds: true },
   })
 
-  return (parent?._count.students ?? 0) > 0
+  if (!user || !isParentCapableDbRole(user.role)) return []
+
+  const ids = [
+    ...new Set([...(user.linkedStudentIds ?? []), ...(await loadParentStudentExternalIds(user.email))]),
+  ]
+  if (ids.length === 0) return []
+
+  const students = await prisma.student.findMany({
+    where: {
+      schoolId: user.schoolId,
+      disabled: false,
+      externalId: { in: ids },
+    },
+    select: {
+      externalId: true,
+      firstName: true,
+      lastName: true,
+      grade: true,
+      homeroom: true,
+      balance: true,
+    },
+    orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
+  })
+
+  return students.map((s) => ({
+    id: s.externalId,
+    firstName: s.firstName,
+    lastName: s.lastName,
+    grade: s.grade,
+    homeroom: s.homeroom,
+    balance: Number(s.balance),
+  }))
 }
 
 export async function linkParentUserToStudent(input: {
@@ -49,7 +107,7 @@ export async function linkParentUserToStudent(input: {
   })
 
   if (!user || !isParentCapableDbRole(user.role)) {
-    throw new Error("Only parent accounts can link students")
+    throw new Error("Only parent, staff, teacher, or admin accounts can link students")
   }
 
   const student = await prisma.student.findFirst({

@@ -10,7 +10,7 @@ import { loginSchema } from "@/lib/api/validation"
 import { badRequest, withDatabase } from "@/lib/api/response"
 import { isAllowedTeacherEmail, TEACHER_ACCESS_DENIED_MESSAGE } from "@/config/teacher-auth"
 import { parentHasLinkedStudents } from "@/lib/auth/parent-links"
-import { portalMatchesAccount } from "@/lib/auth/portal-roles"
+import { canAccessParentPortal, portalMatchesAccount } from "@/lib/auth/portal-roles"
 import { ensureParentRecordForUser } from "@/lib/agreements/service"
 import type { UserRole } from "@/lib/types"
 import { getClientIp, getUserAgent } from "@/lib/security/client-meta"
@@ -146,9 +146,18 @@ export async function POST(request: Request) {
 
     clearLoginFailures(ip, loginId)
 
+    const existingParent = await prisma.parent.findFirst({
+      where: { email: { equals: user.email, mode: "insensitive" } },
+      select: { id: true },
+    })
+    const parentCapable = canAccessParentPortal(user) || Boolean(existingParent)
+
+    if (role === "parent" || parentCapable) {
+      await ensureParentRecordForUser(user.id)
+    }
+
     let needsStudentLink = false
     if (role === "parent") {
-      await ensureParentRecordForUser(user.id)
       needsStudentLink = !(await parentHasLinkedStudents(user.id))
       if (needsStudentLink) {
         return NextResponse.json({
@@ -162,6 +171,7 @@ export async function POST(request: Request) {
             displayName: `${user.firstName} ${user.lastName}`,
             email: user.email,
             linkedStudentIds: user.linkedStudentIds ?? [],
+            parentCapable: true,
           },
         })
       }
@@ -178,6 +188,7 @@ export async function POST(request: Request) {
         displayName: `${user.firstName} ${user.lastName}`,
         email: user.email,
         linkedStudentIds: user.linkedStudentIds ?? [],
+        parentCapable,
       },
     })
   })

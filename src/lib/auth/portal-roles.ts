@@ -15,24 +15,28 @@ export function normalizeAppRole(role: string): string {
   return role.trim().toLowerCase()
 }
 
-export function canAccessParentPortal(user: {
+export type ParentCapableUser = {
   role: string
   email?: string | null
   linkedStudentIds?: string[] | null
-}): boolean {
+  parentCapable?: boolean | null
+}
+
+export function canAccessParentPortal(user: ParentCapableUser): boolean {
   const role = normalizeAppRole(user.role)
   if (role === "parent") return true
+  if (user.parentCapable) return true
   if ((user.linkedStudentIds ?? []).length > 0) return true
   const email = user.email?.trim().toLowerCase()
   return Boolean(email && DUAL_ROLE_PARENT_EMAILS.has(email))
 }
 
-export function canSwitchParentAndWorkplace(user: {
-  role: string
-  email?: string | null
-  linkedStudentIds?: string[] | null
-}): boolean {
+export function canSwitchParentAndWorkplace(user: ParentCapableUser): boolean {
   return WORKPLACE_ROLES.has(normalizeAppRole(user.role)) && canAccessParentPortal(user)
+}
+
+export function isWorkplaceRole(role: string): boolean {
+  return WORKPLACE_ROLES.has(normalizeAppRole(role))
 }
 
 export function workplaceHomePath(role: string): string {
@@ -71,7 +75,7 @@ export function isParentCapableDbRole(role: string): boolean {
 
 export function portalMatchesAccount(
   portalRole: UserRole,
-  user: { role: UserRole; email?: string | null; linkedStudentIds?: string[] | null }
+  user: ParentCapableUser & { role: UserRole }
 ): boolean {
   if (portalRole === user.role) return true
   if (portalRole === "parent" && canAccessParentPortal(user)) return true

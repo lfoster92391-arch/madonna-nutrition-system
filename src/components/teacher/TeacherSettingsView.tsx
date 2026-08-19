@@ -1,14 +1,19 @@
 "use client"
 
-import { Bell, Mail, User } from "lucide-react"
+import Link from "next/link"
+import { Bell, Mail, User, Users } from "lucide-react"
 import { useTeacherData } from "@/components/providers/TeacherDataProvider"
 import { Card } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
 import { TEACHER_NAVY, TEACHER_SILVER } from "@/components/teacher/layout/teacher-theme"
 import { SupportContactList } from "@/components/support/SupportNeedHelp"
 import { formatSupportNames } from "@/config/support-contacts"
+import { useParentLinkedStudents } from "@/hooks/useParentLinkedStudents"
+import { formatCurrency } from "@/lib/utils"
 
 export function TeacherSettingsView() {
   const { profile } = useTeacherData()
+  const { students: children, isLoading: loadingChildren } = useParentLinkedStudents()
 
   return (
     <div className="space-y-6 p-4 sm:p-6">
@@ -49,6 +54,52 @@ export function TeacherSettingsView() {
             </dd>
           </div>
         </dl>
+      </Card>
+
+      <Card
+        className="w-full max-w-xl rounded-2xl border p-4 shadow-sm sm:p-6"
+        style={{ borderColor: TEACHER_SILVER }}
+      >
+        <h2 className="flex items-center gap-2 text-lg font-bold" style={{ color: TEACHER_NAVY }}>
+          <Users className="h-5 w-5" />
+          Your children
+        </h2>
+        <p className="mt-2 text-sm text-silver-foreground">
+          Link a student to this same school login. After you add a child, use Parent | Teacher in
+          the top bar to open the parent portal.
+        </p>
+
+        {loadingChildren ? (
+          <p className="mt-4 text-sm text-silver-foreground">Loading…</p>
+        ) : children.length === 0 ? (
+          <p className="mt-4 text-sm text-silver-foreground">No children linked yet.</p>
+        ) : (
+          <ul className="mt-4 space-y-2">
+            {children.map((child) => (
+              <li
+                key={child.id}
+                className="flex items-center justify-between rounded-xl border px-3 py-2 text-sm"
+                style={{ borderColor: TEACHER_SILVER }}
+              >
+                <span style={{ color: TEACHER_NAVY }}>
+                  <span className="font-semibold">
+                    {child.firstName} {child.lastName}
+                  </span>
+                  <span className="block text-xs text-silver-foreground">
+                    MD {child.id} · Grade {child.grade}
+                  </span>
+                </span>
+                <span className="font-bold tabular-nums" style={{ color: TEACHER_NAVY }}>
+                  {formatCurrency(child.balance)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        <Button asChild className="mt-5 w-full sm:w-auto">
+          <Link href="/teacher/settings/add-child">Add your child</Link>
+        </Button>
       </Card>
 
       <Card
