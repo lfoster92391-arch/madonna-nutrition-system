@@ -6,6 +6,7 @@ import type { User as StaffUser } from "@/lib/types"
 import { ROLE_LABELS } from "@/lib/users"
 import { BadgeSchoolHeader } from "@/components/admin/BadgeSchoolHeader"
 import { buildCode128Svg } from "@/lib/badges/code128-svg"
+import { badgeFullName } from "@/lib/badges/display-name"
 import { cn } from "@/lib/utils"
 
 /** Default stock photo used when no real staff photo is on file. */
@@ -89,11 +90,8 @@ export function StaffBadgeCard({ user, className }: StaffBadgeCardProps) {
           </div>
 
           <div className="flex min-h-0 min-w-0 flex-col justify-center gap-0.5 overflow-hidden">
-            <p className="truncate text-[16px] font-bold leading-none">
-              {user.firstName || "—"}
-            </p>
-            <p className="truncate text-[16px] font-bold leading-none">
-              {user.lastName || "—"}
+            <p className="badge-print-name">
+              {badgeFullName(user.firstName, user.lastName)}
             </p>
             <span
               className={cn(

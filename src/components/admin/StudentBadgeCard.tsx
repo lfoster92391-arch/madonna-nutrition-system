@@ -5,6 +5,7 @@ import { User } from "lucide-react"
 import type { Student } from "@/lib/types"
 import { BadgeSchoolHeader } from "@/components/admin/BadgeSchoolHeader"
 import { buildCode128Svg } from "@/lib/badges/code128-svg"
+import { badgeFullName } from "@/lib/badges/display-name"
 import { cn } from "@/lib/utils"
 
 /** Default stock photo used when no real student photo is on file. */
@@ -94,11 +95,8 @@ export function StudentBadgeCard({ student, className }: StudentBadgeCardProps) 
           </div>
 
           <div className="flex min-h-0 min-w-0 flex-col justify-center gap-1 overflow-hidden">
-            <p className="truncate text-[17px] font-bold leading-none">
-              {student.firstName || "—"}
-            </p>
-            <p className="truncate text-[17px] font-bold leading-none">
-              {student.lastName || "—"}
+            <p className="badge-print-name">
+              {badgeFullName(student.firstName, student.lastName)}
             </p>
             <span
               className={cn(
