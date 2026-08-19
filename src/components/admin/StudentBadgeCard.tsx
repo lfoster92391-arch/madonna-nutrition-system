@@ -3,6 +3,7 @@
 import { useMemo } from "react"
 import { User } from "lucide-react"
 import type { Student } from "@/lib/types"
+import { BadgeSchoolHeader } from "@/components/admin/BadgeSchoolHeader"
 import { buildCode128Svg } from "@/lib/badges/code128-svg"
 import { cn } from "@/lib/utils"
 
@@ -11,8 +12,6 @@ const PLACEHOLDER_PHOTO_HINTS = [
   "images.unsplash.com/photo-1535713875002-d1d0cf377fde",
   "images.unsplash.com/photo-1604908176997-431cef8a0b38",
 ]
-
-const MADONNA_LOGO_SRC = "/branding/madonna-dons-logo.png"
 
 export function studentHasRealPhoto(photo?: string | null): boolean {
   if (!photo?.trim()) return false
@@ -48,8 +47,8 @@ const BADGE_BARCODE_SVG = { height: 33, moduleWidth: 1.575 } as const
 
 /**
  * Physical landscape badge: 3in × 2.75in.
- * Top 0.5in is reserved for the hole punch; printable content sits in the
- * ~1.62in band from 0.5in (bottom margin remains below the content).
+ * Top 0.25in is punch-safe (navy, no logo). Brand header is 0.47in. Photo,
+ * name, barcode, and MD ID sit in the remaining band; bottom margin unused.
  */
 export function StudentBadgeCard({ student, className }: StudentBadgeCardProps) {
   const mdId = student.id
@@ -68,33 +67,14 @@ export function StudentBadgeCard({ student, className }: StudentBadgeCardProps) 
   return (
     <article
       className={cn(
-        // Fits landscape badges with top hole: 3in × 2.75in; content 0.5–2.0in from top.
+        // Fits landscape badges with top hole: 3in × 2.75in.
         "student-badge-card box-border flex h-[2.75in] w-[3in] break-inside-avoid flex-col overflow-hidden rounded-md border-2 border-[#0a1e3f] bg-white text-[#0a1e3f]",
         className
       )}
     >
-      {/* Hole-punch safe zone — keep clear of photo/name/barcode */}
-      <div className="student-badge-punch-gutter h-[0.5in] shrink-0" aria-hidden />
+      <BadgeSchoolHeader subtitle="Fuel The Dons" />
 
-      <div className="student-badge-content flex h-[1.62in] max-h-[1.62in] min-h-0 shrink-0 flex-col overflow-hidden">
-        {/* School brand band — fill the navy header; punch gutter above stays clear */}
-        <header className="flex h-[0.42in] shrink-0 items-center gap-1.5 bg-[#0a1e3f] px-2 py-[0.02in] text-white">
-          {/* eslint-disable-next-line @next/next/no-img-element -- print-friendly static brand asset */}
-          <img
-            src={MADONNA_LOGO_SRC}
-            alt=""
-            className="h-[0.38in] w-[0.38in] shrink-0 object-contain"
-          />
-          <div className="min-w-0 flex-1 leading-none">
-            <p className="truncate text-[13.5px] font-bold uppercase tracking-[0.04em]">
-              Madonna High School
-            </p>
-            <p className="mt-[0.03in] truncate text-[9px] font-semibold uppercase tracking-wide opacity-90">
-              Fuel The Dons
-            </p>
-          </div>
-        </header>
-
+      <div className="student-badge-content flex h-[1.40in] max-h-[1.40in] min-h-0 shrink-0 flex-col overflow-hidden">
         <div className="grid min-h-0 flex-1 grid-cols-[0.68in_1fr] gap-1 px-1.5 py-px">
           <div className="relative h-full min-h-0 overflow-hidden rounded-sm border border-[#c7ccd6] bg-[#f7f8fb]">
             {hasPhoto ? (
