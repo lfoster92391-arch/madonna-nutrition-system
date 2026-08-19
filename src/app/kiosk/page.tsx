@@ -16,6 +16,7 @@ import {
   GraduationCap,
   IdCard,
   Menu,
+  Minus,
   Plus,
   ScanLine,
   Settings,
@@ -125,14 +126,15 @@ function StatusDot({ phase, isOffline }: { phase: ScanPhase; isOffline?: boolean
 }
 
 function RecentActivityItem({ tx }: { tx: Transaction }) {
-  const isDeposit = tx.type === "deposit" || tx.meal.toLowerCase().includes("fund")
-  const label = isDeposit ? "Added Funds" : tx.meal
+  const isCredit = (tx.type === "deposit" || tx.meal.toLowerCase().includes("fund")) && tx.amount >= 0
+  const isTakeOff = tx.type === "deposit" && tx.amount < 0
+  const label = isTakeOff ? "Money taken off" : isCredit ? "Added Funds" : tx.meal
 
   return (
     <div className="flex min-w-0 items-center gap-2 text-sm text-[#64748B]">
       <span className="shrink-0 tabular-nums">{formatTxTime(tx.timestamp)}</span>
       <span className="shrink-0 text-[#AEB6C2]">|</span>
-      {isDeposit ? (
+      {isCredit ? (
         <Plus className="h-3.5 w-3.5 shrink-0 text-[#041B52]" aria-hidden />
       ) : (
         <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-[#00A83E]" aria-hidden />
@@ -141,10 +143,12 @@ function RecentActivityItem({ tx }: { tx: Transaction }) {
       <span
         className={cn(
           "shrink-0 font-semibold tabular-nums",
-          isDeposit ? "text-[#00A83E]" : "text-[#D62828]"
+          isCredit ? "text-[#00A83E]" : "text-[#D62828]"
         )}
       >
-        {isDeposit ? `+${formatCurrency(tx.amount)}` : `-${formatCurrency(tx.amount)}`}
+        {isCredit
+          ? `+${formatCurrency(tx.amount)}`
+          : `-${formatCurrency(Math.abs(tx.amount))}`}
       </span>
     </div>
   )
@@ -168,6 +172,7 @@ export default function ScanStationPage() {
   const [pendingCount, setPendingCount] = useState(0)
   const [offlineRecent, setOfflineRecent] = useState<Transaction[]>([])
   const [addFundsOpen, setAddFundsOpen] = useState(false)
+  const [fundsAction, setFundsAction] = useState<"add" | "subtract">("add")
 
   const scanInputRef = useRef<HTMLInputElement>(null)
   const scanTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -838,16 +843,30 @@ export default function ScanStationPage() {
                   {isOffline ? "~" : ""}
                   {formatCurrency(localBalance)}
                 </p>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setAddFundsOpen(true)
-                  }}
-                  className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-xl border-2 border-[#00A83E] py-2 text-xs font-bold text-[#00A83E] transition hover:bg-[#00A83E]/5 sm:mt-3 sm:gap-2 sm:rounded-2xl sm:py-2.5 sm:text-sm md:mt-4 md:py-3 md:text-base"
-                >
-                  <Plus className="h-4 w-4 sm:h-5 sm:w-5" aria-hidden />
-                  ADD FUNDS
-                </button>
+                <div className="mt-2 flex flex-col gap-2 sm:mt-3 md:mt-4">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFundsAction("add")
+                      setAddFundsOpen(true)
+                    }}
+                    className="flex w-full items-center justify-center gap-1.5 rounded-xl border-2 border-[#00A83E] py-2 text-xs font-bold text-[#00A83E] transition hover:bg-[#00A83E]/5 sm:gap-2 sm:rounded-2xl sm:py-2.5 sm:text-sm md:py-3 md:text-base"
+                  >
+                    <Plus className="h-4 w-4 sm:h-5 sm:w-5" aria-hidden />
+                    ADD MONEY
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFundsAction("subtract")
+                      setAddFundsOpen(true)
+                    }}
+                    className="flex w-full items-center justify-center gap-1.5 rounded-xl border-2 border-[#041B52] py-2 text-xs font-bold text-[#041B52] transition hover:bg-[#041B52]/5 sm:gap-2 sm:rounded-2xl sm:py-2.5 sm:text-sm md:py-3 md:text-base"
+                  >
+                    <Minus className="h-4 w-4 sm:h-5 sm:w-5" aria-hidden />
+                    TAKE MONEY OFF
+                  </button>
+                </div>
               </div>
             </div>
           ) : staffUser ? (
@@ -900,16 +919,30 @@ export default function ScanStationPage() {
                 >
                   {formatCurrency(localBalance)}
                 </p>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setAddFundsOpen(true)
-                  }}
-                  className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-xl border-2 border-[#00A83E] py-2 text-xs font-bold text-[#00A83E] transition hover:bg-[#00A83E]/5 sm:mt-3 sm:gap-2 sm:rounded-2xl sm:py-2.5 sm:text-sm md:mt-4 md:py-3 md:text-base"
-                >
-                  <Plus className="h-4 w-4 sm:h-5 sm:w-5" aria-hidden />
-                  ADD FUNDS
-                </button>
+                <div className="mt-2 flex flex-col gap-2 sm:mt-3 md:mt-4">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFundsAction("add")
+                      setAddFundsOpen(true)
+                    }}
+                    className="flex w-full items-center justify-center gap-1.5 rounded-xl border-2 border-[#00A83E] py-2 text-xs font-bold text-[#00A83E] transition hover:bg-[#00A83E]/5 sm:gap-2 sm:rounded-2xl sm:py-2.5 sm:text-sm md:py-3 md:text-base"
+                  >
+                    <Plus className="h-4 w-4 sm:h-5 sm:w-5" aria-hidden />
+                    ADD MONEY
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFundsAction("subtract")
+                      setAddFundsOpen(true)
+                    }}
+                    className="flex w-full items-center justify-center gap-1.5 rounded-xl border-2 border-[#041B52] py-2 text-xs font-bold text-[#041B52] transition hover:bg-[#041B52]/5 sm:gap-2 sm:rounded-2xl sm:py-2.5 sm:text-sm md:py-3 md:text-base"
+                  >
+                    <Minus className="h-4 w-4 sm:h-5 sm:w-5" aria-hidden />
+                    TAKE MONEY OFF
+                  </button>
+                </div>
               </div>
             </div>
           ) : (
@@ -1083,15 +1116,18 @@ export default function ScanStationPage() {
           className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-3 sm:items-center sm:p-6"
           role="dialog"
           aria-modal="true"
-          aria-label="Add money to account"
+          aria-label={fundsAction === "subtract" ? "Take money off account" : "Add money to account"}
         >
           <div className="max-h-[90dvh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-4 shadow-xl sm:p-6">
             <div className="mb-4 flex items-start justify-between gap-3">
               <div>
-                <h2 className="text-lg font-bold text-[#041B52]">Add money</h2>
+                <h2 className="text-lg font-bold text-[#041B52]">
+                  {fundsAction === "subtract" ? "Take money off" : "Add money"}
+                </h2>
                 <p className="text-sm text-[#64748B]">
-                  Office deposit for {student.firstName} {student.lastName}. Tap Back when you are
-                  ready for the next student.
+                  {fundsAction === "subtract"
+                    ? `Correction or refund for ${student.firstName} ${student.lastName}. This is not a lunch charge.`
+                    : `Office deposit for ${student.firstName} ${student.lastName}. Tap Back when you are ready for the next student.`}
                 </p>
               </div>
               <button
@@ -1105,8 +1141,10 @@ export default function ScanStationPage() {
               </button>
             </div>
             <RecordOfficePayment
+              key={`${student.id}-${fundsAction}`}
               students={[student]}
               initialStudentId={student.id}
+              initialAction={fundsAction}
               compact
               onDone={(balanceAfter) => {
                 setLocalBalance(balanceAfter)
@@ -1124,15 +1162,18 @@ export default function ScanStationPage() {
           className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-3 sm:items-center sm:p-6"
           role="dialog"
           aria-modal="true"
-          aria-label="Add money to staff account"
+          aria-label={fundsAction === "subtract" ? "Take money off staff account" : "Add money to staff account"}
         >
           <div className="max-h-[90dvh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-4 shadow-xl sm:p-6">
             <div className="mb-4 flex items-start justify-between gap-3">
               <div>
-                <h2 className="text-lg font-bold text-[#041B52]">Add money</h2>
+                <h2 className="text-lg font-bold text-[#041B52]">
+                  {fundsAction === "subtract" ? "Take money off" : "Add money"}
+                </h2>
                 <p className="text-sm text-[#64748B]">
-                  Office deposit for {staffUser.firstName} {staffUser.lastName}. Tap Back when you
-                  are ready for the next student.
+                  {fundsAction === "subtract"
+                    ? `Correction or refund for ${staffUser.firstName} ${staffUser.lastName}. This is not a lunch charge.`
+                    : `Office deposit for ${staffUser.firstName} ${staffUser.lastName}. Tap Back when you are ready for the next student.`}
                 </p>
               </div>
               <button
@@ -1146,7 +1187,9 @@ export default function ScanStationPage() {
               </button>
             </div>
             <RecordStaffOfficePayment
+              key={`${staffUser.id}-${fundsAction}`}
               staffUser={staffUser}
+              initialAction={fundsAction}
               onDone={(balanceAfter) => {
                 setLocalBalance(balanceAfter)
                 setStaffUser((prev) =>

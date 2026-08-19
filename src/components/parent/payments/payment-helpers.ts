@@ -3,7 +3,9 @@ import type { Transaction } from "@/lib/types"
 export type ActivityCategory = "all" | "meal" | "deposit" | "refund" | "adjustment"
 
 export function getTransactionCategory(tx: Transaction): Exclude<ActivityCategory, "all"> {
-  if (tx.type === "deposit") return "deposit"
+  if (tx.type === "deposit") {
+    return tx.amount < 0 ? "adjustment" : "deposit"
+  }
   const meal = tx.meal.toLowerCase()
   if (meal.includes("refund")) return "refund"
   if (meal.includes("adjust")) return "adjustment"
@@ -11,6 +13,7 @@ export function getTransactionCategory(tx: Transaction): Exclude<ActivityCategor
 }
 
 export function getTransactionTypeLabel(tx: Transaction): string {
+  if (tx.type === "deposit" && tx.amount < 0) return "Money taken off"
   const category = getTransactionCategory(tx)
   switch (category) {
     case "deposit":

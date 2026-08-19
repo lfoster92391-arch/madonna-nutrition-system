@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server"
-import { creditStudentDeposit } from "@/lib/db/deposits"
+import {
+  creditStudentDeposit,
+  debitStudentBalance,
+  isBalanceDebitError,
+} from "@/lib/db/deposits"
 import { findStudentByExternalId } from "@/lib/db/students"
 import { mapTransaction } from "@/lib/db/mappers"
 import { officeDepositSchema } from "@/lib/api/validation"
@@ -19,7 +23,7 @@ export async function POST(request: Request) {
         return badRequest("Invalid office payment", parsed.error.flatten())
       }
 
-      const { studentId, amount, method, note } = parsed.data
+      const { studentId, amount, method, note, action } = parsed.data
       const student = await findStudentByExternalId(studentId)
       if (!student || student.disabled) {
         return notFound("Student not found or disabled")
@@ -29,19 +33,31 @@ export async function POST(request: Request) {
         return badRequest("Student does not belong to this school")
       }
 
-      const credit = await creditStudentDeposit({
-        studentId: student.id,
-        schoolId: auth.schoolId,
-        amountDollars: amount,
-        performedBy: auth.user.id,
-        processedByUserId: auth.user.id,
-        method,
-        note,
-        source: "office",
-      })
+      const ledger =
+        action === "subtract"
+          ? await debitStudentBalance({
+              studentId: student.id,
+              schoolId: auth.schoolId,
+              amountDollars: amount,
+              performedBy: auth.user.id,
+              processedByUserId: auth.user.id,
+              note,
+            })
+          : await creditStudentDeposit({
+              studentId: student.id,
+              schoolId: auth.schoolId,
+              amountDollars: amount,
+              performedBy: auth.user.id,
+              processedByUserId: auth.user.id,
+              method,
+              note,
+              source: "office",
+            })
+
+      const amountDebited = "amountDebited" in ledger ? ledger.amountDebited : undefined
 
       const transaction = await prisma.transaction.findUnique({
-        where: { id: credit.transactionId },
+        where: { id: ledger.transactionId },
         include: {
           student: { select: { externalId: true, firstName: true, lastName: true } },
           processedBy: { select: { firstName: true, lastName: true, badgeId: true } },
@@ -50,7 +66,11 @@ export async function POST(request: Request) {
 
       if (!transaction) {
         return NextResponse.json(
-          { transactionId: credit.transactionId, balanceAfter: credit.balanceAfter },
+          {
+            transactionId: ledger.transactionId,
+            balanceAfter: ledger.balanceAfter,
+            amountDebited,
+          },
           { status: 201 }
         )
       }
@@ -58,11 +78,15 @@ export async function POST(request: Request) {
       return NextResponse.json(
         {
           ...mapTransaction(transaction),
-          balanceAfter: credit.balanceAfter,
+          balanceAfter: ledger.balanceAfter,
+          amountDebited,
         },
         { status: 201 }
       )
     } catch (error) {
+      if (isBalanceDebitError(error)) {
+        return badRequest(error.message)
+      }
       console.error("POST /api/transactions/office-deposit", error)
       return serverError()
     }

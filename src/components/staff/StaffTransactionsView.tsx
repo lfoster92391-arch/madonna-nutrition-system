@@ -7,6 +7,7 @@ import { useStaffData } from "@/components/providers/StaffDataProvider"
 import { Card } from "@/components/ui/card"
 import { STAFF_BG, STAFF_NAVY, STAFF_SILVER } from "@/components/staff/layout/staff-theme"
 import { formatCurrency } from "@/lib/utils"
+import { formatSignedTransactionAmount, isCreditDeposit, transactionListTypeLabel } from "@/lib/transactions/display"
 import type { StaffTransaction } from "@/lib/staff/types"
 
 export function StaffTransactionsView() {
@@ -113,7 +114,7 @@ export function StaffTransactionsView() {
               </thead>
               <tbody>
                 {transactions.map((tx) => {
-                  const isDeposit = tx.type === "deposit"
+                  const isCredit = isCreditDeposit(tx)
                   return (
                     <tr
                       key={tx.id}
@@ -125,17 +126,16 @@ export function StaffTransactionsView() {
                       </td>
                       <td className="px-3 py-4 text-silver-foreground">{tx.studentName}</td>
                       <td className="px-3 py-4 capitalize text-silver-foreground">
-                        {isDeposit ? "Deposit" : "Meal"}
+                        {transactionListTypeLabel(tx)}
                       </td>
                       <td className="px-3 py-4 text-silver-foreground">{tx.meal}</td>
                       <td
                         className={`px-3 py-4 text-right font-bold tabular-nums ${
-                          isDeposit ? "text-success" : ""
+                          isCredit ? "text-success" : ""
                         }`}
-                        style={isDeposit ? undefined : { color: STAFF_NAVY }}
+                        style={isCredit ? undefined : { color: STAFF_NAVY }}
                       >
-                        {isDeposit ? "+" : "−"}
-                        {formatCurrency(tx.amount)}
+                        {formatSignedTransactionAmount(tx)}
                       </td>
                       <td className="px-3 py-4 text-right tabular-nums text-silver-foreground">
                         {formatCurrency(tx.balanceAfter)}

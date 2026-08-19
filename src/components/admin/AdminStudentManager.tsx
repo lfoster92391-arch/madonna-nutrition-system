@@ -95,8 +95,7 @@ export function AdminStudentManager({
       form.firstName !== editing.firstName ||
       form.lastName !== editing.lastName ||
       form.grade !== editing.grade ||
-      form.homeroom !== (editing.homeroom ?? "") ||
-      !balanceInputsEqual(form.balance, editing.balance)
+      form.homeroom !== (editing.homeroom ?? "")
     : Boolean(
         form.id.trim() ||
           form.firstName.trim() ||
@@ -168,13 +167,11 @@ export function AdminStudentManager({
     try {
       if (editing) {
         const targetId = editing.id
-        const nextBalance = parseBalanceInput(form.balance)
         const fieldsChanged =
           form.firstName !== editing.firstName ||
           form.lastName !== editing.lastName ||
           form.grade !== editing.grade ||
-          form.homeroom !== (editing.homeroom ?? "") ||
-          !balanceInputsEqual(form.balance, editing.balance)
+          form.homeroom !== (editing.homeroom ?? "")
 
         let saved = editing
         if (fieldsChanged) {
@@ -183,7 +180,6 @@ export function AdminStudentManager({
             lastName: form.lastName.trim(),
             grade: form.grade.trim(),
             homeroom: form.homeroom.trim(),
-            balance: nextBalance,
           })
           if (updated) saved = updated
           else {
@@ -193,7 +189,6 @@ export function AdminStudentManager({
               lastName: form.lastName.trim(),
               grade: form.grade.trim(),
               homeroom: form.homeroom.trim(),
-              balance: nextBalance,
             }
           }
         }
@@ -509,7 +504,7 @@ export function AdminStudentManager({
               </Button>
               <Button variant="outline" onClick={() => openOfficePayment(null)}>
                 <DollarSign className="h-4 w-4" />
-                Add money to account
+                Add or take money off
               </Button>
               <Button onClick={openAddStudent}>
                 <Plus className="h-4 w-4" />
@@ -541,7 +536,7 @@ export function AdminStudentManager({
               </Button>
               <Button variant="outline" onClick={() => openOfficePayment(null)}>
                 <DollarSign className="h-4 w-4" />
-                Add money to account
+                Add or take money off
               </Button>
               <Button onClick={openAddStudent}>
                 <Plus className="h-4 w-4" />
@@ -554,7 +549,7 @@ export function AdminStudentManager({
         {justAddedId && !editing && (
           <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-4 text-sm text-emerald-900">
             Student saved. Use <strong>Open profile</strong> to take or upload a photo for badges, or
-            <strong> Add money to account</strong> if they paid today.
+            <strong> Add or take money off</strong> if they paid today.
           </div>
         )}
 
@@ -571,7 +566,7 @@ export function AdminStudentManager({
                 aria-modal="true"
                 aria-label={
                   showOfficePaymentPanel
-                    ? "Add money to account"
+                    ? "Add or take money off"
                     : editing
                       ? "Student profile"
                       : "Add Student"
@@ -590,7 +585,7 @@ export function AdminStudentManager({
                     </Button>
                     <h2 className="text-lg font-semibold text-primary sm:text-xl">
                       {showOfficePaymentPanel
-                        ? "Add money to account"
+                        ? "Add or take money off"
                         : editing
                           ? "Student profile"
                           : "Add Student"}
@@ -678,35 +673,56 @@ export function AdminStudentManager({
                           />
                         </div>
                         <div className="rounded-2xl border border-primary/15 bg-primary/[0.03] p-3 md:col-span-2 lg:col-span-3">
-                          <Label htmlFor="student-balance">Balance</Label>
-                          <div className="mt-1 flex flex-col gap-3 sm:flex-row sm:items-center">
-                            <Input
-                              id="student-balance"
-                              inputMode="decimal"
-                              value={form.balance}
-                              onChange={(e) => {
-                                setFormMessage(null)
-                                setForm({ ...form, balance: e.target.value })
-                              }}
-                              className="text-lg font-semibold tabular-nums sm:max-w-xs"
-                            />
-                            {editing && (
-                              <Button
-                                type="button"
-                                size="lg"
-                                className="min-h-12 font-semibold sm:min-w-[8rem]"
-                                disabled={saving || photoBusy || !formValid}
-                                onClick={() => void handleSave()}
-                              >
-                                {saving ? "Saving…" : "Update"}
-                              </Button>
-                            )}
-                          </div>
-                          <p className="mt-1 text-xs text-silver-foreground">
-                            Edit the amount and tap Update to PATCH the lunch account balance
-                            immediately. Prefer Add money when cash or a check is received in the
-                            office.
-                          </p>
+                          {editing ? (
+                            <>
+                              <p className="text-sm font-semibold text-primary">Lunch account</p>
+                              <p className="mt-1 text-2xl font-bold tabular-nums text-primary">
+                                {formatCurrency(editing.balance)}
+                              </p>
+                              <p className="mt-1 text-xs text-silver-foreground">
+                                Add money when cash or a check is received. Take money off for a
+                                correction, refund, or mistake. This writes a history line — it is
+                                not a lunch charge.
+                              </p>
+                              <div className="mt-3">
+                                <RecordOfficePayment
+                                  students={[editing]}
+                                  initialStudentId={editing.id}
+                                  compact
+                                  onDone={(balanceAfter) => {
+                                    setEditing((prev) =>
+                                      prev ? { ...prev, balance: balanceAfter } : prev
+                                    )
+                                    setForm((prev) => ({
+                                      ...prev,
+                                      balance: formatBalanceInput(balanceAfter),
+                                    }))
+                                    void queryClient.invalidateQueries({ queryKey: ["students"] })
+                                    void queryClient.invalidateQueries({
+                                      queryKey: ["transactions"],
+                                    })
+                                  }}
+                                />
+                              </div>
+                            </>
+                          ) : (
+                            <>
+                              <Label htmlFor="student-balance">Starting balance</Label>
+                              <Input
+                                id="student-balance"
+                                inputMode="decimal"
+                                value={form.balance}
+                                onChange={(e) => {
+                                  setFormMessage(null)
+                                  setForm({ ...form, balance: e.target.value })
+                                }}
+                                className="mt-1 text-lg font-semibold tabular-nums sm:max-w-xs"
+                              />
+                              <p className="mt-1 text-xs text-silver-foreground">
+                                Optional. You can add or take money off later from this profile.
+                              </p>
+                            </>
+                          )}
                         </div>
                       </div>
 
@@ -796,7 +812,7 @@ export function AdminStudentManager({
                               onClick={() => openOfficePayment(editing.id)}
                             >
                               <DollarSign className="h-4 w-4" />
-                              Add money to account
+                              Add or take money off
                             </Button>
                           </div>
                         </div>
@@ -909,7 +925,7 @@ export function AdminStudentManager({
                             onClick={() => openOfficePayment(s.id)}
                           >
                             <DollarSign className="h-3.5 w-3.5" />
-                            Add money
+                            Add or take money off
                           </Button>
                           {!s.disabled && (
                             <Button
@@ -1007,7 +1023,7 @@ export function AdminStudentManager({
                                 onClick={() => openOfficePayment(s.id)}
                               >
                                 <DollarSign className="h-3.5 w-3.5" />
-                                Add money
+                                Add or take money off
                               </Button>
                               {!s.disabled && (
                                 <Button

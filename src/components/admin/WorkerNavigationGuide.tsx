@@ -102,12 +102,12 @@ const GUIDE_STEPS: GuideStep[] = [
   },
   {
     number: 6,
-    title: "Add money to a lunch account",
-    plain: "Student pays cash/check in the office? Enter it here.",
+    title: "Add or take money off a lunch account",
+    plain: "Record office cash/check, or take money off for a correction.",
     details: [
       "Find the student → Open profile or Add money to account.",
-      "Enter the amount and how they paid (cash, check, or card).",
-      "The money is added to their lunch account right away.",
+      "Choose Add money or Take money off. Enter the amount and an optional note.",
+      "Add money when they pay cash or check. Take money off for a correction or refund — not a lunch charge. Balance will not go below $0.",
       "Online parent card payments use Stripe — we never store card numbers.",
     ],
     href: "/admin/imports",

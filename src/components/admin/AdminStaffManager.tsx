@@ -622,7 +622,7 @@ export function AdminStaffManager({
                         className="min-h-10 gap-1.5 font-semibold"
                       >
                         <DollarSign className="h-3.5 w-3.5" />
-                        Add Money
+                        Add or take money off
                       </Button>
                       <Button
                         size="sm"
@@ -764,7 +764,7 @@ export function AdminStaffManager({
                     onClick={() => setShowAddMoney((v) => !v)}
                   >
                     <DollarSign className="h-4 w-4" />
-                    {showAddMoney ? "Hide Add Money" : "Add Money"}
+                    {showAddMoney ? "Hide" : "Add or take money off"}
                   </Button>
                 </div>
                 {showAddMoney && (

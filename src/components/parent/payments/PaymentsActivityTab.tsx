@@ -12,7 +12,7 @@ import {
   formatTransactionDate,
   type MealPeriodFilter,
 } from "@/lib/parent-transactions"
-import { formatCurrency } from "@/lib/utils"
+import { formatSignedTransactionAmount, isCreditDeposit } from "@/lib/transactions/display"
 import {
   type ActivityCategory,
   getTransactionCategory,
@@ -152,7 +152,7 @@ export function PaymentsActivityTab({ onAddFunds }: PaymentsActivityTabProps) {
               </thead>
               <tbody>
                 {filteredTransactions.map((tx) => {
-                  const isDeposit = tx.type === "deposit"
+                  const isCredit = isCreditDeposit(tx)
                   return (
                     <tr key={tx.id} className="border-b border-[#C8CDD7]/60 last:border-0">
                       <td className="px-4 py-3 text-[#64748B] md:px-5">
@@ -166,12 +166,11 @@ export function PaymentsActivityTab({ onAddFunds }: PaymentsActivityTabProps) {
                       </td>
                       <td
                         className={`px-4 py-3 text-right font-bold tabular-nums md:px-5 ${
-                          isDeposit ? "text-success" : ""
+                          isCredit ? "text-success" : ""
                         }`}
-                        style={!isDeposit ? { color: PARENT_NAVY } : undefined}
+                        style={!isCredit ? { color: PARENT_NAVY } : undefined}
                       >
-                        {isDeposit ? "+" : "−"}
-                        {formatCurrency(tx.amount)}
+                        {formatSignedTransactionAmount(tx)}
                       </td>
                     </tr>
                   )

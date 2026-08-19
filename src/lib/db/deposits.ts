@@ -117,6 +117,118 @@ export async function creditStudentDeposit(
   })
 }
 
+export class BalanceDebitError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = "BalanceDebitError"
+  }
+}
+
+export function isBalanceDebitError(error: unknown): error is BalanceDebitError {
+  return error instanceof BalanceDebitError || (error instanceof Error && error.name === "BalanceDebitError")
+}
+
+function mealTypeForDebit(note?: string): string {
+  const trimmed = note?.trim()
+  if (!trimmed) return "Money taken off"
+  const short = trimmed.length > 80 ? `${trimmed.slice(0, 77)}...` : trimmed
+  return `Money taken off — ${short}`
+}
+
+export interface DebitStudentBalanceInput {
+  studentId: string
+  schoolId: string
+  amountDollars: number
+  performedBy?: string
+  processedByUserId?: string
+  note?: string
+}
+
+/**
+ * Take money off a student lunch account (correction, refund, or mistake).
+ * Records a negative DEPOSIT so history is not a silent overwrite and not a meal charge.
+ * Clamps at $0 — meal charges may still go negative, but office take-off will not.
+ */
+export async function debitStudentBalance(
+  input: DebitStudentBalanceInput
+): Promise<{ transactionId: string; balanceAfter: number; amountDebited: number }> {
+  if (!isDatabaseEnabled()) {
+    throw new Error("DATABASE_URL is not configured")
+  }
+
+  const requested = new Prisma.Decimal(input.amountDollars.toFixed(2))
+  if (requested.lte(0)) {
+    throw new BalanceDebitError("Enter an amount greater than $0.")
+  }
+
+  return prisma.$transaction(async (tx) => {
+    const student = await tx.student.findUnique({
+      where: { id: input.studentId },
+      select: { id: true, balance: true, schoolId: true },
+    })
+
+    if (!student) {
+      throw new Error("Student not found")
+    }
+
+    if (student.schoolId !== input.schoolId) {
+      throw new Error("Student does not belong to this school")
+    }
+
+    if (student.balance.lte(0)) {
+      throw new BalanceDebitError("Nothing to take off. Balance is already $0 or less.")
+    }
+
+    const amountDebited = requested.gt(student.balance) ? student.balance : requested
+    const balanceAfter = student.balance.sub(amountDebited)
+    const ledgerAmount = amountDebited.mul(-1)
+    const mealType = mealTypeForDebit(input.note)
+
+    await tx.student.update({
+      where: { id: input.studentId },
+      data: { balance: balanceAfter },
+    })
+
+    const transaction = await tx.transaction.create({
+      data: {
+        studentId: input.studentId,
+        schoolId: input.schoolId,
+        type: TransactionType.DEPOSIT,
+        mealType,
+        amount: ledgerAmount,
+        balanceAfter,
+        processedByUserId: input.processedByUserId ?? null,
+      },
+    })
+
+    await tx.auditLog.create({
+      data: {
+        action: "FUNDS_REMOVED",
+        entity: "student_balance",
+        entityType: "student",
+        entityId: input.studentId,
+        performedBy: input.performedBy ?? "office_staff",
+        schoolId: input.schoolId,
+        metadata: {
+          amountRequested: input.amountDollars,
+          amountDebited: Number(amountDebited),
+          clamped: amountDebited.lt(requested),
+          source: "office",
+          note: input.note?.trim() || null,
+        },
+        previousValue: { balance: Number(student.balance) },
+        newValue: { balance: Number(balanceAfter) },
+      },
+    })
+
+    return {
+      transactionId: transaction.id,
+      balanceAfter: Number(balanceAfter),
+      amountDebited: Number(amountDebited),
+    }
+  })
+}
+
 export interface CreditStaffDepositInput {
   userId: string
   schoolId: string
@@ -188,6 +300,89 @@ export async function creditStaffDeposit(
     })
 
     return { balanceAfter: Number(balanceAfter) }
+  })
+}
+
+export interface DebitStaffBalanceInput {
+  userId: string
+  schoolId: string
+  amountDollars: number
+  performedBy?: string
+  processedByUserId?: string
+  note?: string
+}
+
+/**
+ * Take money off a staff lunch account. Audit-only (staff deposits are not student ledger rows).
+ * Clamps at $0 so this is not a meal charge.
+ */
+export async function debitStaffBalance(
+  input: DebitStaffBalanceInput
+): Promise<{ balanceAfter: number; amountDebited: number }> {
+  if (!isDatabaseEnabled()) {
+    throw new Error("DATABASE_URL is not configured")
+  }
+
+  const requested = new Prisma.Decimal(input.amountDollars.toFixed(2))
+  if (requested.lte(0)) {
+    throw new BalanceDebitError("Enter an amount greater than $0.")
+  }
+
+  return prisma.$transaction(async (tx) => {
+    const staffUser = await tx.user.findFirst({
+      where: {
+        id: input.userId,
+        schoolId: input.schoolId,
+        status: "ACTIVE",
+        role: { in: ["STAFF", "TEACHER", "CASHIER", "ADMIN"] },
+      },
+      select: { id: true, accountBalance: true, firstName: true, lastName: true },
+    })
+
+    if (!staffUser) {
+      throw new Error("Staff account not found")
+    }
+
+    if (staffUser.accountBalance.lte(0)) {
+      throw new BalanceDebitError("Nothing to take off. Balance is already $0 or less.")
+    }
+
+    const amountDebited = requested.gt(staffUser.accountBalance)
+      ? staffUser.accountBalance
+      : requested
+    const balanceAfter = staffUser.accountBalance.sub(amountDebited)
+
+    await tx.user.update({
+      where: { id: staffUser.id },
+      data: { accountBalance: balanceAfter },
+    })
+
+    await tx.auditLog.create({
+      data: {
+        action: "FUNDS_REMOVED",
+        entity: "staff_balance",
+        entityType: "user",
+        entityId: staffUser.id,
+        performedBy: input.performedBy ?? input.processedByUserId ?? "office_staff",
+        schoolId: input.schoolId,
+        metadata: {
+          amountRequested: input.amountDollars,
+          amountDebited: Number(amountDebited),
+          clamped: amountDebited.lt(requested),
+          source: "office",
+          note: input.note?.trim() || null,
+          mealType: mealTypeForDebit(input.note),
+          staffName: `${staffUser.firstName} ${staffUser.lastName}`,
+        },
+        previousValue: { accountBalance: Number(staffUser.accountBalance) },
+        newValue: { accountBalance: Number(balanceAfter) },
+      },
+    })
+
+    return {
+      balanceAfter: Number(balanceAfter),
+      amountDebited: Number(amountDebited),
+    }
   })
 }
 

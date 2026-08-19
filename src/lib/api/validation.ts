@@ -61,6 +61,7 @@ export const officeDepositSchema = z.object({
   amount: z.number().positive().max(2000),
   method: z.enum(["cash", "check", "card", "other"]).default("cash"),
   note: z.string().max(500).optional(),
+  action: z.enum(["add", "subtract"]).default("add"),
 })
 
 export const staffDepositSchema = z.object({
@@ -68,6 +69,7 @@ export const staffDepositSchema = z.object({
   amount: z.number().positive().max(2000),
   method: z.enum(["cash", "check", "card", "other"]).default("cash"),
   note: z.string().max(500).optional(),
+  action: z.enum(["add", "subtract"]).default("add"),
 })
 
 export const parentRegisterSchema = z.object({

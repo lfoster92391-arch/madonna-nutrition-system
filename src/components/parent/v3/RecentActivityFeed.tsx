@@ -6,6 +6,7 @@ import { useParentLinkedStudents } from "@/hooks/useParentLinkedStudents"
 import { V3_CARD, V3_CARD_BORDER, V3_NAVY } from "@/components/parent/v3/parent-v3-theme"
 import { formatCurrency } from "@/lib/utils"
 import { formatTransactionDate } from "@/lib/parent-transactions"
+import { formatSignedTransactionAmount, isCreditDeposit, isMoneyTakenOff } from "@/lib/transactions/display"
 import { getStudentThreshold } from "@/lib/parent-balance-alerts"
 
 type FeedItem = {
@@ -24,15 +25,20 @@ export function RecentActivityFeed() {
     const feed: FeedItem[] = []
 
     for (const tx of familyTransactions.slice(0, 6)) {
-      const isDeposit = tx.type === "deposit"
+      const takeOff = isMoneyTakenOff(tx)
+      const credit = isCreditDeposit(tx)
       feed.push({
         id: tx.id,
-        label: isDeposit ? "Family Deposit" : `${tx.studentName?.split(" ")[0] ?? "Student"}`,
-        detail: isDeposit
+        label: takeOff
+          ? "Money taken off"
+          : credit
+            ? "Family Deposit"
+            : `${tx.studentName?.split(" ")[0] ?? "Student"}`,
+        detail: credit
           ? formatTransactionDate(tx.timestamp)
           : `${tx.meal} · ${formatTransactionDate(tx.timestamp)}`,
-        amount: isDeposit ? `+${formatCurrency(tx.amount)}` : `−${formatCurrency(tx.amount)}`,
-        tone: isDeposit ? "deposit" : "meal",
+        amount: formatSignedTransactionAmount(tx),
+        tone: credit ? "deposit" : "meal",
       })
     }
 
