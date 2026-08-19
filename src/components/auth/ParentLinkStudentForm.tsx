@@ -51,7 +51,7 @@ export function ParentLinkStudentForm({
 }) {
   const router = useRouter()
   const queryClient = useQueryClient()
-  const { user, logout, clearNeedsStudentLink } = useAuth()
+  const { user, logout, clearNeedsStudentLink, appendLinkedStudentId } = useAuth()
   const [linked, setLinked] = useState<SearchableStudent[]>([])
   const [pendingSelect, setPendingSelect] = useState<SearchableStudent | null>(null)
   const [addingAnother, setAddingAnother] = useState(false)
@@ -87,6 +87,7 @@ export function ParentLinkStudentForm({
       setPendingSelect(null)
       setAddingAnother(false)
       setMessage(`${result.studentName} is now linked.`)
+      appendLinkedStudentId(pendingSelect.id)
       clearNeedsStudentLink()
       void queryClient.invalidateQueries({ queryKey: ["users"] })
       void queryClient.invalidateQueries({ queryKey: ["students"] })

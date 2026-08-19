@@ -60,7 +60,7 @@ export async function PATCH(request: Request, { params }: RouteParams) {
         data: {
           role: toDbUserRole(role),
           badgeId,
-          linkedStudentIds: role === "parent" ? existing.linkedStudentIds : [],
+          linkedStudentIds: existing.linkedStudentIds,
         },
       })
 

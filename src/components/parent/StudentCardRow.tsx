@@ -32,9 +32,14 @@ export function StudentCardRow({ onAddFunds }: StudentCardRowProps = {}) {
   return (
     <>
       <section id="my-students">
-        <h2 className="mb-4 text-lg font-bold md:mb-6 md:text-xl" style={{ color: PARENT_NAVY }}>
-          My Students
-        </h2>
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 md:mb-6">
+          <h2 className="text-lg font-bold md:text-xl" style={{ color: PARENT_NAVY }}>
+            My Students
+          </h2>
+          <Button asChild size="sm">
+            <Link href="/parent/add-child">Add a child</Link>
+          </Button>
+        </div>
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {linkedStudents.map((student) => {
             const profile = getStudentProfile(student.id, studentProfiles)

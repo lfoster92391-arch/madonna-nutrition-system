@@ -16,7 +16,10 @@ export function useParentLinkedStudents(): {
   const linkedStudents = useMemo(() => {
     if (!user) return []
     const parentUser = users.find((u) => u.id === user.id)
-    const linkedIds = new Set(parentUser?.linkedStudentIds ?? [])
+    const linkedIds = new Set([
+      ...(parentUser?.linkedStudentIds ?? []),
+      ...(user.linkedStudentIds ?? []),
+    ])
     return allStudents.filter((s) => linkedIds.has(s.id) && !s.disabled)
   }, [allStudents, user, users])
 

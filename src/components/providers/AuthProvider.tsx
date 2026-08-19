@@ -24,6 +24,7 @@ interface AuthUser {
   mustChangePassword?: boolean
   needsStudentLink?: boolean
   linkedStudentIds?: string[]
+  parentCapable?: boolean
 }
 
 export interface LoginResult {
@@ -38,6 +39,7 @@ interface AuthContextValue {
   mustChangePassword: boolean
   clearMustChangePassword: () => void
   clearNeedsStudentLink: () => void
+  appendLinkedStudentId: (studentExternalId: string) => void
   login: (
     username: string,
     password: string,
@@ -113,8 +115,10 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
             displayName: formatUserName(live),
             email: live.email,
             mustChangePassword: live.mustChangePassword ?? false,
-            linkedStudentIds: live.linkedStudentIds ?? [],
+            linkedStudentIds: live.linkedStudentIds ?? session.linkedStudentIds ?? [],
             needsStudentLink: session.needsStudentLink,
+            parentCapable:
+              session.parentCapable || (live.linkedStudentIds ?? []).length > 0,
           }
           setUser(reconciled)
           setMustChangePassword(Boolean(reconciled.mustChangePassword))
@@ -170,7 +174,7 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
           error?: string
           mustChangePassword?: boolean
           needsStudentLink?: boolean
-          user?: AuthUser & { linkedStudentIds?: string[] }
+          user?: AuthUser & { linkedStudentIds?: string[]; parentCapable?: boolean }
         }
         try {
           data = raw ? (JSON.parse(raw) as typeof data) : {}
@@ -204,6 +208,7 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
           mustChangePassword: data.mustChangePassword,
           needsStudentLink: Boolean(data.needsStudentLink),
           linkedStudentIds: authUser.linkedStudentIds ?? [],
+          parentCapable: Boolean(authUser.parentCapable),
         }
 
         setUser(session)
@@ -244,6 +249,23 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
     })
   }, [])
 
+  const appendLinkedStudentId = useCallback((studentExternalId: string) => {
+    const id = studentExternalId.trim()
+    if (!id) return
+    setUser((current) => {
+      if (!current) return current
+      const linkedStudentIds = [...new Set([...(current.linkedStudentIds ?? []), id])]
+      const next = {
+        ...current,
+        linkedStudentIds,
+        needsStudentLink: false,
+        parentCapable: true,
+      }
+      writeSession(next)
+      return next
+    })
+  }, [])
+
   const value = useMemo(
     () => ({
       user,
@@ -251,6 +273,7 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
       mustChangePassword,
       clearMustChangePassword,
       clearNeedsStudentLink,
+      appendLinkedStudentId,
       login,
       logout,
     }),
@@ -261,6 +284,7 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
       mustChangePassword,
       clearMustChangePassword,
       clearNeedsStudentLink,
+      appendLinkedStudentId,
       login,
       logout,
     ]

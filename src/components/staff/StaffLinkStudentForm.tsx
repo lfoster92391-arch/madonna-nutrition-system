@@ -3,6 +3,7 @@
 import { useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
+import { useQueryClient } from "@tanstack/react-query"
 import { useAuth } from "@/components/providers/AuthProvider"
 import { Button } from "@/components/ui/button"
 import {
@@ -17,7 +18,7 @@ async function linkOne(
   userId: string,
   studentExternalId: string
 ): Promise<{ ok: true; studentName: string } | { ok: false; error: string }> {
-  const res = await fetch("/api/auth/staff/link-student", {
+  const res = await fetch("/api/auth/parent/link-student", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -39,9 +40,20 @@ async function linkOne(
   return { ok: true, studentName: data.studentName ?? "Student" }
 }
 
-export function StaffLinkStudentForm() {
+export function StaffLinkStudentForm({
+  backHref = "/staff/settings",
+  continueHref = "/parent#my-students",
+  continueLabel = "Open parent portal",
+  title = "Add your child",
+}: {
+  backHref?: string
+  continueHref?: string
+  continueLabel?: string
+  title?: string
+}) {
   const router = useRouter()
-  const { user } = useAuth()
+  const queryClient = useQueryClient()
+  const { user, appendLinkedStudentId } = useAuth()
   const [linked, setLinked] = useState<SearchableStudent[]>([])
   const [pendingSelect, setPendingSelect] = useState<SearchableStudent | null>(null)
   const [addingAnother, setAddingAnother] = useState(false)
@@ -75,7 +87,10 @@ export function StaffLinkStudentForm() {
       )
       setPendingSelect(null)
       setAddingAnother(false)
-      setMessage(`${result.studentName} is now linked to your staff account.`)
+      setMessage(`${result.studentName} is now linked to this account.`)
+      appendLinkedStudentId(pendingSelect.id)
+      void queryClient.invalidateQueries({ queryKey: ["users"] })
+      void queryClient.invalidateQueries({ queryKey: ["students"] })
     } catch {
       setError("Could not link student. Try again.")
     } finally {
@@ -90,11 +105,11 @@ export function StaffLinkStudentForm() {
     >
       <div className="mb-6">
         <h1 className="text-2xl font-bold" style={{ color: STAFF_NAVY }}>
-          Add your child
+          {title}
         </h1>
         <p className="mt-1 text-sm text-[#64748B]">
-          Search by name or MD ID, then link them to this staff account. You can add more than one
-          child.
+          Search by name or MD ID, then link them to this account. You can add more than one child.
+          Linked students appear under My Students on the parent portal.
         </p>
       </div>
 
@@ -156,15 +171,15 @@ export function StaffLinkStudentForm() {
             type="button"
             size="lg"
             className="h-14 w-full text-base"
-            onClick={() => router.replace("/staff/account")}
+            onClick={() => router.replace(continueHref)}
             disabled={busy}
           >
-            View child balances
+            {continueLabel}
           </Button>
         )}
 
         <div className="pt-2 text-center text-sm text-[#64748B]">
-          <Link href="/staff/settings" className="font-semibold hover:underline" style={{ color: STAFF_NAVY }}>
+          <Link href={backHref} className="font-semibold hover:underline" style={{ color: STAFF_NAVY }}>
             Back to Settings
           </Link>
         </div>

@@ -48,9 +48,18 @@ export function StudentCardGrid({ onAddFunds }: StudentCardGridProps) {
 
   return (
     <section id="my-students">
-      <h2 className="mb-4 text-lg font-bold md:mb-6 md:text-xl" style={{ color: V3_NAVY }}>
-        My Students
-      </h2>
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3 md:mb-6">
+        <h2 className="text-lg font-bold md:text-xl" style={{ color: V3_NAVY }}>
+          My Students
+        </h2>
+        <Button
+          type="button"
+          size="sm"
+          onClick={() => router.push("/parent/add-child")}
+        >
+          Add a child
+        </Button>
+      </div>
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
         {linkedStudents.map((student) => {
           const profile = getStudentProfile(student.id, studentProfiles)
@@ -179,6 +188,22 @@ export function StudentCardGrid({ onAddFunds }: StudentCardGridProps) {
             </div>
           )
         })}
+        <button
+          type="button"
+          className={cn(
+            V3_CARD,
+            V3_CARD_BORDER,
+            "flex min-h-[220px] flex-col items-center justify-center border-dashed p-5 text-center transition hover:border-[#041B52]/40 hover:bg-[#041B52]/[0.03]"
+          )}
+          onClick={() => router.push("/parent/add-child")}
+        >
+          <span className="text-base font-semibold" style={{ color: V3_NAVY }}>
+            Add a child
+          </span>
+          <span className="mt-2 max-w-xs text-sm text-[#64748B]">
+            Search by name or MD ID and link them to this account.
+          </span>
+        </button>
       </div>
     </section>
   )

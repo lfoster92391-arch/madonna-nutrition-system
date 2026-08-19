@@ -23,14 +23,14 @@ export function StudentSettingsSection() {
             pay from one dashboard.
           </p>
           <Button asChild size="sm">
-            <Link href="/login/parent/add-child">Add another child</Link>
+            <Link href="/parent/add-child">Add another child</Link>
           </Button>
         </div>
 
         {linkedStudents.length === 0 && (
           <p className="rounded-[14px] border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
             No students linked yet.{" "}
-            <Link href="/login/parent/link" className="font-semibold underline">
+            <Link href="/parent/add-child" className="font-semibold underline">
               Link a student
             </Link>{" "}
             to use the parent portal.

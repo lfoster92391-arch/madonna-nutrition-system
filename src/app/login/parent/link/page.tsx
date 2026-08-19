@@ -5,6 +5,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/components/providers/AuthProvider"
 import { ParentLinkStudentForm } from "@/components/auth/ParentLinkStudentForm"
+import { canAccessParentPortal } from "@/lib/auth/portal-roles"
 
 const NAVY = "#001E62"
 
@@ -14,12 +15,12 @@ export default function ParentLinkStudentPage() {
 
   useEffect(() => {
     if (isLoading) return
-    if (!user || user.role !== "parent") {
+    if (!user || !canAccessParentPortal(user)) {
       router.replace("/login/parent")
     }
   }, [user, isLoading, router])
 
-  if (isLoading || !user || user.role !== "parent") {
+  if (isLoading || !user || !canAccessParentPortal(user)) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-white">
         <p className="text-lg text-[#64748B]">Loading...</p>

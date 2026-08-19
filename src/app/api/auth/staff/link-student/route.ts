@@ -9,7 +9,7 @@ export const runtime = "nodejs"
 export async function POST(request: Request) {
   const result = await withDatabase(async () => {
     try {
-      const auth = await requireMutatingSession(request, ["STAFF"])
+      const auth = await requireMutatingSession(request, ["STAFF", "TEACHER", "ADMIN"])
       if ("error" in auth) return auth.error
 
       const body = await request.json()
@@ -21,6 +21,7 @@ export async function POST(request: Request) {
       const linked = await linkStaffUserToStudent({
         staffUserId: auth.user.id,
         studentExternalId: parsed.data.studentExternalId,
+        relationship: parsed.data.relationship,
       })
 
       return NextResponse.json({
@@ -31,7 +32,7 @@ export async function POST(request: Request) {
       })
     } catch (error) {
       const message = error instanceof Error ? error.message : "Could not link student"
-      if (message === "Student not found" || message.includes("Only staff")) {
+      if (message === "Student not found" || message.includes("Only staff") || message.includes("Only parent")) {
         return badRequest(message)
       }
       console.error("POST /api/auth/staff/link-student", error)
@@ -44,7 +45,7 @@ export async function POST(request: Request) {
 export async function GET(request: Request) {
   const result = await withDatabase(async () => {
     try {
-      const auth = await requireMutatingSession(request, ["STAFF"])
+      const auth = await requireMutatingSession(request, ["STAFF", "TEACHER", "ADMIN"])
       if ("error" in auth) return auth.error
 
       const students = await getStaffLinkedStudents(auth.user.id)
