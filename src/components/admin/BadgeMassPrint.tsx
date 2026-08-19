@@ -39,9 +39,9 @@ export function BadgeMassPrint({ students, onClose }: BadgeMassPrintProps) {
             email, grade, or barcode still print; check the card and fill gaps later if needed.
           </p>
           <p className="mt-2 text-xs font-medium text-primary/80">
-            On phones, swipe sideways to pan the badge preview. Leave the top ¼&quot; punch-safe
-            (navy, no logo). Madonna logo and Madonna High School fill the school header below
-            the hole. Photo, status, and barcode stay on the 3&quot; × 2¾&quot; landscape card.
+            On phones, swipe sideways to pan the badge preview. Leave ½&quot; clear at the top for
+            the badge hole. Photo, name, status, and barcode fill the rest of the 3&quot; × 2¾&quot;
+            card so nothing is cropped in print.
           </p>
         </div>
         <div className="flex w-full flex-wrap gap-2 sm:w-auto">
