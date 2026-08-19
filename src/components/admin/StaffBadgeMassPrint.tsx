@@ -41,7 +41,7 @@ export function StaffBadgeMassPrint({ users, onClose }: StaffBadgeMassPrintProps
           <p className="mt-2 text-xs font-medium text-primary/80">
             On phones, swipe sideways to pan the badge preview. Leave ½&quot; clear at the top for
             the badge hole. Content (Madonna logo, school name, photo, role, barcode) sits in the
-            band from ½&quot;–2&quot; from the top — same size as student badges.
+            band from ½&quot; from the top — same size as student badges.
           </p>
         </div>
         <div className="flex w-full flex-wrap gap-2 sm:w-auto">

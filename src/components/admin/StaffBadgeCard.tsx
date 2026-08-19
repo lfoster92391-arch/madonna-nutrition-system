@@ -38,10 +38,13 @@ interface StaffBadgeCardProps {
   className?: string
 }
 
+/** Code128 + badge ID print size: +50% vs prior 22px / 1.05 module / 8.25px ID. */
+const BADGE_BARCODE_SVG = { height: 33, moduleWidth: 1.575 } as const
+
 /**
  * Physical landscape badge: 3in × 2.75in (same layout spirit as student badges).
  * Top 0.5in is reserved for the hole punch; printable content sits in the
- * 1.5in band from 0.5in–2.0in from the top.
+ * ~1.62in band from 0.5in (bottom margin remains below the content).
  */
 export function StaffBadgeCard({ user, className }: StaffBadgeCardProps) {
   const badgeId = (user.badgeId?.trim() || "").trim()
@@ -54,7 +57,7 @@ export function StaffBadgeCard({ user, className }: StaffBadgeCardProps) {
   const statusTone = badgeStatusTone(user.status)
 
   const barcode = useMemo(
-    () => (barcodeValue ? buildCode128Svg(barcodeValue, { height: 22, moduleWidth: 1.05 }) : null),
+    () => (barcodeValue ? buildCode128Svg(barcodeValue, BADGE_BARCODE_SVG) : null),
     [barcodeValue]
   )
 
@@ -67,7 +70,7 @@ export function StaffBadgeCard({ user, className }: StaffBadgeCardProps) {
     >
       <div className="student-badge-punch-gutter h-[0.5in] shrink-0" aria-hidden />
 
-      <div className="student-badge-content flex h-[1.5in] max-h-[1.5in] min-h-0 shrink-0 flex-col overflow-hidden">
+      <div className="student-badge-content flex h-[1.62in] max-h-[1.62in] min-h-0 shrink-0 flex-col overflow-hidden">
         <header className="flex h-[0.22in] shrink-0 items-center gap-1 bg-[#0a1e3f] px-1.5 text-white">
           {/* eslint-disable-next-line @next/next/no-img-element -- print-friendly static brand asset */}
           <img
@@ -85,7 +88,7 @@ export function StaffBadgeCard({ user, className }: StaffBadgeCardProps) {
           </div>
         </header>
 
-        <div className="grid min-h-0 flex-1 grid-cols-[0.68in_1fr] gap-1 px-1.5 py-0.5">
+        <div className="grid min-h-0 flex-1 grid-cols-[0.68in_1fr] gap-1 px-1.5 py-px">
           <div className="relative h-full min-h-0 overflow-hidden rounded-sm border border-[#c7ccd6] bg-[#f7f8fb]">
             {hasPhoto ? (
               // eslint-disable-next-line @next/next/no-img-element -- print-friendly; may be data URLs
@@ -124,7 +127,7 @@ export function StaffBadgeCard({ user, className }: StaffBadgeCardProps) {
                 <dt className="shrink-0 font-semibold text-[#64748b]">Dept</dt>
                 <dd className="truncate">{department || "—"}</dd>
               </div>
-              <div className="flex gap-1 text-[8.25px]">
+              <div className="flex gap-1 text-[12.4px]">
                 <dt className="shrink-0 font-semibold text-[#64748b]">Badge</dt>
                 <dd className="truncate font-mono font-semibold">{badgeId || "—"}</dd>
               </div>
@@ -132,22 +135,22 @@ export function StaffBadgeCard({ user, className }: StaffBadgeCardProps) {
           </div>
         </div>
 
-        <footer className="flex shrink-0 items-center gap-1.5 border-t border-[#c7ccd6] px-1.5 py-0.5">
-          <div className="min-w-0 flex-1 overflow-hidden">
+        <footer className="flex shrink-0 items-center gap-1 border-t border-[#c7ccd6] px-1 py-px">
+          <div className="min-w-0 flex-1">
             {barcode ? (
-              <div className="flex flex-col items-center gap-px overflow-hidden">
+              <div className="flex flex-col items-center gap-px">
                 <div
-                  className="max-h-[0.26in] max-w-full overflow-hidden [&_svg]:h-[0.22in] [&_svg]:w-auto"
+                  className="flex max-h-[0.39in] max-w-full justify-center [&_svg]:h-[0.33in] [&_svg]:w-auto [&_svg]:max-w-full"
                   dangerouslySetInnerHTML={{ __html: barcode.svg }}
                 />
-                <p className="font-mono text-[7.15px] leading-none tracking-wider text-[#0a1e3f]">
+                <p className="font-mono text-[10.7px] leading-none tracking-wider text-[#0a1e3f]">
                   {barcodeValue}
                 </p>
               </div>
             ) : (
               <div className="text-center leading-none">
-                <p className="font-mono text-[9px] font-bold tracking-wide">No badge ID</p>
-                <p className="font-mono text-[7.15px] text-[#64748b]">Set in staff profile</p>
+                <p className="font-mono text-[13.5px] font-bold tracking-wide">No badge ID</p>
+                <p className="font-mono text-[10.7px] text-[#64748b]">Set in staff profile</p>
               </div>
             )}
           </div>
