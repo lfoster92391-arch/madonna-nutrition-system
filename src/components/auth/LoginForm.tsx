@@ -2,12 +2,13 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { Eye, EyeOff, HelpCircle, Lock, User } from "lucide-react"
+import { Eye, EyeOff, Lock, User } from "lucide-react"
 import Image from "next/image"
 import { useAuth, type PortalRole } from "@/components/providers/AuthProvider"
 import { canAccessParentPortal } from "@/lib/auth/portal-roles"
 import { BRAND } from "@/config/brand"
-import { getItHelpDeskMailto, IT_HELP_DESK_LABEL } from "@/config/it-help"
+import { getSupportMailtoAll } from "@/config/support-contacts"
+import { SupportNeedHelp } from "@/components/support/SupportNeedHelp"
 import { Button } from "@/components/ui/button"
 import { Input, Label } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
@@ -171,7 +172,7 @@ export function LoginForm({ role, redirectTo, variant = "page" }: LoginFormProps
           </label>
           {!embedded && (
             <a
-              href={getItHelpDeskMailto()}
+              href={getSupportMailtoAll()}
               className="font-medium hover:underline"
               style={{ color: NAVY }}
             >
@@ -194,17 +195,10 @@ export function LoginForm({ role, redirectTo, variant = "page" }: LoginFormProps
 
       {!embedded && (
         <>
-          <p className="mt-6 flex items-center justify-center gap-2 text-center text-xs text-[#64748B]">
-            <HelpCircle className="h-4 w-4 shrink-0" />
-            Need help?{" "}
-            <a
-              href={getItHelpDeskMailto()}
-              className="font-semibold hover:underline"
-              style={{ color: NAVY }}
-            >
-              {IT_HELP_DESK_LABEL}
-            </a>
-          </p>
+          <SupportNeedHelp
+            className="mt-6 flex flex-wrap items-center justify-center gap-2 text-center text-xs text-[#64748B]"
+            linkStyle={{ color: NAVY }}
+          />
 
           {role === "parent" && (
             <p className="mt-4 text-center text-sm text-[#64748B]">

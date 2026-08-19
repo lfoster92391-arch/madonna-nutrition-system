@@ -7,7 +7,7 @@ import {
   ADMIN_SILVER,
   ADMIN_WHITE,
 } from "@/components/admin/layout/admin-theme"
-import { IT_HELP_DESK_EMAIL, IT_HELP_DESK_LABEL } from "@/config/it-help"
+import { PRIMARY_SUPPORT_EMAIL, getSupportMailto } from "@/config/support-contacts"
 import { CARD_SAFETY_COPY } from "@/lib/security/card-copy"
 
 /** Plain-language security note for cafeteria admins. */
@@ -38,17 +38,17 @@ export function AdminSecurityNote() {
             {CARD_SAFETY_COPY}
           </p>
           <p className="text-sm leading-relaxed" style={{ color: ADMIN_SILVER }}>
-            You will get email alerts at {IT_HELP_DESK_LABEL} (
+            You will get email alerts at Mrs. Morris (
             <a
               className="font-semibold underline"
               style={{ color: ADMIN_NAVY }}
-              href={`mailto:${IT_HELP_DESK_EMAIL}`}
+              href={getSupportMailto(PRIMARY_SUPPORT_EMAIL)}
             >
-              {IT_HELP_DESK_EMAIL}
+              {PRIMARY_SUPPORT_EMAIL}
             </a>
             ) for suspicious logins, admin password resets, and Stripe disputes when email is
             configured. No system can promise zero break-ins — we use layered protection and
-            notifications so IT can respond quickly.
+            notifications so we can respond quickly.
           </p>
         </div>
       </div>
