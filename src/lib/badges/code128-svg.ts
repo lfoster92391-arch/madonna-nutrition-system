@@ -104,6 +104,6 @@ export function buildCode128Svg(
     bar = !bar
   }
 
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width.toFixed(2)}" height="${height}" viewBox="0 0 ${width.toFixed(2)} ${height}" role="img" aria-label="Barcode ${value}">${rects.join("")}</svg>`
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width.toFixed(2)}" height="${height}" viewBox="0 0 ${width.toFixed(2)} ${height}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Barcode ${value}">${rects.join("")}</svg>`
   return { svg, encoded: value }
 }

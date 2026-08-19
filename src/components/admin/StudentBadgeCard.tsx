@@ -43,10 +43,13 @@ interface StudentBadgeCardProps {
   className?: string
 }
 
+/** Code128 + MD ID print size: +50% vs prior 22px / 1.05 module / 8.25px MD ID. */
+const BADGE_BARCODE_SVG = { height: 33, moduleWidth: 1.575 } as const
+
 /**
  * Physical landscape badge: 3in × 2.75in.
  * Top 0.5in is reserved for the hole punch; printable content sits in the
- * 1.5in band from 0.5in–2.0in from the top (bottom margin below 2.0in).
+ * ~1.62in band from 0.5in (bottom margin remains below the content).
  */
 export function StudentBadgeCard({ student, className }: StudentBadgeCardProps) {
   const mdId = student.id
@@ -58,7 +61,7 @@ export function StudentBadgeCard({ student, className }: StudentBadgeCardProps) 
   const statusTone = badgeStatusTone(student.badgeStatus)
 
   const barcode = useMemo(
-    () => buildCode128Svg(barcodeValue, { height: 22, moduleWidth: 1.05 }),
+    () => buildCode128Svg(barcodeValue, BADGE_BARCODE_SVG),
     [barcodeValue]
   )
 
@@ -73,7 +76,7 @@ export function StudentBadgeCard({ student, className }: StudentBadgeCardProps) 
       {/* Hole-punch safe zone — keep clear of photo/name/barcode */}
       <div className="student-badge-punch-gutter h-[0.5in] shrink-0" aria-hidden />
 
-      <div className="student-badge-content flex h-[1.5in] max-h-[1.5in] min-h-0 shrink-0 flex-col overflow-hidden">
+      <div className="student-badge-content flex h-[1.62in] max-h-[1.62in] min-h-0 shrink-0 flex-col overflow-hidden">
         {/* School brand band (~0.5–0.7in from card top) */}
         <header className="flex h-[0.22in] shrink-0 items-center gap-1 bg-[#0a1e3f] px-1.5 text-white">
           {/* eslint-disable-next-line @next/next/no-img-element -- print-friendly static brand asset */}
@@ -92,7 +95,7 @@ export function StudentBadgeCard({ student, className }: StudentBadgeCardProps) 
           </div>
         </header>
 
-        <div className="grid min-h-0 flex-1 grid-cols-[0.68in_1fr] gap-1 px-1.5 py-0.5">
+        <div className="grid min-h-0 flex-1 grid-cols-[0.68in_1fr] gap-1 px-1.5 py-px">
           <div className="relative h-full min-h-0 overflow-hidden rounded-sm border border-[#c7ccd6] bg-[#f7f8fb]">
             {hasPhoto ? (
               // eslint-disable-next-line @next/next/no-img-element -- print-friendly; may be data URLs
@@ -127,7 +130,7 @@ export function StudentBadgeCard({ student, className }: StudentBadgeCardProps) 
                 <dt className="shrink-0 font-semibold text-[#64748b]">Grade</dt>
                 <dd className="truncate">{grade || "—"}</dd>
               </div>
-              <div className="flex gap-1 text-[8.25px]">
+              <div className="flex gap-1 text-[12.4px]">
                 <dt className="shrink-0 font-semibold text-[#64748b]">MD ID</dt>
                 <dd className="truncate font-mono font-semibold">{mdId || "—"}</dd>
               </div>
@@ -135,24 +138,24 @@ export function StudentBadgeCard({ student, className }: StudentBadgeCardProps) 
           </div>
         </div>
 
-        <footer className="flex shrink-0 items-center gap-1.5 border-t border-[#c7ccd6] px-1.5 py-0.5">
-          <div className="min-w-0 flex-1 overflow-hidden">
+        <footer className="flex shrink-0 items-center gap-1 border-t border-[#c7ccd6] px-1 py-px">
+          <div className="min-w-0 flex-1">
             {barcode ? (
-              <div className="flex flex-col items-center gap-px overflow-hidden">
+              <div className="flex flex-col items-center gap-px">
                 <div
-                  className="max-h-[0.26in] max-w-full overflow-hidden [&_svg]:h-[0.22in] [&_svg]:w-auto"
+                  className="flex max-h-[0.39in] max-w-full justify-center [&_svg]:h-[0.33in] [&_svg]:w-auto [&_svg]:max-w-full"
                   dangerouslySetInnerHTML={{ __html: barcode.svg }}
                 />
-                <p className="font-mono text-[7.15px] leading-none tracking-wider text-[#0a1e3f]">
+                <p className="font-mono text-[10.7px] leading-none tracking-wider text-[#0a1e3f]">
                   {barcodeValue}
                 </p>
               </div>
             ) : (
               <div className="text-center leading-none">
-                <p className="font-mono text-[9px] font-bold tracking-wide">
+                <p className="font-mono text-[13.5px] font-bold tracking-wide">
                   {barcodeValue || "—"}
                 </p>
-                <p className="font-mono text-[7.15px] text-[#64748b]">MD ID {mdId}</p>
+                <p className="font-mono text-[10.7px] text-[#64748b]">MD ID {mdId}</p>
               </div>
             )}
           </div>
@@ -167,7 +170,7 @@ export function StudentBadgeCard({ student, className }: StudentBadgeCardProps) 
         </footer>
       </div>
 
-      {/* Bottom margin below the 2.0in content cutoff (card is 2.75in tall) */}
+      {/* Unused bottom margin below printable content (card is 2.75in tall) */}
       <div className="student-badge-bottom-margin min-h-0 flex-1" aria-hidden />
     </article>
   )
