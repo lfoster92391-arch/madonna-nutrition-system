@@ -67,6 +67,8 @@ function mealLabel(mealType: string): string {
       return "Side"
     case "MILK":
       return "Milk"
+    case "JUICE":
+      return "Juice"
     case "ALA_CARTE":
       return "A la carte"
     default:
