@@ -33,6 +33,7 @@ import { RecordStaffOfficePayment } from "@/components/admin/RecordStaffOfficePa
 import { getAllergyBannerStyle, getHighestAllergySeverity } from "@/lib/allergy-display"
 import { BarcodeCameraScanner } from "@/components/scan/BarcodeCameraScanner"
 import { ScanKeypad } from "@/components/scan/ScanKeypad"
+import { PosAmountKeypad } from "@/components/scan/PosAmountKeypad"
 import { OfflineBanner } from "@/components/scan/OfflineBanner"
 import { MEAL_PRICES } from "@/lib/types"
 import type { Student, Transaction, User } from "@/lib/types"
@@ -174,6 +175,7 @@ export default function ScanStationPage() {
   const [offlineRecent, setOfflineRecent] = useState<Transaction[]>([])
   const [addFundsOpen, setAddFundsOpen] = useState(false)
   const [fundsAction, setFundsAction] = useState<"add" | "subtract">("add")
+  const [posCents, setPosCents] = useState(0)
 
   const scanInputRef = useRef<HTMLInputElement>(null)
   const scanTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -249,6 +251,7 @@ export default function ScanStationPage() {
         setStudent(null)
         setStaffUser(null)
         setAddFundsOpen(false)
+        setPosCents(0)
       }
       setScanStatus(keepStudent ? "found" : "ready")
       setScanValue("")
@@ -377,6 +380,7 @@ export default function ScanStationPage() {
       setScanValue("")
       setFlashMessage("")
       setAddFundsOpen(false)
+      setPosCents(0)
       window.setTimeout(focusScan, 50)
     },
     [focusScan]
@@ -405,6 +409,7 @@ export default function ScanStationPage() {
       setScanValue("")
       setFlashMessage("")
       setAddFundsOpen(false)
+      setPosCents(0)
       window.setTimeout(focusScan, 50)
     },
     [focusScan]
@@ -598,6 +603,12 @@ export default function ScanStationPage() {
 
     setIsOffline(true)
     await recordOfflineMeal()
+  }
+
+  async function handlePosCharge(amount: number) {
+    if (!dinerActive || amount <= 0) return
+    await handleMeal("Item", amount, "pos_item")
+    setPosCents(0)
   }
 
   const statusLabel =
@@ -1044,7 +1055,7 @@ export default function ScanStationPage() {
 
           <div className="mt-auto min-h-0 shrink pt-0.5 sm:pt-1">
             <p className="text-[10px] font-semibold uppercase tracking-wider text-[#64748B] sm:text-xs">
-              Enter Badge / Student ID
+              {dinerActive ? "Type price — then Charge" : "Enter Badge / Student ID"}
             </p>
             <div className="relative mt-0.5 sm:mt-1 md:mt-1.5">
               <input
@@ -1077,25 +1088,36 @@ export default function ScanStationPage() {
                 aria-labelledby="badge-input"
                 className="flex h-9 items-center rounded-xl border border-[#AEB6C2] bg-[#F5F6F8] px-2.5 text-base font-bold tracking-wide text-[#111827] sm:h-10 sm:rounded-2xl sm:px-3 sm:text-lg md:h-11 md:text-xl lg:h-12 lg:text-2xl xl:h-14"
               >
-                {scanValue || (
+                {dinerActive ? (
+                  <span className="tabular-nums">{formatCurrency(posCents / 100)}</span>
+                ) : scanValue ? (
+                  scanValue
+                ) : (
                   <span className="text-sm font-normal text-[#64748B] sm:text-base md:text-lg lg:text-xl">
-                    {scanValue === "" && student
-                      ? student.id
-                      : scanValue === "" && staffUser
-                        ? staffUser.badgeId
-                        : "Enter ID"}
+                    Enter ID
                   </span>
                 )}
               </div>
             </div>
-            <ScanKeypad
-              className="mt-0.5 sm:mt-1 md:mt-1.5 lg:mt-2"
-              variant="v2"
-              onDigit={appendDigit}
-              onBackspace={deleteLastDigit}
-              onClear={clearScanValue}
-              onEnter={() => lookupStudent(scanValue)}
-            />
+            {dinerActive ? (
+              <PosAmountKeypad
+                className="mt-0.5 sm:mt-1 md:mt-1.5 lg:mt-2"
+                cents={posCents}
+                onCentsChange={setPosCents}
+                onCharge={(amount) => {
+                  void handlePosCharge(amount)
+                }}
+              />
+            ) : (
+              <ScanKeypad
+                className="mt-0.5 sm:mt-1 md:mt-1.5 lg:mt-2"
+                variant="v2"
+                onDigit={appendDigit}
+                onBackspace={deleteLastDigit}
+                onClear={clearScanValue}
+                onEnter={() => lookupStudent(scanValue)}
+              />
+            )}
           </div>
         </section>
       </main>
