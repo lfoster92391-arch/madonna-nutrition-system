@@ -77,19 +77,19 @@ export function StudentBadgeCard({ student, className }: StudentBadgeCardProps) 
       <div className="student-badge-punch-gutter h-[0.5in] shrink-0" aria-hidden />
 
       <div className="student-badge-content flex h-[1.62in] max-h-[1.62in] min-h-0 shrink-0 flex-col overflow-hidden">
-        {/* School brand band (~0.5–0.7in from card top) */}
-        <header className="flex h-[0.22in] shrink-0 items-center gap-1 bg-[#0a1e3f] px-1.5 text-white">
+        {/* School brand band — fill the navy header; punch gutter above stays clear */}
+        <header className="flex h-[0.42in] shrink-0 items-center gap-1.5 bg-[#0a1e3f] px-2 py-[0.02in] text-white">
           {/* eslint-disable-next-line @next/next/no-img-element -- print-friendly static brand asset */}
           <img
             src={MADONNA_LOGO_SRC}
             alt=""
-            className="h-[0.18in] w-[0.18in] shrink-0 object-contain"
+            className="h-[0.38in] w-[0.38in] shrink-0 object-contain"
           />
           <div className="min-w-0 flex-1 leading-none">
-            <p className="truncate text-[8px] font-bold uppercase tracking-[0.08em]">
+            <p className="truncate text-[13.5px] font-bold uppercase tracking-[0.04em]">
               Madonna High School
             </p>
-            <p className="truncate text-[6px] font-semibold uppercase tracking-wide opacity-90">
+            <p className="mt-[0.03in] truncate text-[9px] font-semibold uppercase tracking-wide opacity-90">
               Fuel The Dons
             </p>
           </div>
