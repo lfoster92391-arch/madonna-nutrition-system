@@ -37,12 +37,12 @@ interface StaffBadgeCardProps {
   className?: string
 }
 
-/** Code128 + badge ID print size: +50% vs prior 22px / 1.05 module / 8.25px ID. */
+/** Code128 + badge ID print size: PR #57 floor (33 / 1.575 / 12.4px / 10.7px). */
 const BADGE_BARCODE_SVG = { height: 33, moduleWidth: 1.575 } as const
 
 /**
  * Physical landscape badge: 3in × 2.75in (same layout as student badges).
- * Top 0.25in is punch-safe (navy, no logo). Brand header is 0.47in.
+ * Top 0.5in is punch-safe (navy, no logo). Identity and barcode fill the rest.
  */
 export function StaffBadgeCard({ user, className }: StaffBadgeCardProps) {
   const badgeId = (user.badgeId?.trim() || "").trim()
@@ -68,8 +68,8 @@ export function StaffBadgeCard({ user, className }: StaffBadgeCardProps) {
     >
       <BadgeSchoolHeader subtitle="Fuel The Dons · Staff" />
 
-      <div className="student-badge-content flex h-[1.40in] max-h-[1.40in] min-h-0 shrink-0 flex-col overflow-hidden">
-        <div className="grid min-h-0 flex-1 grid-cols-[0.68in_1fr] gap-1 px-1.5 py-px">
+      <div className="student-badge-content flex min-h-0 flex-1 flex-col overflow-hidden">
+        <div className="grid min-h-0 flex-1 grid-cols-[1.02in_1fr] gap-1.5 px-1.5 py-1">
           <div className="relative h-full min-h-0 overflow-hidden rounded-sm border border-[#c7ccd6] bg-[#f7f8fb]">
             {hasPhoto ? (
               // eslint-disable-next-line @next/next/no-img-element -- print-friendly; may be data URLs
@@ -79,34 +79,42 @@ export function StaffBadgeCard({ user, className }: StaffBadgeCardProps) {
                 className="h-full w-full object-cover"
               />
             ) : (
-              <div className="flex h-full flex-col items-center justify-center gap-0.5 px-0.5 text-center">
-                <User className="h-4 w-4 text-[#94a3b8]" aria-hidden />
-                <span className="text-[6px] font-semibold uppercase tracking-wide text-[#64748b]">
+              <div className="flex h-full flex-col items-center justify-center gap-1 px-1 text-center">
+                <User className="h-8 w-8 text-[#94a3b8]" aria-hidden />
+                <span className="text-[8px] font-semibold uppercase tracking-wide text-[#64748b]">
                   No photo
                 </span>
               </div>
             )}
           </div>
 
-          <div className="flex min-h-0 min-w-0 flex-col justify-center gap-px overflow-hidden">
-            <p className="truncate text-[12px] font-bold leading-none">
+          <div className="flex min-h-0 min-w-0 flex-col justify-center gap-0.5 overflow-hidden">
+            <p className="truncate text-[16px] font-bold leading-none">
               {user.firstName || "—"}
             </p>
-            <p className="truncate text-[12px] font-bold leading-none">
+            <p className="truncate text-[16px] font-bold leading-none">
               {user.lastName || "—"}
             </p>
-            <dl className="mt-0.5 space-y-px text-[7.5px] leading-tight">
-              <div className="flex gap-1">
-                <dt className="shrink-0 font-semibold text-[#64748b]">Email</dt>
-                <dd className="min-w-0 truncate">{email || "—"}</dd>
-              </div>
+            <span
+              className={cn(
+                "mt-0.5 w-fit rounded-[3px] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide",
+                statusTone
+              )}
+            >
+              {statusLabel}
+            </span>
+            <dl className="mt-0.5 space-y-0.5 text-[9px] leading-tight">
               <div className="flex gap-1">
                 <dt className="shrink-0 font-semibold text-[#64748b]">Role</dt>
-                <dd className="truncate">{roleLabel}</dd>
+                <dd className="truncate font-semibold">{roleLabel}</dd>
               </div>
               <div className="flex gap-1">
                 <dt className="shrink-0 font-semibold text-[#64748b]">Dept</dt>
                 <dd className="truncate">{department || "—"}</dd>
+              </div>
+              <div className="flex gap-1">
+                <dt className="shrink-0 font-semibold text-[#64748b]">Email</dt>
+                <dd className="min-w-0 truncate">{email || "—"}</dd>
               </div>
               <div className="flex gap-1 text-[12.4px]">
                 <dt className="shrink-0 font-semibold text-[#64748b]">Badge</dt>
@@ -116,10 +124,10 @@ export function StaffBadgeCard({ user, className }: StaffBadgeCardProps) {
           </div>
         </div>
 
-        <footer className="flex shrink-0 items-center gap-1 border-t border-[#c7ccd6] px-1 py-px">
+        <footer className="flex shrink-0 items-center justify-center border-t border-[#c7ccd6] px-1.5 py-1">
           <div className="min-w-0 flex-1">
             {barcode ? (
-              <div className="flex flex-col items-center gap-px">
+              <div className="flex flex-col items-center gap-0.5">
                 <div
                   className="flex max-h-[0.39in] max-w-full justify-center [&_svg]:h-[0.33in] [&_svg]:w-auto [&_svg]:max-w-full"
                   dangerouslySetInnerHTML={{ __html: barcode.svg }}
@@ -135,18 +143,8 @@ export function StaffBadgeCard({ user, className }: StaffBadgeCardProps) {
               </div>
             )}
           </div>
-          <span
-            className={cn(
-              "shrink-0 rounded-[2px] px-1 py-0.5 text-[7px] font-bold uppercase tracking-wide",
-              statusTone
-            )}
-          >
-            {statusLabel}
-          </span>
         </footer>
       </div>
-
-      <div className="student-badge-bottom-margin min-h-0 flex-1" aria-hidden />
     </article>
   )
 }

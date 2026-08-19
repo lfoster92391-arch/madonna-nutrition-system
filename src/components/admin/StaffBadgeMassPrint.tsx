@@ -39,9 +39,9 @@ export function StaffBadgeMassPrint({ users, onClose }: StaffBadgeMassPrintProps
             department, or badge ID still print; fill gaps later in the staff profile if needed.
           </p>
           <p className="mt-2 text-xs font-medium text-primary/80">
-            On phones, swipe sideways to pan the badge preview. Leave the top ¼&quot; punch-safe
-            (navy, no logo). Madonna logo and Madonna High School fill the school header below
-            the hole — same size as student badges.
+            On phones, swipe sideways to pan the badge preview. Leave ½&quot; clear at the top for
+            the badge hole. Photo, name, status, and barcode fill the rest of the 3&quot; × 2¾&quot;
+            card — same layout as student badges.
           </p>
         </div>
         <div className="flex w-full flex-wrap gap-2 sm:w-auto">
