@@ -4,7 +4,7 @@ import {
   debitStudentBalance,
   isBalanceDebitError,
 } from "@/lib/db/deposits"
-import { findStudentByExternalId } from "@/lib/db/students"
+import { findStudentByScanId } from "@/lib/db/students"
 import { mapTransaction } from "@/lib/db/mappers"
 import { officeDepositSchema } from "@/lib/api/validation"
 import { badRequest, notFound, serverError, withDatabase } from "@/lib/api/response"
@@ -24,7 +24,7 @@ export async function POST(request: Request) {
       }
 
       const { studentId, amount, method, note, action } = parsed.data
-      const student = await findStudentByExternalId(studentId)
+      const student = await findStudentByScanId(studentId)
       if (!student || student.disabled) {
         return notFound("Student not found or disabled")
       }

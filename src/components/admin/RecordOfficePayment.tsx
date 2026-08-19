@@ -4,7 +4,9 @@ import { useMemo, useState } from "react"
 import { useQueryClient } from "@tanstack/react-query"
 import { CheckCircle2, DollarSign, Minus } from "lucide-react"
 import { api } from "@/lib/api/client"
+import { useDemo } from "@/components/providers/DemoProvider"
 import { cn, formatCurrency } from "@/lib/utils"
+import { findStudentMatchingScan, transactionMatchesStudent } from "@/lib/scan/scan-id"
 import type { Student } from "@/lib/types"
 import { Button } from "@/components/ui/button"
 import { Card, CardHeader, CardTitle } from "@/components/ui/card"
@@ -35,6 +37,7 @@ export function RecordOfficePayment({
   onDone?: (balanceAfter: number) => void
 }) {
   const queryClient = useQueryClient()
+  const { transactions } = useDemo()
   const activeStudents = useMemo(
     () =>
       students
@@ -45,6 +48,7 @@ export function RecordOfficePayment({
   )
 
   const [studentId, setStudentId] = useState(initialStudentId ?? "")
+  const [mdLookup, setMdLookup] = useState(initialStudentId ?? "")
   const [action, setAction] = useState<FundsAction>(initialAction)
   const [amount, setAmount] = useState("")
   const [method, setMethod] = useState<PaymentMethod>("cash")
@@ -55,10 +59,54 @@ export function RecordOfficePayment({
   const [success, setSuccess] = useState<string | null>(null)
   const [localBalances, setLocalBalances] = useState<Record<string, number>>({})
 
-  const selected = activeStudents.find((s) => s.id === studentId)
-  const currentBalance = studentId
-    ? (localBalances[studentId] ?? selected?.balance ?? 0)
+  const selected =
+    activeStudents.find((s) => s.id === studentId) ??
+    (studentId ? findStudentMatchingScan(activeStudents, studentId) : undefined)
+  const resolvedStudentId = selected?.id ?? studentId
+  const currentBalance = resolvedStudentId
+    ? (localBalances[resolvedStudentId] ?? selected?.balance ?? 0)
     : (selected?.balance ?? 0)
+  const recentForStudent = useMemo(() => {
+    if (!selected) return []
+    return [...transactions]
+      .filter((tx) => transactionMatchesStudent(tx, selected))
+      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+      .slice(0, 6)
+  }, [transactions, selected])
+
+  async function lookupMdId() {
+    const q = mdLookup.trim()
+    if (!q) {
+      setError("Enter an MD ID or badge barcode.")
+      return
+    }
+    const local = findStudentMatchingScan(activeStudents, q)
+    if (local) {
+      setStudentId(local.id)
+      setMdLookup(local.id)
+      setError(null)
+      setSuccess(`Connected ${local.firstName} ${local.lastName} (${local.id}).`)
+      return
+    }
+    try {
+      const res = await fetch(`/api/students/lookup?q=${encodeURIComponent(q)}`)
+      if (!res.ok) {
+        setError("MD ID not recognized. Check the badge number and try again.")
+        return
+      }
+      const remote = (await res.json()) as Student
+      if (!remote?.id) {
+        setError("MD ID not recognized. Check the badge number and try again.")
+        return
+      }
+      setStudentId(remote.id)
+      setMdLookup(remote.id)
+      setError(null)
+      setSuccess(`Connected ${remote.firstName} ${remote.lastName} (${remote.id}).`)
+    } catch {
+      setError("Could not look up that MD ID. Try again.")
+    }
+  }
 
   function switchAction(next: FundsAction) {
     setAction(next)
@@ -73,7 +121,7 @@ export function RecordOfficePayment({
     setSuccess(null)
 
     const dollars = Number.parseFloat(amount)
-    if (!studentId) {
+    if (!resolvedStudentId) {
       setError("Choose a student first.")
       return
     }
@@ -96,7 +144,7 @@ export function RecordOfficePayment({
     setBusy(true)
     try {
       const result = await api.recordOfficePayment({
-        studentId,
+        studentId: resolvedStudentId,
         amount: dollars,
         method: action === "add" ? method : undefined,
         note: note.trim() || undefined,
@@ -111,7 +159,7 @@ export function RecordOfficePayment({
       const takenOff =
         typeof result.amountDebited === "number" ? result.amountDebited : Math.min(dollars, currentBalance)
 
-      setLocalBalances((prev) => ({ ...prev, [studentId]: balanceAfter }))
+      setLocalBalances((prev) => ({ ...prev, [resolvedStudentId]: balanceAfter }))
       if (action === "subtract") {
         const clampedNote =
           takenOff < dollars
@@ -149,18 +197,49 @@ export function RecordOfficePayment({
   const form = (
     <form onSubmit={(e) => void handleSubmit(e)} className="space-y-4">
       {!initialStudentId && (
-        <div>
-          <Label htmlFor="office-pay-student">Student</Label>
-          <Select
-            id="office-pay-student"
-            value={studentId}
-            onChange={(e) => {
-              setStudentId(e.target.value)
-              setSuccess(null)
-              setError(null)
-              setConfirming(false)
-            }}
-          >
+        <div className="space-y-3">
+          <div>
+            <Label htmlFor="office-pay-mdid">MD ID / badge</Label>
+            <div className="mt-1 flex flex-col gap-2 sm:flex-row">
+              <Input
+                id="office-pay-mdid"
+                value={mdLookup}
+                onChange={(e) => {
+                  setMdLookup(e.target.value)
+                  setSuccess(null)
+                  setError(null)
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault()
+                    void lookupMdId()
+                  }
+                }}
+                placeholder="MD12214 or 12214"
+                autoComplete="off"
+                className="font-mono"
+              />
+              <Button type="button" variant="secondary" size="sm" className="shrink-0" onClick={() => void lookupMdId()}>
+                Connect ID
+              </Button>
+            </div>
+            <p className="mt-1 text-xs text-silver-foreground">
+              Enter the cafeteria MD ID with or without MD and leading zeros.
+            </p>
+          </div>
+          <div>
+            <Label htmlFor="office-pay-student">Student</Label>
+            <Select
+              id="office-pay-student"
+              value={selected?.id ?? ""}
+              onChange={(e) => {
+                setStudentId(e.target.value)
+                setMdLookup(e.target.value)
+                setSuccess(null)
+                setError(null)
+                setConfirming(false)
+              }}
+            >
             <option value="">Choose a student…</option>
             {activeStudents.map((s) => (
               <option key={s.id} value={s.id}>
@@ -173,14 +252,51 @@ export function RecordOfficePayment({
               No students yet. Import or add students first.
             </p>
           )}
+          </div>
         </div>
       )}
 
       {selected && (
         <p className="rounded-xl bg-silver/20 px-4 py-3 text-sm text-primary">
-          Current balance for {selected.firstName} {selected.lastName}:{" "}
+          Current balance for {selected.firstName} {selected.lastName} ({selected.id}):{" "}
           <strong className="tabular-nums">{formatCurrency(currentBalance)}</strong>
         </p>
+      )}
+
+      {selected && (
+        <div className="rounded-xl border border-silver/50 px-4 py-3">
+          <p className="text-xs font-bold uppercase tracking-wide text-silver-foreground">
+            Recent activity for this student
+          </p>
+          {recentForStudent.length === 0 ? (
+            <p className="mt-2 text-sm text-silver-foreground">No ledger lines yet.</p>
+          ) : (
+            <ul className="mt-2 space-y-1.5">
+              {recentForStudent.map((tx) => (
+                <li key={tx.id} className="flex justify-between gap-3 text-sm text-primary">
+                  <span className="min-w-0 truncate">
+                    {new Date(tx.timestamp).toLocaleString(undefined, {
+                      month: "short",
+                      day: "numeric",
+                      hour: "numeric",
+                      minute: "2-digit",
+                    })}{" "}
+                    · {tx.meal}
+                  </span>
+                  <span
+                    className={cn(
+                      "shrink-0 tabular-nums font-semibold",
+                      tx.amount >= 0 ? "text-emerald-700" : "text-red-700"
+                    )}
+                  >
+                    {tx.amount >= 0 ? "+" : "−"}
+                    {formatCurrency(Math.abs(tx.amount))}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       )}
 
       <div className="grid grid-cols-2 gap-2">

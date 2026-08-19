@@ -1,4 +1,5 @@
 import type { Transaction } from "@/lib/types"
+import { scanIdsEquivalent } from "@/lib/scan/scan-id"
 
 export type MealPeriodFilter = "today" | "week" | "month" | "all"
 
@@ -21,7 +22,7 @@ export function filterByStudent(
   studentId: string | "all"
 ): Transaction[] {
   if (studentId === "all") return transactions
-  return transactions.filter((tx) => tx.studentId === studentId)
+  return transactions.filter((tx) => scanIdsEquivalent(tx.studentId, studentId))
 }
 
 export function filterByPeriod(
