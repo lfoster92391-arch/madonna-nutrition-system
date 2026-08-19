@@ -1,5 +1,5 @@
 import { isDatabaseEnabled } from "@/lib/db/config"
-import { findStudentByExternalId } from "@/lib/db/students"
+import { findStudentByExternalId, findStudentByScanId } from "@/lib/db/students"
 import { prisma } from "@/lib/prisma"
 
 export class ParentAccessError extends Error {
@@ -24,7 +24,7 @@ export async function assertParentOwnsStudent(
     throw new ParentAccessError("Student billing requires a configured database.")
   }
 
-  const student = await findStudentByExternalId(studentId)
+  const student = (await findStudentByExternalId(studentId)) ?? (await findStudentByScanId(studentId))
   if (!student) {
     throw new ParentAccessError("Student not found")
   }

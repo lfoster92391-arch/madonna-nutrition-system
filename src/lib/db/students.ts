@@ -1,6 +1,11 @@
 import { prisma } from "@/lib/prisma"
 import { resolveSchoolId } from "@/lib/db/school"
-import { scanIdCandidates } from "@/lib/scan/scan-id"
+import {
+  looksLikeInternalStudentId,
+  scanIdCandidates,
+  scanMatchScore,
+  scanNumericCore,
+} from "@/lib/scan/scan-id"
 import { parseMadonnaStudentLocalPart } from "@/lib/students/grade-from-email"
 
 export const studentInclude = {
@@ -83,28 +88,63 @@ export async function allocateNextMdId(schoolId?: string): Promise<string> {
   return `MD${String(max + 1).padStart(5, "0")}`
 }
 
-/** Resolve a kiosk scan value by MD ID (externalId) or physical badge barcode. */
+function pickBestScanMatch<T extends { externalId: string; barcode: string | null; id: string }>(
+  rows: T[],
+  scanId: string
+): T | null {
+  const ranked = rows
+    .map((row) => ({
+      row,
+      score: scanMatchScore({ id: row.externalId, barcode: row.barcode }, scanId),
+    }))
+    .filter((entry) => entry.score > 0)
+    .sort((a, b) => b.score - a.score)
+  if (ranked.length === 0) return null
+  return ranked[0]!.row
+}
+
+/** Resolve typed/scanned MD ID, barcode, padded zeros, or internal cuid to one Student. */
 export async function findStudentByScanId(scanId: string) {
   const schoolId = await resolveSchoolId()
-  const candidates = scanIdCandidates(scanId)
+  const raw = scanId.trim()
+  if (!raw) return null
+
+  if (looksLikeInternalStudentId(raw)) {
+    const byPk = await prisma.student.findFirst({
+      where: { schoolId, id: raw },
+      include: studentInclude,
+    })
+    if (byPk) return byPk
+  }
+
+  const candidates = scanIdCandidates(raw)
   if (candidates.length === 0) return null
 
-  const byExternalId = await prisma.student.findFirst({
+  const matched = await prisma.student.findMany({
     where: {
       schoolId,
-      externalId: { in: candidates },
+      OR: [{ externalId: { in: candidates } }, { barcode: { in: candidates } }],
     },
     include: studentInclude,
   })
-  if (byExternalId) return byExternalId
+  const best = pickBestScanMatch(matched, raw)
+  if (best) return best
 
-  return prisma.student.findFirst({
+  const core = scanNumericCore(raw)
+  if (!core || core.length < 3) return null
+
+  const fuzzy = await prisma.student.findMany({
     where: {
       schoolId,
-      barcode: { in: candidates },
+      OR: [
+        { externalId: { contains: core, mode: "insensitive" } },
+        { barcode: { contains: core, mode: "insensitive" } },
+      ],
     },
     include: studentInclude,
+    take: 40,
   })
+  return pickBestScanMatch(fuzzy, raw)
 }
 
 export async function assertBarcodeAvailable(
@@ -132,6 +172,6 @@ export async function assertBarcodeAvailable(
 }
 
 export async function findStudentInternalId(externalId: string): Promise<string | null> {
-  const student = await findStudentByExternalId(externalId)
+  const student = (await findStudentByExternalId(externalId)) ?? (await findStudentByScanId(externalId))
   return student?.id ?? null
 }

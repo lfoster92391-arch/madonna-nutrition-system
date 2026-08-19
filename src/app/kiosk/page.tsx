@@ -59,6 +59,7 @@ import {
   findStaffMatchingScan,
   findStudentMatchingScan,
   sanitizeScanInput,
+  transactionMatchesStudent,
 } from "@/lib/scan/scan-id"
 import { ROLE_LABELS, isWorkplaceUserRole } from "@/lib/users"
 import { cn, formatCurrency } from "@/lib/utils"
@@ -194,13 +195,20 @@ export default function ScanStationPage() {
   )
 
   const recentTransactions = useMemo(() => {
-    if (isOffline && offlineRecent.length > 0) {
-      return offlineRecent.slice(0, 3)
+    const source =
+      isOffline && offlineRecent.length > 0
+        ? offlineRecent
+        : [...transactions].sort(
+            (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+          )
+    if (student) {
+      return source.filter((tx) => transactionMatchesStudent(tx, student)).slice(0, 3)
     }
-    return [...transactions]
-      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-      .slice(0, 3)
-  }, [transactions, isOffline, offlineRecent])
+    if (staffUser) {
+      return []
+    }
+    return source.slice(0, 3)
+  }, [transactions, isOffline, offlineRecent, student, staffUser])
 
   const kioskMeals = useMemo(() => {
     const today = todayDateKey()
@@ -1127,7 +1135,7 @@ export default function ScanStationPage() {
           <div className="flex items-center gap-1.5 sm:gap-2">
             <Clock className="h-3.5 w-3.5 text-[#64748B] sm:h-4 sm:w-4" aria-hidden />
             <p className="text-xs font-bold uppercase tracking-wide text-[#64748B] sm:text-sm">
-              Recent Activity
+              {student ? "Recent Activity" : "Station"}
             </p>
           </div>
           <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1 sm:gap-x-4 md:gap-x-6 md:gap-y-2">
@@ -1139,12 +1147,16 @@ export default function ScanStationPage() {
                 </div>
               ))
             ) : (
-              <p className="text-sm text-[#64748B]">No recent transactions</p>
+              <p className="text-sm text-[#64748B]">
+                {student
+                  ? `No activity yet for ${student.firstName}`
+                  : "No recent transactions"}
+              </p>
             )}
           </div>
           <div className="hidden items-center gap-2 text-xs text-[#64748B] lg:flex">
             <CreditCard className="h-3.5 w-3.5" aria-hidden />
-            <span>Station</span>
+            <span>{student ? student.id : "Station"}</span>
           </div>
         </div>
       </footer>

@@ -1,5 +1,5 @@
 import type { Allergy, Student } from "@/lib/types"
-import { scanIdCandidates, studentMatchesScanId } from "@/lib/scan/scan-id"
+import { scanIdCandidates, findStudentMatchingScan } from "@/lib/scan/scan-id"
 
 const DB_NAME = "mnms-scan-offline"
 const DB_VERSION = 1
@@ -141,11 +141,12 @@ export async function findCachedStudent(scanId: string): Promise<CachedStudent |
     request.onsuccess = () => {
       const items = request.result as CachedStudent[]
       resolve(
-        items.find((s) =>
-          studentMatchesScanId(
-            { id: s.externalId || s.id, barcode: s.barcode },
-            scanId
-          )
+        findStudentMatchingScan(
+          items.map((s) => ({
+            ...s,
+            id: s.externalId || s.id,
+          })),
+          scanId
         ) ?? null
       )
     }

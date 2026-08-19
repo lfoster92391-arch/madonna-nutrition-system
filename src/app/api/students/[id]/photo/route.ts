@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { mapStudent } from "@/lib/db/mappers"
-import { findStudentByExternalId, studentInclude } from "@/lib/db/students"
+import { findStudentByExternalId, findStudentByScanId, studentInclude } from "@/lib/db/students"
 import { studentPhotoUploadSchema } from "@/lib/api/validation"
 import {
   badRequest,
@@ -39,7 +39,7 @@ export async function POST(request: Request, { params }: RouteParams) {
         }
       }
 
-      const existing = await findStudentByExternalId(id)
+      const existing = (await findStudentByExternalId(id)) ?? (await findStudentByScanId(id))
       if (!existing) return notFound("Student not found")
 
       const student = await prisma.student.update({

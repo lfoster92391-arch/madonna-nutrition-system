@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { findStudentByExternalId } from "@/lib/db/students"
+import { findStudentByExternalId, findStudentByScanId } from "@/lib/db/students"
 import { mapStudentForTeacher } from "@/lib/teacher/privacy"
 import { withTeacherAccess } from "@/lib/teacher/api"
 import { notFound } from "@/lib/api/response"
@@ -12,7 +12,7 @@ export async function GET(
   const teacherId = new URL(request.url).searchParams.get("teacherId")
 
   return withTeacherAccess(teacherId, async () => {
-    const student = await findStudentByExternalId(id)
+    const student = (await findStudentByExternalId(id)) ?? (await findStudentByScanId(id))
     if (!student) return notFound("Student not found")
 
     const safe = mapStudentForTeacher({

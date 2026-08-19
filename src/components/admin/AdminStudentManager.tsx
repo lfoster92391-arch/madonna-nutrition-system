@@ -18,6 +18,7 @@ import { Card, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input, Label } from "@/components/ui/input"
 import type { Student } from "@/lib/types"
 import { compressImageDataUrl } from "@/lib/images/compress-data-url"
+import { studentMatchesScanId } from "@/lib/scan/scan-id"
 import { formatCurrency } from "@/lib/utils"
 
 function readFileAsDataUrl(file: File): Promise<string> {
@@ -108,13 +109,14 @@ export function AdminStudentManager({
   const filtered = useMemo(() => {
     const activeStudents = students.filter((s) => !s.disabled && !isDemoStudentExternalId(s.id))
     if (!search) return activeStudents
-    const q = search.toLowerCase()
-    return activeStudents.filter(
-      (s) =>
-        s.firstName.toLowerCase().includes(q) ||
-        s.lastName.toLowerCase().includes(q) ||
-        s.id.includes(q)
-    )
+    const q = search.trim().toLowerCase()
+    return activeStudents.filter((s) => {
+      if (s.firstName.toLowerCase().includes(q) || s.lastName.toLowerCase().includes(q)) return true
+      if (s.id.toLowerCase().includes(q) || (s.barcode && s.barcode.toLowerCase().includes(q))) {
+        return true
+      }
+      return studentMatchesScanId(s, search)
+    })
   }, [students, search])
 
   function scrollToImport() {

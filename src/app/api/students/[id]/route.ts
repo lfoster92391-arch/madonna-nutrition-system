@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { allergiesToCreateInput, badgeStatusToDb, mapStudent } from "@/lib/db/mappers"
-import { assertBarcodeAvailable, findStudentByExternalId, studentInclude } from "@/lib/db/students"
+import { assertBarcodeAvailable, findStudentByExternalId, findStudentByScanId, studentInclude } from "@/lib/db/students"
 import { studentUpdateSchema } from "@/lib/api/validation"
 import { badRequest, notFound, serverError, withDatabase } from "@/lib/api/response"
 import { requireMutatingSession } from "@/lib/api/session-auth"
@@ -11,7 +11,7 @@ type RouteParams = { params: Promise<{ id: string }> }
 export async function GET(_request: Request, { params }: RouteParams) {
   const result = await withDatabase(async () => {
     const { id } = await params
-    const student = await findStudentByExternalId(id)
+    const student = (await findStudentByExternalId(id)) ?? (await findStudentByScanId(id))
     if (!student) return notFound("Student not found")
     return NextResponse.json(mapStudent(student))
   })
@@ -31,7 +31,7 @@ export async function PATCH(request: Request, { params }: RouteParams) {
         return badRequest("Invalid student update", parsed.error.flatten())
       }
 
-      const existing = await findStudentByExternalId(id)
+      const existing = (await findStudentByExternalId(id)) ?? (await findStudentByScanId(id))
       if (!existing) return notFound("Student not found")
 
       const data = parsed.data
@@ -98,7 +98,7 @@ export async function DELETE(request: Request, { params }: RouteParams) {
     if ("error" in auth) return auth.error
 
     const { id } = await params
-    const existing = await findStudentByExternalId(id)
+    const existing = (await findStudentByExternalId(id)) ?? (await findStudentByScanId(id))
     if (!existing) return notFound("Student not found")
 
     await prisma.student.update({

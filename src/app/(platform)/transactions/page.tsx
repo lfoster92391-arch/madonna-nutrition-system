@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input, Label, Select } from "@/components/ui/input"
 import { formatCurrency } from "@/lib/utils"
+import { scanIdsEquivalent } from "@/lib/scan/scan-id"
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, LineElement, PointElement, Title, Tooltip, Legend)
 
@@ -31,7 +32,7 @@ export default function TransactionsPage() {
   const filtered = useMemo(() => {
     return transactions.filter((tx) => {
       if (mealFilter && tx.meal !== mealFilter) return false
-      if (studentFilter && tx.studentId !== studentFilter) return false
+      if (studentFilter && !scanIdsEquivalent(tx.studentId, studentFilter)) return false
       if (dateFilter) {
         const txDate = new Date(tx.timestamp).toISOString().split("T")[0]
         if (txDate !== dateFilter) return false

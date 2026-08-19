@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { badgeStatusToDb, mapStudent } from "@/lib/db/mappers"
-import { assertBarcodeAvailable, findStudentByExternalId, studentInclude } from "@/lib/db/students"
+import { assertBarcodeAvailable, findStudentByExternalId, findStudentByScanId, studentInclude } from "@/lib/db/students"
 import { badgeAssignSchema } from "@/lib/api/validation"
 import { badRequest, notFound, serverError, withDatabase } from "@/lib/api/response"
 import { requireMutatingSession } from "@/lib/api/session-auth"
@@ -21,7 +21,7 @@ export async function PATCH(request: Request, { params }: RouteParams) {
         return badRequest("Invalid badge assignment", parsed.error.flatten())
       }
 
-      const existing = await findStudentByExternalId(mdId)
+      const existing = (await findStudentByExternalId(mdId)) ?? (await findStudentByScanId(mdId))
       if (!existing) return notFound("Student not found")
 
       const data = parsed.data
