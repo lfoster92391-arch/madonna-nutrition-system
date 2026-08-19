@@ -4,6 +4,7 @@ import { useMemo } from "react"
 import { User } from "lucide-react"
 import type { User as StaffUser } from "@/lib/types"
 import { ROLE_LABELS } from "@/lib/users"
+import { BadgeSchoolHeader } from "@/components/admin/BadgeSchoolHeader"
 import { buildCode128Svg } from "@/lib/badges/code128-svg"
 import { cn } from "@/lib/utils"
 
@@ -12,8 +13,6 @@ const PLACEHOLDER_PHOTO_HINTS = [
   "images.unsplash.com/photo-1535713875002-d1d0cf377fde",
   "images.unsplash.com/photo-1604908176997-431cef8a0b38",
 ]
-
-const MADONNA_LOGO_SRC = "/branding/madonna-dons-logo.png"
 
 export function staffHasRealPhoto(photo?: string | null): boolean {
   if (!photo?.trim()) return false
@@ -42,9 +41,8 @@ interface StaffBadgeCardProps {
 const BADGE_BARCODE_SVG = { height: 33, moduleWidth: 1.575 } as const
 
 /**
- * Physical landscape badge: 3in × 2.75in (same layout spirit as student badges).
- * Top 0.5in is reserved for the hole punch; printable content sits in the
- * ~1.62in band from 0.5in (bottom margin remains below the content).
+ * Physical landscape badge: 3in × 2.75in (same layout as student badges).
+ * Top 0.25in is punch-safe (navy, no logo). Brand header is 0.47in.
  */
 export function StaffBadgeCard({ user, className }: StaffBadgeCardProps) {
   const badgeId = (user.badgeId?.trim() || "").trim()
@@ -68,26 +66,9 @@ export function StaffBadgeCard({ user, className }: StaffBadgeCardProps) {
         className
       )}
     >
-      <div className="student-badge-punch-gutter h-[0.5in] shrink-0" aria-hidden />
+      <BadgeSchoolHeader subtitle="Fuel The Dons · Staff" />
 
-      <div className="student-badge-content flex h-[1.62in] max-h-[1.62in] min-h-0 shrink-0 flex-col overflow-hidden">
-        <header className="flex h-[0.22in] shrink-0 items-center gap-1 bg-[#0a1e3f] px-1.5 text-white">
-          {/* eslint-disable-next-line @next/next/no-img-element -- print-friendly static brand asset */}
-          <img
-            src={MADONNA_LOGO_SRC}
-            alt=""
-            className="h-[0.18in] w-[0.18in] shrink-0 object-contain"
-          />
-          <div className="min-w-0 flex-1 leading-none">
-            <p className="truncate text-[8px] font-bold uppercase tracking-[0.08em]">
-              Madonna High School
-            </p>
-            <p className="truncate text-[6px] font-semibold uppercase tracking-wide opacity-90">
-              Fuel The Dons · Staff
-            </p>
-          </div>
-        </header>
-
+      <div className="student-badge-content flex h-[1.40in] max-h-[1.40in] min-h-0 shrink-0 flex-col overflow-hidden">
         <div className="grid min-h-0 flex-1 grid-cols-[0.68in_1fr] gap-1 px-1.5 py-px">
           <div className="relative h-full min-h-0 overflow-hidden rounded-sm border border-[#c7ccd6] bg-[#f7f8fb]">
             {hasPhoto ? (
