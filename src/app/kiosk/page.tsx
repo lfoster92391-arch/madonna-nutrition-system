@@ -738,7 +738,7 @@ export default function ScanStationPage() {
   }
 
   return (
-    <div className="scan-station-v2 flex h-full min-h-0 flex-col overflow-hidden bg-white text-[#111827]">
+    <div className="scan-station-v2 flex min-h-0 w-full flex-1 flex-col overflow-x-hidden bg-white text-[#111827] lg:h-full lg:overflow-hidden">
       <OfflineBanner
         isOffline={isOffline}
         isSyncing={isSyncing}
@@ -794,8 +794,8 @@ export default function ScanStationPage() {
         </div>
       </header>
 
-      <main className="flex min-h-0 flex-1 flex-col overflow-hidden lg:flex-row">
-        <section className="flex max-h-[38dvh] min-h-0 w-full shrink-0 flex-col overflow-x-hidden overflow-y-auto border-b border-[#AEB6C2]/60 p-2 sm:max-h-[40dvh] sm:p-3 md:max-h-none md:overflow-hidden md:p-4 lg:w-[55%] lg:max-h-none lg:border-b-0 lg:border-r lg:p-6">
+      <main className="flex min-h-0 flex-1 flex-col lg:flex-row lg:overflow-hidden">
+        <section className="flex min-h-0 w-full shrink-0 flex-col overflow-x-hidden overflow-y-auto border-b border-[#AEB6C2]/60 p-2 sm:p-3 md:p-4 lg:h-full lg:w-[55%] lg:flex-1 lg:border-b-0 lg:border-r lg:p-6">
           {student ? (
             <div className="flex min-h-0 flex-1 flex-col gap-2 sm:gap-3 md:gap-4">
               <div className="flex gap-2 sm:gap-3 md:gap-4">
@@ -992,7 +992,7 @@ export default function ScanStationPage() {
           )}
         </section>
 
-        <section className="flex min-h-0 w-full flex-1 flex-col overflow-hidden p-1.5 sm:p-2.5 md:p-3 lg:w-[45%] lg:shrink-0 lg:p-4">
+        <section className="flex min-h-0 w-full shrink-0 flex-col overflow-x-hidden overflow-y-auto p-1.5 sm:p-2.5 md:p-3 lg:h-full lg:w-[45%] lg:flex-1 lg:p-4">
           <p className="shrink-0 text-[10px] font-semibold uppercase tracking-wider text-[#64748B] sm:text-xs">
             Select lunch
           </p>
@@ -1053,7 +1053,7 @@ export default function ScanStationPage() {
             </div>
           )}
 
-          <div className="mt-auto min-h-0 shrink pt-0.5 sm:pt-1">
+          <div className="mt-2 min-h-0 shrink-0 pt-0.5 sm:mt-auto sm:pt-1">
             <p className="text-[10px] font-semibold uppercase tracking-wider text-[#64748B] sm:text-xs">
               {dinerActive ? "Type price — then Charge" : "Enter Badge / Student ID"}
             </p>
