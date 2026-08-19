@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server"
-import { DEFAULT_ONBOARDING_PRICING, STUDENT_LUNCH_PRICE } from "@/config/onboarding-pricing"
+import {
+  DEFAULT_ONBOARDING_PRICING,
+  MILK_JUICE_PRICE,
+  STUDENT_LUNCH_PRICE,
+} from "@/config/onboarding-pricing"
 import { withDatabase } from "@/lib/api/response"
 import { resolveSchoolId } from "@/lib/db/school"
 import { prisma } from "@/lib/prisma"
@@ -13,7 +17,8 @@ export async function GET() {
       mainMealPrice: STUDENT_LUNCH_PRICE,
       sideMealPrice: Number(pricing.sideMealPrice),
       alaCartePrice: Number(pricing.alaCartePrice),
-      milkPrice: Number(pricing.milkPrice),
+      milkPrice: MILK_JUICE_PRICE,
+      juicePrice: MILK_JUICE_PRICE,
       agreementText: pricing.agreementText,
       emergencyPolicyText: pricing.emergencyPolicyText,
     })

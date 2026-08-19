@@ -586,6 +586,7 @@ enum LunchReservationMealType {
   SIDE
   ALA_CARTE
   MILK
+  JUICE
 }
 
 model LunchAgreement {
@@ -719,7 +720,7 @@ model OnboardingPricing {
   mainMealPrice       Decimal  @default(7.00) @db.Decimal(10, 2)
   sideMealPrice       Decimal  @default(2.00) @db.Decimal(10, 2)
   alaCartePrice       Decimal  @default(4.50) @db.Decimal(10, 2)
-  milkPrice           Decimal  @default(0.75) @db.Decimal(10, 2)
+  milkPrice           Decimal  @default(1.00) @db.Decimal(10, 2)
   agreementText       String   @db.Text
   emergencyPolicyText String   @db.Text
   updatedAt           DateTime @updatedAt
