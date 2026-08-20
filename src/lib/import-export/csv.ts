@@ -1,8 +1,8 @@
-import type { ImportExportType } from "@/lib/import-export/types"
+import type { ImportExportType, TemplateColumn } from "@/lib/import-export/types"
 import { getTemplate } from "@/lib/import-export/templates"
 
 function escapeCsvCell(value: string): string {
-  if (value.includes(",") || value.includes('"') || value.includes("\n")) {
+  if (value.includes(",") || value.includes('"') || value.includes("\n") || value.startsWith("=")) {
     return `"${value.replace(/"/g, '""')}"`
   }
   return value
@@ -16,8 +16,21 @@ export function rowsToCsv(headers: string[], rows: Record<string, string>[]): st
   return lines.join("\n")
 }
 
+/** Build CSV using human-readable labels as headers; row values keyed by column.key. */
+export function rowsToCsvLabeled(
+  columns: Array<Pick<TemplateColumn, "key" | "label">>,
+  rows: Record<string, string>[]
+): string {
+  const lines = [columns.map((c) => escapeCsvCell(c.label)).join(",")]
+  for (const row of rows) {
+    lines.push(columns.map((c) => escapeCsvCell(row[c.key] ?? "")).join(","))
+  }
+  return lines.join("\n")
+}
+
 export function downloadCsv(filename: string, content: string) {
-  const blob = new Blob([content], { type: "text/csv;charset=utf-8;" })
+  // UTF-8 BOM helps Excel open accented names without mojibake
+  const blob = new Blob(["\uFEFF" + content], { type: "text/csv;charset=utf-8;" })
   const url = URL.createObjectURL(blob)
   const link = document.createElement("a")
   link.href = url
@@ -28,6 +41,7 @@ export function downloadCsv(filename: string, content: string) {
 
 export function downloadImportTemplate(type: ImportExportType) {
   const template = getTemplate(type)
+  // Keep camelCase keys so import wizards and docs stay stable
   const headers = template.columns.map((c) => c.key)
   const content = rowsToCsv(headers, [template.sampleRow])
   downloadCsv(template.filename, content)
@@ -39,8 +53,7 @@ export function exportRowsToCsv(
   filenameSuffix = "export"
 ) {
   const template = getTemplate(type)
-  const headers = template.columns.map((c) => c.key)
-  const content = rowsToCsv(headers, rows)
+  const content = rowsToCsvLabeled(template.columns, rows)
   const baseName = template.filename.replace("-template.csv", "")
   downloadCsv(`${baseName}-${filenameSuffix}.csv`, content)
 }

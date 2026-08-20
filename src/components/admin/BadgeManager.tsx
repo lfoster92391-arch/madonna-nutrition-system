@@ -24,7 +24,11 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input, Label, Select } from "@/components/ui/input"
-import { exportRowsToCsv } from "@/lib/import-export"
+import {
+  downloadStaffBadgeRosterCsv,
+  downloadStudentBadgeRosterCsv,
+  fromExcelTextId,
+} from "@/lib/import-export"
 import {
   assertCsvFile,
   normalizeBadgeStatusValue,
@@ -166,27 +170,18 @@ export function BadgeManager() {
   const allFilteredStaffSelected =
     filteredStaff.length > 0 && filteredStaff.every((u) => staffSelectedIds.has(u.id))
 
-  const exportRows = useMemo(
-    () =>
-      badges.map((s) => ({
-        mdId: s.id,
-        firstName: s.firstName,
-        lastName: s.lastName,
-        grade: s.grade,
-        photoUrl: s.photo,
-        badgeStatus: s.badgeStatus ?? "pending",
-        barcode: s.barcode ?? s.id,
-      })),
-    [badges]
-  )
-
   const scrollToImport = useCallback(() => {
     importRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
     fileRef.current?.click()
   }, [])
 
+  /** Export the filtered roster (status + search) — clean headers, no base64 photos. */
   const handleExportCsv = () => {
-    exportRowsToCsv("badges", exportRows)
+    downloadStudentBadgeRosterCsv(filtered)
+  }
+
+  const handleExportStaffCsv = () => {
+    downloadStaffBadgeRosterCsv(filteredStaff)
   }
 
   const toggleSelect = (id: string) => {
@@ -265,7 +260,7 @@ export function BadgeManager() {
           .map((raw) => {
             const row = normalizeCsvRecord(raw)
             return {
-              mdId: pickCsvField(row, "mdId", "MD ID", "md_id", "MDID"),
+              mdId: fromExcelTextId(pickCsvField(row, "mdId", "MD ID", "md_id", "MDID")),
               firstName: pickCsvField(row, "firstName", "First Name", "first_name"),
               lastName: pickCsvField(row, "lastName", "Last Name", "last_name"),
               grade: pickCsvField(row, "grade", "Grade"),
@@ -274,7 +269,8 @@ export function BadgeManager() {
                 pickCsvField(row, "badgeStatus", "Badge Status", "badge_status"),
                 "pending"
               ),
-              barcode: pickCsvField(row, "barcode", "Barcode") || undefined,
+              barcode:
+                fromExcelTextId(pickCsvField(row, "barcode", "Barcode")) || undefined,
             }
           })
           .filter((row) => row.mdId.trim())
@@ -398,14 +394,24 @@ export function BadgeManager() {
             </div>
           </div>
 
-          <div className="relative w-full min-w-0 sm:max-w-md">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-silver-foreground" />
-            <Input
-              className="pl-9"
-              placeholder="Search by name, department, or badge ID…"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="relative w-full min-w-0 flex-1 sm:max-w-md">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-silver-foreground" />
+              <Input
+                className="pl-9"
+                placeholder="Search by name, department, or badge ID…"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
+            <Button
+              variant="outline"
+              className="w-full sm:w-auto"
+              onClick={handleExportStaffCsv}
+              disabled={filteredStaff.length === 0}
+            >
+              Export staff CSV
+            </Button>
           </div>
 
           <Card>
@@ -559,8 +565,13 @@ export function BadgeManager() {
           <option value="pending">Pending</option>
           <option value="inactive">Inactive</option>
         </Select>
-        <Button variant="outline" className="w-full sm:w-auto" onClick={handleExportCsv}>
-          Export CSV
+        <Button
+          variant="outline"
+          className="w-full sm:w-auto"
+          onClick={handleExportCsv}
+          disabled={filtered.length === 0}
+        >
+          Export student CSV
         </Button>
       </div>
 
@@ -720,7 +731,7 @@ export function BadgeManager() {
               rows (missing name/grade) can be skipped or created as stubs for individual edit.
             </p>
           </div>
-          <ImportExportMenu type="badges" onImport={scrollToImport} exportRows={exportRows} />
+          <ImportExportMenu type="badges" onImport={scrollToImport} onExport={handleExportCsv} />
         </div>
         <label className="mt-4 flex items-start gap-2 text-sm text-primary">
           <input

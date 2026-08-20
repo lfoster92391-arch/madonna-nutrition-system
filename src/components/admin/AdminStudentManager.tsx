@@ -16,7 +16,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input, Label } from "@/components/ui/input"
-import type { Student } from "@/lib/types"
+import { cleanExportPhotoUrl, excelTextId } from "@/lib/import-export"
 import { compressImageDataUrl } from "@/lib/images/compress-data-url"
 import { studentMatchesScanId } from "@/lib/scan/scan-id"
 import { formatCurrency } from "@/lib/utils"
@@ -128,14 +128,18 @@ export function AdminStudentManager({
       students
         .filter((s) => !s.disabled && !isDemoStudentExternalId(s.id))
         .map((s) => ({
-          mdId: s.id,
+          mdId: excelTextId(s.id),
           firstName: s.firstName,
           lastName: s.lastName,
+          email: s.email ?? "",
           grade: s.grade,
-          homeroom: s.homeroom ?? "",
+          badgeStatus: s.badgeStatus ?? "active",
           balance: s.balance.toFixed(2),
-          photoUrl: s.photo,
+          parent: s.parentContacts[0]?.name ?? "",
           parentEmail: s.parentContacts[0]?.email ?? "",
+          photo: "",
+          photoUrl: cleanExportPhotoUrl(s.photo),
+          homeroom: s.homeroom ?? "",
           parentPhone: s.parentContacts[0]?.phone ?? "",
           allergies: s.allergies.map((a) => a.name).join(", "),
           dietaryRestrictions: s.dietaryRestrictions.join(", "),
