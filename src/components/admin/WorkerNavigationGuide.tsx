@@ -93,7 +93,7 @@ const GUIDE_STEPS: GuideStep[] = [
     plain: "Scan badges to charge meals.",
     details: [
       "Badge Setup shows each student’s photo from their profile.",
-      "Open Cashier / Scan on a tablet at the lunch line.",
+      "Open Cashier / POS on a tablet at the lunch line.",
       "Scan the badge → confirm meal → balance updates.",
     ],
     href: "/scan",

@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma"
 import { resolveSchoolId } from "@/lib/db/school"
 import { mapUser } from "@/lib/db/mappers"
-import { scanIdCandidates } from "@/lib/scan/scan-id"
+import { scanIdCandidates, scanNumericCore, staffMatchScore } from "@/lib/scan/scan-id"
 import type { UserRole } from "@/lib/types"
 
 export { userRoleSupportsBadge } from "@/lib/users"
@@ -48,7 +48,7 @@ export async function findUserByScanId(scanId: string) {
   const candidates = scanIdCandidates(scanId)
   if (candidates.length === 0) return null
 
-  return prisma.user.findFirst({
+  const exact = await prisma.user.findMany({
     where: {
       schoolId,
       badgeId: { in: candidates },
@@ -56,6 +56,31 @@ export async function findUserByScanId(scanId: string) {
       role: { in: [...BADGE_ELIGIBLE_ROLES] },
     },
   })
+  if (exact.length === 1) return exact[0]!
+  if (exact.length > 1) {
+    const ranked = exact
+      .map((user) => ({ user, score: staffMatchScore(user, scanId) }))
+      .sort((a, b) => b.score - a.score)
+    if (ranked[0]!.score > 0) return ranked[0]!.user
+  }
+
+  const core = scanNumericCore(scanId)
+  if (!core || core.length < 3) return null
+
+  const fuzzy = await prisma.user.findMany({
+    where: {
+      schoolId,
+      status: "ACTIVE",
+      role: { in: [...BADGE_ELIGIBLE_ROLES] },
+      badgeId: { contains: core, mode: "insensitive" },
+    },
+    take: 40,
+  })
+  const ranked = fuzzy
+    .map((user) => ({ user, score: staffMatchScore(user, scanId) }))
+    .filter((row) => row.score > 0)
+    .sort((a, b) => b.score - a.score)
+  return ranked[0]?.user ?? null
 }
 
 export async function assertBadgeIdAvailable(
