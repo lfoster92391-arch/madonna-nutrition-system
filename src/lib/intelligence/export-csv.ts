@@ -30,6 +30,8 @@ export function dashboardToCsv(data: DashboardData): string {
     ["Participation Count", m.participationCount],
     ["Low Stock Count", m.lowStockCount],
     ["Total Inventory Items", m.totalInventoryItems],
+    ["Low Balance Count", m.lowBalanceCount],
+    ["Negative Balance Count", m.negativeBalanceCount],
   ]
 
   const trendRows = data.revenueTrend.labels.map((label, i) => [

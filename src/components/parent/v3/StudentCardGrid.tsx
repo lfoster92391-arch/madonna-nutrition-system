@@ -182,6 +182,7 @@ export function StudentCardGrid({ onAddFunds }: StudentCardGridProps) {
                   studentId={student.id}
                   studentName={student.firstName}
                   currentPhoto={student.photo}
+                  photoStatus={student.photoStatus}
                   compact
                 />
               </div>

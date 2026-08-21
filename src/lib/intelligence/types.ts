@@ -8,6 +8,10 @@ export interface DashboardMetrics {
   participationCount: number
   lowStockCount: number
   totalInventoryItems: number
+  /** Students with cafeteria balance below $5 (live roster). */
+  lowBalanceCount: number
+  /** Students with negative balance (debt). */
+  negativeBalanceCount: number
 }
 
 export interface ChartSeries {

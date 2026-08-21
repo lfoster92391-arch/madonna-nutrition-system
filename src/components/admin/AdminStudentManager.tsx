@@ -18,8 +18,10 @@ import { Card, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input, Label } from "@/components/ui/input"
 import { cleanExportPhotoUrl, excelTextId } from "@/lib/import-export"
 import type { Student } from "@/lib/types"
+import { api } from "@/lib/api/client"
 import { compressImageDataUrl } from "@/lib/images/compress-data-url"
 import { studentMatchesScanId } from "@/lib/scan/scan-id"
+import { photoStatusLabel } from "@/lib/students/photo-moderation"
 import { formatCurrency } from "@/lib/utils"
 
 function readFileAsDataUrl(file: File): Promise<string> {
@@ -60,6 +62,7 @@ export function AdminStudentManager({
   const { user } = useAuth()
   const queryClient = useQueryClient()
   const [search, setSearch] = useState("")
+  const [pendingPhotosOnly, setPendingPhotosOnly] = useState(false)
   const [editing, setEditing] = useState<Student | null>(null)
   const [showAdd, setShowAdd] = useState(false)
   const [justAddedId, setJustAddedId] = useState<string | null>(null)
@@ -108,7 +111,10 @@ export function AdminStudentManager({
       )
 
   const filtered = useMemo(() => {
-    const activeStudents = students.filter((s) => !s.disabled && !isDemoStudentExternalId(s.id))
+    let activeStudents = students.filter((s) => !s.disabled && !isDemoStudentExternalId(s.id))
+    if (pendingPhotosOnly) {
+      activeStudents = activeStudents.filter((s) => s.photoStatus === "pending")
+    }
     if (!search) return activeStudents
     const q = search.trim().toLowerCase()
     return activeStudents.filter((s) => {
@@ -118,7 +124,15 @@ export function AdminStudentManager({
       }
       return studentMatchesScanId(s, search)
     })
-  }, [students, search])
+  }, [students, search, pendingPhotosOnly])
+
+  const pendingPhotoCount = useMemo(
+    () =>
+      students.filter(
+        (s) => !s.disabled && !isDemoStudentExternalId(s.id) && s.photoStatus === "pending"
+      ).length,
+    [students]
+  )
 
   function scrollToImport() {
     importWizardRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
@@ -287,19 +301,30 @@ export function AdminStudentManager({
     if (!editing) return
     const fresh = students.find((s) => s.id === editing.id)
     if (!fresh) return
-    if (fresh.balance === editing.balance && fresh.photo === editing.photo) return
+    if (
+      fresh.balance === editing.balance &&
+      fresh.photo === editing.photo &&
+      fresh.photoStatus === editing.photoStatus
+    ) {
+      return
+    }
 
     const priorBalance = editing.balance
     setEditing((prev) =>
       prev && prev.id === fresh.id
-        ? { ...prev, balance: fresh.balance, photo: fresh.photo }
+        ? {
+            ...prev,
+            balance: fresh.balance,
+            photo: fresh.photo,
+            photoStatus: fresh.photoStatus,
+          }
         : prev
     )
     setForm((prev) => {
       if (!balanceInputsEqual(prev.balance, priorBalance)) return prev
       return { ...prev, balance: formatBalanceInput(fresh.balance) }
     })
-  }, [students, editing?.id, editing?.balance, editing?.photo])
+  }, [students, editing?.id, editing?.balance, editing?.photo, editing?.photoStatus])
 
   function closeEditor() {
     setShowAdd(false)
@@ -322,6 +347,37 @@ export function AdminStudentManager({
     setFormMessage(null)
     setPendingPhoto(null)
     setForm({ id: "", firstName: "", lastName: "", grade: "", homeroom: "", balance: "0" })
+  }
+
+  async function moderatePhoto(action: "approve" | "deny") {
+    if (!editing) return
+    setPhotoBusy(true)
+    setPhotoMessage(null)
+    try {
+      const updated = await api.moderateStudentPhoto(editing.id, action)
+      setEditing((prev) =>
+        prev
+          ? {
+              ...prev,
+              photo: updated.photo,
+              photoStatus: updated.photoStatus,
+            }
+          : prev
+      )
+      setPhotoMessage(
+        action === "approve"
+          ? "Photo approved for lunch badges"
+          : "Photo denied. Ask the parent to upload a new school-appropriate photo."
+      )
+      void queryClient.invalidateQueries({ queryKey: ["students"] })
+      void queryClient.invalidateQueries({ queryKey: ["badges"] })
+    } catch (error) {
+      setPhotoMessage(
+        error instanceof Error ? error.message : "Could not update photo review status."
+      )
+    } finally {
+      setPhotoBusy(false)
+    }
   }
 
   function openOfficePayment(studentId: string | null = null) {
@@ -370,7 +426,9 @@ export function AdminStudentManager({
       setPendingPhoto(null)
       setPhotoMessage("Photo saved for badges")
       if (editing?.id === targetId) {
-        setEditing((prev) => (prev ? { ...prev, photo: compressed } : prev))
+        setEditing((prev) =>
+          prev ? { ...prev, photo: compressed, photoStatus: "approved" } : prev
+        )
       }
     } catch (error) {
       const message =
@@ -739,8 +797,11 @@ export function AdminStudentManager({
                             <h3 className="text-lg font-semibold text-primary">Badge photo</h3>
                             <p className="text-sm text-silver-foreground">
                               Take a photo with your phone camera or upload a picture, then tap Save
-                              photo (or Update below). This same photo shows on badges and when the
-                              badge is scanned at checkout.
+                              photo (or Update below). Parent uploads stay pending until you approve
+                              them for badges and checkout.
+                            </p>
+                            <p className="mt-1 text-sm font-medium text-primary">
+                              {photoStatusLabel(editing.photoStatus)}
                             </p>
                           </div>
                           <div className="flex flex-wrap items-start gap-5">
@@ -796,6 +857,29 @@ export function AdminStudentManager({
                               >
                                 {photoBusy ? "Saving…" : "Save photo"}
                               </Button>
+                              {editing.photoStatus === "pending" && (
+                                <div className="flex flex-wrap gap-2 pt-1">
+                                  <Button
+                                    type="button"
+                                    size="lg"
+                                    className="min-h-12 flex-1 text-base"
+                                    disabled={photoBusy || saving}
+                                    onClick={() => void moderatePhoto("approve")}
+                                  >
+                                    Approve photo
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    size="lg"
+                                    variant="outline"
+                                    className="min-h-12 flex-1 text-base"
+                                    disabled={photoBusy || saving}
+                                    onClick={() => void moderatePhoto("deny")}
+                                  >
+                                    Deny photo
+                                  </Button>
+                                </div>
+                              )}
                             </div>
                           </div>
                           {photoMessage && (
@@ -871,6 +955,21 @@ export function AdminStudentManager({
                     onChange={(e) => setSearch(e.target.value)}
                   />
                 </div>
+                <div className="mb-4 flex flex-wrap items-center gap-2 px-3 sm:px-6">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={pendingPhotosOnly ? "default" : "outline"}
+                    onClick={() => setPendingPhotosOnly((v) => !v)}
+                  >
+                    Pending photos{pendingPhotoCount > 0 ? ` (${pendingPhotoCount})` : ""}
+                  </Button>
+                  {pendingPhotosOnly && (
+                    <p className="text-sm text-silver-foreground">
+                      Showing students waiting for badge photo approval.
+                    </p>
+                  )}
+                </div>
                 <div className="space-y-3 px-1 pb-4 sm:px-2 md:hidden">
                   {filtered.length === 0 ? (
                     <p className="py-8 text-center text-sm text-silver-foreground">
@@ -900,14 +999,19 @@ export function AdminStudentManager({
                             />
                           </button>
                           <div className="min-w-0 flex-1">
-                            <p className="truncate font-semibold text-primary">
+                            <button
+                              type="button"
+                              onClick={() => startEdit(s)}
+                              disabled={s.disabled}
+                              className="truncate text-left font-semibold text-primary underline-offset-2 hover:underline disabled:no-underline"
+                            >
                               {s.firstName} {s.lastName}
                               {s.disabled && (
                                 <Badge variant="danger" className="ml-2 align-middle">
                                   Disabled
                                 </Badge>
                               )}
-                            </p>
+                            </button>
                             <p className="mt-0.5 font-mono text-xs text-silver-foreground">{s.id}</p>
                             <p className="mt-1 text-sm text-silver-foreground">
                               Grade {s.grade} · {formatCurrency(s.balance)}
@@ -1001,7 +1105,14 @@ export function AdminStudentManager({
                             <span className="font-mono text-xs text-silver-foreground">{s.id}</span>
                           </td>
                           <td className="py-3 pr-4 font-medium text-primary">
-                            {s.firstName} {s.lastName}
+                            <button
+                              type="button"
+                              onClick={() => startEdit(s)}
+                              disabled={s.disabled}
+                              className="text-left font-medium text-primary underline-offset-2 hover:underline disabled:no-underline"
+                            >
+                              {s.firstName} {s.lastName}
+                            </button>
                             {s.disabled && (
                               <Badge variant="danger" className="ml-2">
                                 Disabled

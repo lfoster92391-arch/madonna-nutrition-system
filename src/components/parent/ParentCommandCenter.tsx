@@ -42,6 +42,7 @@ function ParentCommandCenterContent() {
   const firstName = user?.displayName.split(" ")[0] ?? "Parent"
   const totalBalance = linkedStudents.reduce((sum, s) => sum + s.balance, 0)
   const lowBalanceStudents = linkedStudents.filter((s) => s.balance < 5)
+  const debtStudents = linkedStudents.filter((s) => s.balance < 0)
 
   const dietaryFormIssues = linkedStudents.filter((student) => {
     const profile = getStudentProfile(student.id, studentProfiles)
@@ -56,6 +57,7 @@ function ParentCommandCenterContent() {
 
   const alertItems = buildAlertItems({
     lowBalanceStudents,
+    debtStudents,
     dietaryFormIssueCount: dietaryFormIssues.length,
     reviewHref,
     announcements,

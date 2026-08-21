@@ -2,6 +2,7 @@ import type {
   AllergySeverity as PrismaAllergySeverity,
   AllergySubmissionStatus as PrismaSubmissionStatus,
   BadgeStatus as PrismaBadgeStatus,
+  PhotoModerationStatus as PrismaPhotoModerationStatus,
   UserRole as PrismaUserRole,
   UserStatus as PrismaUserStatus,
 } from "@prisma/client"
@@ -34,6 +35,7 @@ import type {
   MealTemplate,
   MealTemplateItem,
   MedicalDocument,
+  PhotoModerationStatus,
   Student,
   StudentProfile,
   Transaction,
@@ -119,12 +121,34 @@ const BADGE_STATUS_TO_DB: Record<NonNullable<Student["badgeStatus"]>, PrismaBadg
   inactive: "INACTIVE",
 }
 
+const PHOTO_STATUS_TO_APP: Record<PrismaPhotoModerationStatus, PhotoModerationStatus> = {
+  NONE: "none",
+  PENDING: "pending",
+  APPROVED: "approved",
+  DENIED: "denied",
+}
+
+const PHOTO_STATUS_TO_DB: Record<PhotoModerationStatus, PrismaPhotoModerationStatus> = {
+  none: "NONE",
+  pending: "PENDING",
+  approved: "APPROVED",
+  denied: "DENIED",
+}
+
 export function mapBadgeStatus(status: PrismaBadgeStatus): NonNullable<Student["badgeStatus"]> {
   return BADGE_STATUS_TO_APP[status]
 }
 
 export function badgeStatusToDb(status: NonNullable<Student["badgeStatus"]>): PrismaBadgeStatus {
   return BADGE_STATUS_TO_DB[status]
+}
+
+export function mapPhotoStatus(status: PrismaPhotoModerationStatus): PhotoModerationStatus {
+  return PHOTO_STATUS_TO_APP[status]
+}
+
+export function photoStatusToDb(status: PhotoModerationStatus): PrismaPhotoModerationStatus {
+  return PHOTO_STATUS_TO_DB[status]
 }
 
 export function mapAllergy(allergy: DbAllergy): Allergy {
@@ -143,6 +167,7 @@ export function mapStudent(student: StudentWithRelations): Student {
     photo:
       student.photo ??
       "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=400&auto=format&fit=crop",
+    photoStatus: mapPhotoStatus(student.photoStatus),
     grade: student.grade,
     homeroom: student.homeroom ?? undefined,
     balance: Number(student.balance),

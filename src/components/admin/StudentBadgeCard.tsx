@@ -6,18 +6,13 @@ import type { Student } from "@/lib/types"
 import { BadgeSchoolHeader } from "@/components/admin/BadgeSchoolHeader"
 import { buildCode128Svg } from "@/lib/badges/code128-svg"
 import { badgeFullName } from "@/lib/badges/display-name"
+import {
+  studentHasRealPhoto,
+  studentPhotoReadyForBadge,
+} from "@/lib/students/photo-moderation"
 import { cn } from "@/lib/utils"
 
-/** Default stock photo used when no real student photo is on file. */
-const PLACEHOLDER_PHOTO_HINTS = [
-  "images.unsplash.com/photo-1535713875002-d1d0cf377fde",
-  "images.unsplash.com/photo-1604908176997-431cef8a0b38",
-]
-
-export function studentHasRealPhoto(photo?: string | null): boolean {
-  if (!photo?.trim()) return false
-  return !PLACEHOLDER_PHOTO_HINTS.some((hint) => photo.includes(hint))
-}
+export { studentHasRealPhoto } from "@/lib/students/photo-moderation"
 
 export function studentEmailForBadge(student: Student): string {
   return student.email?.trim() || student.parentContacts?.[0]?.email?.trim() || ""
@@ -56,7 +51,7 @@ export function StudentBadgeCard({ student, className }: StudentBadgeCardProps) 
   const barcodeValue = (student.barcode?.trim() || mdId).trim()
   const email = studentEmailForBadge(student)
   const grade = student.grade?.trim() || ""
-  const hasPhoto = studentHasRealPhoto(student.photo)
+  const hasPhoto = studentPhotoReadyForBadge(student)
   const statusLabel = badgeStatusLabel(student.badgeStatus)
   const statusTone = badgeStatusTone(student.badgeStatus)
 

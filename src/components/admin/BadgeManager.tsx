@@ -18,7 +18,9 @@ import { useDemo } from "@/components/providers/DemoProvider"
 import { BadgeMassPrint } from "@/components/admin/BadgeMassPrint"
 import { StaffBadgeMassPrint } from "@/components/admin/StaffBadgeMassPrint"
 import { ImportExportMenu } from "@/components/admin/import-export/ImportExportMenu"
-import { studentHasRealPhoto } from "@/components/admin/StudentBadgeCard"
+import {
+  studentPhotoReadyForBadge,
+} from "@/lib/students/photo-moderation"
 import { staffHasRealPhoto } from "@/components/admin/StaffBadgeCard"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -625,7 +627,7 @@ export function BadgeManager() {
                       />
                     </td>
                     <td className="py-3 pr-4">
-                      {studentHasRealPhoto(student.photo) ? (
+                      {studentPhotoReadyForBadge(student) ? (
                         <Image
                           src={student.photo}
                           alt=""

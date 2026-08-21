@@ -21,6 +21,8 @@ export const mockDashboard: DashboardData = {
     participationCount: 0,
     lowStockCount: 0,
     totalInventoryItems: 0,
+    lowBalanceCount: 0,
+    negativeBalanceCount: 0,
   },
   revenueTrend: { labels: [], values: [] },
   mealsByType: { labels: [], values: [] },

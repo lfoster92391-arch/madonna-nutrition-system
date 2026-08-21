@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import type { SuggestionsData } from "@/lib/intelligence/types"
+import { INTELLIGENCE_REFETCH_MS } from "@/lib/intelligence/refresh"
 import { cn } from "@/lib/utils"
 
 async function fetchSuggestions(): Promise<SuggestionsData> {
@@ -23,7 +24,7 @@ export function AiSuggestionsPanel() {
   const { data, isLoading } = useQuery({
     queryKey: ["intelligence", "suggestions"],
     queryFn: fetchSuggestions,
-    refetchInterval: 30_000,
+    refetchInterval: INTELLIGENCE_REFETCH_MS,
   })
 
   return (

@@ -2,6 +2,7 @@
 
 import Link from "next/link"
 import { BarChart3, Download, FileSpreadsheet } from "lucide-react"
+import { ExecutiveSummaryReport } from "@/components/admin/ExecutiveSummaryReport"
 import { downloadReportCsv } from "@/lib/export/download-report"
 import { Button } from "@/components/ui/button"
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -23,7 +24,7 @@ const REPORTS = [
     title: "Analytics & Reporting",
     description: "Participation, waste breakdown, vendor and nutrition insights.",
     type: "analytics" as const,
-    href: "/admin/reporting",
+    href: "/admin/analytics",
   },
 ]
 
@@ -37,11 +38,13 @@ export default function AdminReportingPage() {
             Reporting
           </h1>
           <p className="text-silver-foreground">
-            Export operational and financial reports as CSV from live database metrics.
+            Executive summary and CSV exports from live database metrics.
           </p>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-3">
+        <ExecutiveSummaryReport />
+
+        <div className="grid gap-4 md:grid-cols-3 print:hidden">
           {REPORTS.map((report) => (
             <Card key={report.type}>
               <CardHeader>

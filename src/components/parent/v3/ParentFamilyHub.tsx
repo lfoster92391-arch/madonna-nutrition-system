@@ -66,6 +66,7 @@ function ParentFamilyHubContent() {
 
   const alertItems = buildAlertItems({
     lowBalanceStudents,
+    debtStudents: linkedStudents.filter((s) => s.balance < 0),
     dietaryFormIssueCount: dietaryFormIssues.length,
     reviewHref,
     announcements,

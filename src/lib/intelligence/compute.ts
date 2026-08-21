@@ -50,17 +50,24 @@ export async function computeDashboard(): Promise<DashboardData> {
   const weekAgo = new Date(today)
   weekAgo.setDate(weekAgo.getDate() - 7)
 
-  const [transactions, inventory, signups, wasteData] = await Promise.all([
-    prisma.transaction.findMany({
-      where: { schoolId, createdAt: { gte: weekAgo } },
-      select: { amount: true, mealType: true, createdAt: true },
-    }),
-    prisma.inventoryItem.findMany({ where: { schoolId } }),
-    prisma.studentLunchSignup.count({
-      where: { schoolId, date: { gte: today } },
-    }),
-    computeWaste(),
-  ])
+  const [transactions, inventory, signups, wasteData, lowBalanceCount, negativeBalanceCount] =
+    await Promise.all([
+      prisma.transaction.findMany({
+        where: { schoolId, createdAt: { gte: weekAgo } },
+        select: { amount: true, mealType: true, createdAt: true },
+      }),
+      prisma.inventoryItem.findMany({ where: { schoolId } }),
+      prisma.studentLunchSignup.count({
+        where: { schoolId, date: { gte: today } },
+      }),
+      computeWaste(),
+      prisma.student.count({
+        where: { schoolId, disabled: false, balance: { lt: 5 } },
+      }),
+      prisma.student.count({
+        where: { schoolId, disabled: false, balance: { lt: 0 } },
+      }),
+    ])
 
   const todayTx = transactions.filter((t) => t.createdAt >= today)
   const revenueToday = todayTx.reduce((s, t) => s + Number(t.amount), 0)
@@ -98,6 +105,8 @@ export async function computeDashboard(): Promise<DashboardData> {
       participationCount: todayTx.length,
       lowStockCount,
       totalInventoryItems: inventory.length,
+      lowBalanceCount,
+      negativeBalanceCount,
     },
     revenueTrend: { labels: dayLabels(7), values: revenueByDay },
     mealsByType: {

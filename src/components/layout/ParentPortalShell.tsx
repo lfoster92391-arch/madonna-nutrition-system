@@ -37,6 +37,7 @@ function useParentNavAlertCount(): number {
   const announcements = useParentAnnouncements()
 
   const lowBalanceStudents = linkedStudents.filter((s) => s.balance < 5)
+  const debtStudents = linkedStudents.filter((s) => s.balance < 0)
   const dietaryFormIssues = linkedStudents.filter((student) => {
     const profile = getStudentProfile(student.id, studentProfiles)
     const pending = getPendingSubmission(student.id, allergySubmissions)
@@ -52,12 +53,13 @@ function useParentNavAlertCount(): number {
       countAttentionItems(
         buildAlertItems({
           lowBalanceStudents,
+          debtStudents,
           dietaryFormIssueCount: dietaryFormIssues.length,
           reviewHref,
           announcements,
         })
       ),
-    [lowBalanceStudents, dietaryFormIssues.length, reviewHref, announcements]
+    [lowBalanceStudents, debtStudents, dietaryFormIssues.length, reviewHref, announcements]
   )
 }
 
