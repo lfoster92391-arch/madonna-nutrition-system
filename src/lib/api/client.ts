@@ -65,12 +65,24 @@ export const api = {
       method: "DELETE",
     }),
   getTransactions: () => fetchJson<import("@/lib/types").Transaction[]>("/api/transactions"),
-  processMeal: (studentId: string, meal: string, amount: number, processedByUserId?: string) =>
+  processMeal: (
+    studentId: string,
+    meal: string,
+    amount: number,
+    processedByUserId?: string,
+    mealType?: string
+  ) =>
     fetchJson<import("@/lib/types").Transaction>("/api/transactions/meal", {
       method: "POST",
-      body: JSON.stringify({ studentId, meal, amount, processedByUserId }),
+      body: JSON.stringify({ studentId, meal, amount, processedByUserId, mealType }),
     }),
-  processStaffMeal: (userId: string, meal: string, amount: number, processedByUserId?: string) =>
+  processStaffMeal: (
+    userId: string,
+    meal: string,
+    amount: number,
+    processedByUserId?: string,
+    mealType?: string
+  ) =>
     fetchJson<{
       balanceAfter: number
       meal: string
@@ -78,7 +90,7 @@ export const api = {
       user?: import("@/lib/types").User
     }>("/api/transactions/staff-meal", {
       method: "POST",
-      body: JSON.stringify({ userId, meal, amount, processedByUserId }),
+      body: JSON.stringify({ userId, meal, amount, processedByUserId, mealType }),
     }),
   recordOfficePayment: (input: {
     studentId: string
@@ -435,6 +447,11 @@ export const api = {
     fetchJson<import("@/lib/types").Student>(`/api/students/${encodeURIComponent(mdId)}/photo`, {
       method: "POST",
       body: JSON.stringify({ photo }),
+    }),
+  moderateStudentPhoto: (mdId: string, action: "approve" | "deny") =>
+    fetchJson<import("@/lib/types").Student>(`/api/students/${encodeURIComponent(mdId)}/photo`, {
+      method: "PATCH",
+      body: JSON.stringify({ action }),
     }),
   uploadUserPhoto: (id: string, photo: string) =>
     fetchJson<import("@/lib/types").User>(`/api/users/${encodeURIComponent(id)}/photo`, {

@@ -37,10 +37,11 @@ import { PosAmountKeypad } from "@/components/scan/PosAmountKeypad"
 import { OfflineBanner } from "@/components/scan/OfflineBanner"
 import { MEAL_PRICES } from "@/lib/types"
 import type { Student, Transaction, User } from "@/lib/types"
+import type { KioskPosButtonDto } from "@/lib/kiosk/pos-buttons"
 import { checkMealCompatibility } from "@/lib/food-safety"
 import { isPublicCalendarEvent, todayDateKey } from "@/lib/calendar-publish"
 import { isPizzaDayName, PIZZA_SLICE_UNIT_PRICE } from "@/lib/pizza-day"
-import { api } from "@/lib/api/client"
+import { api, getSessionHeaders } from "@/lib/api/client"
 import {
   cachedToStudent,
   findCachedStudent,
@@ -177,6 +178,7 @@ export default function ScanStationPage() {
   const [addFundsOpen, setAddFundsOpen] = useState(false)
   const [fundsAction, setFundsAction] = useState<"add" | "subtract">("add")
   const [posCents, setPosCents] = useState(0)
+  const [configuredButtons, setConfiguredButtons] = useState<KioskPosButtonDto[] | null>(null)
 
   const scanInputRef = useRef<HTMLInputElement>(null)
   const scanTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -193,6 +195,26 @@ export default function ScanStationPage() {
     () => users.filter((u) => isWorkplaceUserRole(u.role) && u.status === "active"),
     [users]
   )
+
+  useEffect(() => {
+    let cancelled = false
+    async function loadButtons() {
+      try {
+        const res = await fetch("/api/kiosk/pos-buttons", { headers: { ...getSessionHeaders() } })
+        if (!res.ok) return
+        const data = (await res.json()) as { buttons: KioskPosButtonDto[] }
+        if (!cancelled && Array.isArray(data.buttons)) {
+          setConfiguredButtons(data.buttons)
+        }
+      } catch {
+        // Fall back to MEAL_PRICES below
+      }
+    }
+    void loadButtons()
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   const recentTransactions = useMemo(() => {
     const source =
@@ -216,17 +238,75 @@ export default function ScanStationPage() {
       (e) => e.date === today && e.category === "menu_day" && isPublicCalendarEvent(e)
     )
     const pizzaDay = isPizzaDayName(todayMenu?.title)
-    return MEAL_PRICES.map((meal) =>
-      pizzaDay && (meal.type === "student_meal" || meal.type === "staff_meal")
-        ? { ...meal, price: PIZZA_SLICE_UNIT_PRICE }
-        : meal
-    )
-  }, [calendarEvents])
 
-  const primaryMeals = kioskMeals.filter((m) => m.type === "student_meal")
-  const drinkExtras = kioskMeals.filter((m) => m.type === "milk" || m.type === "juice")
-  const staffMeals = staffUser ? kioskMeals.filter((m) => m.type === "staff_meal") : []
-  const cashierAlaCarte = kioskMeals.find((m) => m.type === "ala_carte")
+    if (configuredButtons && configuredButtons.length > 0) {
+      return configuredButtons.map((button) => ({
+        type: button.key,
+        label: button.label,
+        price:
+          pizzaDay && (button.key === "student_meal" || button.key === "staff_meal")
+            ? PIZZA_SLICE_UNIT_PRICE
+            : button.price,
+        grades: button.grades.length > 0 ? button.grades : undefined,
+        audience: button.audience,
+        category: button.category,
+        isSystem: button.isSystem,
+      }))
+    }
+
+    return MEAL_PRICES.map((meal) => ({
+      ...meal,
+      audience:
+        meal.type === "student_meal"
+          ? ("STUDENT" as const)
+          : meal.type === "staff_meal"
+            ? ("STAFF" as const)
+            : meal.type === "ala_carte"
+              ? ("CASHIER_ONLY" as const)
+              : ("BOTH" as const),
+      category:
+        meal.type === "milk" || meal.type === "juice"
+          ? ("DRINK" as const)
+          : meal.type === "ala_carte"
+            ? ("ALA_CARTE" as const)
+            : ("MEAL" as const),
+      isSystem: meal.type === "student_meal" || meal.type === "staff_meal",
+      price:
+        pizzaDay && (meal.type === "student_meal" || meal.type === "staff_meal")
+          ? PIZZA_SLICE_UNIT_PRICE
+          : meal.price,
+    }))
+  }, [calendarEvents, configuredButtons])
+
+  function buttonVisibleForDiner(meal: (typeof kioskMeals)[number]) {
+    const audience = meal.audience
+    if (staffUser) {
+      return audience === "STAFF" || audience === "BOTH"
+    }
+    if (student) {
+      if (audience === "STAFF") return false
+      if (audience === "CASHIER_ONLY") return cashierCanSellAlaCarte
+      return audience === "STUDENT" || audience === "BOTH" || audience === "CASHIER_ONLY"
+    }
+    return false
+  }
+
+  const visibleMeals = kioskMeals.filter(buttonVisibleForDiner)
+  const primaryRow = visibleMeals.filter((m) => m.type === "student_meal")
+  const staffRow = visibleMeals.filter((m) => m.type === "staff_meal")
+  const cashierOnlyRow = visibleMeals.filter((m) => m.audience === "CASHIER_ONLY")
+  const drinkRow = visibleMeals.filter(
+    (m) => m.category === "DRINK" || m.type === "milk" || m.type === "juice"
+  )
+  const customRow = visibleMeals.filter(
+    (m) =>
+      m.type !== "student_meal" &&
+      m.type !== "staff_meal" &&
+      m.audience !== "CASHIER_ONLY" &&
+      m.category !== "DRINK" &&
+      m.type !== "milk" &&
+      m.type !== "juice"
+  )
 
   useEffect(() => {
     const updateClock = () => {
@@ -538,7 +618,13 @@ export default function ScanStationPage() {
         return
       }
       try {
-        const result = await api.processStaffMeal(staffUser.id, mealLabel, price)
+        const result = await api.processStaffMeal(
+          staffUser.id,
+          mealLabel,
+          price,
+          undefined,
+          mealType
+        )
         setLocalBalance(result.balanceAfter)
         setStaffUser((prev) =>
           prev ? { ...prev, accountBalance: result.balanceAfter } : prev
@@ -557,7 +643,7 @@ export default function ScanStationPage() {
     }
 
     if (!student) return
-    const isStudentLunch = mealType === "student_meal" || mealLabel === "Student Meal"
+    const isStudentLunch = mealType === "student_meal"
     if (mealBlocked && isStudentLunch) {
       setFlashMessage("MEAL BLOCKED — Allergy conflict. Do not serve today's meal.")
       window.setTimeout(focusScan, 50)
@@ -600,7 +686,7 @@ export default function ScanStationPage() {
       return
     }
 
-    const tx = await processMeal(student.id, mealLabel, price)
+    const tx = await processMeal(student.id, mealLabel, price, undefined, mealType)
     if (tx) {
       setLocalBalance(tx.balanceAfter)
       setFlashMessage(`${mealLabel} recorded for ${student.firstName}!`)
@@ -651,10 +737,13 @@ export default function ScanStationPage() {
             : "Point camera at badge barcode, or enter ID"
 
   const studentMealAvailable =
-    student && !mealBlocked && primaryMeals.find((m) => m.type === "student_meal")
-  const staffMealAvailable = staffUser && staffMeals.find((m) => m.type === "staff_meal")
+    student && !mealBlocked && primaryRow.find((m) => m.type === "student_meal")
+  const staffMealAvailable = staffUser && staffRow.find((m) => m.type === "staff_meal")
 
-  function renderMealButton(meal: (typeof MEAL_PRICES)[number], compact = false) {
+  function renderMealButton(
+    meal: (typeof kioskMeals)[number],
+    compact = false
+  ) {
     const Icon = MEAL_ICONS[meal.type] ?? Utensils
     const gradeRestricted = meal.grades && student && !meal.grades.includes(student.grade)
     const blocked = Boolean(
@@ -671,7 +760,8 @@ export default function ScanStationPage() {
       (!!student && isStudentMeal && !disabled && scanStatus !== "complete") ||
       (!!staffUser && isStaffMeal && !disabled && scanStatus !== "complete")
 
-    if (gradeRestricted && meal.type === "ala_carte" && !cashierCanSellAlaCarte) return null
+    if (meal.audience === "CASHIER_ONLY" && !cashierCanSellAlaCarte) return null
+    if (gradeRestricted && meal.audience === "CASHIER_ONLY" && !cashierCanSellAlaCarte) return null
 
     return (
       <button
@@ -686,7 +776,7 @@ export default function ScanStationPage() {
             : "min-h-[65px] flex-1 gap-1 px-2 py-2.5 sm:min-h-[79px] sm:gap-1 sm:px-3 sm:py-3 md:min-h-[90px] lg:min-h-[108px] lg:gap-1.5 lg:px-3 lg:py-4 xl:min-h-[126px]",
           isSelected
             ? "border-[#00A83E] bg-[#00A83E] text-white"
-            : meal.type === "ala_carte"
+            : meal.audience === "CASHIER_ONLY" || meal.category === "ALA_CARTE"
               ? "border-[#AEB6C2] bg-white text-[#041B52]"
               : blocked
                 ? "border-[#D62828] bg-[#D62828] text-white"
@@ -715,7 +805,7 @@ export default function ScanStationPage() {
               aria-hidden
             />
           )}
-          {meal.type === "ala_carte" && !compact && (
+          {(meal.category === "ALA_CARTE" || meal.type === "ala_carte") && !compact && (
             <Wine className="h-4 w-4 text-[#041B52] sm:h-5 sm:w-5 md:h-6 md:w-6 lg:h-7 lg:w-7" aria-hidden />
           )}
         </div>
@@ -738,9 +828,14 @@ export default function ScanStationPage() {
             {formatCurrency(meal.price)}
           </span>
         )}
-        {meal.type === "ala_carte" && !compact && (
-          <span className="hidden text-xs font-medium text-[#64748B] sm:block">Available Grades 9–12</span>
-        )}
+        {(meal.category === "ALA_CARTE" || meal.type === "ala_carte") &&
+          meal.grades &&
+          meal.grades.length > 0 &&
+          !compact && (
+            <span className="hidden text-xs font-medium text-[#64748B] sm:block">
+              Available Grades {meal.grades[0]}–{meal.grades[meal.grades.length - 1]}
+            </span>
+          )}
       </button>
     )
   }
@@ -1006,27 +1101,40 @@ export default function ScanStationPage() {
           </p>
 
           <div className="mobile-scroll-x mt-1 flex shrink-0 gap-1 pb-0.5 sm:mt-1.5 sm:gap-1.5 md:mt-2 md:gap-2 md:overflow-visible">
-            {primaryMeals.map((meal) => renderMealButton(meal))}
+            {primaryRow.map((meal) => renderMealButton(meal))}
+            {customRow
+              .filter((m) => m.category === "MEAL")
+              .map((meal) => renderMealButton(meal))}
           </div>
 
-          {cashierCanSellAlaCarte && cashierAlaCarte && student ? (
+          {cashierCanSellAlaCarte && cashierOnlyRow.length > 0 && student ? (
             <div className="mt-1.5 shrink-0 rounded-xl border border-[#041B52]/20 bg-[#F7F8FB] p-2 sm:mt-2 sm:p-2.5">
               <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-[#64748B] sm:text-xs">
                 Cashier only — a la carte
               </p>
-              {renderMealButton(cashierAlaCarte, true)}
+              <div className="flex flex-col gap-1.5">
+                {cashierOnlyRow.map((meal) => renderMealButton(meal, true))}
+              </div>
             </div>
           ) : null}
 
-          {staffMeals.length > 0 && (
+          {staffRow.length > 0 && (
             <div className="mobile-scroll-x mt-1 flex shrink-0 gap-1 pb-0.5 sm:mt-1.5 sm:gap-1.5 md:mt-2 md:gap-2 md:overflow-visible">
-              {staffMeals.map((meal) => renderMealButton(meal, true))}
+              {staffRow.map((meal) => renderMealButton(meal, true))}
             </div>
           )}
 
-          {drinkExtras.length > 0 && (
+          {drinkRow.length > 0 && (
             <div className="mobile-scroll-x mt-1 flex shrink-0 gap-1 pb-0.5 sm:mt-1.5 sm:gap-1.5 md:mt-2 md:gap-2 md:overflow-visible">
-              {drinkExtras.map((meal) => renderMealButton(meal, true))}
+              {drinkRow.map((meal) => renderMealButton(meal, true))}
+            </div>
+          )}
+
+          {customRow.filter((m) => m.category !== "MEAL").length > 0 && (
+            <div className="mobile-scroll-x mt-1 flex shrink-0 gap-1 pb-0.5 sm:mt-1.5 sm:gap-1.5 md:mt-2 md:gap-2 md:overflow-visible">
+              {customRow
+                .filter((m) => m.category !== "MEAL")
+                .map((meal) => renderMealButton(meal, true))}
             </div>
           )}
 

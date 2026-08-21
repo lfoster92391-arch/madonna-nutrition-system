@@ -22,7 +22,7 @@ export async function POST(request: Request) {
         return badRequest("Invalid meal transaction", parsed.error.flatten())
       }
 
-      const { studentId, meal, amount, processedByUserId } = parsed.data
+      const { studentId, meal, amount, processedByUserId, mealType } = parsed.data
       const student = await findStudentByScanId(studentId)
       if (!student || student.disabled) {
         return notFound("Student not found or disabled")
@@ -30,14 +30,14 @@ export async function POST(request: Request) {
 
       const schoolId = auth.schoolId
 
-      const todayMenu = isMainLunchKioskMeal(meal)
+      const todayMenu = isMainLunchKioskMeal(meal, mealType)
         ? await prisma.calendarEvent.findFirst({
             where: { schoolId, date: todayDateOnly(), category: "menu_day" },
             orderBy: { createdAt: "desc" },
             select: { title: true },
           })
         : null
-      const chargedAmount = isMainLunchKioskMeal(meal)
+      const chargedAmount = isMainLunchKioskMeal(meal, mealType)
         ? canonicalMainMealPricing({ menuTitle: todayMenu?.title }).totalAmount
         : amount
 

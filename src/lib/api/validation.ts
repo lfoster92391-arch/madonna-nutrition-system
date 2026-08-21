@@ -46,6 +46,8 @@ export const mealTransactionSchema = z.object({
   studentId: z.string().min(1),
   meal: z.string().min(1),
   amount: z.number().nonnegative(),
+  /** Stable button key (e.g. student_meal) — used so renamed system meals still get lunch pricing. */
+  mealType: z.string().min(1).optional(),
   processedByUserId: z.string().min(1).optional(),
 })
 
@@ -53,6 +55,7 @@ export const staffMealTransactionSchema = z.object({
   userId: z.string().min(1),
   meal: z.string().min(1),
   amount: z.number().nonnegative(),
+  mealType: z.string().min(1).optional(),
   processedByUserId: z.string().min(1).optional(),
 })
 
@@ -602,5 +605,9 @@ export const parentImportRequestSchema = z.object({
 export const studentPhotoUploadSchema = z.object({
   // data: URLs from phone cameras can be large; compress client-side first.
   photo: z.string().min(1).max(2_500_000),
+})
+
+export const studentPhotoModerationSchema = z.object({
+  action: z.enum(["approve", "deny"]),
 })
 

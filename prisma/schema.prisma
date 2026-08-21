@@ -44,6 +44,7 @@ model School {
   agreementAuditLogs       AgreementAuditLog[]
   announcements            Announcement[]
   vendors                  Vendor[]
+  kioskPosButtons          KioskPosButton[]
 }
 
 model User {
@@ -724,6 +725,43 @@ model OnboardingPricing {
   agreementText       String   @db.Text
   emergencyPolicyText String   @db.Text
   updatedAt           DateTime @updatedAt
+}
+
+/** Lunch kiosk POS charge buttons — admin-editable; system keys follow lunch pricing rules. */
+enum KioskButtonAudience {
+  STUDENT
+  STAFF
+  BOTH
+  CASHIER_ONLY
+}
+
+enum KioskButtonCategory {
+  MEAL
+  DRINK
+  ALA_CARTE
+  CUSTOM
+}
+
+model KioskPosButton {
+  id        String              @id @default(cuid())
+  schoolId  String
+  school    School              @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  /** Stable key: student_meal, staff_meal, milk, juice, ala_carte, or custom_* */
+  key       String
+  label     String
+  price     Decimal             @db.Decimal(10, 2)
+  sortOrder Int                 @default(0)
+  active    Boolean             @default(true)
+  audience  KioskButtonAudience @default(BOTH)
+  category  KioskButtonCategory @default(CUSTOM)
+  /** System buttons (Student/Staff Meal): rename/show/hide OK; price follows lunch rules. */
+  isSystem  Boolean             @default(false)
+  grades    String[]            @default([])
+  createdAt DateTime            @default(now())
+  updatedAt DateTime            @updatedAt
+
+  @@unique([schoolId, key])
+  @@index([schoolId, sortOrder])
 }
 
 model AuditLog {

@@ -10,6 +10,7 @@ import { PrismaClient, UserRole, UserStatus } from "@prisma/client"
 import { DEFAULT_AGREEMENT_CONTENT } from "../src/config/agreement-defaults"
 import { DEFAULT_CALENDAR_SETTINGS } from "../src/config/calendar-defaults"
 import { upsertStaffParentAccounts } from "../src/lib/auth/staff-parent-accounts"
+import { ensureDefaultKioskPosButtons } from "../src/lib/kiosk/pos-buttons"
 
 const prisma = new PrismaClient()
 
@@ -141,6 +142,9 @@ async function main() {
   for (const row of staffParent) {
     console.log(`Staff-parent ${row.action}: ${row.email} (${row.username}) role=${row.role}`)
   }
+
+  await ensureDefaultKioskPosButtons(school.id)
+  console.log("Kiosk POS buttons seeded (Student Meal, Staff Meal, Milk, Juice, À La Carte)")
 
   console.log("Bootstrap seed completed for", school.name)
   console.log("Admin login: username itlisa OR email lisamorris@weirtonmadonna.org")
