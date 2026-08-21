@@ -6,7 +6,21 @@ export {
   exportRowsToCsv,
   getTemplateColumnGuide,
   rowsToCsv,
+  rowsToCsvLabeled,
 } from "@/lib/import-export/csv"
+export {
+  buildStaffBadgeExportRows,
+  buildStudentBadgeExportRows,
+  downloadStaffBadgeRosterCsv,
+  downloadStudentBadgeRosterCsv,
+} from "@/lib/import-export/badge-export"
+export {
+  cleanExportPhotoUrl,
+  excelTextId,
+  fromExcelTextId,
+  hasExportablePhoto,
+  photoOnFileLabel,
+} from "@/lib/import-export/export-sanitize"
 export {
   asMoneyNumber,
   asTrimmedString,

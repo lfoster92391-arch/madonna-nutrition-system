@@ -10,6 +10,8 @@ interface ImportExportMenuProps {
   type: ImportExportType
   /** Called when user chooses Import (e.g. scroll to wizard or open file picker) */
   onImport?: () => void
+  /** Override default export (e.g. clean badge roster CSV) */
+  onExport?: () => void
   /** Rows to export; if omitted, export downloads template with sample row only */
   exportRows?: Record<string, string>[]
   /** Hide import option (export + template only) */
@@ -21,6 +23,7 @@ interface ImportExportMenuProps {
 export function ImportExportMenu({
   type,
   onImport,
+  onExport,
   exportRows,
   importDisabled = false,
   variant = "default",
@@ -29,7 +32,9 @@ export function ImportExportMenu({
   const menuRef = useRef<HTMLDivElement>(null)
 
   function handleExport() {
-    if (exportRows && exportRows.length > 0) {
+    if (onExport) {
+      onExport()
+    } else if (exportRows && exportRows.length > 0) {
       exportRowsToCsv(type, exportRows)
     } else {
       downloadImportTemplate(type)
