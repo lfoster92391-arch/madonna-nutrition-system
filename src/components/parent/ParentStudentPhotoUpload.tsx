@@ -5,8 +5,17 @@ import Image from "next/image"
 import { useQueryClient } from "@tanstack/react-query"
 import { Camera, Upload } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { api } from "@/lib/api/client"
 import { compressImageDataUrl } from "@/lib/images/compress-data-url"
+import { photoStatusLabel } from "@/lib/students/photo-moderation"
+import type { PhotoModerationStatus } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
 function readFileAsDataUrl(file: File): Promise<string> {
@@ -22,6 +31,7 @@ type ParentStudentPhotoUploadProps = {
   studentId: string
   studentName: string
   currentPhoto: string
+  photoStatus?: PhotoModerationStatus
   /** Compact layout for dashboard student cards */
   compact?: boolean
   className?: string
@@ -31,6 +41,7 @@ export function ParentStudentPhotoUpload({
   studentId,
   studentName,
   currentPhoto,
+  photoStatus = "none",
   compact = false,
   className,
 }: ParentStudentPhotoUploadProps) {
@@ -39,12 +50,18 @@ export function ParentStudentPhotoUpload({
   const cameraInputRef = useRef<HTMLInputElement>(null)
   const [pendingPhoto, setPendingPhoto] = useState<string | null>(null)
   const [displayPhoto, setDisplayPhoto] = useState(currentPhoto)
+  const [displayStatus, setDisplayStatus] = useState(photoStatus)
   const [photoBusy, setPhotoBusy] = useState(false)
   const [photoMessage, setPhotoMessage] = useState<string | null>(null)
+  const [confirmOpen, setConfirmOpen] = useState(false)
 
   useEffect(() => {
     setDisplayPhoto(currentPhoto)
   }, [currentPhoto])
+
+  useEffect(() => {
+    setDisplayStatus(photoStatus)
+  }, [photoStatus])
 
   const previewSrc = pendingPhoto ?? displayPhoto
   const isDataUrl = previewSrc.startsWith("data:")
@@ -56,7 +73,7 @@ export function ParentStudentPhotoUpload({
       const dataUrl = await readFileAsDataUrl(file)
       const compressed = await compressImageDataUrl(dataUrl)
       setPendingPhoto(compressed)
-      setPhotoMessage("Preview ready. Tap Save photo to use this for lunch badges.")
+      setPhotoMessage("Preview ready. Tap Save photo to submit for admin review.")
     } catch {
       setPhotoMessage("Could not read that image. Try another photo.")
     }
@@ -68,19 +85,28 @@ export function ParentStudentPhotoUpload({
     ref.current?.click()
   }
 
-  async function handleSavePhoto() {
+  function requestSavePhoto() {
     if (!pendingPhoto) {
       setPhotoMessage("Take or upload a photo first, then tap Save photo.")
       return
     }
+    setConfirmOpen(true)
+  }
+
+  async function handleSavePhoto() {
+    if (!pendingPhoto) return
+    setConfirmOpen(false)
     setPhotoBusy(true)
     setPhotoMessage(null)
     try {
       const compressed = await compressImageDataUrl(pendingPhoto)
       const updated = await api.uploadStudentPhoto(studentId, compressed)
       setDisplayPhoto(updated.photo)
+      setDisplayStatus(updated.photoStatus ?? "pending")
       setPendingPhoto(null)
-      setPhotoMessage("Photo saved for lunch badges")
+      setPhotoMessage(
+        "Photo submitted for admin review. It will appear on lunch badges after approval."
+      )
       void queryClient.invalidateQueries({ queryKey: ["students"] })
       void queryClient.invalidateQueries({ queryKey: ["badges"] })
     } catch (error) {
@@ -138,9 +164,11 @@ export function ParentStudentPhotoUpload({
         <div className={cn("flex min-w-0 flex-1 flex-col gap-2", compact ? "" : "sm:min-w-[220px]")}>
           {!compact && (
             <p className="text-sm text-silver-foreground">
-              Add a clear face photo for lunch badges and checkout.
+              Add a clear face photo for lunch badges and checkout. Photos are reviewed by the school
+              before badges update.
             </p>
           )}
+          <p className="text-xs font-medium text-primary">{photoStatusLabel(displayStatus)}</p>
           <div className={cn("flex flex-wrap gap-2", compact && "flex-col")}>
             <Button
               type="button"
@@ -168,27 +196,43 @@ export function ParentStudentPhotoUpload({
               size={compact ? "default" : "lg"}
               className={cn(compact ? "min-h-11 w-full justify-start" : "min-h-14 text-base")}
               disabled={photoBusy}
-              onClick={() => void handleSavePhoto()}
+              onClick={requestSavePhoto}
             >
               {photoBusy ? "Saving…" : "Save photo"}
             </Button>
           </div>
+          {photoMessage && (
+            <p className="text-sm text-silver-foreground" role="status">
+              {photoMessage}
+            </p>
+          )}
         </div>
       </div>
 
-      {photoMessage && (
-        <p
-          className={cn(
-            "rounded-xl px-4 py-3 text-sm font-medium",
-            photoMessage === "Photo saved for lunch badges"
-              ? "border border-emerald-200 bg-emerald-50 text-emerald-900"
-              : "bg-silver/20 text-primary"
-          )}
-          role="status"
-        >
-          {photoMessage}
-        </p>
-      )}
+      <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Photo must be school appropriate</DialogTitle>
+            <DialogDescription>
+              Before we save this photo for {studentName}, please confirm it meets school guidelines.
+            </DialogDescription>
+          </DialogHeader>
+          <ul className="list-disc space-y-2 pl-5 text-sm text-primary">
+            <li>School appropriate (no costumes, filters, or inappropriate content)</li>
+            <li>Close-up of the student’s face</li>
+            <li>Shoulders and up, facing the camera</li>
+            <li>School staff will verify or deny the photo before it appears on lunch badges</li>
+          </ul>
+          <div className="flex flex-wrap justify-end gap-2 pt-2">
+            <Button type="button" variant="outline" onClick={() => setConfirmOpen(false)}>
+              Cancel
+            </Button>
+            <Button type="button" onClick={() => void handleSavePhoto()} disabled={photoBusy}>
+              I understand — submit for review
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

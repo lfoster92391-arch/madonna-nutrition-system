@@ -604,3 +604,7 @@ export const studentPhotoUploadSchema = z.object({
   photo: z.string().min(1).max(2_500_000),
 })
 
+export const studentPhotoModerationSchema = z.object({
+  action: z.enum(["approve", "deny"]),
+})
+

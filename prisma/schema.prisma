@@ -101,6 +101,14 @@ enum BadgeStatus {
   INACTIVE
 }
 
+/** Parent/admin lunch-badge photo review. Only APPROVED photos drive printed badges and kiosk. */
+enum PhotoModerationStatus {
+  NONE
+  PENDING
+  APPROVED
+  DENIED
+}
+
 model Student {
   id                  String      @id @default(cuid())
   externalId          String
@@ -111,6 +119,8 @@ model Student {
   /** School email (e.g. tuser27@weirtonmadonna.org); drives grade-from-email. */
   email               String?
   photo               String?
+  /** Moderation for Student.photo — parents submit PENDING; admin approve/deny. */
+  photoStatus         PhotoModerationStatus @default(NONE)
   grade               String
   homeroom            String?
   balance             Decimal     @default(0) @db.Decimal(10, 2)

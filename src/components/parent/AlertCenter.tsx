@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import { Bell, ClipboardCheck, Wallet, type LucideIcon } from "lucide-react"
+import { AlertTriangle, Bell, ClipboardCheck, Wallet, type LucideIcon } from "lucide-react"
 import { AddFundsModal } from "@/components/parent/funding/AddFundsModal"
 import { PARENT_CARD, PARENT_NAVY } from "@/components/parent/parent-dashboard-styles"
 import { Button } from "@/components/ui/button"
@@ -128,6 +128,7 @@ export function AlertCenter({ items }: { items: AlertItem[] }) {
 /** Build prioritized alert list from dashboard data */
 export function buildAlertItems(input: {
   lowBalanceStudents: { id: string; firstName: string; lastName: string; balance: number }[]
+  debtStudents?: { id: string; firstName: string; lastName: string; balance: number }[]
   dietaryFormIssueCount: number
   reviewHref: string
   announcements: { id: string; title: string; body: string }[]
@@ -145,7 +146,22 @@ export function buildAlertItems(input: {
     })
   }
 
+  for (const student of input.debtStudents ?? []) {
+    items.push({
+      id: `debt-${student.id}`,
+      icon: AlertTriangle,
+      headline: `Debt needs paid — ${student.firstName}`,
+      description: `${formatCurrency(student.balance)} overdue. Add funds so lunch service is not interrupted.`,
+      ctaLabel: "Add Funds",
+      studentId: student.id,
+      studentName: `${student.firstName} ${student.lastName}`,
+      studentBalance: student.balance,
+    })
+  }
+
   for (const student of input.lowBalanceStudents) {
+    // Avoid duplicating debt rows already listed above.
+    if ((input.debtStudents ?? []).some((d) => d.id === student.id)) continue
     const threshold = getStudentThreshold(student.id)
     items.push({
       id: `low-balance-${student.id}`,

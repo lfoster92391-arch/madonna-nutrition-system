@@ -9,6 +9,7 @@ import { ensureChartsRegistered, chartColors } from "@/components/intelligence/c
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import type { ForecastData } from "@/lib/intelligence/types"
+import { INTELLIGENCE_REFETCH_MS } from "@/lib/intelligence/refresh"
 
 ensureChartsRegistered()
 
@@ -22,6 +23,7 @@ export default function AdminForecastingPage() {
   const { data, isLoading } = useQuery({
     queryKey: ["intelligence", "forecast"],
     queryFn: fetchForecast,
+    refetchInterval: INTELLIGENCE_REFETCH_MS,
   })
 
   const maxMeals = Math.max(...(data?.demandByDay.values ?? [1]))

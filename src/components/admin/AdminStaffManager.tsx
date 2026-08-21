@@ -595,8 +595,17 @@ export function AdminStaffManager({
                     </button>
                   </td>
                   <td className="py-3 pr-4">
-                    <p className="font-medium text-primary">{formatUserName(u)}</p>
-                    <p className="text-xs text-silver-foreground">@{u.username}</p>
+                    <button
+                      type="button"
+                      onClick={() => openProfile(u)}
+                      disabled={u.status === "disabled"}
+                      className="text-left disabled:opacity-60"
+                    >
+                      <p className="font-medium text-primary underline-offset-2 hover:underline">
+                        {formatUserName(u)}
+                      </p>
+                      <p className="text-xs text-silver-foreground">@{u.username}</p>
+                    </button>
                   </td>
                   <td className="py-3 pr-4">{u.email}</td>
                   <td className="py-3 pr-4">

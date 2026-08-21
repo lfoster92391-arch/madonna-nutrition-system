@@ -774,8 +774,16 @@ export function UserManager() {
                           <UserAvatar user={u} />
                         </td>
                         <td className="py-3 pr-4">
-                          <p className="font-medium text-primary">{formatUserName(u)}</p>
-                          <p className="text-xs text-silver-foreground">@{u.username}</p>
+                          <button
+                            type="button"
+                            onClick={() => openEdit(u)}
+                            className="text-left"
+                          >
+                            <p className="font-medium text-primary underline-offset-2 hover:underline">
+                              {formatUserName(u)}
+                            </p>
+                            <p className="text-xs text-silver-foreground">@{u.username}</p>
+                          </button>
                         </td>
                         <td className="py-3 pr-4">{u.email}</td>
                         <td className="py-3 pr-4">

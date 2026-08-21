@@ -121,6 +121,7 @@ export default function StudentProfilePage({
                     studentId={student.id}
                     studentName={student.firstName}
                     currentPhoto={student.photo}
+                    photoStatus={student.photoStatus}
                   />
                 </div>
               </div>

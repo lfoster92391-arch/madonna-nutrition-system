@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react"
 import Link from "next/link"
-import { Check, Copy, KeyRound, Search, Users } from "lucide-react"
+import { Check, Copy, KeyRound, Search, Users, X } from "lucide-react"
 import { useAuth } from "@/components/providers/AuthProvider"
 import { useDemo } from "@/components/providers/DemoProvider"
 import { Badge } from "@/components/ui/badge"
@@ -37,6 +37,7 @@ export function AdminParentManager() {
   const { users, students, resetUserPassword, databaseEnabled } = useDemo()
   const { user: authUser } = useAuth()
   const [search, setSearch] = useState("")
+  const [profileTarget, setProfileTarget] = useState<User | null>(null)
   const [resetTarget, setResetTarget] = useState<User | null>(null)
   const [resetForm, setResetForm] = useState({
     passwordMode: "generate" as "generate" | "custom",
@@ -87,6 +88,11 @@ export function AdminParentManager() {
     const ids = user.linkedStudentIds ?? []
     if (ids.length === 0) return "None linked"
     return ids.map((id) => studentNameById.get(id) ?? id).join(", ")
+  }
+
+  function openProfile(user: User) {
+    setProfileTarget(user)
+    setMessage(null)
   }
 
   function openReset(user: User) {
@@ -160,8 +166,9 @@ export function AdminParentManager() {
         <div>
           <h2 className="text-xl font-semibold text-primary">Parent accounts</h2>
           <p className="text-sm text-silver-foreground">
-            Self-registered and imported parents appear here with their linked students. Use{" "}
-            <strong>Reset password</strong> if a parent is locked out.
+            Self-registered and imported parents appear here with their linked students. Click a
+            name to open the profile, or use <strong>Reset password</strong> if a parent is locked
+            out.
           </p>
         </div>
         <Button variant="outline" asChild>
@@ -217,11 +224,17 @@ export function AdminParentManager() {
                   className={`border-b border-silver/30 ${u.status === "disabled" ? "opacity-60" : ""}`}
                 >
                   <td className="py-3 pr-4">
-                    <ParentAvatar user={u} />
+                    <button type="button" onClick={() => openProfile(u)} className="block">
+                      <ParentAvatar user={u} />
+                    </button>
                   </td>
                   <td className="py-3 pr-4">
-                    <p className="font-medium text-primary">{formatUserName(u)}</p>
-                    <p className="text-xs text-silver-foreground">@{u.username}</p>
+                    <button type="button" onClick={() => openProfile(u)} className="text-left">
+                      <p className="font-medium text-primary underline-offset-2 hover:underline">
+                        {formatUserName(u)}
+                      </p>
+                      <p className="text-xs text-silver-foreground">@{u.username}</p>
+                    </button>
                   </td>
                   <td className="py-3 pr-4">{u.email}</td>
                   <td className="py-3 pr-4 text-silver-foreground">{linkedStudentLabels(u)}</td>
@@ -229,10 +242,15 @@ export function AdminParentManager() {
                     <Badge variant={u.status === "active" ? "success" : "danger"}>{u.status}</Badge>
                   </td>
                   <td className="py-3 text-right">
-                    <Button size="sm" variant="outline" onClick={() => openReset(u)}>
-                      <KeyRound className="h-4 w-4" />
-                      Reset password
-                    </Button>
+                    <div className="flex flex-wrap items-center justify-end gap-2">
+                      <Button size="sm" onClick={() => openProfile(u)}>
+                        Open profile
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={() => openReset(u)}>
+                        <KeyRound className="h-4 w-4" />
+                        Reset password
+                      </Button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -240,6 +258,69 @@ export function AdminParentManager() {
           </table>
         </div>
       </Card>
+
+      {profileTarget && (
+        <Card>
+          <CardHeader className="flex flex-row items-start justify-between gap-4">
+            <div>
+              <CardTitle>Parent profile</CardTitle>
+              <p className="mt-1 text-sm text-silver-foreground">
+                Account overview for {formatUserName(profileTarget)}
+              </p>
+            </div>
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              onClick={() => setProfileTarget(null)}
+              aria-label="Close parent profile"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </CardHeader>
+          <div className="space-y-4 px-6 pb-6">
+            <div className="flex items-start gap-4">
+              <ParentAvatar user={profileTarget} />
+              <div className="min-w-0 space-y-1">
+                <p className="text-lg font-semibold text-primary">{formatUserName(profileTarget)}</p>
+                <p className="text-sm text-silver-foreground">@{profileTarget.username}</p>
+                <p className="text-sm text-primary">{profileTarget.email}</p>
+                {profileTarget.phone ? (
+                  <p className="text-sm text-silver-foreground">{profileTarget.phone}</p>
+                ) : null}
+              </div>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="rounded-xl border border-silver/40 px-4 py-3">
+                <p className="text-xs font-semibold uppercase tracking-wide text-silver-foreground">
+                  Status
+                </p>
+                <Badge
+                  className="mt-2"
+                  variant={profileTarget.status === "active" ? "success" : "danger"}
+                >
+                  {profileTarget.status}
+                </Badge>
+              </div>
+              <div className="rounded-xl border border-silver/40 px-4 py-3">
+                <p className="text-xs font-semibold uppercase tracking-wide text-silver-foreground">
+                  Linked students
+                </p>
+                <p className="mt-2 text-sm text-primary">{linkedStudentLabels(profileTarget)}</p>
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button size="sm" variant="outline" onClick={() => openReset(profileTarget)}>
+                <KeyRound className="h-4 w-4" />
+                Reset password
+              </Button>
+              <Button size="sm" variant="outline" asChild>
+                <Link href="/admin/users">Edit in User accounts</Link>
+              </Button>
+            </div>
+          </div>
+        </Card>
+      )}
 
       {resetTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-primary/20 p-4">

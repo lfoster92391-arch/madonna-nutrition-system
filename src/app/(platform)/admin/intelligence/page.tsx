@@ -14,6 +14,7 @@ import { Card, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import type { DashboardData } from "@/lib/intelligence/types"
 import { downloadReportCsv } from "@/lib/export/download-report"
+import { INTELLIGENCE_REFETCH_MS } from "@/lib/intelligence/refresh"
 import { formatCurrency } from "@/lib/utils"
 
 ensureChartsRegistered()
@@ -29,6 +30,7 @@ export default function AdminIntelligencePage() {
   const { data, isLoading } = useQuery({
     queryKey: ["intelligence", "dashboard"],
     queryFn: fetchDashboard,
+    refetchInterval: INTELLIGENCE_REFETCH_MS,
   })
 
   const refresh = useCallback(() => {

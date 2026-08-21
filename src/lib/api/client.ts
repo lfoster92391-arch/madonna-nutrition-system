@@ -436,6 +436,11 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ photo }),
     }),
+  moderateStudentPhoto: (mdId: string, action: "approve" | "deny") =>
+    fetchJson<import("@/lib/types").Student>(`/api/students/${encodeURIComponent(mdId)}/photo`, {
+      method: "PATCH",
+      body: JSON.stringify({ action }),
+    }),
   uploadUserPhoto: (id: string, photo: string) =>
     fetchJson<import("@/lib/types").User>(`/api/users/${encodeURIComponent(id)}/photo`, {
       method: "POST",

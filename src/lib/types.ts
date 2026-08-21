@@ -138,6 +138,8 @@ export interface AuditLogEntry {
   createdAt: string
 }
 
+export type PhotoModerationStatus = "none" | "pending" | "approved" | "denied"
+
 export interface Student {
   id: string
   firstName: string
@@ -145,6 +147,8 @@ export interface Student {
   /** School email; class year suffix drives grade-from-email */
   email?: string
   photo: string
+  /** Admin verify status for lunch-badge photo uploads */
+  photoStatus?: PhotoModerationStatus
   grade: string
   homeroom?: string
   balance: number

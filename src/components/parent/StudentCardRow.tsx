@@ -101,6 +101,7 @@ export function StudentCardRow({ onAddFunds }: StudentCardRowProps = {}) {
                     studentId={student.id}
                     studentName={student.firstName}
                     currentPhoto={student.photo}
+                    photoStatus={student.photoStatus}
                     compact
                   />
                 </div>

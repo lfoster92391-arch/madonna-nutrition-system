@@ -10,6 +10,7 @@ import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/ca
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import type { AnalyticsData } from "@/lib/intelligence/types"
+import { INTELLIGENCE_REFETCH_MS } from "@/lib/intelligence/refresh"
 import { formatCurrency } from "@/lib/utils"
 
 ensureChartsRegistered()
@@ -24,6 +25,7 @@ export default function AdminAnalyticsPage() {
   const { data, isLoading } = useQuery({
     queryKey: ["intelligence", "analytics"],
     queryFn: fetchAnalytics,
+    refetchInterval: INTELLIGENCE_REFETCH_MS,
   })
 
   const waste = data?.waste.breakdown
