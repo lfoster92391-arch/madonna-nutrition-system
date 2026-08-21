@@ -5,7 +5,9 @@ import { staffMealTransactionSchema } from "@/lib/api/validation"
 import { badRequest, notFound, serverError, withDatabase } from "@/lib/api/response"
 import { requireCashierOrApiKey } from "@/lib/api/session-auth"
 import { deductInventoryForSale } from "@/lib/operations/sale-deduction"
+import { canonicalMainMealPricing, isMainLunchKioskMeal } from "@/lib/lunch-pricing"
 import { prisma } from "@/lib/prisma"
+import { todayDateOnly } from "@/lib/teacher/db"
 
 export async function POST(request: Request) {
   const result = await withDatabase(async () => {
@@ -19,7 +21,7 @@ export async function POST(request: Request) {
         return badRequest("Invalid staff meal transaction", parsed.error.flatten())
       }
 
-      const { userId, meal, amount, processedByUserId } = parsed.data
+      const { userId, meal, amount, processedByUserId, mealType } = parsed.data
 
       if (processedByUserId) {
         const cashier = await prisma.user.findFirst({
@@ -30,11 +32,21 @@ export async function POST(request: Request) {
         }
       }
 
+      let chargedAmount = amount
+      if (isMainLunchKioskMeal(meal, mealType)) {
+        const todayMenu = await prisma.calendarEvent.findFirst({
+          where: { schoolId: auth.schoolId, date: todayDateOnly(), category: "menu_day" },
+          orderBy: { createdAt: "desc" },
+          select: { title: true },
+        })
+        chargedAmount = canonicalMainMealPricing({ menuTitle: todayMenu?.title }).totalAmount
+      }
+
       try {
         const credit = await debitStaffMeal({
           userId,
           schoolId: auth.schoolId,
-          amountDollars: amount,
+          amountDollars: chargedAmount,
           mealLabel: meal,
           processedByUserId,
         })
@@ -61,7 +73,7 @@ export async function POST(request: Request) {
             balanceAfter: credit.balanceAfter,
             user: user ? mapUser(user) : undefined,
             meal,
-            amount,
+            amount: chargedAmount,
           },
           { status: 201 }
         )

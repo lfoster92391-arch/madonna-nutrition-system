@@ -38,7 +38,8 @@ export function displayTemplateLunchPrice(
   return undefined
 }
 
-export function isMainLunchKioskMeal(meal: string): boolean {
+export function isMainLunchKioskMeal(meal: string, mealType?: string | null): boolean {
+  if (mealType === "student_meal" || mealType === "staff_meal") return true
   const normalized = meal.trim().toLowerCase()
   return normalized === "student meal" || normalized === "staff meal"
 }

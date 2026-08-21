@@ -92,7 +92,8 @@ interface DemoContextValue {
     studentId: string,
     meal: string,
     amount: number,
-    processedByUserId?: string
+    processedByUserId?: string,
+    mealType?: string
   ) => Transaction | null | Promise<Transaction | null>
   addFunds: (
     studentId: string,
@@ -318,10 +319,16 @@ export function DemoProvider({ children }: { children: ReactNode }) {
   )
 
   const processMeal = useCallback(
-    async (studentId: string, meal: string, amount: number, processedByUserId?: string) => {
+    async (
+      studentId: string,
+      meal: string,
+      amount: number,
+      processedByUserId?: string,
+      mealType?: string
+    ) => {
       requireDatabase(dbEnabled)
       try {
-        const tx = await api.processMeal(studentId, meal, amount, processedByUserId)
+        const tx = await api.processMeal(studentId, meal, amount, processedByUserId, mealType)
         invalidate("students", "transactions")
         return tx
       } catch {

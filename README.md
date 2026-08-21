@@ -65,6 +65,18 @@ npm run db:seed
 
 7. Import real students via **Admin → Family Import** (SIS export).
 
+### Schema updates (e.g. us-west-2 Neon / production)
+
+When Prisma models change (such as `KioskPosButton` for admin-editable lunch POS buttons), apply the schema to each environment database:
+
+```bash
+# Uses DATABASE_URL / DIRECT_URL from .env (or set them for the target region)
+npm run db:push
+npm run db:seed   # idempotent — seeds missing default kiosk buttons
+```
+
+On Vercel, run the same against production env vars (or Neon SQL editor + `prisma db push` locally pointed at the west-2 connection string). Default kiosk buttons are also auto-created the first time Admin or the kiosk loads `/api/.../kiosk-pos-buttons` if the table is empty.
+
 ### Legacy local Postgres
 
 ```bash
