@@ -32,7 +32,7 @@ import { RecordOfficePayment } from "@/components/admin/RecordOfficePayment"
 import { RecordStaffOfficePayment } from "@/components/admin/RecordStaffOfficePayment"
 import { getAllergyBannerStyle, getHighestAllergySeverity } from "@/lib/allergy-display"
 import { BarcodeCameraScanner } from "@/components/scan/BarcodeCameraScanner"
-import { ScanKeypad } from "@/components/scan/ScanKeypad"
+import { ScanKeypad, SCAN_KEYPAD_MIN_INTERVAL_MS } from "@/components/scan/ScanKeypad"
 import { PosAmountKeypad } from "@/components/scan/PosAmountKeypad"
 import { OfflineBanner } from "@/components/scan/OfflineBanner"
 import { MEAL_PRICES } from "@/lib/types"
@@ -59,13 +59,19 @@ import {
 import {
   findStaffMatchingScan,
   findStudentMatchingScan,
+  isScanReadyForAutoLookup,
+  preferStaffOverStudent,
   sanitizeScanInput,
+  scanMatchScore,
+  staffMatchScore,
   transactionMatchesStudent,
 } from "@/lib/scan/scan-id"
 import { ROLE_LABELS, isWorkplaceUserRole } from "@/lib/users"
 import { cn, formatCurrency } from "@/lib/utils"
 
 const FLASH_DISMISS_MS = 3500
+/** Must exceed keypad anti-double-tap interval so 5-digit MD IDs are not looked up mid-entry. */
+const SCAN_AUTO_LOOKUP_MS = Math.max(750, SCAN_KEYPAD_MIN_INTERVAL_MS * 2 + 100)
 
 const MEAL_ICONS: Record<string, typeof Utensils> = {
   student_meal: Utensils,
@@ -504,18 +510,23 @@ export default function ScanStationPage() {
   )
 
   const lookupStudent = useCallback(
-    async (id: string) => {
+    async (id: string, opts?: { clearOnMiss?: boolean }) => {
       const trimmed = sanitizeScanInput(id)
       if (!trimmed) return
+      const clearOnMiss = opts?.clearOnMiss ?? true
+
+      const miss = (message: string) => {
+        setScanStatus("error")
+        setFlashMessage(message)
+        if (clearOnMiss) setScanValue("")
+        window.setTimeout(focusScan, 50)
+      }
 
       // Stay on the kiosk station for miss/hit — never clear auth/session on scan miss.
       if (isOffline) {
         const cached = await findCachedStudent(trimmed)
         if (!cached) {
-          setScanStatus("error")
-          setFlashMessage("Not found offline. Student badges only while offline — try again online for staff.")
-          setScanValue("")
-          window.setTimeout(focusScan, 50)
+          miss("Not found offline. Student badges only while offline — try again online for staff.")
           return
         }
         loadStudent(cachedToStudent(cached))
@@ -523,12 +534,17 @@ export default function ScanStationPage() {
       }
 
       const found = findStudentMatchingScan(students, trimmed)
+      const staffLocal = findStaffMatchingScan(workplaceUsers, trimmed)
+      const studentScore = found ? scanMatchScore(found, trimmed) : 0
+      const staffScore = staffLocal ? staffMatchScore(staffLocal, trimmed) : 0
+      if (preferStaffOverStudent(studentScore, staffScore) && staffLocal) {
+        loadStaff(staffLocal)
+        return
+      }
       if (found) {
         loadStudent(found)
         return
       }
-
-      const staffLocal = findStaffMatchingScan(workplaceUsers, trimmed)
       if (staffLocal) {
         loadStaff(staffLocal)
         return
@@ -541,13 +557,24 @@ export default function ScanStationPage() {
       }
 
       // Server-side fallback covers stale client lists and alternate barcode formats.
+      let disabledMessage: string | null = null
+      let remoteStudent: Student | null = null
+      let remoteStaff: User | null = null
+      let remoteStudentScore = 0
+      let remoteStaffScore = 0
+
       try {
         const res = await fetch(`/api/students/lookup?q=${encodeURIComponent(trimmed)}`)
         if (res.ok) {
           const remote = (await res.json()) as Student
           if (remote?.id) {
-            loadStudent(remote)
-            return
+            remoteStudent = remote
+            remoteStudentScore = scanMatchScore(remote, trimmed)
+          }
+        } else if (res.status === 409) {
+          const body = (await res.json().catch(() => null)) as { error?: string; code?: string } | null
+          if (body?.code === "DISABLED" || body?.error) {
+            disabledMessage = body.error ?? "Student account is disabled."
           }
         }
       } catch {
@@ -559,18 +586,32 @@ export default function ScanStationPage() {
         if (res.ok) {
           const remote = (await res.json()) as User
           if (remote?.id) {
-            loadStaff(remote)
-            return
+            remoteStaff = remote
+            remoteStaffScore = staffMatchScore(remote, trimmed)
           }
         }
       } catch {
         // Fall through to not-found message.
       }
 
-      setScanStatus("error")
-      setFlashMessage("Badge not found. Check student MD ID / barcode or staff badge ID.")
-      setScanValue("")
-      window.setTimeout(focusScan, 50)
+      if (preferStaffOverStudent(remoteStudentScore, remoteStaffScore) && remoteStaff) {
+        loadStaff(remoteStaff)
+        return
+      }
+      if (remoteStudent) {
+        loadStudent(remoteStudent)
+        return
+      }
+      if (remoteStaff) {
+        loadStaff(remoteStaff)
+        return
+      }
+      if (disabledMessage) {
+        miss(disabledMessage)
+        return
+      }
+
+      miss("Badge not found. Check student MD ID / barcode or staff badge ID.")
     },
     [students, workplaceUsers, loadStudent, loadStaff, focusScan, isOffline]
   )
@@ -579,9 +620,14 @@ export default function ScanStationPage() {
     const cleaned = sanitizeScanInput(value)
     setScanValue(cleaned)
     if (scanTimerRef.current) clearTimeout(scanTimerRef.current)
-    if (cleaned.length >= 4) {
+    if (isScanReadyForAutoLookup(cleaned)) {
       setScanStatus("scanning")
-      scanTimerRef.current = setTimeout(() => lookupStudent(cleaned), 200)
+      // Auto-lookup must wait longer than keypad digit spacing; do not clear on miss
+      // so cashiers can finish a longer ID without the field wiping mid-entry.
+      scanTimerRef.current = setTimeout(
+        () => void lookupStudent(cleaned, { clearOnMiss: false }),
+        SCAN_AUTO_LOOKUP_MS
+      )
     } else if (cleaned.length === 0) {
       setScanStatus(dinerActive ? "found" : "ready")
     }
@@ -1088,7 +1134,7 @@ export default function ScanStationPage() {
                 paused={scanStatus === "scanning" || scanStatus === "complete"}
                 onDetect={(raw) => {
                   setScanStatus("scanning")
-                  void lookupStudent(raw)
+                  void lookupStudent(raw, { clearOnMiss: true })
                 }}
               />
             </div>
@@ -1189,7 +1235,7 @@ export default function ScanStationPage() {
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
                     e.preventDefault()
-                    lookupStudent(scanValue)
+                    void lookupStudent(scanValue, { clearOnMiss: true })
                   }
                   if (e.key === "Backspace") {
                     deleteLastDigit()
@@ -1231,7 +1277,7 @@ export default function ScanStationPage() {
                 onDigit={appendDigit}
                 onBackspace={deleteLastDigit}
                 onClear={clearScanValue}
-                onEnter={() => lookupStudent(scanValue)}
+                onEnter={() => void lookupStudent(scanValue, { clearOnMiss: true })}
               />
             )}
           </div>

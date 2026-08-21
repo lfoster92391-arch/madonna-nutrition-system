@@ -8,8 +8,14 @@ export async function GET(request: Request) {
     try {
       const q = new URL(request.url).searchParams.get("q") ?? ""
       const student = await findStudentByScanId(q)
-      if (!student || student.disabled) {
+      if (!student) {
         return notFound("Student not found")
+      }
+      if (student.disabled) {
+        return NextResponse.json(
+          { error: "Student account is disabled.", code: "DISABLED" },
+          { status: 409 }
+        )
       }
       return NextResponse.json(mapStudent(student))
     } catch (error) {

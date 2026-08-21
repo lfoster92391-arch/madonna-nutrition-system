@@ -3,9 +3,14 @@
  *   npx tsx scripts/test-mdid-lookup.ts
  */
 import {
+  findStaffMatchingScan,
   findStudentMatchingScan,
+  isScanReadyForAutoLookup,
+  preferStaffOverStudent,
   scanIdsEquivalent,
+  scanMatchScore,
   scanNumericCore,
+  staffMatchScore,
   staffMatchesScanId,
   studentMatchesScanId,
   transactionMatchesStudent,
@@ -39,8 +44,37 @@ const roster = [
 assert(findStudentMatchingScan(roster, "12214")?.id === "MD12214", "roster keypad lookup")
 assert(findStudentMatchingScan(roster, "012214")?.id === "MD12214", "roster padded lookup")
 
+// Blank barcode still resolves via MD / external id
+const blankBarcode = { id: "12492", barcode: null as string | null }
+assert(studentMatchesScanId(blankBarcode, "12492"), "blank barcode + numeric externalId")
+assert(studentMatchesScanId(blankBarcode, "MD12492"), "blank barcode + MD prefix typed")
+assert(findStudentMatchingScan([blankBarcode, kid], "12492")?.id === "12492", "roster blank barcode")
+
 assert(!staffMatchesScanId({ badgeId: "ST-4401" }, "12214"), "staff badge stays off student MD ID")
 assert(staffMatchesScanId({ badgeId: "ST-4401" }, "ST4401"), "staff badge still matches")
 assert(staffMatchesScanId({ badgeId: "ST-4401" }, "st-4401"), "staff badge case")
+
+// Shared digits: exact staff badge beats student MD expansion
+const studentScarlett = { id: "MD12491", barcode: "MD12491" }
+const staffAnabel = { badgeId: "12491" }
+assert(scanMatchScore(studentScarlett, "12491") > 0, "student still matches digits")
+assert(staffMatchScore(staffAnabel, "12491") === 100, "staff exact badge score")
+assert(
+  preferStaffOverStudent(scanMatchScore(studentScarlett, "12491"), staffMatchScore(staffAnabel, "12491")),
+  "prefer exact staff badge over student MD expansion"
+)
+assert(
+  !preferStaffOverStudent(
+    scanMatchScore(studentScarlett, "MD12491"),
+    staffMatchScore(staffAnabel, "MD12491")
+  ),
+  "prefer student when scan is the printed MD ID"
+)
+assert(findStaffMatchingScan([staffAnabel], "12491")?.badgeId === "12491", "staff roster exact")
+
+assert(!isScanReadyForAutoLookup("1221"), "4-digit keypad not ready")
+assert(isScanReadyForAutoLookup("12214"), "5-digit keypad ready")
+assert(isScanReadyForAutoLookup("MD12214"), "full MD ready")
+assert(!isScanReadyForAutoLookup("MD12"), "short MD not ready")
 
 console.log("mdid-lookup checks passed")

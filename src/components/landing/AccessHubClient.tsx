@@ -38,7 +38,11 @@ export function AccessHubClient({
   const reactId = useId()
   const headingId = `access-hub-${title.replace(/\s+/g, "-").toLowerCase()}`
   const defaultKey =
-    expandSingleByDefault && choices.length === 1 ? choices[0].key : null
+    expandSingleByDefault && choices.length === 1
+      ? choices[0].key
+      : hub === "school"
+        ? "cashier"
+        : null
   const [activeKey, setActiveKey] = useState<AccessPortalKey | null>(defaultKey)
 
   return (
@@ -151,13 +155,24 @@ export function AccessHubClient({
                     <p className="mb-3 text-left text-sm text-[#475569]">{choice.description}</p>
 
                     {choice.href ? (
-                      <Link
-                        href={choice.href}
-                        className="inline-flex min-h-11 w-full items-center justify-center rounded-xl px-4 text-sm font-bold text-white transition hover:opacity-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#041B52] focus-visible:ring-offset-2 sm:w-auto sm:min-w-[180px]"
-                        style={{ backgroundColor: accent }}
-                      >
-                        {choice.enterLabel ?? "Continue"}
-                      </Link>
+                      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+                        <Link
+                          href={choice.href}
+                          className="inline-flex min-h-11 w-full items-center justify-center rounded-xl px-4 text-sm font-bold text-white transition hover:opacity-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#041B52] focus-visible:ring-offset-2 sm:w-auto sm:min-w-[180px]"
+                          style={{ backgroundColor: accent }}
+                        >
+                          {choice.enterLabel ?? "Continue"}
+                        </Link>
+                        {choice.secondaryHref && choice.secondaryLabel ? (
+                          <Link
+                            href={choice.secondaryHref}
+                            className="inline-flex min-h-11 w-full items-center justify-center rounded-xl border-2 bg-white px-4 text-sm font-bold transition hover:bg-white/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#041B52] focus-visible:ring-offset-2 sm:w-auto"
+                            style={{ color: NAVY, borderColor: NAVY }}
+                          >
+                            {choice.secondaryLabel}
+                          </Link>
+                        ) : null}
+                      </div>
                     ) : choice.loginRole && choice.redirectTo ? (
                       <div className="space-y-3">
                         <LoginForm

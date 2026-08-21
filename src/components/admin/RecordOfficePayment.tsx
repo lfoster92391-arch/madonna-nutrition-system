@@ -91,6 +91,11 @@ export function RecordOfficePayment({
     try {
       const res = await fetch(`/api/students/lookup?q=${encodeURIComponent(q)}`)
       if (!res.ok) {
+        if (res.status === 409) {
+          const body = (await res.json().catch(() => null)) as { error?: string } | null
+          setError(body?.error ?? "Student account is disabled.")
+          return
+        }
         setError("MD ID not recognized. Check the badge number and try again.")
         return
       }

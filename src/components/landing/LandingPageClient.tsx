@@ -20,7 +20,7 @@ const GATES = [
   {
     href: "/access/school",
     title: "School Access",
-    subtitle: "Campus portals and lunch line",
+    subtitle: "Cashier / POS and campus portals",
     accent: SCHOOL_ACCENT,
     icon: School,
   },

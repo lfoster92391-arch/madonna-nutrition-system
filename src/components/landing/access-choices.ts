@@ -2,7 +2,7 @@ import type { LucideIcon } from "lucide-react"
 import { BookOpen, Calculator, Lock, Users, UtensilsCrossed } from "lucide-react"
 import type { PortalRole } from "@/components/providers/AuthProvider"
 
-export type AccessPortalKey = "parent" | "staff" | "teacher" | "scanner" | "admin"
+export type AccessPortalKey = "parent" | "staff" | "teacher" | "cashier" | "admin"
 
 export interface AccessChoice {
   key: AccessPortalKey
@@ -14,6 +14,8 @@ export interface AccessChoice {
   registerRoute?: string
   href?: string
   enterLabel?: string
+  secondaryHref?: string
+  secondaryLabel?: string
 }
 
 export const PARENT_CHOICES: AccessChoice[] = [
@@ -28,15 +30,18 @@ export const PARENT_CHOICES: AccessChoice[] = [
   },
 ]
 
-/** Order matches School Access UX: scanner, teacher, staff, admin. */
+/** Order matches School Access UX: Cashier/POS first, then teacher, staff, admin. */
 export const SCHOOL_CHOICES: AccessChoice[] = [
   {
-    key: "scanner",
-    label: "Lunch scanner",
-    description: "Scan badges and ring up student lunch transactions.",
+    key: "cashier",
+    label: "Cashier / POS",
+    description:
+      "Lunch line station — scan student MD IDs or staff badges and ring up meals. Button prices come from Admin → Kiosk / POS.",
     icon: Calculator,
     href: "/kiosk",
-    enterLabel: "Open scanner",
+    enterLabel: "Open Cashier POS",
+    secondaryHref: "/login/cashier",
+    secondaryLabel: "Sign in for à la carte",
   },
   {
     key: "teacher",

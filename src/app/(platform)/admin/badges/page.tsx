@@ -27,7 +27,7 @@ export default function AdminBadgesPage() {
         <Button asChild className="w-full sm:w-auto">
           <Link href="/scan">
             <ScanLine className="mr-2 h-4 w-4" />
-            Open Cashier / Scan Station
+            Open Cashier / POS
           </Link>
         </Button>
       </div>

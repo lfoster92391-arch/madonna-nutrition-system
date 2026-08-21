@@ -23,7 +23,7 @@ const ACTIONS = [
   { label: "Send Notice", href: "/admin/communication", icon: Send },
   { label: "Export Report", href: "/admin/reporting", icon: FileDown },
   { label: "Kitchen board", href: "/admin/kitchen", icon: ChefHat },
-  { label: "Open lunch line", href: "/kiosk", icon: ScanLine },
+  { label: "Open Cashier / POS", href: "/kiosk", icon: ScanLine },
   { label: "Add or take money off", href: "/admin/imports", icon: DollarSign },
   { label: "Staff", href: "/admin/imports?tab=staff", icon: Users },
   { label: "Worker Guide", href: "/admin/setup", icon: BookOpen },
