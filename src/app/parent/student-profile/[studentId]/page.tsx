@@ -7,7 +7,6 @@ import { useDemo } from "@/components/providers/DemoProvider"
 import { AnnualReviewBanner } from "@/components/parent/AnnualReviewBanner"
 import { DietaryFormStatusCard } from "@/components/parent/DietaryFormStatusCard"
 import { FoodSafetyCenterForm } from "@/components/parent/FoodSafetyCenterForm"
-import { ParentBackLink } from "@/components/parent/ParentBackLink"
 import { ParentStudentPhotoUpload } from "@/components/parent/ParentStudentPhotoUpload"
 import { StudentMealsTab } from "@/components/parent/meals/StudentMealsTab"
 import { StudentTransactionsTab } from "@/components/parent/meals/StudentTransactionsTab"
@@ -58,7 +57,6 @@ export default function StudentProfilePage({
   return (
     <div className="min-h-screen bg-[#f8f9fb]">
       <header className="border-b border-silver/40 bg-white px-4 py-6 sm:px-8">
-        <ParentBackLink className="mb-4 min-h-11 items-center text-base" />
         <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary">Student Profile</p>
         <h1 className="mt-1 text-2xl font-bold text-primary">
           {student.firstName} {student.lastName}

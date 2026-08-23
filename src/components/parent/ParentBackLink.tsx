@@ -12,15 +12,15 @@ type ParentBackLinkProps = {
 }
 
 export function ParentBackLink({
-  href = "/parent/students",
-  label = "Back to Students",
+  href = "/parent",
+  label = "Back",
   className,
 }: ParentBackLinkProps) {
   return (
     <Link
       href={href}
       className={cn(
-        "inline-flex min-h-11 items-center gap-2 text-sm font-medium transition hover:opacity-80",
+        "inline-flex min-h-11 min-w-[44px] items-center gap-2 py-2 text-sm font-semibold transition hover:opacity-80",
         className
       )}
       style={{ color: PARENT_NAVY }}
