@@ -17,6 +17,7 @@ import {
   pizzaSliceTotal,
 } from "@/lib/pizza-day"
 import { formatCurrency } from "@/lib/utils"
+import { formatReservationConfirmation } from "@/lib/parent-lunch-reservations"
 
 type OrderLunchActionProps = {
   /** Calendar day to order for (YYYY-MM-DD). */
@@ -26,6 +27,8 @@ type OrderLunchActionProps = {
   /** When false, hide the action (e.g. no lunch menu that day). */
   enabled?: boolean
   className?: string
+  /** Called after a successful reservation so the calendar can refresh marks. */
+  onReserved?: () => void
 }
 
 function orderButtonLabel(date: string): string {
@@ -48,6 +51,7 @@ export function OrderLunchAction({
   menuTitle,
   enabled = true,
   className = "",
+  onReserved,
 }: OrderLunchActionProps) {
   const { user } = useAuth()
   const { databaseEnabled } = useDemo()
@@ -110,11 +114,18 @@ export function OrderLunchAction({
       const meal = data.menuTitle ?? menuTitle ?? "lunch"
       const slices = data.reservation?.sliceCount
       setConfirmation(
-        slices
-          ? `Ordered ${meal} (${slices} ${slices === 1 ? "slice" : "slices"}) for ${childName}.`
-          : `Ordered ${meal} for ${childName}.`
+        formatReservationConfirmation({
+          studentName: childName,
+          date,
+          mealType: "MAIN",
+          menuTitle: meal,
+          sliceCount: slices,
+          totalAmount: data.reservation?.totalAmount ?? orderTotal,
+          price: data.reservation?.price ?? orderTotal,
+        })
       )
       setOpen(false)
+      onReserved?.()
     } catch {
       setError("Unable to order lunch. Try again.")
     } finally {

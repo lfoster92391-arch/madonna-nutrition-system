@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react"
 import { ChevronLeft, ChevronRight, Download, Printer } from "lucide-react"
 import { CategoryLegend } from "@/components/calendar/CalendarMonthGrid"
+import { MenuDayDetails } from "@/components/calendar/MenuDayDetails"
 import { ResponsiveCalendar } from "@/components/calendar/ResponsiveCalendar"
 import { useDemo } from "@/components/providers/DemoProvider"
 import { StaffDashboardAnnouncements } from "@/components/staff/StaffDashboardAnnouncements"
@@ -186,19 +187,28 @@ export function StaffCalendarView() {
                   className="rounded-2xl border px-4 py-3"
                   style={{ borderColor: STAFF_SILVER }}
                 >
-                  <p className="font-semibold" style={{ color: STAFF_NAVY }}>
-                    {event.title}
-                  </p>
-                  {event.description ? (
-                    <p className="mt-1 text-sm text-silver-foreground">{event.description}</p>
-                  ) : null}
-                  {event.category === "menu_day" &&
-                  selectedDate === formatDateKey(now) &&
-                  isPizzaDayName(event.title) ? (
-                    <p className="mt-2 text-sm" style={{ color: STAFF_NAVY }}>
-                      Pizza Day is $1.00 per slice — order from My Lunch Today on your dashboard.
-                    </p>
-                  ) : null}
+                  {event.category === "menu_day" ? (
+                    <MenuDayDetails
+                      event={event}
+                      mealTemplatesById={mealTemplatesById}
+                      compact
+                    >
+                      {selectedDate === formatDateKey(now) && isPizzaDayName(event.title) ? (
+                        <p className="text-sm" style={{ color: STAFF_NAVY }}>
+                          Pizza Day is $1.00 per slice — order from My Lunch Today on your dashboard.
+                        </p>
+                      ) : null}
+                    </MenuDayDetails>
+                  ) : (
+                    <>
+                      <p className="font-semibold" style={{ color: STAFF_NAVY }}>
+                        {event.title}
+                      </p>
+                      {event.description ? (
+                        <p className="mt-1 text-sm text-silver-foreground">{event.description}</p>
+                      ) : null}
+                    </>
+                  )}
                 </li>
               ))}
             </ul>

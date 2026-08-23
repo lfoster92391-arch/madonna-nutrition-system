@@ -36,6 +36,14 @@ export const CATEGORY_ICONS: Record<CalendarEventCategory, LucideIcon> = {
 
 const WEEKDAY_INITIALS = ["S", "M", "T", "W", "T", "F", "S"] as const
 
+/** Parent portal: reserved lunches for a calendar day (linked children only). */
+export type CalendarDayReservationMark = {
+  studentId: string
+  studentName: string
+  color: string
+  label?: string
+}
+
 interface CalendarMonthGridProps {
   year: number
   month: number
@@ -51,6 +59,8 @@ interface CalendarMonthGridProps {
   mealTemplatesById?: Map<string, MealTemplate>
   /** Mobile dot grid: show, or hide when a parent renders week outlook separately */
   mobileLayout?: "dots" | "hidden"
+  /** Optional reservation marks keyed by YYYY-MM-DD */
+  reservationsByDate?: Map<string, CalendarDayReservationMark[]>
 }
 
 function dayButtonClassName({
@@ -98,6 +108,44 @@ function EventDots({ events, max = 3 }: { events: CalendarEvent[]; max?: number 
   )
 }
 
+function ReservationMarks({
+  marks,
+  compact = false,
+}: {
+  marks: CalendarDayReservationMark[]
+  compact?: boolean
+}) {
+  if (marks.length === 0) return null
+  const first = marks[0]!
+  const firstName = first.studentName.trim().split(/\s+/)[0] || first.studentName
+  if (compact) {
+    return (
+      <div className="flex items-center justify-center gap-0.5" aria-hidden>
+        {marks.slice(0, 3).map((mark) => (
+          <span
+            key={`${mark.studentId}-${mark.color}`}
+            className="h-1.5 w-1.5 rounded-full ring-1 ring-white"
+            style={{ backgroundColor: mark.color }}
+            title={`Reserved for ${mark.studentName}`}
+          />
+        ))}
+      </div>
+    )
+  }
+  return (
+    <div
+      className="mt-0.5 flex items-center gap-1 truncate rounded-md px-1 py-0.5 text-[10px] font-bold leading-tight text-white"
+      style={{ backgroundColor: first.color }}
+      title={marks.map((m) => `Reserved for ${m.studentName}`).join(", ")}
+    >
+      <span aria-hidden>✓</span>
+      <span className="truncate">
+        {marks.length === 1 ? `Reserved · ${firstName}` : `Reserved · ${marks.length}`}
+      </span>
+    </div>
+  )
+}
+
 export function CalendarMonthGrid({
   year,
   month,
@@ -110,6 +158,7 @@ export function CalendarMonthGrid({
   readOnly = false,
   mealTemplatesById,
   mobileLayout = "dots",
+  reservationsByDate,
 }: CalendarMonthGridProps) {
   const weeks = useMemo(() => getMonthGrid(year, month), [year, month])
   const eventsByDate = useMemo(() => groupEventsByDate(events), [events])
@@ -147,11 +196,16 @@ export function CalendarMonthGrid({
                 }
                 const dateKey = formatDateKey(date)
                 const dayEvents = eventsByDate.get(dateKey) ?? []
+                const dayReservations = reservationsByDate?.get(dateKey) ?? []
                 const isToday = dateKey === todayKey
                 const isSelected = selectedDate === dateKey
                 const isCurrentMonth = date.getMonth() === month
                 const eventCount = dayEvents.length
                 const disabled = readOnly && !onDayClick
+                const reservedSuffix =
+                  dayReservations.length > 0
+                    ? `, ${dayReservations.length} reserved lunch${dayReservations.length === 1 ? "" : "es"}`
+                    : ""
 
                 return (
                   <button
@@ -161,8 +215,8 @@ export function CalendarMonthGrid({
                     onClick={() => onDayClick?.(dateKey)}
                     aria-label={
                       eventCount > 0
-                        ? `${date.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}, ${eventCount} event${eventCount === 1 ? "" : "s"}`
-                        : date.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })
+                        ? `${date.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}, ${eventCount} event${eventCount === 1 ? "" : "s"}${reservedSuffix}`
+                        : `${date.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}${reservedSuffix}`
                     }
                     aria-pressed={isSelected}
                     className={dayButtonClassName({
@@ -183,7 +237,11 @@ export function CalendarMonthGrid({
                     >
                       {date.getDate()}
                     </span>
-                    <EventDots events={dayEvents} />
+                    {dayReservations.length > 0 ? (
+                      <ReservationMarks marks={dayReservations} compact />
+                    ) : (
+                      <EventDots events={dayEvents} />
+                    )}
                   </button>
                 )
               })}
@@ -214,6 +272,7 @@ export function CalendarMonthGrid({
                 }
                 const dateKey = formatDateKey(date)
                 const dayEvents = eventsByDate.get(dateKey) ?? []
+                const dayReservations = reservationsByDate?.get(dateKey) ?? []
                 const isToday = dateKey === todayKey
                 const isSelected = selectedDate === dateKey
                 const isCurrentMonth = date.getMonth() === month
@@ -256,6 +315,9 @@ export function CalendarMonthGrid({
                     >
                       {date.getDate()}
                     </span>
+                    {dayReservations.length > 0 ? (
+                      <ReservationMarks marks={dayReservations} />
+                    ) : null}
                     <div className="mt-1 space-y-1">
                       {dayEvents.slice(0, readOnly ? 3 : 2).map((event) => {
                         const Icon = CATEGORY_ICONS[event.category]

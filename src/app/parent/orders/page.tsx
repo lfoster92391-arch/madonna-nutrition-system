@@ -7,7 +7,11 @@ import { useAuth } from "@/components/providers/AuthProvider"
 import { useDemo } from "@/components/providers/DemoProvider"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
-import { formatCurrency } from "@/lib/utils"
+import {
+  formatReservationConfirmation,
+  formatReservationDetailLine,
+  isActiveReservation,
+} from "@/lib/parent-lunch-reservations"
 
 interface ReservationRow {
   id: string
@@ -59,7 +63,7 @@ export default function ParentOrdersPage() {
     void load()
   }, [load])
 
-  const upcoming = reservations.filter((r) => r.status === "RESERVED")
+  const upcoming = reservations.filter((r) => isActiveReservation(r))
 
   return (
     <ModuleShell
@@ -97,16 +101,16 @@ export default function ParentOrdersPage() {
             {upcoming.map((row) => (
               <li key={row.id} className="py-4">
                 <p className="font-semibold text-[#041B52]">
-                  {row.studentName}
-                  <span className="ml-2 font-normal text-[#64748B]">{row.date}</span>
+                  {formatReservationConfirmation({
+                    studentName: row.studentName,
+                    date: row.date,
+                    mealType: row.mealType,
+                    sliceCount: row.sliceCount,
+                    totalAmount: row.totalAmount,
+                    price: row.price,
+                  })}
                 </p>
-                <p className="mt-1 text-sm text-[#64748B]">
-                  {row.mealType.replace(/_/g, " ")}
-                  {row.sliceCount
-                    ? ` · ${row.sliceCount} ${row.sliceCount === 1 ? "slice" : "slices"}`
-                    : ""}{" "}
-                  · {formatCurrency(row.totalAmount ?? row.price)} · {row.status}
-                </p>
+                <p className="mt-1 text-sm text-[#64748B]">{formatReservationDetailLine(row)}</p>
               </li>
             ))}
           </ul>
