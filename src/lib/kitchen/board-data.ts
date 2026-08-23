@@ -7,6 +7,7 @@ import {
   schoolDateKey,
   schoolDayInstantRange,
   schoolWeekdayKeys,
+  upcomingSchoolWeekdayKeys,
 } from "@/lib/kitchen/school-day"
 
 export type KitchenPersonKind = "student" | "staff"
@@ -57,6 +58,9 @@ export type KitchenBoardPayload = {
   generatedAt: string
   today: KitchenDaySummary
   pizzaLead: PizzaLeadSummary | null
+  /** Mon–Fri ahead (next week when today is Sat/Sun) for Sunday prep head counts. */
+  weekAhead: KitchenDaySummary[]
+  weekAheadLabel: string
 }
 
 function mealLabel(mealType: string): string {
@@ -310,6 +314,7 @@ function collapsePeople(people: KitchenLinePerson[]): KitchenLinePerson[] {
 export async function loadKitchenBoard(schoolId: string, dateKey = schoolDateKey()): Promise<KitchenBoardPayload> {
   const today = await buildDaySummary(schoolId, dateKey)
   const weekKeys = schoolWeekdayKeys(dateKey)
+  const upcomingKeys = upcomingSchoolWeekdayKeys(dateKey)
 
   const weekMenus = await prisma.calendarEvent.findMany({
     where: {
@@ -341,9 +346,21 @@ export async function loadKitchenBoard(schoolId: string, dateKey = schoolDateKey
     }
   }
 
+  const weekAhead = await Promise.all(
+    upcomingKeys.map((key) => buildDaySummary(schoolId, key))
+  )
+  const weekStart = upcomingKeys[0]
+  const weekEnd = upcomingKeys[upcomingKeys.length - 1]
+  const weekAheadLabel =
+    weekStart && weekEnd
+      ? `Week of ${formatSchoolWeekday(weekStart)} – ${formatSchoolWeekday(weekEnd)}`
+      : "Upcoming school week"
+
   return {
     generatedAt: new Date().toISOString(),
     today,
     pizzaLead,
+    weekAhead,
+    weekAheadLabel,
   }
 }

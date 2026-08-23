@@ -1,3 +1,4 @@
+import Link from "next/link"
 import { PARENT_CARD, PARENT_NAVY, PARENT_PAGE_PAD, PARENT_SECTION_GAP } from "@/components/parent/parent-dashboard-styles"
 import { SupportContactList } from "@/components/support/SupportNeedHelp"
 import { formatSupportNames } from "@/config/support-contacts"
@@ -13,6 +14,23 @@ export default function HelpPage() {
           Contact {formatSupportNames()} for account or cafeteria portal questions.
         </p>
       </header>
+
+      <div className={`${PARENT_CARD} p-6 md:p-8`}>
+        <h2 className="text-lg font-bold" style={{ color: PARENT_NAVY }}>
+          Parent how-to guide
+        </h2>
+        <p className="mt-2 text-sm text-[#64748B]">
+          Step-by-step: create an account, link students, order lunches, pay with cash to Mrs.
+          Dalfol, and find your saved meal selections.
+        </p>
+        <Link
+          href="/parent/guide"
+          className="mt-4 inline-flex rounded-xl bg-[#041B52] px-4 py-2 text-sm font-semibold text-white"
+        >
+          Open parent guide
+        </Link>
+      </div>
+
       <div className={`${PARENT_CARD} p-6 md:p-8`}>
         <SupportContactList linkStyle={{ color: PARENT_NAVY }} />
       </div>

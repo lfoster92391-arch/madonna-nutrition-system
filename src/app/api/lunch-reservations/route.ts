@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { z } from "zod"
 import { assertParentOwnsStudent, ParentAccessError } from "@/lib/auth/parent-access"
+import { isParentCapableDbRole } from "@/lib/auth/portal-roles"
 import { getStudentAgreementStatusById } from "@/lib/agreements/service"
 import { isLunchSignupAllowed } from "@/lib/agreements/student-status"
 import { findStudentByExternalId } from "@/lib/db/students"
@@ -59,10 +60,10 @@ export async function GET(request: Request) {
 
     const schoolId = await resolveSchoolId()
     const user = await prisma.user.findFirst({
-      where: { id: parentUserId, schoolId, role: "PARENT", status: "ACTIVE" },
-      select: { linkedStudentIds: true, email: true },
+      where: { id: parentUserId, schoolId, status: "ACTIVE" },
+      select: { linkedStudentIds: true, email: true, role: true },
     })
-    if (!user) {
+    if (!user || !isParentCapableDbRole(user.role)) {
       return forbidden("Parent session required")
     }
 
@@ -78,6 +79,11 @@ export async function GET(request: Request) {
       ...linkedIds,
       ...parentLinks.map((l) => l.studentId),
     ])
+
+    // Admin preview with no linked students: return empty list (demo-safe).
+    if (studentDbIds.size === 0) {
+      return NextResponse.json({ reservations: [] })
+    }
 
     const students = await prisma.student.findMany({
       where: {
@@ -142,17 +148,11 @@ export async function POST(request: Request) {
       const profile = await prisma.studentProfile.findUnique({
         where: { studentId: student.id },
       })
-      const pendingSubmission = await prisma.allergySubmission.findFirst({
-        where: {
-          studentId: student.id,
-          status: { in: ["PENDING_REVIEW", "CLARIFICATION_REQUESTED"] },
-        },
-      })
 
       const hasDietary =
         profile?.allergyVerified &&
         (!profile.allergyExpiresAt || profile.allergyExpiresAt > new Date())
-      if (!hasDietary || pendingSubmission) {
+      if (!hasDietary) {
         return forbidden("Current dietary and allergy form required before reserving lunch")
       }
 
@@ -166,6 +166,7 @@ export async function POST(request: Request) {
           schoolId: student.schoolId,
           date: eventDate,
           category: "menu_day",
+          publishStatus: "published",
         },
       })
       if (!menuEvent) {

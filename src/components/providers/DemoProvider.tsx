@@ -369,7 +369,7 @@ export function DemoProvider({ children }: { children: ReactNode }) {
     async (studentId: string, submittedBy: string, payload: FoodSafetyFormPayload) => {
       requireDatabase(dbEnabled)
       const submission = await api.submitAllergyForm(studentId, submittedBy, payload)
-      invalidate("allergy-submissions")
+      invalidate("allergy-submissions", "student-profiles", "students")
       return submission
     },
     [dbEnabled, invalidate]

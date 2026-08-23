@@ -14,6 +14,7 @@ export default function AllergyReviewPage() {
   const { students, allergySubmissions, reviewAllergySubmission } = useDemo()
   const [toast, setToast] = useState<string | null>(null)
   const [reviewNotes, setReviewNotes] = useState<Record<string, string>>({})
+  const [acceptingAll, setAcceptingAll] = useState(false)
 
   const queue = useMemo(
     () =>
@@ -58,14 +59,40 @@ export default function AllergyReviewPage() {
     setTimeout(() => setToast(null), 4000)
   }
 
+  async function handleAcceptAll() {
+    if (queue.length === 0) return
+    setAcceptingAll(true)
+    try {
+      const unique = [...new Map(queue.map((s) => [s.id, s])).values()]
+      for (const submission of unique) {
+        await reviewAllergySubmission(submission.id, "approve", "Nutrition Office", "Bulk accept")
+      }
+      setToast(
+        `Accepted ${unique.length} dietary form${unique.length === 1 ? "" : "s"} and applied to student accounts.`
+      )
+      setTimeout(() => setToast(null), 5000)
+    } finally {
+      setAcceptingAll(false)
+    }
+  }
+
   return (
     <div className="min-h-screen bg-white p-3 sm:p-6 md:p-8">
       <div className="mx-auto max-w-7xl space-y-5 sm:space-y-8">
-        <div>
-          <h1 className="text-3xl font-bold text-primary">Allergy Review Queue</h1>
-          <p className="text-silver-foreground">
-            Review parent-submitted food safety profiles before they appear at scan stations.
-          </p>
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold text-primary">Allergy Review Queue</h1>
+            <p className="text-silver-foreground">
+              New parent forms apply to the student account on submit. Use Accept all for any older
+              pending forms still waiting.
+            </p>
+          </div>
+          {queue.length > 0 ? (
+            <Button disabled={acceptingAll} onClick={() => void handleAcceptAll()}>
+              <CheckCircle2 className="h-4 w-4" />
+              {acceptingAll ? "Accepting…" : `Accept all (${queue.length})`}
+            </Button>
+          ) : null}
         </div>
 
         {toast && (
@@ -76,9 +103,7 @@ export default function AllergyReviewPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle>
-              Pending Submissions ({queue.length})
-            </CardTitle>
+            <CardTitle>Pending Submissions ({queue.length})</CardTitle>
           </CardHeader>
 
           {rows.length === 0 ? (
