@@ -2,7 +2,10 @@
 
 import { useEffect, useState } from "react"
 import { ChevronLeft, ChevronRight } from "lucide-react"
-import { CalendarMonthGrid } from "@/components/calendar/CalendarMonthGrid"
+import {
+  CalendarMonthGrid,
+  type CalendarDayReservationMark,
+} from "@/components/calendar/CalendarMonthGrid"
 import { CalendarWeekOutlook } from "@/components/calendar/CalendarWeekOutlook"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -36,6 +39,7 @@ interface ResponsiveCalendarProps {
   /** Show Week | Month toggle on mobile (default true) */
   showMobileLayoutToggle?: boolean
   className?: string
+  reservationsByDate?: Map<string, CalendarDayReservationMark[]>
 }
 
 export function ResponsiveCalendar({
@@ -52,6 +56,7 @@ export function ResponsiveCalendar({
   mealTemplatesById,
   showMobileLayoutToggle = true,
   className,
+  reservationsByDate,
 }: ResponsiveCalendarProps) {
   const anchorDate = selectedDate ? parseDateKey(selectedDate) : new Date(year, month, 1)
   const [weekStart, setWeekStart] = useState(() => getWeekStart(anchorDate))
@@ -168,6 +173,7 @@ export function ResponsiveCalendar({
             selectedEventId={selectedEventId}
             readOnly={readOnly}
             mealTemplatesById={mealTemplatesById}
+            reservationsByDate={reservationsByDate}
           />
         ) : (
           <CalendarMonthGrid
@@ -182,6 +188,7 @@ export function ResponsiveCalendar({
             readOnly={readOnly}
             mealTemplatesById={mealTemplatesById}
             mobileLayout="dots"
+            reservationsByDate={reservationsByDate}
           />
         )}
       </div>
@@ -200,6 +207,7 @@ export function ResponsiveCalendar({
           readOnly={readOnly}
           mealTemplatesById={mealTemplatesById}
           mobileLayout="hidden"
+          reservationsByDate={reservationsByDate}
         />
       </div>
     </div>

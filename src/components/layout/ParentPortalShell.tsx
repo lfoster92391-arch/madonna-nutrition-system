@@ -34,6 +34,7 @@ function getParentPageTitle(pathname: string): string {
   }
   if (pathname.startsWith("/parent/nutrition")) return "Food Preferences"
   if (pathname.startsWith("/parent/add-funds")) return "Add Funds"
+  if (pathname.startsWith("/parent/calendar")) return "Meal Calendar"
   return "Parent Portal"
 }
 

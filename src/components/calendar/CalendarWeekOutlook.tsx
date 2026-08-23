@@ -4,6 +4,7 @@ import { useMemo } from "react"
 import Image from "next/image"
 import {
   CATEGORY_ICONS,
+  type CalendarDayReservationMark,
 } from "@/components/calendar/CalendarMonthGrid"
 import {
   getEventCoverPhoto,
@@ -30,6 +31,7 @@ interface CalendarWeekOutlookProps {
   selectedEventId?: string | null
   readOnly?: boolean
   mealTemplatesById?: Map<string, MealTemplate>
+  reservationsByDate?: Map<string, CalendarDayReservationMark[]>
 }
 
 export function CalendarWeekOutlook({
@@ -42,6 +44,7 @@ export function CalendarWeekOutlook({
   selectedEventId,
   readOnly = false,
   mealTemplatesById,
+  reservationsByDate,
 }: CalendarWeekOutlookProps) {
   const weekDates = useMemo(() => getWeekDates(weekStart), [weekStart])
   const todayKey = formatDateKey(new Date())
@@ -62,6 +65,7 @@ export function CalendarWeekOutlook({
           {weekDates.map((date) => {
             const dateKey = formatDateKey(date)
             const dayEvents = eventsByDate.get(dateKey) ?? []
+            const dayReservations = reservationsByDate?.get(dateKey) ?? []
             const primaryEvent = getPrimaryDayEvent(dayEvents)
             const isToday = dateKey === todayKey
             const isSelected = selectedDate === dateKey
@@ -72,6 +76,12 @@ export function CalendarWeekOutlook({
             const Icon = category ? CATEGORY_ICONS[category] : null
             const color = primaryEvent ? getEventColor(primaryEvent) : accentHex
             const overflow = dayEvents.length > 1 ? dayEvents.length - 1 : 0
+            const reservedLabel =
+              dayReservations.length === 1
+                ? `Reserved for ${dayReservations[0]!.studentName.trim().split(/\s+/)[0]}`
+                : dayReservations.length > 1
+                  ? `${dayReservations.length} reserved`
+                  : null
 
             const eventFocused = Boolean(primaryEvent && selectedEventId === primaryEvent.id)
             const canOpenEvent = Boolean(onEventClick) && !readOnly && Boolean(primaryEvent)
@@ -96,18 +106,19 @@ export function CalendarWeekOutlook({
                         month: "long",
                         day: "numeric",
                       })}, ${primaryEvent.title}, open Edit or Delete`
-                    : date.toLocaleDateString("en-US", {
+                    : `${date.toLocaleDateString("en-US", {
                         weekday: "long",
                         month: "long",
                         day: "numeric",
-                      })
+                      })}${reservedLabel ? `, ${reservedLabel}` : ""}`
                 }
                 className={cn(
                   "flex min-h-[11.5rem] w-[7.5rem] shrink-0 flex-col items-center gap-2.5 rounded-2xl border border-silver/50 bg-white p-3.5 text-left transition min-[420px]:w-[7.75rem]",
                   readOnly ? "cursor-default" : "cursor-pointer hover:border-primary/30 hover:bg-primary/5",
                   isSelected && "border-primary/40 bg-primary/5 ring-2 ring-inset ring-primary/25",
                   eventFocused && "border-primary bg-primary/10 ring-2 ring-inset ring-primary/40",
-                  isToday && !isSelected && "border-primary/20 bg-success/5"
+                  isToday && !isSelected && "border-primary/20 bg-success/5",
+                  dayReservations.length > 0 && "border-success/40"
                 )}
                 style={isSelected || eventFocused ? { boxShadow: `inset 0 0 0 1px ${accentHex}` } : undefined}
               >
@@ -125,6 +136,15 @@ export function CalendarWeekOutlook({
                     {date.getDate()}
                   </p>
                 </div>
+
+                {reservedLabel ? (
+                  <span
+                    className="max-w-full truncate rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white"
+                    style={{ backgroundColor: dayReservations[0]!.color }}
+                  >
+                    ✓ {reservedLabel}
+                  </span>
+                ) : null}
 
                 {primaryEvent ? (
                   <div className="flex w-full flex-col items-center gap-1.5">

@@ -31,6 +31,7 @@ import {
   isPizzaDayName,
   pizzaSliceTotal,
 } from "@/lib/pizza-day"
+import { formatReservationConfirmation } from "@/lib/parent-lunch-reservations"
 
 type MealType = "MAIN" | "SIDE" | "MILK"
 
@@ -165,13 +166,15 @@ function ParentReserveLunchContent() {
       }
       const slices = data.reservation?.sliceCount
       setMessage(
-        slices
-          ? `Ordered ${data.menuTitle ?? "meal"} (${slices} ${
-              slices === 1 ? "slice" : "slices"
-            }) for ${data.reservation.studentName}. Total: ${formatCurrency(
-              data.reservation.totalAmount ?? orderTotal
-            )}.`
-          : `Ordered ${data.menuTitle ?? "meal"} for ${data.reservation.studentName}.`
+        formatReservationConfirmation({
+          studentName: data.reservation?.studentName ?? "your student",
+          date: selectedDate,
+          mealType,
+          menuTitle: data.menuTitle ?? selectedMenu?.title,
+          sliceCount: slices,
+          totalAmount: data.reservation?.totalAmount ?? orderTotal,
+          price: data.reservation?.price ?? orderTotal,
+        })
       )
       await loadReservations()
     } catch {

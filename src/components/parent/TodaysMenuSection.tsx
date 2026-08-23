@@ -1,6 +1,7 @@
 "use client"
 
 import { UtensilsCrossed } from "lucide-react"
+import { MenuDayDetails } from "@/components/calendar/MenuDayDetails"
 import { useDemo } from "@/components/providers/DemoProvider"
 import { OrderLunchAction } from "@/components/parent/OrderLunchAction"
 import { PARENT_CARD, PARENT_NAVY } from "@/components/parent/parent-dashboard-styles"
@@ -51,7 +52,7 @@ export function TodaysMenuSection() {
                   className="font-semibold underline-offset-2 hover:underline"
                   style={{ color: PARENT_NAVY }}
                 >
-                  View lunch calendar
+                  View meal calendar
                 </a>
               </p>
             </div>
@@ -70,27 +71,14 @@ export function TodaysMenuSection() {
             )}
             <div className="min-w-0 flex-1">
               <p className="text-sm text-[#64748B]">{todayLabel}</p>
-              <p className="mt-1 text-lg font-bold" style={{ color: PARENT_NAVY }}>
-                {primaryEvent.title}
-              </p>
-              {primaryEvent.description && (
-                <p className="mt-2 text-sm leading-relaxed text-[#64748B]">
-                  {primaryEvent.description}
-                </p>
-              )}
-              {linkedTemplate && linkedTemplate.items.length > 0 && (
-                <ul className="mt-3 space-y-1 text-sm text-[#64748B]">
-                  {linkedTemplate.items.map((item) => (
-                    <li key={item.id}>• {item.name}</li>
-                  ))}
-                </ul>
-              )}
-              {linkedTemplate?.allergens && linkedTemplate.allergens.length > 0 && (
-                <p className="mt-3 text-xs font-medium text-[#64748B]">
-                  Allergens: {linkedTemplate.allergens.join(", ")}
-                </p>
-              )}
-              <OrderLunchAction date={today} menuTitle={primaryEvent.title} enabled />
+              <MenuDayDetails
+                event={primaryEvent}
+                mealTemplatesById={mealTemplatesById}
+                compact
+                className="mt-2"
+              >
+                <OrderLunchAction date={today} menuTitle={primaryEvent.title} enabled />
+              </MenuDayDetails>
             </div>
           </div>
         )}

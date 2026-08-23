@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react"
 import { ChevronLeft, ChevronRight, Download, Printer } from "lucide-react"
 import { CategoryLegend } from "@/components/calendar/CalendarMonthGrid"
+import { MenuDayDetails } from "@/components/calendar/MenuDayDetails"
 import { ResponsiveCalendar } from "@/components/calendar/ResponsiveCalendar"
 import { useDemo } from "@/components/providers/DemoProvider"
 import { Button } from "@/components/ui/button"
@@ -210,12 +211,22 @@ export function TeacherCalendarView() {
                   className="rounded-2xl border px-4 py-3"
                   style={{ borderColor: TEACHER_SILVER }}
                 >
-                  <p className="font-semibold" style={{ color: TEACHER_NAVY }}>
-                    {event.title}
-                  </p>
-                  {event.description ? (
-                    <p className="mt-1 text-sm text-silver-foreground">{event.description}</p>
-                  ) : null}
+                  {event.category === "menu_day" ? (
+                    <MenuDayDetails
+                      event={event}
+                      mealTemplatesById={mealTemplatesById}
+                      compact
+                    />
+                  ) : (
+                    <>
+                      <p className="font-semibold" style={{ color: TEACHER_NAVY }}>
+                        {event.title}
+                      </p>
+                      {event.description ? (
+                        <p className="mt-1 text-sm text-silver-foreground">{event.description}</p>
+                      ) : null}
+                    </>
+                  )}
                 </li>
               ))}
             </ul>
