@@ -5,6 +5,7 @@ import Image from "next/image"
 import Link from "next/link"
 import {
   Bell,
+  BookOpen,
   ClipboardList,
   CreditCard,
   HelpCircle,
@@ -148,9 +149,27 @@ export function QuickActionsStrip({
             </span>
           </Link>
 
-          <button type="button" onClick={openMealActivity} className={tileClass}>
+          <Link href="/parent/orders" className={tileClass}>
             <span className={iconWrapClass} aria-hidden>
               <UtensilsCrossed className="h-6 w-6" style={{ color: PARENT_NAVY }} />
+            </span>
+            <span className={labelClass} style={{ color: PARENT_NAVY }}>
+              My Selections
+            </span>
+          </Link>
+
+          <Link href="/parent/guide" className={tileClass}>
+            <span className={iconWrapClass} aria-hidden>
+              <BookOpen className="h-6 w-6" style={{ color: PARENT_NAVY }} />
+            </span>
+            <span className={labelClass} style={{ color: PARENT_NAVY }}>
+              How-to Guide
+            </span>
+          </Link>
+
+          <button type="button" onClick={openMealActivity} className={tileClass}>
+            <span className={iconWrapClass} aria-hidden>
+              <History className="h-6 w-6" style={{ color: PARENT_NAVY }} />
             </span>
             <span className={labelClass} style={{ color: PARENT_NAVY }}>
               Meal Activity

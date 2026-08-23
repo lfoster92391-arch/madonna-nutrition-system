@@ -10,6 +10,7 @@ const LINK_PATH = "/login/parent/link"
 /**
  * Parent-only accounts need at least one linked student.
  * Staff/admin/teachers who are also parents can open the parent portal and link children there.
+ * Admins may preview the parent experience without a ParentStudent link.
  */
 export function ParentAuthGuard({ children }: { children: React.ReactNode }) {
   const { user, isLoading, logout } = useAuth()
@@ -83,5 +84,23 @@ export function ParentAuthGuard({ children }: { children: React.ReactNode }) {
 
   if (!user || !canAccessParentPortal(user) || !allowed) return null
 
-  return <>{children}</>
+  const adminPreview = user.role === "admin"
+
+  return (
+    <>
+      {adminPreview ? (
+        <div className="border-b border-amber-300/50 bg-amber-50 px-4 py-2 text-center text-sm text-amber-950">
+          Admin parent preview — no student link required.{" "}
+          <a href="/admin/parent-preview" className="font-semibold underline">
+            Preview controls
+          </a>
+          {" · "}
+          <a href="/admin" className="font-semibold underline">
+            Back to admin
+          </a>
+        </div>
+      ) : null}
+      {children}
+    </>
+  )
 }

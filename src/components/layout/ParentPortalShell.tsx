@@ -23,6 +23,10 @@ function getParentPageTitle(pathname: string): string {
   if (pathname.startsWith("/parent/meal-history")) return "Meal History"
   if (pathname.startsWith("/parent/settings")) return "Settings"
   if (pathname.startsWith("/parent/help")) return "Support"
+  if (pathname.startsWith("/parent/guide")) return "Parent Guide"
+  if (pathname.startsWith("/parent/orders") || pathname.startsWith("/parent/reserve-lunch")) {
+    return "Order Lunch"
+  }
   if (pathname.startsWith("/parent/notifications") || pathname.startsWith("/parent/alerts")) {
     return "Notifications"
   }

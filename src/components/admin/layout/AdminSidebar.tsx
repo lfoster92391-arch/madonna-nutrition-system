@@ -51,6 +51,11 @@ const NAV_ITEMS: Array<{
     exact: true,
   },
   {
+    label: "Sunday head count",
+    href: "/admin/kitchen/sunday-head-count",
+    icon: BarChart3,
+  },
+  {
     label: "Today’s lunch line",
     href: "/admin/kitchen/orders",
     icon: ClipboardList,
@@ -61,6 +66,11 @@ const NAV_ITEMS: Array<{
     href: "/admin/calendar",
     icon: UtensilsCrossed,
     matchPrefixes: ["/admin/calendar", "/admin/menu"],
+  },
+  {
+    label: "Parent preview",
+    href: "/admin/parent-preview",
+    icon: User,
   },
   {
     label: "Cookbook",

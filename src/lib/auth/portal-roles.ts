@@ -1,4 +1,5 @@
 import type { UserRole } from "@/lib/types"
+import { PRIMARY_ADMIN_EMAIL, PRIMARY_ADMIN_USERNAME } from "@/lib/users"
 
 /** School staff who are also parents — parent portal without requiring a linked child first. */
 export const DUAL_ROLE_PARENT_EMAILS = new Set([
@@ -7,6 +8,7 @@ export const DUAL_ROLE_PARENT_EMAILS = new Set([
   "sobrien@weirtonmadonna.org",
   "blauttamus@weirtonmadonna.org",
   "ahaught@weirtonmadonna.org",
+  PRIMARY_ADMIN_EMAIL.toLowerCase(),
 ])
 
 const WORKPLACE_ROLES = new Set(["admin", "staff", "teacher"])
@@ -18,13 +20,27 @@ export function normalizeAppRole(role: string): string {
 export type ParentCapableUser = {
   role: string
   email?: string | null
+  username?: string | null
   linkedStudentIds?: string[] | null
   parentCapable?: boolean | null
+}
+
+/** Admins may preview the parent portal without a ParentStudent link. */
+export function canPreviewParentPortalAsAdmin(user: ParentCapableUser): boolean {
+  if (normalizeAppRole(user.role) !== "admin") return false
+  const email = user.email?.trim().toLowerCase()
+  const username = user.username?.trim().toLowerCase()
+  return (
+    email === PRIMARY_ADMIN_EMAIL.toLowerCase() ||
+    username === PRIMARY_ADMIN_USERNAME.toLowerCase() ||
+    Boolean(email && DUAL_ROLE_PARENT_EMAILS.has(email))
+  )
 }
 
 export function canAccessParentPortal(user: ParentCapableUser): boolean {
   const role = normalizeAppRole(user.role)
   if (role === "parent") return true
+  if (role === "admin") return true
   if (user.parentCapable) return true
   if ((user.linkedStudentIds ?? []).length > 0) return true
   const email = user.email?.trim().toLowerCase()

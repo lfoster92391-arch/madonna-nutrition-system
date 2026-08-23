@@ -359,9 +359,18 @@ export function getFoodProfileDisplayLabel(status: FoodProfileStatus): string {
   }
 }
 
+/**
+ * Hard block for lunch ordering: profile must be verified and not expired.
+ * Pending office review or "expiring soon" warnings no longer stop meal orders
+ * once a form has been submitted and applied to the student account.
+ */
 export function isDietaryFormBlocking(
   profile: StudentProfile | undefined,
-  pendingSubmission?: AllergySubmission
+  _pendingSubmission?: AllergySubmission
 ): boolean {
-  return getFoodProfileStatus(profile, pendingSubmission) !== "complete"
+  if (!profile?.allergyVerified) return true
+  if (profile.allergyExpiresAt && new Date(profile.allergyExpiresAt) <= new Date()) {
+    return true
+  }
+  return false
 }

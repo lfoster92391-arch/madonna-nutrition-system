@@ -311,6 +311,9 @@ export function AdminCalendar() {
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary">Operations</p>
             <h1 className="text-2xl font-bold text-primary sm:text-3xl">Lunch Calendar</h1>
+            <p className="mt-1 text-sm text-silver-foreground">
+              Schedule menu days, then publish so parents can select lunches on Fuel The Dons.
+            </p>
             <p className="text-sm text-silver-foreground sm:text-base">
               Schedule meals, publish to parent &amp; staff calendars, and manage operational events
             </p>
@@ -333,6 +336,16 @@ export function AdminCalendar() {
               Publish Month
             </Button>
           </div>
+        </div>
+
+        <div className="rounded-2xl border border-primary/25 bg-primary/5 px-5 py-4">
+          <p className="font-semibold text-primary">Push menu to parents for lunch selections</p>
+          <p className="mt-1 text-sm text-silver-foreground">
+            1) Add or schedule <strong>menu day</strong> events · 2) Check{" "}
+            <strong>Publish to parent &amp; staff calendars</strong> when saving, or use{" "}
+            <strong>Publish Day</strong> / <strong>Publish Month</strong> · 3) Parents then see
+            those dates under Order Lunch and the meal calendar.
+          </p>
         </div>
 
         <Card className="overflow-hidden rounded-[20px] border-silver/60">

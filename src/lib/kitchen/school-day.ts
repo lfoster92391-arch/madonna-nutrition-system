@@ -23,6 +23,25 @@ export function schoolWeekdayKeys(dateKey: string): string[] {
   return [0, 1, 2, 3, 4].map((i) => addDateKeyDays(monday, i))
 }
 
+/**
+ * Upcoming Mon–Fri for prep planning.
+ * On Saturday/Sunday, returns the *next* school week (Sunday head-count use case).
+ * Mon–Fri returns the week containing `dateKey`.
+ */
+export function upcomingSchoolWeekdayKeys(dateKey: string): string[] {
+  const idx = weekdayIndexMonday0(dateKey)
+  if (idx >= 5) {
+    const daysUntilMonday = 7 - idx
+    const monday = addDateKeyDays(dateKey, daysUntilMonday)
+    return [0, 1, 2, 3, 4].map((i) => addDateKeyDays(monday, i))
+  }
+  return schoolWeekdayKeys(dateKey)
+}
+
+export function isWeekendDateKeyLocal(dateKey: string): boolean {
+  return weekdayIndexMonday0(dateKey) >= 5
+}
+
 export function isMondayDateKey(dateKey: string): boolean {
   return weekdayIndexMonday0(dateKey) === 0
 }

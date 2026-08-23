@@ -217,58 +217,72 @@ function ParentReserveLunchContent() {
         description="Order meals for students with a signed cafeteria agreement."
       >
         <Card className="rounded-[20px] border-[#AEB6C2]/60 p-8">
-          <p className="font-semibold text-[#041B52]">No students yet</p>
+          <p className="font-semibold text-[#041B52]">No students linked yet</p>
           <p className="mt-2 text-sm text-[#64748B]">
-            No students are linked to your account. Ask your school administrator to import student
-            records from Admin → Imports.
+            Link your student(s) to order lunch. Staff and teachers who are parents can link
+            children from Settings → Add Child, or use Add Student from the parent portal.
           </p>
+          <div className="mt-6 flex flex-wrap gap-3">
+            <Button asChild>
+              <Link href="/login/parent/link">Link a student</Link>
+            </Button>
+            <Button asChild variant="outline">
+              <Link href="/parent/guide">Parent how-to guide</Link>
+            </Button>
+          </div>
         </Card>
       </ModuleShell>
     )
   }
 
-  const blockingStudents = linkedStudents.filter((student) => {
-    const profile = getStudentProfile(student.id, studentProfiles)
-    const pending = getPendingSubmission(student.id, allergySubmissions)
-    return isDietaryFormBlocking(profile, pending)
-  })
+  const selectedStudent = linkedStudents.find((s) => s.id === selectedStudentId) ?? linkedStudents[0]
+  const selectedProfile = selectedStudent
+    ? getStudentProfile(selectedStudent.id, studentProfiles)
+    : undefined
+  const selectedPending = selectedStudent
+    ? getPendingSubmission(selectedStudent.id, allergySubmissions)
+    : undefined
+  const selectedDietaryBlocked = isDietaryFormBlocking(selectedProfile, selectedPending)
 
-  if (blockingStudents.length > 0) {
+  if (selectedDietaryBlocked && selectedStudent) {
     return (
       <ModuleShell
         section="Parent Portal"
         title="Order Lunch"
-        description="Complete dietary and allergy forms before ordering meals."
+        description="Complete the dietary and allergy form for this student before ordering."
       >
         <Card className="rounded-[20px] border-[#D62828]/30 bg-[#D62828]/5 p-8">
           <p className="font-semibold text-[#041B52]">Dietary &amp; Food Allergy Form Required</p>
           <p className="mt-2 text-sm text-[#64748B]">
-            Each student needs a complete, current dietary and food allergy form before lunch
-            orders can proceed.
+            {selectedStudent.firstName} {selectedStudent.lastName} needs a current dietary and food
+            allergy form before lunch orders for them can proceed. Other linked students can still
+            be ordered for once you switch to them and their form is complete.
           </p>
-          <ul className="mt-4 space-y-2 text-sm text-[#041B52]">
-            {blockingStudents.map((student) => {
-              const profile = getStudentProfile(student.id, studentProfiles)
-              const pending = getPendingSubmission(student.id, allergySubmissions)
-              const status = getFoodProfileStatus(profile, pending)
-              return (
-                <li
-                  key={student.id}
-                  className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[#D62828]/20 bg-white px-4 py-3"
+          <p className="mt-3 text-xs font-bold uppercase text-[#D62828]">
+            {getFoodProfileDisplayLabel(getFoodProfileStatus(selectedProfile, selectedPending))}
+          </p>
+          <div className="mt-6 flex flex-wrap gap-3">
+            <Button asChild>
+              <Link href={`/parent/student-profile/${selectedStudent.id}?tab=dietary`}>
+                Update dietary form
+              </Link>
+            </Button>
+            {linkedStudents.length > 1 ? (
+              <div className="w-full sm:w-auto">
+                <Label>Order for a different student</Label>
+                <Select
+                  value={selectedStudentId}
+                  onChange={(e) => setSelectedStudentId(e.target.value)}
                 >
-                  <span className="font-medium">
-                    {student.firstName} {student.lastName}
-                  </span>
-                  <span className="text-xs font-bold uppercase text-[#D62828]">
-                    {getFoodProfileDisplayLabel(status)}
-                  </span>
-                </li>
-              )
-            })}
-          </ul>
-          <Button asChild className="mt-6">
-            <Link href="/parent/student-profile">Update Dietary Forms</Link>
-          </Button>
+                  {linkedStudents.map((student) => (
+                    <option key={student.id} value={student.id}>
+                      {student.firstName} {student.lastName}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+            ) : null}
+          </div>
         </Card>
       </ModuleShell>
     )
@@ -388,6 +402,9 @@ function ParentReserveLunchContent() {
           )}
           <Button asChild variant="outline" className="mt-6">
             <Link href="/parent/calendar">View Meal Calendar</Link>
+          </Button>
+          <Button asChild variant="outline" className="mt-3">
+            <Link href="/parent/orders">All meal selections</Link>
           </Button>
         </Card>
       </div>

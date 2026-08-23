@@ -15,7 +15,6 @@ import { LandingShell } from "@/components/landing/LandingShell"
 import { ParentDashboardPreviews } from "@/components/landing/ParentDashboardPreviews"
 import { BRAND } from "@/config/brand"
 import { formatSupportDirectory, formatSupportNames, getSupportMailto, SUPPORT_CONTACTS } from "@/config/support-contacts"
-import { CARD_SAFETY_COPY_SHORT } from "@/lib/security/card-copy"
 import { formatCurrency } from "@/lib/utils"
 
 const NAVY = "#041B52"
@@ -47,11 +46,11 @@ const STEPS = [
   {
     number: 3,
     title: "See balances & add funds",
-    plain: "Check lunch money. Add more anytime with a card.",
+    plain: "Check lunch money. Bring cash in an envelope — Mrs. Dalfol adds it to the account.",
     details: [
       "Open a student to see their balance.",
-      "Add funds with a card through Stripe each time.",
-      CARD_SAFETY_COPY_SHORT,
+      "Primary: bring cash in an envelope to school with the student’s name. Mrs. Dalfol credits the lunch account.",
+      "Card add-funds may also appear in Payments as a secondary option.",
     ],
     icon: CreditCard,
   },
