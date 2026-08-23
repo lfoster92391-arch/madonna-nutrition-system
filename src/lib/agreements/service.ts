@@ -523,9 +523,11 @@ export async function getParentAgreementStatus(
 
   const students = await prisma.student.findMany({
     where: { id: { in: studentIds } },
-    select: { id: true, firstName: true, lastName: true },
+    select: { id: true, externalId: true, firstName: true, lastName: true },
   })
 
+  // studentId must be the Madonna external ID — parent UI (linked students, reserve-lunch)
+  // keys everything by externalId, not the Prisma cuid.
   const studentStatuses: StudentAgreementStatusDto[] = students.map((student) => {
     const status = computeStudentAgreementStatus({
       hasPublishedVersion: true,
@@ -539,7 +541,7 @@ export async function getParentAgreementStatus(
         null,
     })
     return {
-      studentId: student.id,
+      studentId: student.externalId,
       studentName: `${student.firstName} ${student.lastName}`,
       status,
       versionLabel: currentVersion.versionLabel,
@@ -636,7 +638,7 @@ export async function getStudentAgreementStatusById(
   const currentVersion = await getCurrentPublishedAgreement()
   if (!currentVersion) {
     return {
-      studentId: student.id,
+      studentId: student.externalId,
       studentName: `${student.firstName} ${student.lastName}`,
       status: "AGREEMENT_REQUIRED",
       versionLabel: null,
@@ -667,7 +669,7 @@ export async function getStudentAgreementStatusById(
   })
 
   return {
-    studentId: student.id,
+    studentId: student.externalId,
     studentName: `${student.firstName} ${student.lastName}`,
     status,
     versionLabel: currentVersion.versionLabel,
