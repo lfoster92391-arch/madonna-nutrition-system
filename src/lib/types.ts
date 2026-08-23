@@ -78,7 +78,7 @@ export interface MedicalDocument {
   uploadedBy: string
 }
 
-export type UserRole = "admin" | "cashier" | "parent" | "staff" | "teacher"
+export type UserRole = "admin" | "cashier" | "parent" | "staff" | "teacher" | "student"
 
 export type UserStatus = "active" | "disabled"
 

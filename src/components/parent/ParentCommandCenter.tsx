@@ -25,6 +25,7 @@ import {
 import { getPendingSubmission, getStudentProfile } from "@/lib/student-profiles"
 import { useParentLinkedStudents } from "@/hooks/useParentLinkedStudents"
 import { useParentAnnouncements } from "@/hooks/useParentAnnouncements"
+import { useParentInboxAlerts } from "@/hooks/useParentInboxAlerts"
 import { isDietaryFormBlocking } from "@/lib/types"
 
 function ParentCommandCenterContent() {
@@ -34,6 +35,7 @@ function ParentCommandCenterContent() {
   const { studentProfiles, allergySubmissions } = useDemo()
   const { students: linkedStudents, isLoading } = useParentLinkedStudents()
   const announcements = useParentAnnouncements()
+  const { alerts: inboxAlerts } = useParentInboxAlerts()
 
   const drawerParam = parseParentDrawer(searchParams.get(PARENT_DRAWER_PARAM))
   const studentParam = searchParams.get(PARENT_STUDENT_PARAM) ?? undefined
@@ -61,6 +63,7 @@ function ParentCommandCenterContent() {
     dietaryFormIssueCount: dietaryFormIssues.length,
     reviewHref,
     announcements,
+    inboxAlerts,
   })
 
   const navAlertCount = countAttentionItems(alertItems)

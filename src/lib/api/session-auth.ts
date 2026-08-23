@@ -47,7 +47,7 @@ export async function requireCashierOrApiKey(request: Request) {
   return { schoolId, user, via: "session" as const }
 }
 
-type DbRole = "ADMIN" | "CASHIER" | "PARENT" | "TEACHER" | "STAFF"
+type DbRole = "ADMIN" | "CASHIER" | "PARENT" | "TEACHER" | "STAFF" | "STUDENT"
 
 export async function requireMutatingSession(
   request: Request,

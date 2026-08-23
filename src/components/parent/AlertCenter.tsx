@@ -2,7 +2,14 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import { AlertTriangle, Bell, ClipboardCheck, Wallet, type LucideIcon } from "lucide-react"
+import {
+  AlertTriangle,
+  Bell,
+  ClipboardCheck,
+  ShoppingBag,
+  Wallet,
+  type LucideIcon,
+} from "lucide-react"
 import { AddFundsModal } from "@/components/parent/funding/AddFundsModal"
 import { PARENT_CARD, PARENT_NAVY } from "@/components/parent/parent-dashboard-styles"
 import { Button } from "@/components/ui/button"
@@ -50,7 +57,7 @@ export function AlertCenter({ items }: { items: AlertItem[] }) {
           Attention Needed
         </h2>
         <div className={`${PARENT_CARD} divide-y divide-[#C8CDD7]`}>
-          {items.slice(0, 3).map((item) => (
+          {items.slice(0, 6).map((item) => (
             <div
               key={item.id}
               className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between md:p-6"
@@ -132,8 +139,56 @@ export function buildAlertItems(input: {
   dietaryFormIssueCount: number
   reviewHref: string
   announcements: { id: string; title: string; body: string }[]
+  inboxAlerts?: {
+    id: string
+    type: string
+    title: string
+    message: string
+    studentId?: string | null
+    studentName?: string | null
+  }[]
 }): AlertItem[] {
   const items: AlertItem[] = []
+
+  for (const alert of input.inboxAlerts ?? []) {
+    if (alert.type === "STUDENT_LUNCH_ORDER") {
+      items.push({
+        id: alert.id,
+        icon: ShoppingBag,
+        headline: alert.title,
+        description: alert.message,
+        ctaLabel: "View orders",
+        href: "/parent/orders",
+      })
+    } else if (alert.type === "MEAL_CHARGE") {
+      items.push({
+        id: alert.id,
+        icon: Wallet,
+        headline: alert.title,
+        description: alert.message,
+        ctaLabel: "Meal history",
+        href: "/parent/meal-history",
+      })
+    } else if (alert.type === "NEGATIVE_BALANCE") {
+      items.push({
+        id: alert.id,
+        icon: AlertTriangle,
+        headline: alert.title,
+        description: alert.message,
+        ctaLabel: "Add Funds",
+        href: "/parent/payments",
+      })
+    } else if (alert.type === "LOW_BALANCE") {
+      items.push({
+        id: alert.id,
+        icon: Wallet,
+        headline: alert.title,
+        description: alert.message,
+        ctaLabel: "Add Funds",
+        href: "/parent/payments",
+      })
+    }
+  }
 
   if (input.dietaryFormIssueCount > 0) {
     items.push({
@@ -160,7 +215,6 @@ export function buildAlertItems(input: {
   }
 
   for (const student of input.lowBalanceStudents) {
-    // Avoid duplicating debt rows already listed above.
     if ((input.debtStudents ?? []).some((d) => d.id === student.id)) continue
     const threshold = getStudentThreshold(student.id)
     items.push({

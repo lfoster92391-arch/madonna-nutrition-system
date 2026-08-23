@@ -6,6 +6,7 @@ import { mealTransactionSchema } from "@/lib/api/validation"
 import { badRequest, notFound, serverError, withDatabase } from "@/lib/api/response"
 import { requireCashierOrApiKey } from "@/lib/api/session-auth"
 import { maybeSendLowBalanceAlerts } from "@/lib/email/low-balance-alerts"
+import { notifyParentsOfMealCharge } from "@/lib/parent/student-order-alerts"
 import { canonicalMainMealPricing, isMainLunchKioskMeal } from "@/lib/lunch-pricing"
 import { deductInventoryForSale } from "@/lib/operations/sale-deduction"
 import { todayDateOnly } from "@/lib/teacher/db"
@@ -103,6 +104,19 @@ export async function POST(request: Request) {
         newBalance: balanceAfter,
       }).catch((error) => {
         console.error("Low balance alert failed", error)
+      })
+
+      void notifyParentsOfMealCharge({
+        schoolId,
+        studentId: student.id,
+        studentExternalId: student.externalId,
+        studentName: `${student.firstName} ${student.lastName}`,
+        meal,
+        amount: chargedAmount,
+        previousBalance,
+        newBalance: balanceAfter,
+      }).catch((error) => {
+        console.error("Meal charge alert failed", error)
       })
 
       return NextResponse.json(mapTransaction(transaction), { status: 201 })

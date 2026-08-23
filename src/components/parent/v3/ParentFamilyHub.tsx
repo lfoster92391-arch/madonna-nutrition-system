@@ -10,6 +10,7 @@ import {
 } from "@/lib/student-profiles"
 import { useParentLinkedStudents } from "@/hooks/useParentLinkedStudents"
 import { useParentAnnouncements } from "@/hooks/useParentAnnouncements"
+import { useParentInboxAlerts } from "@/hooks/useParentInboxAlerts"
 import { isDietaryFormBlocking } from "@/lib/types"
 import {
   buildAlertItems,
@@ -44,6 +45,7 @@ function ParentFamilyHubContent() {
   const { studentProfiles, allergySubmissions } = useDemo()
   const { students: linkedStudents, isLoading } = useParentLinkedStudents()
   const announcements = useParentAnnouncements()
+  const { alerts: inboxAlerts } = useParentInboxAlerts()
 
   const drawerParam = parseParentDrawer(searchParams.get(PARENT_DRAWER_PARAM))
   const studentParam = searchParams.get(PARENT_STUDENT_PARAM) ?? undefined
@@ -70,6 +72,7 @@ function ParentFamilyHubContent() {
     dietaryFormIssueCount: dietaryFormIssues.length,
     reviewHref,
     announcements,
+    inboxAlerts,
   })
 
   const actionNeeded = countAttentionItems(alertItems)

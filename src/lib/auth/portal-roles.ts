@@ -39,6 +39,7 @@ export function canPreviewParentPortalAsAdmin(user: ParentCapableUser): boolean 
 
 export function canAccessParentPortal(user: ParentCapableUser): boolean {
   const role = normalizeAppRole(user.role)
+  if (role === "student") return false
   if (role === "parent") return true
   if (role === "admin") return true
   if (user.parentCapable) return true

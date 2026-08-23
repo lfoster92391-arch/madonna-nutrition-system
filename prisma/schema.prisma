@@ -89,6 +89,7 @@ enum UserRole {
   PARENT
   TEACHER
   EXECUTIVE
+  STUDENT
 }
 
 enum UserStatus {
@@ -420,6 +421,8 @@ enum NotificationType {
   DEPOSIT_SUCCESS
   EMAIL_OUTBOX
   ANNOUNCEMENT
+  STUDENT_LUNCH_ORDER
+  MEAL_CHARGE
 }
 
 enum AnnouncementAudience {

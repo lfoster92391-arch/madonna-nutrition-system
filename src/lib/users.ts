@@ -6,6 +6,7 @@ export const ROLE_LABELS: Record<UserRole, string> = {
   parent: "Parent",
   staff: "Staff",
   teacher: "Teacher",
+  student: "Student",
 }
 
 const STAFF_BADGE_ROLES = new Set<UserRole>(["admin", "cashier", "staff", "teacher"])

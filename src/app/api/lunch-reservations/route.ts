@@ -2,6 +2,11 @@ import { NextResponse } from "next/server"
 import { z } from "zod"
 import { assertParentOwnsStudent, ParentAccessError } from "@/lib/auth/parent-access"
 import { isParentCapableDbRole } from "@/lib/auth/portal-roles"
+import {
+  assertStudentIsSelf,
+  getLinkedStudentExternalId,
+  StudentAccessError,
+} from "@/lib/auth/student-access"
 import { getStudentAgreementStatusById } from "@/lib/agreements/service"
 import { isLunchSignupAllowed } from "@/lib/agreements/student-status"
 import { findStudentByExternalId } from "@/lib/db/students"
@@ -12,9 +17,10 @@ import { getSessionUserId } from "@/lib/api/session-auth"
 import { isWeekendDateKey, WEEKEND_MENU_DAY_MESSAGE } from "@/lib/calendar"
 import { canonicalMainMealPricing } from "@/lib/lunch-pricing"
 import { MILK_JUICE_PRICE } from "@/config/onboarding-pricing"
+import { notifyParentsOfStudentLunchOrder } from "@/lib/parent/student-order-alerts"
 
 const createReservationSchema = z.object({
-  parentUserId: z.string().min(1),
+  parentUserId: z.string().min(1).optional(),
   studentId: z.string().min(1),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   mealType: z.enum(["MAIN", "SIDE", "ALA_CARTE", "MILK", "JUICE"]),
@@ -52,19 +58,42 @@ function mapReservation(row: {
 
 export async function GET(request: Request) {
   const result = await withDatabase(async () => {
-    const parentUserId =
+    const sessionUserId =
       new URL(request.url).searchParams.get("parentUserId") ?? getSessionUserId(request)
-    if (!parentUserId) {
-      return badRequest("parentUserId is required")
+    if (!sessionUserId) {
+      return badRequest("Session user id is required")
     }
 
     const schoolId = await resolveSchoolId()
     const user = await prisma.user.findFirst({
-      where: { id: parentUserId, schoolId, status: "ACTIVE" },
+      where: { id: sessionUserId, schoolId, status: "ACTIVE" },
       select: { linkedStudentIds: true, email: true, role: true },
     })
-    if (!user || !isParentCapableDbRole(user.role)) {
-      return forbidden("Parent session required")
+    if (!user) {
+      return forbidden("Valid session required")
+    }
+
+    if (user.role === "STUDENT") {
+      const externalId = await getLinkedStudentExternalId(sessionUserId)
+      if (!externalId) {
+        return NextResponse.json({ reservations: [] })
+      }
+      const student = await findStudentByExternalId(externalId)
+      if (!student) {
+        return NextResponse.json({ reservations: [] })
+      }
+      const reservations = await prisma.lunchReservation.findMany({
+        where: { schoolId, studentId: student.id },
+        include: {
+          student: { select: { externalId: true, firstName: true, lastName: true } },
+        },
+        orderBy: [{ date: "asc" }, { createdAt: "desc" }],
+      })
+      return NextResponse.json({ reservations: reservations.map(mapReservation) })
+    }
+
+    if (!isParentCapableDbRole(user.role)) {
+      return forbidden("Parent or student session required")
     }
 
     const linkedIds = user.linkedStudentIds ?? []
@@ -80,7 +109,6 @@ export async function GET(request: Request) {
       ...parentLinks.map((l) => l.studentId),
     ])
 
-    // Admin preview with no linked students: return empty list (demo-safe).
     if (studentDbIds.size === 0) {
       return NextResponse.json({ reservations: [] })
     }
@@ -121,23 +149,54 @@ export async function POST(request: Request) {
         return badRequest("Invalid reservation payload", parsed.error.flatten())
       }
 
-      const { parentUserId, studentId, date, mealType, price, sliceCount } = parsed.data
+      const { studentId, date, mealType, price, sliceCount } = parsed.data
       if (mealType === "ALA_CARTE") {
-        return badRequest("A la carte is only sold at the cashier station, not as a parent order.")
+        return badRequest("A la carte is only sold at the cashier station, not as a lunch order.")
       }
 
-      try {
-        await assertParentOwnsStudent(parentUserId, studentId)
-      } catch (error) {
-        if (error instanceof ParentAccessError) {
-          return forbidden(error.message)
+      const sessionUserId = getSessionUserId(request) ?? parsed.data.parentUserId
+      if (!sessionUserId) {
+        return forbidden("Session required to order lunch")
+      }
+
+      const schoolId = await resolveSchoolId()
+      const sessionUser = await prisma.user.findFirst({
+        where: { id: sessionUserId, schoolId, status: "ACTIVE" },
+        select: { id: true, role: true },
+      })
+      if (!sessionUser) {
+        return forbidden("Valid session required")
+      }
+
+      const orderedByStudent = sessionUser.role === "STUDENT"
+      if (orderedByStudent) {
+        try {
+          await assertStudentIsSelf(sessionUser.id, studentId)
+        } catch (error) {
+          if (error instanceof StudentAccessError) {
+            return forbidden(error.message)
+          }
+          throw error
         }
-        throw error
+      } else {
+        const parentUserId = parsed.data.parentUserId ?? sessionUser.id
+        try {
+          await assertParentOwnsStudent(parentUserId, studentId)
+        } catch (error) {
+          if (error instanceof ParentAccessError) {
+            return forbidden(error.message)
+          }
+          throw error
+        }
       }
 
       const agreement = await getStudentAgreementStatusById(studentId)
       if (!agreement || !isLunchSignupAllowed(agreement.status)) {
-        return forbidden("Signed cafeteria agreement required before reserving lunch")
+        return forbidden(
+          orderedByStudent
+            ? "A parent must sign the cafeteria agreement before you can order lunch"
+            : "Signed cafeteria agreement required before reserving lunch"
+        )
       }
 
       const student = await findStudentByExternalId(studentId)
@@ -153,7 +212,11 @@ export async function POST(request: Request) {
         profile?.allergyVerified &&
         (!profile.allergyExpiresAt || profile.allergyExpiresAt > new Date())
       if (!hasDietary) {
-        return forbidden("Current dietary and allergy form required before reserving lunch")
+        return forbidden(
+          orderedByStudent
+            ? "A parent must complete your dietary and allergy form before you can order lunch"
+            : "Current dietary and allergy form required before reserving lunch"
+        )
       }
 
       const eventDate = new Date(`${date}T12:00:00.000Z`)
@@ -221,6 +284,22 @@ export async function POST(request: Request) {
         include: {
           student: { select: { externalId: true, firstName: true, lastName: true } },
         },
+      })
+
+      void notifyParentsOfStudentLunchOrder({
+        schoolId: student.schoolId,
+        studentId: student.id,
+        studentExternalId: student.externalId,
+        studentName: `${student.firstName} ${student.lastName}`,
+        date,
+        mealType,
+        amount: pricing.totalAmount,
+        sliceCount: pricing.sliceCount,
+        menuTitle: menuEvent.title,
+        orderedBy: orderedByStudent ? "student" : "parent",
+        currentBalance: Number(student.balance),
+      }).catch((error) => {
+        console.error("Parent lunch-order alert failed", error)
       })
 
       return NextResponse.json(
