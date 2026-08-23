@@ -56,7 +56,7 @@ interface ReservationRow {
 function ParentReserveLunchContent() {
   const searchParams = useSearchParams()
   const { user } = useAuth()
-  const { students, requiresSignature, loading } = useAgreementStatus()
+  const { students, requiresSignature, accepted, loading } = useAgreementStatus()
   const { studentProfiles, allergySubmissions, calendarEvents, databaseEnabled } = useDemo()
   const { students: linkedStudents } = useParentLinkedStudents()
 
@@ -72,8 +72,43 @@ function ParentReserveLunchContent() {
   const [error, setError] = useState<string | null>(null)
   const [reservations, setReservations] = useState<ReservationRow[]>([])
 
-  const statusByStudent = new Map(students.map((s) => [s.studentId, s]))
+  const statusByStudent = useMemo(
+    () => new Map(students.map((s) => [s.studentId, s])),
+    [students]
+  )
   const today = todayDateKey()
+
+  function isStudentEligible(studentId: string): boolean {
+    const agreement = statusByStudent.get(studentId)
+    if (agreement) return isLunchSignupAllowed(agreement.status)
+    // Parent already cleared the account-level gate; missing status rows must not
+    // lock siblings out of the dropdown (ID mismatches used to disable every option).
+    return accepted
+  }
+
+  function nextSiblingWithoutOrder(
+    afterStudentId: string,
+    date: string,
+    type: MealType
+  ): string | null {
+    const orderedIds = new Set(
+      reservations
+        .filter(
+          (row) =>
+            row.date === date &&
+            row.mealType === type &&
+            row.status.toUpperCase() === "RESERVED"
+        )
+        .map((row) => row.studentId)
+    )
+    const start = linkedStudents.findIndex((s) => s.id === afterStudentId)
+    const ordered = [
+      ...linkedStudents.slice(start + 1),
+      ...linkedStudents.slice(0, Math.max(start, 0)),
+    ]
+    const next = ordered.find((s) => s.id !== afterStudentId && !orderedIds.has(s.id))
+    return next?.id ?? null
+  }
 
   const publicEvents = useMemo(() => filterPublicCalendarEvents(calendarEvents), [calendarEvents])
 
@@ -165,18 +200,27 @@ function ParentReserveLunchContent() {
         return
       }
       const slices = data.reservation?.sliceCount
-      setMessage(
-        formatReservationConfirmation({
-          studentName: data.reservation?.studentName ?? "your student",
-          date: selectedDate,
-          mealType,
-          menuTitle: data.menuTitle ?? selectedMenu?.title,
-          sliceCount: slices,
-          totalAmount: data.reservation?.totalAmount ?? orderTotal,
-          price: data.reservation?.price ?? orderTotal,
-        })
-      )
+      const confirmation = formatReservationConfirmation({
+        studentName: data.reservation?.studentName ?? "your student",
+        date: selectedDate,
+        mealType,
+        menuTitle: data.menuTitle ?? selectedMenu?.title,
+        sliceCount: slices,
+        totalAmount: data.reservation?.totalAmount ?? orderTotal,
+        price: data.reservation?.price ?? orderTotal,
+      })
       await loadReservations()
+      const nextId = nextSiblingWithoutOrder(selectedStudentId, selectedDate, mealType)
+      if (nextId && linkedStudents.length > 1) {
+        setSelectedStudentId(nextId)
+        setSliceCount(DEFAULT_PIZZA_SLICES)
+        const nextName = linkedStudents.find((s) => s.id === nextId)
+        setMessage(
+          `${confirmation} Next: order for ${nextName?.firstName ?? "another child"} below — sibling orders are separate.`
+        )
+      } else {
+        setMessage(confirmation)
+      }
     } catch {
       setError("Unable to order lunch. Try again.")
     } finally {
@@ -275,11 +319,16 @@ function ParentReserveLunchContent() {
                 <Label>Order for a different student</Label>
                 <Select
                   value={selectedStudentId}
-                  onChange={(e) => setSelectedStudentId(e.target.value)}
+                  onChange={(e) => {
+                    setSelectedStudentId(e.target.value)
+                    setMessage(null)
+                    setError(null)
+                  }}
                 >
                   {linkedStudents.map((student) => (
                     <option key={student.id} value={student.id}>
                       {student.firstName} {student.lastName}
+                      {!isStudentEligible(student.id) ? " — agreement needed" : ""}
                     </option>
                   ))}
                 </Select>
@@ -305,19 +354,38 @@ function ParentReserveLunchContent() {
               <Label>Student</Label>
               <Select
                 value={selectedStudentId}
-                onChange={(e) => setSelectedStudentId(e.target.value)}
+                onChange={(e) => {
+                  setSelectedStudentId(e.target.value)
+                  setMessage(null)
+                  setError(null)
+                  setSliceCount(DEFAULT_PIZZA_SLICES)
+                }}
               >
                 {linkedStudents.map((student) => {
                   const agreement = statusByStudent.get(student.id)
-                  const eligible = agreement ? isLunchSignupAllowed(agreement.status) : false
+                  const eligible = isStudentEligible(student.id)
+                  const alreadyOrdered = reservations.some(
+                    (row) =>
+                      row.studentId === student.id &&
+                      row.date === selectedDate &&
+                      row.mealType === mealType &&
+                      row.status.toUpperCase() === "RESERVED"
+                  )
                   return (
                     <option key={student.id} value={student.id} disabled={!eligible}>
                       {student.firstName} {student.lastName}
+                      {alreadyOrdered ? " — already ordered" : ""}
                       {agreement ? ` — ${formatStudentAgreementStatus(agreement.status)}` : ""}
                     </option>
                   )
                 })}
               </Select>
+              {linkedStudents.length > 1 ? (
+                <p className="mt-1.5 text-xs text-[#64748B]">
+                  Switch children anytime — each lunch order is saved per student and does not
+                  replace a sibling&apos;s order.
+                </p>
+              ) : null}
             </div>
             <div>
               <Label>Date (published menu)</Label>
@@ -369,7 +437,13 @@ function ParentReserveLunchContent() {
             <Button
               type="button"
               className="w-full sm:w-auto"
-              disabled={submitting || !selectedDate || menuDates.length === 0}
+              disabled={
+                submitting ||
+                !selectedDate ||
+                menuDates.length === 0 ||
+                !selectedStudentId ||
+                !isStudentEligible(selectedStudentId)
+              }
               onClick={() => void handleSubmit()}
             >
               {submitting

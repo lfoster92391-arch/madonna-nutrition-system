@@ -9,6 +9,7 @@ import { PizzaSlicePicker } from "@/components/lunch/PizzaSlicePicker"
 import { Button } from "@/components/ui/button"
 import { Label, Select } from "@/components/ui/input"
 import { useParentLinkedStudents } from "@/hooks/useParentLinkedStudents"
+import { useParentLunchReservations } from "@/hooks/useParentLunchReservations"
 import { DEFAULT_ONBOARDING_PRICING } from "@/config/onboarding-pricing"
 import { todayDateKey } from "@/lib/calendar-publish"
 import {
@@ -17,7 +18,10 @@ import {
   pizzaSliceTotal,
 } from "@/lib/pizza-day"
 import { formatCurrency } from "@/lib/utils"
-import { formatReservationConfirmation } from "@/lib/parent-lunch-reservations"
+import {
+  formatReservationConfirmation,
+  isActiveReservation,
+} from "@/lib/parent-lunch-reservations"
 
 type OrderLunchActionProps = {
   /** Calendar day to order for (YYYY-MM-DD). */
@@ -45,6 +49,7 @@ function orderButtonLabel(date: string): string {
 /**
  * Plain-language lunch order control for parent menu views.
  * Creates a LunchReservation (MAIN meal) via /api/lunch-reservations.
+ * Supports multi-child parents: switch students and order again in the same session.
  */
 export function OrderLunchAction({
   date,
@@ -56,6 +61,7 @@ export function OrderLunchAction({
   const { user } = useAuth()
   const { databaseEnabled } = useDemo()
   const { students: linkedStudents, isLoading } = useParentLinkedStudents()
+  const { reservations, reload: reloadReservations } = useParentLunchReservations()
 
   const [open, setOpen] = useState(false)
   const [studentId, setStudentId] = useState("")
@@ -70,13 +76,50 @@ export function OrderLunchAction({
     ? pizzaSliceTotal(sliceCount)
     : DEFAULT_ONBOARDING_PRICING.mainMealPrice
 
+  const reservedMainStudentIds = useMemo(() => {
+    return new Set(
+      reservations
+        .filter(
+          (row) =>
+            row.date === date &&
+            row.mealType.toUpperCase() === "MAIN" &&
+            isActiveReservation(row)
+        )
+        .map((row) => row.studentId)
+    )
+  }, [reservations, date])
+
+  const nextOpenStudentId = useMemo(() => {
+    const prefer = linkedStudents.find((s) => !reservedMainStudentIds.has(s.id))
+    return prefer?.id ?? linkedStudents[0]?.id ?? ""
+  }, [linkedStudents, reservedMainStudentIds])
+
+  const remainingToOrder = useMemo(
+    () => linkedStudents.filter((s) => !reservedMainStudentIds.has(s.id)),
+    [linkedStudents, reservedMainStudentIds]
+  )
+
   useEffect(() => {
-    if (!studentId && linkedStudents[0]) {
-      setStudentId(linkedStudents[0].id)
+    if (!studentId && nextOpenStudentId) {
+      setStudentId(nextOpenStudentId)
     }
-  }, [linkedStudents, studentId])
+  }, [linkedStudents, studentId, nextOpenStudentId])
 
   if (!enabled || !user) return null
+
+  function openOrderForm(preferredStudentId?: string) {
+    setConfirmation(null)
+    setError(null)
+    setSliceCount(DEFAULT_PIZZA_SLICES)
+    const pick =
+      preferredStudentId ||
+      linkedStudents.find((s) => s.id !== studentId && !reservedMainStudentIds.has(s.id))?.id ||
+      nextOpenStudentId ||
+      linkedStudents[0]?.id ||
+      ""
+    if (pick) setStudentId(pick)
+    setOpen(true)
+  }
 
   async function handleOrder() {
     setError(null)
@@ -125,6 +168,7 @@ export function OrderLunchAction({
         })
       )
       setOpen(false)
+      await reloadReservations()
       onReserved?.()
     } catch {
       setError("Unable to order lunch. Try again.")
@@ -132,6 +176,9 @@ export function OrderLunchAction({
       setSubmitting(false)
     }
   }
+
+  const showOrderAnother =
+    Boolean(confirmation) && linkedStudents.length > 1 && remainingToOrder.length > 0
 
   return (
     <div className={`mt-4 space-y-3 ${className}`}>
@@ -147,19 +194,27 @@ export function OrderLunchAction({
               {formatCurrency(orderTotal)}
               {pizzaDay ? " · Pizza Day" : " main meal"} · charged to the student lunch account
             </p>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="mt-3"
-              onClick={() => {
-                setConfirmation(null)
-                setSliceCount(DEFAULT_PIZZA_SLICES)
-                setOpen(true)
-              }}
-            >
-              Order for another child
-            </Button>
+            {showOrderAnother ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="mt-3"
+                onClick={() => {
+                  const next =
+                    linkedStudents.find(
+                      (s) => s.id !== studentId && !reservedMainStudentIds.has(s.id)
+                    )?.id ?? nextOpenStudentId
+                  openOrderForm(next)
+                }}
+              >
+                Order for another child
+              </Button>
+            ) : linkedStudents.length > 1 && remainingToOrder.length === 0 ? (
+              <p className="mt-2 text-xs text-[#64748B]">
+                All linked children already have a main lunch reserved for this day.
+              </p>
+            ) : null}
           </div>
         </div>
       ) : !open ? (
@@ -167,7 +222,7 @@ export function OrderLunchAction({
           type="button"
           className="w-full sm:w-auto"
           disabled={isLoading || linkedStudents.length === 0}
-          onClick={() => setOpen(true)}
+          onClick={() => openOrderForm(nextOpenStudentId)}
         >
           {buttonLabel}
         </Button>
@@ -186,15 +241,28 @@ export function OrderLunchAction({
                 <Select
                   id={`order-lunch-student-${date}`}
                   value={studentId}
-                  onChange={(e) => setStudentId(e.target.value)}
+                  onChange={(e) => {
+                    setStudentId(e.target.value)
+                    setError(null)
+                    setSliceCount(DEFAULT_PIZZA_SLICES)
+                  }}
                   className="mt-1"
                 >
-                  {linkedStudents.map((student) => (
-                    <option key={student.id} value={student.id}>
-                      {student.firstName} {student.lastName}
-                    </option>
-                  ))}
+                  {linkedStudents.map((student) => {
+                    const already = reservedMainStudentIds.has(student.id)
+                    return (
+                      <option key={student.id} value={student.id}>
+                        {student.firstName} {student.lastName}
+                        {already ? " — already ordered" : ""}
+                      </option>
+                    )
+                  })}
                 </Select>
+                {linkedStudents.length > 1 ? (
+                  <p className="mt-1.5 text-xs text-[#64748B]">
+                    Each child gets their own lunch reservation for this day.
+                  </p>
+                ) : null}
               </div>
               {menuTitle ? (
                 <p className="mt-3 text-sm text-[#64748B]">
