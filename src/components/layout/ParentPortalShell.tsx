@@ -6,8 +6,10 @@ import {
   buildAlertItems,
   countAttentionItems,
 } from "@/components/parent/AlertCenter"
+import { ParentBackLink } from "@/components/parent/ParentBackLink"
 import { ParentTopNav } from "@/components/parent/ParentTopNav"
 import { useDemo } from "@/components/providers/DemoProvider"
+import { getParentBackNav } from "@/lib/parent-back-nav"
 import { getPendingSubmission, getStudentProfile } from "@/lib/student-profiles"
 import { useParentLinkedStudents } from "@/hooks/useParentLinkedStudents"
 import { useParentAnnouncements } from "@/hooks/useParentAnnouncements"
@@ -72,6 +74,7 @@ export function ParentPortalShell({ children }: { children: React.ReactNode }) {
   const alertCount = useParentNavAlertCount()
   const bare = BARE_ROUTES.some((route) => pathname === route || pathname.startsWith(`${route}/`))
   const pageTitle = getParentPageTitle(pathname)
+  const backNav = getParentBackNav(pathname)
 
   if (bare) {
     return <>{children}</>
@@ -80,6 +83,11 @@ export function ParentPortalShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-screen flex-col bg-[#F8F9FB]">
       <ParentTopNav alertCount={alertCount} title={pageTitle} />
+      {backNav ? (
+        <div className="sticky top-14 z-10 border-b border-[#C8CDD7] bg-white px-4 sm:px-6">
+          <ParentBackLink href={backNav.href} label={backNav.label} />
+        </div>
+      ) : null}
       <main className="flex-1 overflow-x-hidden bg-white">{children}</main>
     </div>
   )
