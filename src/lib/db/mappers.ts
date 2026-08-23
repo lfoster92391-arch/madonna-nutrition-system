@@ -89,6 +89,7 @@ const USER_ROLE_TO_APP: Record<PrismaUserRole, UserRole> = {
   PARENT: "parent",
   TEACHER: "teacher",
   EXECUTIVE: "admin",
+  STUDENT: "student",
 }
 
 const USER_ROLE_TO_DB: Record<UserRole, PrismaUserRole> = {
@@ -97,6 +98,7 @@ const USER_ROLE_TO_DB: Record<UserRole, PrismaUserRole> = {
   cashier: "CASHIER",
   parent: "PARENT",
   teacher: "TEACHER",
+  student: "STUDENT",
 }
 
 const USER_STATUS_TO_APP: Record<PrismaUserStatus, UserStatus> = {

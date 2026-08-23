@@ -7,6 +7,7 @@ import { getPendingSubmission, getStudentProfile } from "@/lib/student-profiles"
 import { useParentLinkedStudents } from "@/hooks/useParentLinkedStudents"
 import { useParentTransactions } from "@/components/parent/useParentTransactions"
 import { useParentAnnouncements } from "@/hooks/useParentAnnouncements"
+import { useParentInboxAlerts } from "@/hooks/useParentInboxAlerts"
 import { countAttentionItems, buildAlertItems } from "@/components/parent/AlertCenter"
 import { PARENT_PAGE_PAD, PARENT_SECTION_GAP } from "@/components/parent/parent-dashboard-styles"
 import { getFoodProfileStatus, isDietaryFormBlocking } from "@/lib/types"
@@ -21,6 +22,7 @@ export function StudentCenterPage() {
   const { students: linkedStudents } = useParentLinkedStudents()
   const { mealTransactions } = useParentTransactions()
   const announcements = useParentAnnouncements()
+  const { alerts: inboxAlerts } = useParentInboxAlerts()
   const [searchQuery, setSearchQuery] = useState("")
   const [filterValue, setFilterValue] = useState("all")
 
@@ -47,6 +49,7 @@ export function StudentCenterPage() {
       dietaryFormIssueCount: pendingReviewCount,
       reviewHref,
       announcements,
+      inboxAlerts,
     })
   )
 

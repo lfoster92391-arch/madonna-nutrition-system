@@ -5,6 +5,7 @@ import { useDemo } from "@/components/providers/DemoProvider"
 import { getPendingSubmission, getStudentProfile } from "@/lib/student-profiles"
 import { useParentLinkedStudents } from "@/hooks/useParentLinkedStudents"
 import { useParentAnnouncements } from "@/hooks/useParentAnnouncements"
+import { useParentInboxAlerts } from "@/hooks/useParentInboxAlerts"
 import { AlertCenter, buildAlertItems } from "@/components/parent/AlertCenter"
 import { PARENT_PAGE_PAD, PARENT_SECTION_GAP } from "@/components/parent/parent-dashboard-styles"
 import { isDietaryFormBlocking } from "@/lib/types"
@@ -13,6 +14,7 @@ function ParentAlertsContent() {
   const { studentProfiles, allergySubmissions } = useDemo()
   const { students: linkedStudents } = useParentLinkedStudents()
   const announcements = useParentAnnouncements()
+  const { alerts: inboxAlerts } = useParentInboxAlerts()
   const lowBalanceStudents = linkedStudents.filter((s) => s.balance < 5)
   const debtStudents = linkedStudents.filter((s) => s.balance < 0)
   const dietaryFormIssues = linkedStudents.filter((student) => {
@@ -31,6 +33,7 @@ function ParentAlertsContent() {
     dietaryFormIssueCount: dietaryFormIssues.length,
     reviewHref,
     announcements,
+    inboxAlerts,
   })
 
   return (

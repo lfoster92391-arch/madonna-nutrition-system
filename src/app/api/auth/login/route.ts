@@ -21,7 +21,7 @@ import {
 } from "@/lib/security/login-throttle"
 
 function portalMatchesUserRole(
-  portalRole: "admin" | "cashier" | "parent" | "staff" | "teacher",
+  portalRole: "admin" | "cashier" | "parent" | "staff" | "teacher" | "student",
   user: { role: UserRole; email?: string | null; linkedStudentIds?: string[] | null }
 ): boolean {
   return portalMatchesAccount(portalRole, user)
@@ -145,6 +145,36 @@ export async function POST(request: Request) {
     }
 
     clearLoginFailures(ip, loginId)
+
+    if (role === "student") {
+      const linkedIds = user.linkedStudentIds ?? []
+      const externalId = linkedIds[0]
+      if (!externalId) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: "Student account is not linked to a roster record. Contact the office.",
+          },
+          { status: 403 }
+        )
+      }
+      const roster = await prisma.student.findFirst({
+        where: {
+          schoolId,
+          OR: [{ externalId }, { email: { equals: user.email, mode: "insensitive" } }],
+        },
+        select: { disabled: true, externalId: true },
+      })
+      if (!roster || roster.disabled) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: "Student account is disabled. Contact the school office.",
+          },
+          { status: 403 }
+        )
+      }
+    }
 
     const existingParent = await prisma.parent.findFirst({
       where: { email: { equals: user.email, mode: "insensitive" } },

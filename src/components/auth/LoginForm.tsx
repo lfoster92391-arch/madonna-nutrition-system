@@ -21,6 +21,7 @@ const PORTAL_LABELS: Record<Exclude<PortalRole, null>, string> = {
   staff: "Staff Portal",
   admin: "Admin Portal",
   cashier: "Cashier / POS",
+  student: "Student Portal",
 }
 
 interface LoginFormProps {

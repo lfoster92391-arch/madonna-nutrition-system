@@ -1,8 +1,8 @@
 import type { LucideIcon } from "lucide-react"
-import { BookOpen, Calculator, Lock, Users, UtensilsCrossed } from "lucide-react"
+import { BookOpen, Calculator, GraduationCap, Lock, Users, UtensilsCrossed } from "lucide-react"
 import type { PortalRole } from "@/components/providers/AuthProvider"
 
-export type AccessPortalKey = "parent" | "staff" | "teacher" | "cashier" | "admin"
+export type AccessPortalKey = "parent" | "staff" | "teacher" | "cashier" | "admin" | "student"
 
 export interface AccessChoice {
   key: AccessPortalKey
@@ -28,9 +28,17 @@ export const PARENT_CHOICES: AccessChoice[] = [
     redirectTo: "/parent",
     registerRoute: "/login/parent/register",
   },
+  {
+    key: "student",
+    label: "Student lunch orders",
+    description: "Students sign in with MD ID or school email to order their own lunch.",
+    icon: GraduationCap,
+    loginRole: "student",
+    redirectTo: "/student",
+  },
 ]
 
-/** Order matches School Access UX: Cashier/POS first, then teacher, staff, admin. */
+/** Order matches School Access UX: Cashier/POS first, then teacher, staff, student, admin. */
 export const SCHOOL_CHOICES: AccessChoice[] = [
   {
     key: "cashier",
@@ -60,6 +68,14 @@ export const SCHOOL_CHOICES: AccessChoice[] = [
     loginRole: "staff",
     redirectTo: "/staff",
     registerRoute: "/login/staff/register",
+  },
+  {
+    key: "student",
+    label: "Student lunch portal",
+    description: "Order your own school lunch. Parents still manage funds and photos.",
+    icon: GraduationCap,
+    loginRole: "student",
+    redirectTo: "/student",
   },
   {
     key: "admin",

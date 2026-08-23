@@ -137,7 +137,14 @@ export const badgeIdSchema = z
   .optional()
   .nullable()
 
-export const userRoleSchema = z.enum(["admin", "cashier", "parent", "staff", "teacher"])
+export const userRoleSchema = z.enum([
+  "admin",
+  "cashier",
+  "parent",
+  "staff",
+  "teacher",
+  "student",
+])
 
 export const createUserSchema = z.object({
   username: z.string().min(1),
@@ -213,7 +220,7 @@ export const updateUserRoleSchema = z.object({
 export const loginSchema = z.object({
   username: z.string().min(1),
   password: z.string(),
-  role: z.enum(["admin", "cashier", "parent", "staff", "teacher"]),
+  role: z.enum(["admin", "cashier", "parent", "staff", "teacher", "student"]),
 })
 
 export const calendarEventSchema = z

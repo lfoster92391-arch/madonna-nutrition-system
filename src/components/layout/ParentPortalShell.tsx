@@ -13,6 +13,7 @@ import { getParentBackNav } from "@/lib/parent-back-nav"
 import { getPendingSubmission, getStudentProfile } from "@/lib/student-profiles"
 import { useParentLinkedStudents } from "@/hooks/useParentLinkedStudents"
 import { useParentAnnouncements } from "@/hooks/useParentAnnouncements"
+import { useParentInboxAlerts } from "@/hooks/useParentInboxAlerts"
 import { isDietaryFormBlocking } from "@/lib/types"
 
 const BARE_ROUTES = ["/parent/agreements"]
@@ -42,6 +43,7 @@ function useParentNavAlertCount(): number {
   const { studentProfiles, allergySubmissions } = useDemo()
   const { students: linkedStudents } = useParentLinkedStudents()
   const announcements = useParentAnnouncements()
+  const { alerts: inboxAlerts } = useParentInboxAlerts()
 
   const lowBalanceStudents = linkedStudents.filter((s) => s.balance < 5)
   const debtStudents = linkedStudents.filter((s) => s.balance < 0)
@@ -64,9 +66,17 @@ function useParentNavAlertCount(): number {
           dietaryFormIssueCount: dietaryFormIssues.length,
           reviewHref,
           announcements,
+          inboxAlerts,
         })
       ),
-    [lowBalanceStudents, debtStudents, dietaryFormIssues.length, reviewHref, announcements]
+    [
+      lowBalanceStudents,
+      debtStudents,
+      dietaryFormIssues.length,
+      reviewHref,
+      announcements,
+      inboxAlerts,
+    ]
   )
 }
 

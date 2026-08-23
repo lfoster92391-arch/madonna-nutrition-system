@@ -13,7 +13,7 @@ import { useDemo } from "@/components/providers/DemoProvider"
 import { clearLegacySessionCaches } from "@/lib/demo/session"
 import { formatUserName, normalizeUsername } from "@/lib/users"
 
-export type PortalRole = "cashier" | "parent" | "admin" | "staff" | "teacher" | null
+export type PortalRole = "cashier" | "parent" | "admin" | "staff" | "teacher" | "student" | null
 
 interface AuthUser {
   id: string
@@ -102,7 +102,8 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
           portalRole !== "cashier" &&
           portalRole !== "parent" &&
           portalRole !== "staff" &&
-          portalRole !== "teacher"
+          portalRole !== "teacher" &&
+          portalRole !== "student"
         ) {
           writeSession(null)
           setUser(null)

@@ -4,6 +4,7 @@ import Link from "next/link"
 import { formatCurrency } from "@/lib/utils"
 import { useParentLinkedStudents } from "@/hooks/useParentLinkedStudents"
 import { useParentAnnouncements } from "@/hooks/useParentAnnouncements"
+import { useParentInboxAlerts } from "@/hooks/useParentInboxAlerts"
 import { useParentTransactions } from "@/components/parent/useParentTransactions"
 import { AlertCenter, buildAlertItems } from "@/components/parent/AlertCenter"
 import { Button } from "@/components/ui/button"
@@ -38,6 +39,7 @@ export function ProfileSection() {
   const { studentProfiles, allergySubmissions } = useDemo()
   const { students: linkedStudents } = useParentLinkedStudents()
   const announcements = useParentAnnouncements()
+  const { alerts: inboxAlerts } = useParentInboxAlerts()
   const { mealTransactions, isLoading: txLoading } = useParentTransactions()
   const [editing, setEditing] = useState(false)
   const [saved, setSaved] = useState<ProfileForm>(EMPTY_PROFILE)
@@ -73,6 +75,7 @@ export function ProfileSection() {
     dietaryFormIssueCount: dietaryFormIssues.length,
     reviewHref,
     announcements,
+    inboxAlerts,
   })
 
   const recentCharges = mealTransactions.slice(0, 5)
