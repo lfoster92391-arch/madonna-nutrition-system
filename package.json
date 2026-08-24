@@ -13,6 +13,7 @@
     "db:push": "prisma db push",
     "db:seed": "tsx prisma/seed.ts",
     "db:seed-lisa": "tsx scripts/seed-lisa-admin.mjs",
+    "db:upsert-chartier-admin": "tsx scripts/upsert-chartier-admin.mjs",
     "db:upsert-staff-parent-roles": "tsx scripts/upsert-staff-parent-roles.ts",
     "db:disable-demo-students": "tsx scripts/disable-demo-students.ts",
     "db:backfill-approved-photos": "tsx scripts/backfill-approved-student-photos.ts",

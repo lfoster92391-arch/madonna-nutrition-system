@@ -176,6 +176,11 @@ export default function ScanStationPage() {
   const [localBalance, setLocalBalance] = useState(0)
   const [scanStatus, setScanStatus] = useState<ScanPhase>("ready")
   const [flashMessage, setFlashMessage] = useState("")
+  /** Student lunch signup for today: warning popup + banner (not a hard block). */
+  const [lunchSignupAlert, setLunchSignupAlert] = useState<
+    null | "missing" | "unverified"
+  >(null)
+  const [lunchSignupDialogOpen, setLunchSignupDialogOpen] = useState(false)
   const [isOffline, setIsOffline] = useState(false)
   const [isSyncing, setIsSyncing] = useState(false)
   const [syncMessage, setSyncMessage] = useState("")
@@ -346,6 +351,8 @@ export default function ScanStationPage() {
         setStaffUser(null)
         setAddFundsOpen(false)
         setPosCents(0)
+        setLunchSignupAlert(null)
+        setLunchSignupDialogOpen(false)
       }
       setScanStatus(keepStudent ? "found" : "ready")
       setScanValue("")
@@ -444,6 +451,35 @@ export default function ScanStationPage() {
     }
   }, [flashMessage, scanStatus])
 
+  const checkStudentLunchSignup = useCallback(async (found: Student) => {
+    if (!isBrowserOnline()) {
+      setLunchSignupAlert("unverified")
+      setLunchSignupDialogOpen(false)
+      return
+    }
+    try {
+      const res = await fetch(
+        `/api/kiosk/lunch-signup?studentId=${encodeURIComponent(found.id)}`
+      )
+      if (!res.ok) {
+        setLunchSignupAlert("unverified")
+        setLunchSignupDialogOpen(false)
+        return
+      }
+      const body = (await res.json()) as { signedUp?: boolean; verified?: boolean }
+      if (body.signedUp) {
+        setLunchSignupAlert(null)
+        setLunchSignupDialogOpen(false)
+        return
+      }
+      setLunchSignupAlert("missing")
+      setLunchSignupDialogOpen(true)
+    } catch {
+      setLunchSignupAlert("unverified")
+      setLunchSignupDialogOpen(false)
+    }
+  }, [])
+
   const loadStudent = useCallback(
     (found: Student) => {
       if (found.disabled) {
@@ -475,9 +511,12 @@ export default function ScanStationPage() {
       setFlashMessage("")
       setAddFundsOpen(false)
       setPosCents(0)
+      setLunchSignupAlert(null)
+      setLunchSignupDialogOpen(false)
       window.setTimeout(focusScan, 50)
+      void checkStudentLunchSignup(found)
     },
-    [focusScan]
+    [focusScan, checkStudentLunchSignup]
   )
 
   const loadStaff = useCallback(
@@ -504,6 +543,8 @@ export default function ScanStationPage() {
       setFlashMessage("")
       setAddFundsOpen(false)
       setPosCents(0)
+      setLunchSignupAlert(null)
+      setLunchSignupDialogOpen(false)
       window.setTimeout(focusScan, 50)
     },
     [focusScan]
@@ -995,6 +1036,32 @@ export default function ScanStationPage() {
                 </div>
               )}
 
+              {lunchSignupAlert === "missing" && (
+                <div className="shrink-0 rounded-xl border-2 border-amber-500 bg-amber-50 px-3 py-2 sm:rounded-2xl sm:px-4 sm:py-3">
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle className="h-4 w-4 shrink-0 text-amber-700 sm:h-5 sm:w-5" aria-hidden />
+                    <p className="text-xs font-bold uppercase tracking-wide text-amber-800 sm:text-sm">
+                      No lunch signup
+                    </p>
+                  </div>
+                  <p className="mt-1 text-sm font-semibold text-amber-950 sm:text-base">
+                    This student did not sign up for lunch today. You can still charge a meal if
+                    needed.
+                  </p>
+                </div>
+              )}
+
+              {lunchSignupAlert === "unverified" && (
+                <div className="shrink-0 rounded-xl border border-amber-300 bg-amber-50/80 px-3 py-2 sm:rounded-2xl sm:px-4 sm:py-3">
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600 sm:h-5 sm:w-5" aria-hidden />
+                    <p className="text-xs font-semibold text-amber-900 sm:text-sm">
+                      Couldn&apos;t verify lunch signup — check when online if unsure.
+                    </p>
+                  </div>
+                </div>
+              )}
+
               <div className="mt-auto shrink-0 rounded-xl border border-[#AEB6C2] bg-white p-2.5 sm:rounded-2xl sm:p-3 md:p-4 lg:p-5">
                 <div className="flex items-center gap-2 sm:gap-3">
                   <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#00A83E]/10 sm:h-9 sm:w-9 md:h-10 md:w-10">
@@ -1314,6 +1381,46 @@ export default function ScanStationPage() {
           </div>
         </div>
       </footer>
+
+      {lunchSignupDialogOpen && student && lunchSignupAlert && (
+        <div
+          className="fixed inset-0 z-[60] flex items-end justify-center bg-black/50 p-3 sm:items-center sm:p-6"
+          role="alertdialog"
+          aria-modal="true"
+          aria-labelledby="lunch-signup-alert-title"
+          aria-describedby="lunch-signup-alert-desc"
+        >
+          <div className="w-full max-w-md rounded-2xl border-2 border-amber-500 bg-white p-4 shadow-xl sm:p-6">
+            <div className="flex items-start gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-amber-100">
+                <AlertTriangle className="h-5 w-5 text-amber-700" aria-hidden />
+              </div>
+              <div className="min-w-0 flex-1">
+                <h2
+                  id="lunch-signup-alert-title"
+                  className="text-lg font-bold text-[#041B52]"
+                >
+                  {lunchSignupAlert === "missing"
+                    ? "No lunch signup today"
+                    : "Could not verify lunch signup"}
+                </h2>
+                <p id="lunch-signup-alert-desc" className="mt-2 text-sm text-[#64748B]">
+                  {lunchSignupAlert === "missing"
+                    ? `${student.firstName} ${student.lastName} did not sign up for lunch today. You can still charge a meal if you choose.`
+                    : `Could not verify whether ${student.firstName} signed up for lunch. Continue if needed, and recheck when online.`}
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              className="mt-5 flex w-full items-center justify-center rounded-xl bg-[#041B52] px-4 py-3 text-sm font-bold text-white transition hover:bg-[#041B52]/90"
+              onClick={() => setLunchSignupDialogOpen(false)}
+            >
+              Got it — continue
+            </button>
+          </div>
+        </div>
+      )}
 
       {addFundsOpen && student && (
         <div
