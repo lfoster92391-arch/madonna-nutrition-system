@@ -38,7 +38,8 @@ function readFileAsDataUrl(file: File): Promise<string> {
   })
 }
 
-const ROLES: UserRole[] = ["admin", "cashier", "parent", "staff", "teacher"]
+const ROLES: UserRole[] = ["admin", "cashier", "parent", "staff", "teacher", "student"]
+const CREATE_ROLES: UserRole[] = ["admin", "cashier", "parent", "staff", "teacher"]
 
 function UserAvatar({ user }: { user: User }) {
   if (user.photo) {
@@ -241,9 +242,9 @@ export function UserManager() {
   }, [users, search, roleFilter, studentNameById])
 
   function linkedStudentLabels(user: User): string {
-    if (user.role !== "parent") return "—"
+    if (user.role !== "parent" && user.role !== "student") return "—"
     const ids = user.linkedStudentIds ?? []
-    if (ids.length === 0) return "None linked"
+    if (ids.length === 0) return user.role === "student" ? "—" : "None linked"
     return ids.map((id) => studentNameById.get(id) ?? id).join(", ")
   }
 
@@ -796,15 +797,18 @@ export function UserManager() {
                               if (role !== u.role) promptRoleChange(u, role)
                             }}
                           >
-                            {ROLES.map((role) => (
+                            {CREATE_ROLES.map((role) => (
                               <option key={role} value={role}>
                                 {ROLE_LABELS[role]}
                               </option>
                             ))}
+                            {u.role === "student" && (
+                              <option value="student">{ROLE_LABELS.student}</option>
+                            )}
                           </select>
                         </td>
                         <td className="py-3 pr-4 text-silver-foreground">
-                          {u.role === "parent" || roleFilter === "parent" ? (
+                          {u.role === "parent" || u.role === "student" || roleFilter === "parent" ? (
                             linkedStudentLabels(u)
                           ) : userRoleSupportsBadge(u.role) ? (
                             <span className="font-mono">{u.badgeId ?? "—"}</span>
@@ -825,7 +829,7 @@ export function UserManager() {
                             <Button size="sm" onClick={() => openEdit(u)}>
                               Open profile
                             </Button>
-                            {u.role === "parent" && (
+                            {(u.role === "parent" || u.role === "student") && (
                               <Button size="sm" variant="outline" onClick={() => openReset(u)}>
                                 Reset password
                               </Button>
@@ -911,9 +915,12 @@ export function UserManager() {
                         })
                       }}
                     >
-                      {ROLES.map((r) => (
+                      {CREATE_ROLES.map((r) => (
                         <option key={r} value={r}>{ROLE_LABELS[r]}</option>
                       ))}
+                      {form.role === "student" && (
+                        <option value="student">{ROLE_LABELS.student}</option>
+                      )}
                     </select>
                   </div>
                 </div>
@@ -1324,11 +1331,14 @@ export function UserManager() {
                       value={pendingRole}
                       onChange={(e) => setPendingRole(e.target.value as UserRole)}
                     >
-                      {ROLES.map((role) => (
+                      {CREATE_ROLES.map((role) => (
                         <option key={role} value={role}>
                           {ROLE_LABELS[role]}
                         </option>
                       ))}
+                      {selected.role === "student" && (
+                        <option value="student">{ROLE_LABELS.student}</option>
+                      )}
                     </select>
                   </div>
                 )}

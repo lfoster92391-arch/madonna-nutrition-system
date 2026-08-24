@@ -207,6 +207,28 @@ export const api = {
         body: JSON.stringify(input),
       }
     ),
+  resetStudentPortalPassword: (
+    studentExternalId: string,
+    input: {
+      adminUserId: string
+      performedBy: string
+      password?: string
+      generateTempPassword?: boolean
+      forcePasswordChange?: boolean
+      reason?: string
+    }
+  ) =>
+    fetchJson<{
+      success: boolean
+      userId: string
+      email: string
+      username: string
+      tempPassword?: string
+      forcePasswordChange?: boolean
+    }>(`/api/admin/students/${encodeURIComponent(studentExternalId)}/reset-portal-password`, {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
   changePassword: (userId: string, currentPassword: string, newPassword: string) =>
     fetchJson<{ success: boolean }>("/api/auth/change-password", {
       method: "POST",

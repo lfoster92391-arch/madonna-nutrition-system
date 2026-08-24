@@ -73,10 +73,16 @@ export function findUserByLogin(
   username: string
 ): User | undefined {
   const normalized = normalizeUsername(username)
-  return users.find(
-    (u) =>
-      normalizeUsername(u.username) === normalized ||
-      u.email.toLowerCase().trim() === normalized ||
-      normalizeUsername(u.email) === normalized
-  )
+  return users.find((u) => {
+    if (normalizeUsername(u.username) === normalized) return true
+    if (u.email.toLowerCase().trim() === normalized) return true
+    if (normalizeUsername(u.email) === normalized) return true
+    if (
+      u.role === "student" &&
+      (u.linkedStudentIds ?? []).some((id) => normalizeUsername(id) === normalized)
+    ) {
+      return true
+    }
+    return false
+  })
 }

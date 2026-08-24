@@ -56,7 +56,7 @@ export async function POST(request: Request) {
         message:
           resultRow.action === "skipped"
             ? "Skipped — a non-student account already uses this username or email"
-            : "Student portal login ready. Sign in at /login/student with MD ID or school email.",
+            : "Student portal login ready. Sign in at /login/student with school email (MD ID optional).",
       })
     } catch (error) {
       console.error("POST /api/student/provision", error)

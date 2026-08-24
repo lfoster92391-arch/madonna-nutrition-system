@@ -58,7 +58,7 @@ export function AdminStudentManager({
   /** Render inside /admin/imports Students tab (no page header, includes SIS import wizard) */
   importsTab?: boolean
 }) {
-  const { students, addStudent, updateStudent, disableStudent, databaseEnabled } = useDemo()
+  const { students, addStudent, updateStudent, disableStudent, databaseEnabled, users } = useDemo()
   const { user } = useAuth()
   const queryClient = useQueryClient()
   const [search, setSearch] = useState("")
@@ -73,6 +73,11 @@ export function AdminStudentManager({
   const [photoMessage, setPhotoMessage] = useState<string | null>(null)
   const [formMessage, setFormMessage] = useState<string | null>(null)
   const [pendingPhoto, setPendingPhoto] = useState<string | null>(null)
+  const [portalResetBusy, setPortalResetBusy] = useState(false)
+  const [portalTempPassword, setPortalTempPassword] = useState<string | null>(null)
+  const [portalResetMessage, setPortalResetMessage] = useState<string | null>(null)
+  const [portalPasswordMode, setPortalPasswordMode] = useState<"generate" | "custom">("generate")
+  const [portalCustomPassword, setPortalCustomPassword] = useState("")
   const [form, setForm] = useState({
     id: "",
     firstName: "",
@@ -286,6 +291,10 @@ export function AdminStudentManager({
     setPhotoMessage(null)
     setFormMessage(null)
     setPendingPhoto(null)
+    setPortalTempPassword(null)
+    setPortalResetMessage(null)
+    setPortalPasswordMode("generate")
+    setPortalCustomPassword("")
     setForm({
       id: student.id,
       firstName: student.firstName,
@@ -335,6 +344,69 @@ export function AdminStudentManager({
     setPendingPhoto(null)
     setShowOfficePaymentPanel(false)
     setPaymentStudentId(null)
+    setPortalTempPassword(null)
+    setPortalResetMessage(null)
+  }
+
+  const portalUserForEditing = useMemo(() => {
+    if (!editing) return null
+    const mdId = editing.id.trim().toLowerCase()
+    const email = editing.email?.trim().toLowerCase()
+    return (
+      users.find(
+        (u) =>
+          u.role === "student" &&
+          ((u.linkedStudentIds ?? []).some((id) => id.trim().toLowerCase() === mdId) ||
+            (email && u.email.trim().toLowerCase() === email))
+      ) ?? null
+    )
+  }, [editing, users])
+
+  async function handleResetStudentPortalPassword() {
+    if (!editing) return
+    if (!databaseEnabled) {
+      setPortalResetMessage("Connect the database to reset student portal passwords.")
+      return
+    }
+    if (!user || user.role !== "admin") {
+      setPortalResetMessage("Admin session required. Sign out and sign in again.")
+      return
+    }
+    if (portalPasswordMode === "custom" && portalCustomPassword.length < 8) {
+      setPortalResetMessage("Custom password must be at least 8 characters.")
+      return
+    }
+
+    setPortalResetBusy(true)
+    setPortalResetMessage(null)
+    setPortalTempPassword(null)
+    try {
+      const result = await api.resetStudentPortalPassword(editing.id, {
+        adminUserId: user.id,
+        performedBy: user.displayName || user.username,
+        password: portalPasswordMode === "custom" ? portalCustomPassword : undefined,
+        generateTempPassword: portalPasswordMode === "generate",
+        forcePasswordChange: true,
+        reason: "Admin reset from Student Manager",
+      })
+      if (result.tempPassword) {
+        setPortalTempPassword(result.tempPassword)
+        setPortalResetMessage(
+          `Password reset. Student signs in at /login/student with ${result.email} (or MD ID ${editing.id}).`
+        )
+      } else {
+        setPortalResetMessage(
+          `Password updated. Student signs in with ${result.email} (or MD ID ${editing.id}).`
+        )
+      }
+      void queryClient.invalidateQueries({ queryKey: ["users"] })
+    } catch (error) {
+      setPortalResetMessage(
+        error instanceof Error ? error.message : "Could not reset student portal password."
+      )
+    } finally {
+      setPortalResetBusy(false)
+    }
   }
 
   function openAddStudent() {
@@ -790,6 +862,76 @@ export function AdminStudentManager({
                           )}
                         </div>
                       </div>
+
+                      {editing && (
+                        <div className="mt-4 rounded-2xl border border-primary/15 bg-primary/[0.03] p-4">
+                          <p className="text-sm font-semibold text-primary">Student portal login</p>
+                          <p className="mt-1 text-xs text-silver-foreground">
+                            Primary login is the school email
+                            {editing.email ? (
+                              <>
+                                {" "}
+                                <span className="font-mono text-primary">{editing.email}</span>
+                              </>
+                            ) : (
+                              " (@weirtonmadonna.org on the roster)"
+                            )}
+                            . MD ID <span className="font-mono">{editing.id}</span> works as a
+                            backup.{" "}
+                            {portalUserForEditing
+                              ? "Portal account is ready."
+                              : "Resetting a password will create the portal login if needed."}
+                          </p>
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant={portalPasswordMode === "generate" ? "default" : "outline"}
+                              onClick={() => {
+                                setPortalPasswordMode("generate")
+                                setPortalCustomPassword("")
+                              }}
+                            >
+                              Generate temp password
+                            </Button>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant={portalPasswordMode === "custom" ? "default" : "outline"}
+                              onClick={() => setPortalPasswordMode("custom")}
+                            >
+                              Set custom password
+                            </Button>
+                          </div>
+                          {portalPasswordMode === "custom" && (
+                            <Input
+                              type="text"
+                              className="mt-3 max-w-sm"
+                              placeholder="At least 8 characters"
+                              value={portalCustomPassword}
+                              onChange={(e) => setPortalCustomPassword(e.target.value)}
+                            />
+                          )}
+                          <Button
+                            type="button"
+                            className="mt-3"
+                            disabled={portalResetBusy || saving}
+                            onClick={() => void handleResetStudentPortalPassword()}
+                          >
+                            {portalResetBusy ? "Resetting…" : "Reset portal password"}
+                          </Button>
+                          {portalResetMessage && (
+                            <p className="mt-3 text-sm font-medium text-primary" role="status">
+                              {portalResetMessage}
+                            </p>
+                          )}
+                          {portalTempPassword && (
+                            <p className="mt-2 rounded-xl bg-white px-3 py-2 font-mono text-sm text-primary">
+                              Temp password: {portalTempPassword}
+                            </p>
+                          )}
+                        </div>
+                      )}
 
                       {editing && (
                         <div className="mt-6 space-y-4 border-t border-silver/40 pt-6">
