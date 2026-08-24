@@ -1,7 +1,8 @@
 import { prisma } from "@/lib/prisma"
-import { badgeStatusToDb } from "@/lib/db/mappers"
+import { badgeStatusToDb, photoStatusToDb } from "@/lib/db/mappers"
 import { assertBarcodeAvailable, findStudentByExternalId } from "@/lib/db/students"
 import type { badgeImportRowSchema } from "@/lib/api/validation"
+import { photoStatusForSchoolPhoto } from "@/lib/students/photo-moderation"
 import type { z } from "zod"
 
 export type BadgeImportRow = z.infer<typeof badgeImportRowSchema> & { _rowNumber?: number }
@@ -48,6 +49,16 @@ function missingRequiredFields(row: BadgeImportRow): string[] {
   return missing
 }
 
+/** School / roster photo URLs are badge-ready without parent moderation. */
+function schoolPhotoWrite(photoUrl?: string) {
+  const photo = photoUrl?.trim() || undefined
+  if (!photo) return {}
+  return {
+    photo,
+    photoStatus: photoStatusToDb(photoStatusForSchoolPhoto(photo)),
+  }
+}
+
 export async function importBadgeRows(input: {
   rows: BadgeImportRow[]
   schoolId: string
@@ -91,7 +102,7 @@ export async function importBadgeRows(input: {
           data: {
             barcode,
             badgeStatus: badgeStatusToDb(badgeStatus),
-            ...(row.photoUrl?.trim() ? { photo: row.photoUrl.trim() } : {}),
+            ...schoolPhotoWrite(row.photoUrl),
             ...(row.firstName?.trim() ? { firstName: row.firstName.trim() } : {}),
             ...(row.lastName?.trim() ? { lastName: row.lastName.trim() } : {}),
             ...(row.grade?.trim() ? { grade: row.grade.trim() } : {}),
@@ -115,7 +126,7 @@ export async function importBadgeRows(input: {
             firstName: row.firstName?.trim() || "(Needs edit)",
             lastName: row.lastName?.trim() || mdId,
             grade: row.grade?.trim() || "TBD",
-            photo: row.photoUrl?.trim() || undefined,
+            ...schoolPhotoWrite(row.photoUrl),
             schoolId: input.schoolId,
           },
         })
@@ -166,7 +177,7 @@ export async function importBadgeRows(input: {
         data: {
           barcode,
           badgeStatus: badgeStatusToDb(badgeStatus),
-          ...(row.photoUrl?.trim() ? { photo: row.photoUrl.trim() } : {}),
+          ...schoolPhotoWrite(row.photoUrl),
           firstName: row.firstName!.trim(),
           lastName: row.lastName!.trim(),
           grade: row.grade!.trim(),
@@ -184,7 +195,7 @@ export async function importBadgeRows(input: {
         firstName: row.firstName!.trim(),
         lastName: row.lastName!.trim(),
         grade: row.grade!.trim(),
-        photo: row.photoUrl?.trim() || undefined,
+        ...schoolPhotoWrite(row.photoUrl),
         schoolId: input.schoolId,
       },
     })

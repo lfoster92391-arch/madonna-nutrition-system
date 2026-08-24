@@ -13,14 +13,27 @@ export function studentHasRealPhoto(photo?: string | null): boolean {
   return !PLACEHOLDER_PHOTO_HINTS.some((hint) => photo.includes(hint))
 }
 
-/** Photos that may appear on printed badges and the lunch kiosk. */
+/**
+ * Photos that may appear on printed badges and the lunch kiosk.
+ * - APPROVED: moderated and cleared for badges
+ * - missing / NONE: school-uploaded or pre-moderation roster photos (treat as approved)
+ * - PENDING / DENIED: parent uploads waiting review or rejected — stay off badges
+ */
 export function studentPhotoReadyForBadge(
   student: Pick<Student, "photo" | "photoStatus">
 ): boolean {
   if (!studentHasRealPhoto(student.photo)) return false
-  // Legacy payloads without photoStatus: real photo was already badge-ready.
   const status = student.photoStatus ?? "approved"
-  return status === "approved"
+  if (status === "pending" || status === "denied") return false
+  // "approved" or legacy "none" (DB default for never-moderated on-file photos)
+  return status === "approved" || status === "none"
+}
+
+/** Admin / import writes: real photos are badge-ready; placeholders clear moderation. */
+export function photoStatusForSchoolPhoto(
+  photo?: string | null
+): PhotoModerationStatus {
+  return studentHasRealPhoto(photo) ? "approved" : "none"
 }
 
 export function photoStatusLabel(status?: PhotoModerationStatus | null): string {
