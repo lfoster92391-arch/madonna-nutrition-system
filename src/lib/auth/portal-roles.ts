@@ -13,6 +13,8 @@ export const DUAL_ROLE_PARENT_EMAILS = new Set([
 
 const WORKPLACE_ROLES = new Set(["admin", "staff", "teacher"])
 
+const ADMIN_PREVIEW_PORTALS = new Set<UserRole>(["parent", "teacher", "staff", "student"])
+
 export function normalizeAppRole(role: string): string {
   return role.trim().toLowerCase()
 }
@@ -25,16 +27,28 @@ export type ParentCapableUser = {
   parentCapable?: boolean | null
 }
 
-/** Admins may preview the parent portal without a ParentStudent link. */
-export function canPreviewParentPortalAsAdmin(user: ParentCapableUser): boolean {
+/**
+ * Admin multi-portal preview (parent / teacher / staff / student).
+ * Scoped to administrators only — does not widen access for other roles.
+ * Primary IT admin (itlisa / lisamorris) is the intended account; any admin may preview.
+ */
+export function canPreviewPortalsAsAdmin(user: ParentCapableUser): boolean {
   if (normalizeAppRole(user.role) !== "admin") return false
   const email = user.email?.trim().toLowerCase()
   const username = user.username?.trim().toLowerCase()
-  return (
+  // Prefer primary admin; still allow other admins (already privileged).
+  if (
     email === PRIMARY_ADMIN_EMAIL.toLowerCase() ||
-    username === PRIMARY_ADMIN_USERNAME.toLowerCase() ||
-    Boolean(email && DUAL_ROLE_PARENT_EMAILS.has(email))
-  )
+    username === PRIMARY_ADMIN_USERNAME.toLowerCase()
+  ) {
+    return true
+  }
+  return true
+}
+
+/** @deprecated Prefer canPreviewPortalsAsAdmin */
+export function canPreviewParentPortalAsAdmin(user: ParentCapableUser): boolean {
+  return canPreviewPortalsAsAdmin(user)
 }
 
 export function canAccessParentPortal(user: ParentCapableUser): boolean {
@@ -46,6 +60,13 @@ export function canAccessParentPortal(user: ParentCapableUser): boolean {
   if ((user.linkedStudentIds ?? []).length > 0) return true
   const email = user.email?.trim().toLowerCase()
   return Boolean(email && DUAL_ROLE_PARENT_EMAILS.has(email))
+}
+
+export function canAccessPortalAsAdminPreview(
+  portalRole: UserRole,
+  user: ParentCapableUser
+): boolean {
+  return canPreviewPortalsAsAdmin(user) && ADMIN_PREVIEW_PORTALS.has(portalRole)
 }
 
 export function canSwitchParentAndWorkplace(user: ParentCapableUser): boolean {
@@ -96,5 +117,6 @@ export function portalMatchesAccount(
 ): boolean {
   if (portalRole === user.role) return true
   if (portalRole === "parent" && canAccessParentPortal(user)) return true
+  if (canAccessPortalAsAdminPreview(portalRole, user)) return true
   return false
 }

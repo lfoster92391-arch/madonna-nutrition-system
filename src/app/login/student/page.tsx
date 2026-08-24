@@ -15,8 +15,9 @@ export default function StudentLoginPage() {
       </Link>
       <LoginForm role="student" redirectTo="/student" />
       <p className="mt-6 max-w-sm text-center text-sm text-[#64748B]">
-        Sign in with your MD ID or school email. You can only order lunch for yourself — parents
-        manage funds and photos in the Parent Portal.
+        Sign in with your Madonna school email (@weirtonmadonna.org). MD ID works as a backup.
+        You can only order lunch for yourself — parents manage funds and photos in the Parent
+        Portal.
       </p>
     </div>
   )

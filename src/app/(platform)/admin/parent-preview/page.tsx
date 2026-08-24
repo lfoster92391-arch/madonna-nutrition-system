@@ -2,17 +2,21 @@
 
 import Link from "next/link"
 import { useAuth } from "@/components/providers/AuthProvider"
-import { canAccessParentPortal } from "@/lib/auth/portal-roles"
+import {
+  canAccessParentPortal,
+  canPreviewPortalsAsAdmin,
+} from "@/lib/auth/portal-roles"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 
 /**
- * Admin entry point to preview the parent portal without linking a child.
- * Real parent ownership checks still apply for any student-specific actions.
+ * Admin entry point to preview parent / teacher / staff / student portals
+ * without changing the admin role.
  */
 export default function AdminParentPreviewPage() {
   const { user } = useAuth()
-  const canOpen = user ? canAccessParentPortal(user) : false
+  const canOpenParent = user ? canAccessParentPortal(user) : false
+  const canPreview = user ? canPreviewPortalsAsAdmin(user) : false
 
   return (
     <div className="min-h-screen bg-white p-4 sm:p-6 md:p-8">
@@ -21,33 +25,49 @@ export default function AdminParentPreviewPage() {
           <p className="text-sm font-bold uppercase tracking-[0.2em] text-[#041B52]/60">
             Admin · Fuel The Dons
           </p>
-          <h1 className="mt-1 text-3xl font-bold text-[#041B52]">View as parent</h1>
+          <h1 className="mt-1 text-3xl font-bold text-[#041B52]">Portal preview</h1>
           <p className="mt-2 text-[#64748B]">
-            Preview the parent experience without attaching a student to your admin account.
-            Ordering for a real student still requires a normal parent link — this preview is for
-            walking the screens Lisa’s families see.
+            Sign in at each portal login with your admin email to walk the screens families and
+            staff see. Your account stays Admin — this does not demote you.
           </p>
         </header>
 
         <Card className="rounded-2xl border border-[#AEB6C2]/60 p-6">
-          <h2 className="text-lg font-semibold text-[#041B52]">Open parent portal</h2>
+          <h2 className="text-lg font-semibold text-[#041B52]">Open portals</h2>
           <p className="mt-2 text-sm text-[#64748B]">
-            {canOpen
-              ? "Your admin login can open the parent portal. Empty student lists are expected until you link a child for real testing."
-              : "Sign in as an active admin (for example itlisa) to use parent portal preview."}
+            {canPreview
+              ? "Use the same admin password on each login page below."
+              : "Sign in as an active admin (for example itlisa) to use portal preview."}
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
-            <Button asChild disabled={!canOpen}>
+            <Button asChild disabled={!canOpenParent}>
+              <Link href="/login/parent">Parent login</Link>
+            </Button>
+            <Button asChild variant="outline" disabled={!canPreview}>
+              <Link href="/login/teacher">Teacher login</Link>
+            </Button>
+            <Button asChild variant="outline" disabled={!canPreview}>
+              <Link href="/login/staff">Staff login</Link>
+            </Button>
+            <Button asChild variant="outline" disabled={!canPreview}>
+              <Link href="/login/student">Student login</Link>
+            </Button>
+            <Button asChild variant="outline">
+              <Link href="/login/admin">Admin login</Link>
+            </Button>
+          </div>
+          <div className="mt-4 flex flex-wrap gap-3">
+            <Button asChild variant="outline" disabled={!canOpenParent}>
               <Link href="/parent">Parent dashboard</Link>
             </Button>
-            <Button asChild variant="outline" disabled={!canOpen}>
-              <Link href="/parent/reserve-lunch">Order Lunch screen</Link>
+            <Button asChild variant="outline" disabled={!canPreview}>
+              <Link href="/teacher">Teacher home</Link>
             </Button>
-            <Button asChild variant="outline" disabled={!canOpen}>
-              <Link href="/parent/guide">Parent guide</Link>
+            <Button asChild variant="outline" disabled={!canPreview}>
+              <Link href="/staff">Staff home</Link>
             </Button>
-            <Button asChild variant="outline" disabled={!canOpen}>
-              <Link href="/parent/calendar">Parent calendar</Link>
+            <Button asChild variant="outline" disabled={!canPreview}>
+              <Link href="/student">Student home</Link>
             </Button>
           </div>
         </Card>

@@ -68,7 +68,7 @@ const NAV_ITEMS: Array<{
     matchPrefixes: ["/admin/calendar", "/admin/menu"],
   },
   {
-    label: "Parent preview",
+    label: "Portal preview",
     href: "/admin/parent-preview",
     icon: User,
   },

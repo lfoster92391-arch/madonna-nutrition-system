@@ -10,7 +10,11 @@ import { loginSchema } from "@/lib/api/validation"
 import { badRequest, withDatabase } from "@/lib/api/response"
 import { isAllowedTeacherEmail, TEACHER_ACCESS_DENIED_MESSAGE } from "@/config/teacher-auth"
 import { parentHasLinkedStudents } from "@/lib/auth/parent-links"
-import { canAccessParentPortal, portalMatchesAccount } from "@/lib/auth/portal-roles"
+import {
+  canAccessParentPortal,
+  canAccessPortalAsAdminPreview,
+  portalMatchesAccount,
+} from "@/lib/auth/portal-roles"
 import { ensureParentRecordForUser } from "@/lib/agreements/service"
 import type { UserRole } from "@/lib/types"
 import { getClientIp, getUserAgent } from "@/lib/security/client-meta"
@@ -120,7 +124,9 @@ export async function POST(request: Request) {
       )
     }
 
-    if (role === "teacher" && !isAllowedTeacherEmail(user.email)) {
+    const adminPreview = canAccessPortalAsAdminPreview(role, user)
+
+    if (role === "teacher" && !adminPreview && !isAllowedTeacherEmail(user.email)) {
       return NextResponse.json(
         { success: false, error: TEACHER_ACCESS_DENIED_MESSAGE },
         { status: 403 }
@@ -146,7 +152,7 @@ export async function POST(request: Request) {
 
     clearLoginFailures(ip, loginId)
 
-    if (role === "student") {
+    if (role === "student" && !adminPreview) {
       const linkedIds = user.linkedStudentIds ?? []
       const externalId = linkedIds[0]
       if (!externalId) {

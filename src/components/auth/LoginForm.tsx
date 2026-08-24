@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import { Eye, EyeOff, Lock, User } from "lucide-react"
 import Image from "next/image"
 import { useAuth, type PortalRole } from "@/components/providers/AuthProvider"
-import { canAccessParentPortal } from "@/lib/auth/portal-roles"
+import { canAccessParentPortal, canAccessPortalAsAdminPreview } from "@/lib/auth/portal-roles"
 import { BRAND } from "@/config/brand"
 import { getSupportMailtoAll } from "@/config/support-contacts"
 import { SupportNeedHelp } from "@/components/support/SupportNeedHelp"
@@ -45,7 +45,9 @@ export function LoginForm({ role, redirectTo, variant = "page" }: LoginFormProps
   useEffect(() => {
     if (!user) return
     const matchesPortal =
-      user.role === role || (role === "parent" && canAccessParentPortal(user))
+      user.role === role ||
+      (role === "parent" && canAccessParentPortal(user)) ||
+      canAccessPortalAsAdminPreview(role, user)
     if (!matchesPortal) return
     if (role === "parent" && user.needsStudentLink) {
       router.replace("/login/parent/link")
@@ -115,7 +117,7 @@ export function LoginForm({ role, redirectTo, variant = "page" }: LoginFormProps
             className="text-sm font-semibold"
             style={{ color: NAVY }}
           >
-            Username or email
+            {role === "student" ? "School email or MD ID" : "Username or email"}
           </Label>
           <div className={cn("relative", embedded ? "mt-1.5" : "mt-2")}>
             <User className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#64748B] sm:left-4 sm:h-5 sm:w-5" />
@@ -124,7 +126,11 @@ export function LoginForm({ role, redirectTo, variant = "page" }: LoginFormProps
               autoFocus={embedded}
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              placeholder="Enter username or email"
+              placeholder={
+                role === "student"
+                  ? "e.g. student27@weirtonmadonna.org"
+                  : "Enter username or email"
+              }
               autoComplete="username"
               className={cn(embedded ? "h-11 pl-10 text-sm sm:pl-11" : "h-14 pl-12 text-base")}
             />
