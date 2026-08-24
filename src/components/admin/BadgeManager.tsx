@@ -19,6 +19,7 @@ import { BadgeMassPrint } from "@/components/admin/BadgeMassPrint"
 import { StaffBadgeMassPrint } from "@/components/admin/StaffBadgeMassPrint"
 import { ImportExportMenu } from "@/components/admin/import-export/ImportExportMenu"
 import {
+  studentHasRealPhoto,
   studentPhotoReadyForBadge,
 } from "@/lib/students/photo-moderation"
 import { staffHasRealPhoto } from "@/components/admin/StaffBadgeCard"
@@ -627,15 +628,22 @@ export function BadgeManager() {
                       />
                     </td>
                     <td className="py-3 pr-4">
-                      {studentPhotoReadyForBadge(student) ? (
-                        <Image
-                          src={student.photo}
-                          alt=""
-                          width={40}
-                          height={40}
-                          className="h-10 w-10 rounded-lg object-cover"
-                          unoptimized={student.photo.startsWith("data:")}
-                        />
+                      {studentHasRealPhoto(student.photo) ? (
+                        <div className="relative h-10 w-10">
+                          <Image
+                            src={student.photo}
+                            alt=""
+                            width={40}
+                            height={40}
+                            className="h-10 w-10 rounded-lg object-cover"
+                            unoptimized={student.photo.startsWith("data:")}
+                          />
+                          {!studentPhotoReadyForBadge(student) && (
+                            <span className="absolute inset-x-0 bottom-0 rounded-b-lg bg-amber-500/90 px-0.5 text-center text-[7px] font-bold uppercase leading-tight text-white">
+                              Pending
+                            </span>
+                          )}
+                        </div>
                       ) : (
                         <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-silver/30 text-[9px] font-semibold uppercase text-silver-foreground">
                           No photo

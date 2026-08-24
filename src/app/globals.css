@@ -351,6 +351,18 @@ body {
     print-color-adjust: exact;
   }
 
+  /* Chrome can drop data-URL faces when ancestors use visibility:hidden. */
+  .badge-print-sheet img,
+  .student-badge-card img {
+    visibility: visible !important;
+    display: block !important;
+    max-width: 100% !important;
+    max-height: 100% !important;
+    object-fit: cover !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
   .student-badge-card .badge-print-name {
     white-space: nowrap !important;
     overflow: hidden !important;
