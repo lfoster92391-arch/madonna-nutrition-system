@@ -1,10 +1,16 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { allergiesToCreateInput, badgeStatusToDb, mapStudent } from "@/lib/db/mappers"
+import {
+  allergiesToCreateInput,
+  badgeStatusToDb,
+  mapStudent,
+  photoStatusToDb,
+} from "@/lib/db/mappers"
 import { assertBarcodeAvailable, findStudentByExternalId, findStudentByScanId, studentInclude } from "@/lib/db/students"
 import { studentUpdateSchema } from "@/lib/api/validation"
 import { badRequest, notFound, serverError, withDatabase } from "@/lib/api/response"
 import { requireMutatingSession } from "@/lib/api/session-auth"
+import { photoStatusForSchoolPhoto } from "@/lib/students/photo-moderation"
 
 type RouteParams = { params: Promise<{ id: string }> }
 
@@ -74,6 +80,9 @@ export async function PATCH(request: Request, { params }: RouteParams) {
             homeroom: data.homeroom,
             balance: data.balance,
             photo: data.photo,
+            ...(data.photo !== undefined
+              ? { photoStatus: photoStatusToDb(photoStatusForSchoolPhoto(data.photo)) }
+              : {}),
             barcode: data.barcode,
             badgeStatus: data.badgeStatus ? badgeStatusToDb(data.badgeStatus) : undefined,
             dietaryRestrictions: data.dietaryRestrictions,

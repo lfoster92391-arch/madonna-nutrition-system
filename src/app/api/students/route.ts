@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { allergiesToCreateInput, mapStudent } from "@/lib/db/mappers"
+import { allergiesToCreateInput, mapStudent, photoStatusToDb } from "@/lib/db/mappers"
 import { findStudentByExternalId, studentInclude } from "@/lib/db/students"
 import { resolveSchoolId } from "@/lib/db/school"
 import { studentSchema } from "@/lib/api/validation"
 import { badRequest, dbUnavailableResponse, serverError, withDatabase } from "@/lib/api/response"
 import { requireMutatingSession } from "@/lib/api/session-auth"
+import { photoStatusForSchoolPhoto } from "@/lib/students/photo-moderation"
 
 export async function GET() {
   const result = await withDatabase(async () => {
@@ -49,6 +50,7 @@ export async function POST(request: Request) {
           homeroom: data.homeroom,
           balance: data.balance,
           photo: data.photo,
+          photoStatus: photoStatusToDb(photoStatusForSchoolPhoto(data.photo)),
           dietaryRestrictions: data.dietaryRestrictions ?? [],
           disabled: data.disabled ?? false,
           schoolId,

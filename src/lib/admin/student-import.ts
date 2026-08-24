@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma"
-import { allergiesToCreateInput, badgeStatusToDb } from "@/lib/db/mappers"
+import { allergiesToCreateInput, badgeStatusToDb, photoStatusToDb } from "@/lib/db/mappers"
 import { createAuditLog } from "@/lib/db/audit"
 import {
   allocateNextMdId,
@@ -12,6 +12,7 @@ import {
   parseStudentDisplayName,
   resolveImportGrade,
 } from "@/lib/students/grade-from-email"
+import { photoStatusForSchoolPhoto } from "@/lib/students/photo-moderation"
 import type { studentImportRowSchema } from "@/lib/api/validation"
 import type { z } from "zod"
 
@@ -63,6 +64,15 @@ function resolvePhoto(row: StudentImportRow): string | undefined {
   if (fromUrl) return fromUrl
   const fromPhoto = row.photo?.trim()
   return fromPhoto || undefined
+}
+
+/** School / roster photo URLs are badge-ready without parent moderation. */
+function schoolPhotoWrite(photo?: string) {
+  if (!photo) return {}
+  return {
+    photo,
+    photoStatus: photoStatusToDb(photoStatusForSchoolPhoto(photo)),
+  }
 }
 
 function resolveParentName(row: StudentImportRow, email: string): string {
@@ -203,7 +213,7 @@ export async function importStudentRows(input: {
         const keepRosterNames = match.via === "email_hint"
         const nextFirst = keepRosterNames ? existing.firstName : firstName
         const nextLast = keepRosterNames ? existing.lastName : lastName
-        const photoUpdate = photo ? { photo } : {}
+        const photoUpdate = schoolPhotoWrite(photo)
         const hasAllergiesColumn = row.allergies !== undefined
         const hasDietaryColumn = row.dietaryRestrictions !== undefined
 
@@ -284,7 +294,7 @@ export async function importStudentRows(input: {
           grade,
           homeroom: row.homeroom?.trim() || undefined,
           balance: balance ?? 0,
-          photo,
+          ...schoolPhotoWrite(photo),
           dietaryRestrictions,
           disabled: gradeInfo.shouldArchive,
           schoolId: input.schoolId,
