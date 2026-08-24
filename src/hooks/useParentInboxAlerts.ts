@@ -1,8 +1,9 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { useAuth } from "@/components/providers/AuthProvider"
 import { useDemo } from "@/components/providers/DemoProvider"
+import { isInboxAlertForLinkedChild } from "@/lib/parent/inbox-scope"
 
 export type ParentInboxAlert = {
   id: string
@@ -24,8 +25,17 @@ const ALERT_TYPES = new Set([
 /** Unread in-app parent notifications (student orders, charges, balance). */
 export function useParentInboxAlerts() {
   const { user } = useAuth()
-  const { databaseEnabled } = useDemo()
+  const { databaseEnabled, users } = useDemo()
   const [alerts, setAlerts] = useState<ParentInboxAlert[]>([])
+
+  const linkedExternalIds = useMemo(() => {
+    if (!user) return new Set<string>()
+    const parentUser = users.find((u) => u.id === user.id)
+    return new Set([
+      ...(parentUser?.linkedStudentIds ?? []),
+      ...(user.linkedStudentIds ?? []),
+    ])
+  }, [user, users])
 
   const refresh = useCallback(async () => {
     if (!user || !databaseEnabled) {
@@ -54,6 +64,12 @@ export function useParentInboxAlerts() {
       }
       const mapped = (data.notifications ?? [])
         .filter((n) => !n.read && ALERT_TYPES.has(n.type))
+        .filter((n) =>
+          isInboxAlertForLinkedChild({
+            studentExternalId: n.studentId,
+            linkedStudentExternalIds: linkedExternalIds,
+          })
+        )
         .slice(0, 12)
         .map((n) => ({
           id: n.id,
@@ -68,7 +84,7 @@ export function useParentInboxAlerts() {
     } catch {
       setAlerts([])
     }
-  }, [user, databaseEnabled])
+  }, [user, databaseEnabled, linkedExternalIds])
 
   useEffect(() => {
     void refresh()
