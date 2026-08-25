@@ -18,8 +18,12 @@ export {
 export {
   createQueuedTransaction,
   isBrowserOnline,
+  isNetworkError,
+  offlineReasonFromError,
+  probeServerReachable,
   refreshStudentCache,
   refreshStudentCacheFromServer,
   syncPendingTransactions,
+  type OfflineReason,
   type SyncResult,
 } from "./sync-manager"

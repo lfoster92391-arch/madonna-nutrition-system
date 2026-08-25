@@ -2,6 +2,7 @@
 
 import { AlertTriangle, Wifi, WifiOff } from "lucide-react"
 import { cn } from "@/lib/utils"
+import type { OfflineReason } from "@/lib/offline/sync-manager"
 
 interface OfflineBannerProps {
   isOffline: boolean
@@ -9,6 +10,8 @@ interface OfflineBannerProps {
   syncMessage?: string
   pendingCount: number
   staleBalanceWarning?: boolean
+  /** Why we are offline — helps cashiers tell Wi‑Fi vs server problems apart. */
+  offlineReason?: OfflineReason
 }
 
 export function OfflineBanner({
@@ -17,8 +20,14 @@ export function OfflineBanner({
   syncMessage,
   pendingCount,
   staleBalanceWarning,
+  offlineReason = "network",
 }: OfflineBannerProps) {
   if (!isOffline && !isSyncing && !syncMessage) return null
+
+  const offlineLabel =
+    offlineReason === "server"
+      ? "Can't reach lunch server — check Wi‑Fi or try again"
+      : "No network — offline mode"
 
   return (
     <div className="shrink-0 space-y-0">
@@ -29,7 +38,7 @@ export function OfflineBanner({
           className="flex items-center justify-center gap-2 bg-amber-500 px-3 py-2 text-sm font-bold uppercase tracking-wide text-white sm:text-base"
         >
           <WifiOff className="h-4 w-4 shrink-0" aria-hidden />
-          <span>Offline mode</span>
+          <span>{offlineLabel}</span>
           {pendingCount > 0 && (
             <span className="rounded-full bg-white/20 px-2 py-0.5 text-xs font-semibold normal-case">
               {pendingCount} queued

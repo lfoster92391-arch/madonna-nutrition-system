@@ -52,9 +52,13 @@ import {
 import {
   createQueuedTransaction,
   isBrowserOnline,
+  isNetworkError,
+  offlineReasonFromError,
+  probeServerReachable,
   refreshStudentCache,
   refreshStudentCacheFromServer,
   syncPendingTransactions,
+  type OfflineReason,
 } from "@/lib/offline/sync-manager"
 import {
   findStaffMatchingScan,
@@ -182,6 +186,7 @@ export default function ScanStationPage() {
   >(null)
   const [lunchSignupDialogOpen, setLunchSignupDialogOpen] = useState(false)
   const [isOffline, setIsOffline] = useState(false)
+  const [offlineReason, setOfflineReason] = useState<OfflineReason>("network")
   const [isSyncing, setIsSyncing] = useState(false)
   const [syncMessage, setSyncMessage] = useState("")
   const [pendingCount, setPendingCount] = useState(0)
@@ -368,16 +373,22 @@ export default function ScanStationPage() {
     return () => clearInterval(interval)
   }, [focusScan, addFundsOpen])
 
+  const markOffline = useCallback((reason: OfflineReason) => {
+    setOfflineReason(reason)
+    setIsOffline(true)
+  }, [])
+
   const finishSync = useCallback(
     async (result: Awaited<ReturnType<typeof syncPendingTransactions>>) => {
       if (!result.ok) {
-        setIsOffline(true)
+        markOffline(isBrowserOnline() ? "server" : "network")
         return
       }
       setSyncMessage(result.message)
       setPendingCount(0)
       setOfflineRecent([])
       setIsOffline(false)
+      setOfflineReason("network")
       if (result.balances) {
         if (student) {
           const trueBalance = result.balances[student.id]
@@ -398,11 +409,30 @@ export default function ScanStationPage() {
       void queryClient.invalidateQueries({ queryKey: ["transactions"] })
       window.setTimeout(() => setSyncMessage(""), 4000)
     },
-    [student, students, queryClient]
+    [student, students, queryClient, markOffline]
   )
 
+  const attemptOnlineRecovery = useCallback(async () => {
+    if (!isBrowserOnline()) return false
+    const reachable = await probeServerReachable()
+    if (!reachable) {
+      markOffline("server")
+      return false
+    }
+    setIsSyncing(true)
+    setSyncMessage("")
+    const result = await syncPendingTransactions({
+      demoReplay: async (tx) => processMeal(tx.studentId, tx.mealType, tx.amount),
+    })
+    setIsSyncing(false)
+    await finishSync(result)
+    return result.ok
+  }, [processMeal, finishSync, markOffline])
+
   useEffect(() => {
-    setIsOffline(!isBrowserOnline())
+    if (!isBrowserOnline()) {
+      markOffline("network")
+    }
     void getPendingTransactions().then(async (txs) => {
       setPendingCount(txs.length)
       if (txs.length > 0 && isBrowserOnline()) {
@@ -414,24 +444,19 @@ export default function ScanStationPage() {
         await finishSync(result)
       }
     })
-  }, [processMeal, finishSync])
+  }, [processMeal, finishSync, markOffline])
 
   useEffect(() => {
     if (isOffline || students.length === 0) return
-    void refreshStudentCache(students).catch(() => setIsOffline(true))
+    // IndexedDB failures (private mode / storage) are not network outages.
+    void refreshStudentCache(students).catch(() => undefined)
   }, [students, isOffline])
 
   useEffect(() => {
-    const handleOffline = () => setIsOffline(true)
+    const handleOffline = () => markOffline("network")
 
-    const handleOnline = async () => {
-      setIsSyncing(true)
-      setSyncMessage("")
-      const result = await syncPendingTransactions({
-        demoReplay: async (tx) => processMeal(tx.studentId, tx.mealType, tx.amount),
-      })
-      setIsSyncing(false)
-      await finishSync(result)
+    const handleOnline = () => {
+      void attemptOnlineRecovery()
     }
 
     window.addEventListener("online", handleOnline)
@@ -440,7 +465,39 @@ export default function ScanStationPage() {
       window.removeEventListener("online", handleOnline)
       window.removeEventListener("offline", handleOffline)
     }
-  }, [finishSync])
+  }, [attemptOnlineRecovery, markOffline])
+
+  // Recover when a transient API failure left us "offline" but Wi‑Fi never actually
+  // dropped (common on iPad — browser never fires another `online` event).
+  useEffect(() => {
+    if (!isOffline) return
+    let cancelled = false
+    let inFlight = false
+
+    const tick = async () => {
+      if (cancelled || inFlight || document.visibilityState === "hidden") return
+      inFlight = true
+      try {
+        await attemptOnlineRecovery()
+      } finally {
+        inFlight = false
+      }
+    }
+
+    void tick()
+    const interval = window.setInterval(() => void tick(), 8000)
+    const onVisible = () => {
+      if (document.visibilityState === "visible") void tick()
+    }
+    document.addEventListener("visibilitychange", onVisible)
+    window.addEventListener("focus", onVisible)
+    return () => {
+      cancelled = true
+      window.clearInterval(interval)
+      document.removeEventListener("visibilitychange", onVisible)
+      window.removeEventListener("focus", onVisible)
+    }
+  }, [isOffline, attemptOnlineRecovery])
 
   useEffect(() => {
     if (!flashMessage || scanStatus === "error") return
@@ -773,17 +830,30 @@ export default function ScanStationPage() {
       return
     }
 
-    const tx = await processMeal(student.id, mealLabel, price, undefined, mealType)
-    if (tx) {
+    try {
+      const tx = await api.processMeal(student.id, mealLabel, price, undefined, mealType)
       setLocalBalance(tx.balanceAfter)
       setFlashMessage(`${mealLabel} recorded for ${student.firstName}!`)
       setScanStatus("found")
+      void queryClient.invalidateQueries({ queryKey: ["students"] })
+      void queryClient.invalidateQueries({ queryKey: ["transactions"] })
       window.setTimeout(focusScan, 50)
-      return
+    } catch (error) {
+      // Expected / server errors stay online. Only true network loss queues offline.
+      if (isNetworkError(error) || !isBrowserOnline()) {
+        markOffline(offlineReasonFromError(error))
+        await recordOfflineMeal()
+        return
+      }
+      const message =
+        error instanceof Error ? error.message : "Could not record meal. Try again."
+      setFlashMessage(message)
+      // 5xx / DB outage: show server banner but do not queue (avoids double-charge).
+      if (/503|not configured|database/i.test(message)) {
+        markOffline("server")
+      }
+      window.setTimeout(focusScan, 50)
     }
-
-    setIsOffline(true)
-    await recordOfflineMeal()
   }
 
   async function handlePosCharge(amount: number) {
@@ -935,6 +1005,7 @@ export default function ScanStationPage() {
         syncMessage={syncMessage}
         pendingCount={pendingCount}
         staleBalanceWarning={isOffline && !!student}
+        offlineReason={offlineReason}
       />
       <header className="flex h-[56px] shrink-0 items-center justify-between border-[1.5px] border-[#AEB6C2] border-b-[#AEB6C2]/60 bg-[#041B52] px-3 sm:h-[64px] sm:px-4 md:h-[72px] md:px-5 lg:h-[90px] lg:px-8">
         <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3 md:gap-4">

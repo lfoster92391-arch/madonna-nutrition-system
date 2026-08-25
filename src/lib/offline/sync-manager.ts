@@ -19,8 +19,54 @@ export type SyncResult =
     }
   | { ok: false; error: string }
 
+export type OfflineReason = "network" | "server"
+
 export function isBrowserOnline(): boolean {
   return typeof navigator !== "undefined" ? navigator.onLine : true
+}
+
+/** True when the failure is a lost connection, not an HTTP/API business error. */
+export function isNetworkError(error: unknown): boolean {
+  if (!(error instanceof Error)) return false
+  const msg = error.message.toLowerCase()
+  if (error.name === "TypeError" || error.name === "AbortError") return true
+  return (
+    msg.includes("failed to fetch") ||
+    msg.includes("networkerror") ||
+    msg.includes("network request failed") ||
+    msg.includes("load failed") ||
+    msg.includes("the internet connection appears to be offline") ||
+    msg.includes("networkerror when attempting to fetch")
+  )
+}
+
+/**
+ * Active reachability check. `navigator.onLine` alone is unreliable on iPad
+ * (can stay false after a blip, or true behind a captive portal).
+ */
+export async function probeServerReachable(timeoutMs = 4000): Promise<boolean> {
+  if (typeof window === "undefined") return true
+  if (!isBrowserOnline()) return false
+  try {
+    const controller = new AbortController()
+    const timer = window.setTimeout(() => controller.abort(), timeoutMs)
+    const res = await fetch("/api/config", {
+      method: "GET",
+      cache: "no-store",
+      signal: controller.signal,
+      headers: { Accept: "application/json" },
+    })
+    window.clearTimeout(timer)
+    return res.ok
+  } catch {
+    return false
+  }
+}
+
+export function offlineReasonFromError(error: unknown): OfflineReason {
+  if (!isBrowserOnline()) return "network"
+  if (isNetworkError(error)) return "network"
+  return "server"
 }
 
 export async function refreshStudentCache(students: Student[]): Promise<void> {
