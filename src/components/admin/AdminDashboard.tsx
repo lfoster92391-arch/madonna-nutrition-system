@@ -17,6 +17,7 @@ import {
   Receipt,
   Truck,
   Upload,
+  Users,
   UtensilsCrossed,
   Wand2,
 } from "lucide-react"
@@ -146,6 +147,12 @@ const SECTIONS: LauncherSection[] = [
         description: "How many people are eating today and what was ordered — before you prep.",
         href: "/admin/kitchen/orders",
         icon: ChefHat,
+      },
+      {
+        title: "Sign up a student",
+        description: "Search any student and reserve published lunch days for kitchen counts.",
+        href: "/admin/sign-up-student",
+        icon: Users,
       },
       {
         title: "Production Center",

@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import Image from "next/image"
+import Link from "next/link"
 import { AlertTriangle } from "lucide-react"
 import { useTeacherData } from "@/components/providers/TeacherDataProvider"
 import { Button } from "@/components/ui/button"
@@ -16,6 +17,8 @@ export function StudentFoundPanel() {
   const [mealSelected, setMealSelected] = useState(true)
   const [paymentMethod, setPaymentMethod] = useState<TeacherPaymentMethod>("account")
   const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [message, setMessage] = useState<string | null>(null)
 
   if (!selectedStudent) {
     return (
@@ -33,8 +36,19 @@ export function StudentFoundPanel() {
   async function handleConfirm() {
     if (!mealSelected || !selectedStudent) return
     setSubmitting(true)
+    setError(null)
+    setMessage(null)
     try {
       await confirmStudentLunch(selectedStudent.id, paymentMethod)
+      setMessage(
+        `Signed ${selectedStudent.firstName} up for today’s main lunch. Kitchen counts and kiosk status are updated.`
+      )
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Unable to sign up this student. Try again or use Sign up a student."
+      )
     } finally {
       setSubmitting(false)
     }
@@ -86,14 +100,17 @@ export function StudentFoundPanel() {
       ) : null}
 
       <div className="mt-4">
-        <label className="flex cursor-pointer items-center gap-2 text-sm font-medium" style={{ color: TEACHER_NAVY }}>
+        <label
+          className="flex cursor-pointer items-center gap-2 text-sm font-medium"
+          style={{ color: TEACHER_NAVY }}
+        >
           <input
             type="checkbox"
             checked={mealSelected}
             onChange={(e) => setMealSelected(e.target.checked)}
             className="h-4 w-4 rounded accent-[#041B52]"
           />
-          Student Meal ({formatCurrency(STUDENT_MEAL_PRICE)})
+          Today’s student meal ({formatCurrency(STUDENT_MEAL_PRICE)})
         </label>
       </div>
 
@@ -130,14 +147,28 @@ export function StudentFoundPanel() {
         ))}
       </fieldset>
 
+      {error ? <p className="mt-3 text-sm text-[#D62828]">{error}</p> : null}
+      {message ? <p className="mt-3 text-sm text-[#00A83E]">{message}</p> : null}
+
       <Button
         className="mt-6 w-full"
         size="lg"
         disabled={!mealSelected || submitting}
-        onClick={handleConfirm}
+        onClick={() => void handleConfirm()}
       >
-        Confirm Lunch for {selectedStudent.firstName}
+        Confirm lunch for {selectedStudent.firstName} (today)
       </Button>
+
+      <p className="mt-4 text-center text-sm text-silver-foreground">
+        Need more days or sides?{" "}
+        <Link
+          href="/teacher/sign-up-student"
+          className="font-semibold underline"
+          style={{ color: TEACHER_NAVY }}
+        >
+          Sign up a student for lunch
+        </Link>
+      </p>
     </Card>
   )
 }

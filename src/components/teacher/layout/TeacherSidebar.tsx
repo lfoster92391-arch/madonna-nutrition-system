@@ -16,6 +16,7 @@ import {
   MessageSquare,
   Search,
   Settings,
+  UtensilsCrossed,
   X,
 } from "lucide-react"
 import { useAuth } from "@/components/providers/AuthProvider"
@@ -31,6 +32,7 @@ import {
 
 const NAV_ITEMS = [
   { label: "Dashboard", href: "/teacher", icon: LayoutDashboard, exact: true },
+  { label: "Sign up student", href: "/teacher/sign-up-student", icon: UtensilsCrossed },
   { label: "Student Lookup", href: "/teacher/student-lookup", icon: Search },
   { label: "Meal Roster", href: "/teacher/meal-roster", icon: ClipboardList },
   { label: "Lunch Calendar", href: "/teacher/calendar", icon: Calendar },

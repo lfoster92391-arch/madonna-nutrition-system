@@ -20,6 +20,21 @@ export default function StaffDashboardPage() {
       <StaffMyLunchToday />
       <Card className="rounded-[20px] border p-5 shadow-sm" style={{ borderColor: "#AEB6C2" }}>
         <h2 className="text-lg font-bold" style={{ color: STAFF_NAVY }}>
+          Sign up a student for lunch
+        </h2>
+        <p className="mt-2 text-sm text-silver-foreground">
+          Search any student by MD ID or name, pick published menu days and meal items, then save.
+          Reservations count for kitchen prep and clear the kiosk warning.
+        </p>
+        <Link
+          href="/staff/sign-up-student"
+          className="mt-4 inline-flex rounded-xl bg-[#041B52] px-4 py-2 text-sm font-semibold text-white"
+        >
+          Sign up a student
+        </Link>
+      </Card>
+      <Card className="rounded-[20px] border p-5 shadow-sm" style={{ borderColor: "#AEB6C2" }}>
+        <h2 className="text-lg font-bold" style={{ color: STAFF_NAVY }}>
           Order lunch for your child
         </h2>
         <p className="mt-2 text-sm text-silver-foreground">
