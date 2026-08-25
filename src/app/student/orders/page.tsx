@@ -70,6 +70,12 @@ export default function StudentOrdersPage() {
       <Button asChild className="w-full sm:w-auto">
         <Link href="/student/order">Order lunch</Link>
       </Button>
+      <p className="text-sm text-[#64748B]">
+        Need a walkthrough?{" "}
+        <Link href="/student/guide" className="font-semibold text-[#041B52] underline">
+          Student how-to guide
+        </Link>
+      </p>
 
       {loading ? <p className="text-sm text-[#64748B]">Loading...</p> : null}
       {error ? <p className="text-sm text-[#D62828]">{error}</p> : null}
