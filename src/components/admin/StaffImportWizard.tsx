@@ -134,12 +134,18 @@ export function StaffImportWizard() {
   const [importing, setImporting] = useState(false)
   const [dragOver, setDragOver] = useState(false)
   const [bulkDefaultPassword, setBulkDefaultPassword] = useState("")
+  const [formError, setFormError] = useState<string | null>(null)
+
+  const trimmedDefaultPassword = bulkDefaultPassword.trim()
+  const defaultPasswordReady = trimmedDefaultPassword.length >= 8
+  const rowsNeedingDefaultPassword = validRows.filter((row) => !row.password?.trim()).length
 
   const processFile = useCallback((file: File) => {
     const csvError = assertCsvFile(file)
     if (csvError) {
       setFilename(file.name)
-      setErrorRows([{ row: 0, errors: [csvError] }])
+      setFormError(csvError)
+      setErrorRows([])
       setStep("validation")
       return
     }
@@ -180,11 +186,17 @@ export function StaffImportWizard() {
   function runValidation() {
     const parsed: ParsedStaffRow[] = []
     const errors: { row: number; errors: string[] }[] = []
+    setFormError(null)
 
     rawRows.forEach((row, index) => {
       const mapped: Record<string, string> = {}
       for (const [field, column] of Object.entries(mapping)) {
         if (column) mapped[field] = row[column] ?? ""
+      }
+
+      // Empty password cells are "missing" — use default bulk password on import.
+      if (mapped.password !== undefined && !mapped.password.trim()) {
+        delete mapped.password
       }
 
       const roleValue = mapped.role?.trim()
@@ -238,7 +250,10 @@ export function StaffImportWizard() {
         return
       }
 
-      parsed.push(data)
+      parsed.push({
+        ...data,
+        password: data.password?.trim() || undefined,
+      })
     })
 
     setValidRows(parsed)
@@ -248,54 +263,41 @@ export function StaffImportWizard() {
 
   async function executeImport() {
     setImporting(true)
+    setFormError(null)
     try {
       if (!databaseEnabled) {
-        setErrorRows([
-          {
-            row: 0,
-            errors: ["Database is not configured. Set DATABASE_URL to import staff accounts."],
-          },
-        ])
+        setFormError("Database is not configured. Set DATABASE_URL to import staff accounts.")
         setStep("validation")
         return
       }
       if (!authUser?.id) {
-        setErrorRows([{ row: 0, errors: ["Admin session required for import"] }])
+        setFormError("Admin session required for import")
         setStep("validation")
         return
       }
 
-      const trimmedDefault = bulkDefaultPassword.trim()
-      const rowsMissingPassword = validRows.filter((row) => !row.password?.trim())
-      if (rowsMissingPassword.length > 0 && trimmedDefault.length < 8) {
-        setErrorRows([
-          {
-            row: 0,
-            errors: [
-              "Set a default bulk password (8+ characters) for rows without a password column.",
-            ],
-          },
-        ])
-        setStep("validation")
+      const missingPasswordCount = validRows.filter((row) => !row.password?.trim()).length
+      if (missingPasswordCount > 0 && !defaultPasswordReady) {
+        setFormError(
+          missingPasswordCount === validRows.length
+            ? "Enter a default bulk password (at least 8 characters). It will be applied to every imported account that has no password in the CSV."
+            : `Enter a default bulk password (at least 8 characters). ${missingPasswordCount} row(s) have no password in the CSV.`
+        )
+        setStep("preview")
         return
       }
 
       const result = await api.adminImportStaff({
         adminUserId: authUser.id,
         performedBy: authUser.username,
-        defaultPassword: trimmedDefault.length >= 8 ? trimmedDefault : undefined,
+        defaultPassword: defaultPasswordReady ? trimmedDefaultPassword : undefined,
         rows: validRows,
       })
       setImportResult(result)
       setStep("complete")
       void queryClient.invalidateQueries({ queryKey: ["users"] })
     } catch (error) {
-      setErrorRows([
-        {
-          row: 0,
-          errors: [error instanceof Error ? error.message : "Import failed"],
-        },
-      ])
+      setFormError(error instanceof Error ? error.message : "Import failed")
       setStep("validation")
     } finally {
       setImporting(false)
@@ -328,10 +330,44 @@ export function StaffImportWizard() {
     setErrorRows([])
     setImportResult(null)
     setBulkDefaultPassword("")
+    setFormError(null)
   }
 
   const steps: ImportStep[] = ["upload", "mapping", "validation", "preview", "complete"]
   const stepIndex = steps.indexOf(step)
+
+  function renderDefaultPasswordField(inputId: string) {
+    return (
+      <div className="rounded-2xl border border-silver/60 bg-silver/10 p-4">
+        <Label htmlFor={inputId}>Default bulk password</Label>
+        <Input
+          id={inputId}
+          type="password"
+          autoComplete="new-password"
+          value={bulkDefaultPassword}
+          onChange={(event) => {
+            setBulkDefaultPassword(event.target.value)
+            if (formError) setFormError(null)
+          }}
+          placeholder="At least 8 characters (e.g. school shared temp password)"
+          minLength={8}
+          className="mt-2"
+        />
+        <p className="mt-2 text-xs text-silver-foreground">
+          Applied to every imported account whose CSV row has no password. Letters, numbers, and
+          punctuation are allowed. Users must change this password on first login.
+        </p>
+        {bulkDefaultPassword.length > 0 && !defaultPasswordReady && (
+          <p className="mt-2 text-xs text-danger">
+            Password must be at least 8 characters ({trimmedDefaultPassword.length}/8).
+          </p>
+        )}
+        {defaultPasswordReady && (
+          <p className="mt-2 text-xs text-success">Default password ready ({trimmedDefaultPassword.length} characters).</p>
+        )}
+      </div>
+    )
+  }
 
   return (
     <Card>
@@ -365,23 +401,7 @@ export function StaffImportWizard() {
       <div className="px-6 pb-6">
         {step === "upload" && (
           <div className="space-y-6">
-            <div className="rounded-2xl border border-silver/60 bg-silver/10 p-4">
-              <Label htmlFor="staff-bulk-default-password">Default bulk password</Label>
-              <Input
-                id="staff-bulk-default-password"
-                type="password"
-                autoComplete="new-password"
-                value={bulkDefaultPassword}
-                onChange={(event) => setBulkDefaultPassword(event.target.value)}
-                placeholder="At least 8 characters"
-                minLength={8}
-                className="mt-2"
-              />
-              <p className="mt-2 text-xs text-silver-foreground">
-                Applied to imported staff accounts when the CSV row has no password. All bulk-imported
-                users must change this password on first login.
-              </p>
-            </div>
+            {renderDefaultPasswordField("staff-bulk-default-password")}
             <div
               onDragOver={(event) => {
                 event.preventDefault()
@@ -397,7 +417,8 @@ export function StaffImportWizard() {
               <p className="mt-4 font-medium text-primary">Drag &amp; drop staff import CSV here</p>
               <p className="mt-1 max-w-xl text-center text-sm text-silver-foreground">
                 Required: firstName, lastName, email, role. Optional: department, username, phone,
-                badgeId, password.
+                badgeId, password. Set the default bulk password above if your CSV has no password
+                column.
               </p>
               <input
                 type="file"
@@ -411,6 +432,7 @@ export function StaffImportWizard() {
 
         {step === "mapping" && (
           <div className="space-y-4">
+            {renderDefaultPasswordField("staff-bulk-default-password-mapping")}
             <p className="text-sm text-silver-foreground">
               Map CSV columns to import fields ({rawRows.length} rows detected from {filename})
             </p>
@@ -441,6 +463,15 @@ export function StaffImportWizard() {
 
         {(step === "validation" || step === "preview") && (
           <div className="space-y-4">
+            {formError && (
+              <div className="rounded-2xl border border-danger/40 bg-danger/5 p-4">
+                <div className="flex items-center gap-2 font-semibold text-danger">
+                  <AlertCircle className="h-5 w-5" />
+                  Import blocked
+                </div>
+                <p className="mt-2 text-sm text-danger">{formError}</p>
+              </div>
+            )}
             {errorRows.length > 0 && (
               <div className="rounded-2xl border border-danger/40 bg-danger/5 p-4">
                 <div className="flex items-center gap-2 font-semibold text-danger">
@@ -457,41 +488,54 @@ export function StaffImportWizard() {
               </div>
             )}
             {validRows.length > 0 && (
-              <div className="rounded-2xl border border-success/40 bg-success/5 p-4">
-                <div className="flex items-center gap-2 font-semibold text-success">
-                  <CheckCircle2 className="h-5 w-5" />
-                  {validRows.length} valid row(s) ready to import
-                </div>
-                <div className="mt-3 max-h-48 overflow-y-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="text-silver-foreground">
-                        <th className="pb-2 text-left">Name</th>
-                        <th className="pb-2 text-left">Email</th>
-                        <th className="pb-2 text-left">Role</th>
-                        <th className="pb-2 text-left">Department</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {validRows.slice(0, 10).map((row, index) => (
-                        <tr key={`${row.email}-${index}`} className="border-t border-silver/30">
-                          <td className="py-2">
-                            {row.firstName} {row.lastName}
-                          </td>
-                          <td className="py-2">{row.email}</td>
-                          <td className="py-2">{ROLE_LABELS[row.role]}</td>
-                          <td className="py-2">{row.department || "—"}</td>
+              <>
+                {rowsNeedingDefaultPassword > 0 &&
+                  renderDefaultPasswordField("staff-bulk-default-password-preview")}
+                <div className="rounded-2xl border border-success/40 bg-success/5 p-4">
+                  <div className="flex items-center gap-2 font-semibold text-success">
+                    <CheckCircle2 className="h-5 w-5" />
+                    {validRows.length} valid row(s) ready to import
+                  </div>
+                  {rowsNeedingDefaultPassword > 0 && (
+                    <p className="mt-2 text-sm text-silver-foreground">
+                      {rowsNeedingDefaultPassword} row(s) will use the default bulk password
+                      {defaultPasswordReady ? " (set above)." : " — enter it above before importing."}
+                    </p>
+                  )}
+                  <div className="mt-3 max-h-48 overflow-y-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="text-silver-foreground">
+                          <th className="pb-2 text-left">Name</th>
+                          <th className="pb-2 text-left">Email</th>
+                          <th className="pb-2 text-left">Role</th>
+                          <th className="pb-2 text-left">Department</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody>
+                        {validRows.slice(0, 10).map((row, index) => (
+                          <tr key={`${row.email}-${index}`} className="border-t border-silver/30">
+                            <td className="py-2">
+                              {row.firstName} {row.lastName}
+                            </td>
+                            <td className="py-2">{row.email}</td>
+                            <td className="py-2">{ROLE_LABELS[row.role]}</td>
+                            <td className="py-2">{row.department || "—"}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
-              </div>
-            )}
-            {validRows.length > 0 && (
-              <Button onClick={executeImport} disabled={importing}>
-                {importing ? "Importing..." : `Import ${validRows.length} Row(s)`}
-              </Button>
+                <Button
+                  onClick={executeImport}
+                  disabled={
+                    importing || (rowsNeedingDefaultPassword > 0 && !defaultPasswordReady)
+                  }
+                >
+                  {importing ? "Importing..." : `Import ${validRows.length} Row(s)`}
+                </Button>
+              </>
             )}
           </div>
         )}

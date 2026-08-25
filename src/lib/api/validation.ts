@@ -482,7 +482,11 @@ export const staffImportRowSchema = z.object({
 export const staffImportRequestSchema = z.object({
   adminUserId: z.string().min(1),
   performedBy: z.string().min(1),
-  defaultPassword: z.string().min(8).optional(),
+  // Empty string from the client means "not set" — do not treat as a short password.
+  defaultPassword: z.preprocess(
+    (val) => (typeof val === "string" && val.trim() === "" ? undefined : val),
+    z.string().trim().min(8, "Default bulk password must be at least 8 characters").optional()
+  ),
   rows: z.array(staffImportRowSchema).min(1).max(500),
 })
 
