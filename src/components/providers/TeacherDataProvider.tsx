@@ -214,11 +214,15 @@ export function TeacherDataProvider({ children }: { children: ReactNode }) {
   const confirmStudentLunch = useCallback(
     async (studentId: string, paymentMethod: TeacherPaymentMethod) => {
       if (!databaseEnabled || !user) return
-      await fetch("/api/teacher/lunch/signup", {
+      const res = await fetch("/api/teacher/lunch/signup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ teacherId: user.id, studentId, paymentMethod }),
       })
+      if (!res.ok) {
+        const data = (await res.json().catch(() => ({}))) as { error?: string }
+        throw new Error(data.error ?? "Unable to sign up student")
+      }
       await loadFromApi()
     },
     [databaseEnabled, user, loadFromApi]

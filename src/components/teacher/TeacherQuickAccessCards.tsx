@@ -1,11 +1,17 @@
 "use client"
 
 import Link from "next/link"
-import { Calendar, ClipboardList, Megaphone, MessageSquare } from "lucide-react"
+import { Calendar, ClipboardList, Megaphone, UtensilsCrossed } from "lucide-react"
 import { Card } from "@/components/ui/card"
 import { TEACHER_NAVY, TEACHER_SILVER } from "@/components/teacher/layout/teacher-theme"
 
 const cards = [
+  {
+    label: "Sign up a student",
+    description: "Search any student and reserve lunch",
+    href: "/teacher/sign-up-student",
+    icon: UtensilsCrossed,
+  },
   {
     label: "Meal Roster",
     description: "View today's lunch roster",
@@ -23,12 +29,6 @@ const cards = [
     description: "Menu & schedule updates",
     href: "/teacher/announcements",
     icon: Megaphone,
-  },
-  {
-    label: "Messages",
-    description: "Nutrition office messages",
-    href: "/teacher/messages",
-    icon: MessageSquare,
   },
 ]
 

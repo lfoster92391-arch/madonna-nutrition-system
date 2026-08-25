@@ -2,7 +2,8 @@ import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { resolveSchoolId } from "@/lib/db/school"
 import { withTeacherAccess } from "@/lib/teacher/api"
-import { fromDbPaymentMethod, todayDateOnly } from "@/lib/teacher/db"
+import { fromDbPaymentMethod } from "@/lib/teacher/db"
+import { dateKeyUtcNoon, schoolDateKey } from "@/lib/kitchen/school-day"
 import { isLowFunds, STUDENT_MEAL_PRICE } from "@/lib/teacher/low-funds"
 
 function signupStatus(
@@ -20,7 +21,7 @@ export async function GET(request: Request) {
 
   return withTeacherAccess(teacherId, async () => {
     const schoolId = await resolveSchoolId()
-    const today = todayDateOnly()
+    const today = dateKeyUtcNoon(schoolDateKey())
 
     const signups = await prisma.studentLunchSignup.findMany({
       where: { schoolId, date: today },

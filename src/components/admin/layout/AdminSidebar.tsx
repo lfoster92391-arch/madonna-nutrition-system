@@ -18,8 +18,9 @@ import {
   ShieldAlert,
   Truck,
   Tv,
-  UtensilsCrossed,
   User,
+  UserPlus,
+  UtensilsCrossed,
   Wallet,
   Wrench,
   X,
@@ -59,6 +60,11 @@ const NAV_ITEMS: Array<{
     label: "Today’s lunch line",
     href: "/admin/kitchen/orders",
     icon: ClipboardList,
+  },
+  {
+    label: "Sign up a student",
+    href: "/admin/sign-up-student",
+    icon: UserPlus,
   },
   // Menu = lunch calendar (not Cookbook)
   {

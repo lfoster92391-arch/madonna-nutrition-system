@@ -82,7 +82,7 @@ export async function notifyParentsOfStudentLunchOrder(input: {
   amount: number
   sliceCount?: number | null
   menuTitle?: string | null
-  orderedBy: "student" | "parent"
+  orderedBy: "student" | "parent" | "staff"
   currentBalance: number
 }): Promise<{ notified: number }> {
   const parents = await findLinkedParentUsersForStudent({
@@ -97,7 +97,9 @@ export async function notifyParentsOfStudentLunchOrder(input: {
   const who =
     input.orderedBy === "student"
       ? `${input.studentName} ordered lunch`
-      : `Lunch was ordered for ${input.studentName}`
+      : input.orderedBy === "staff"
+        ? `School staff signed ${input.studentName} up for lunch`
+        : `Lunch was ordered for ${input.studentName}`
 
   let notified = 0
 
