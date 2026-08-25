@@ -5,6 +5,7 @@ import Image from "next/image"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import {
+  BookOpen,
   Calendar,
   ChevronLeft,
   CreditCard,
@@ -40,6 +41,7 @@ const NAV_ITEMS = [
   { label: "My Account", href: "/staff/account", icon: User },
   { label: "Transactions", href: "/staff/transactions", icon: CreditCard },
   { label: "Settings", href: "/staff/settings", icon: Settings },
+  { label: "How-to guide", href: "/staff/guide", icon: BookOpen },
   { label: "Help", href: "/staff/help", icon: HelpCircle },
 ]
 

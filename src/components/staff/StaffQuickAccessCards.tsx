@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { Calendar, CreditCard, Megaphone, UtensilsCrossed } from "lucide-react"
+import { BookOpen, Calendar, CreditCard, Megaphone, UtensilsCrossed } from "lucide-react"
 import { Card } from "@/components/ui/card"
 import { STAFF_NAVY, STAFF_SILVER } from "@/components/staff/layout/staff-theme"
 
@@ -30,6 +30,12 @@ const cards = [
     href: "/staff/account",
     icon: CreditCard,
   },
+  {
+    label: "How-to guide",
+    description: "Step-by-step workplace help",
+    href: "/staff/guide",
+    icon: BookOpen,
+  },
 ]
 
 export function StaffQuickAccessCards() {
@@ -38,7 +44,7 @@ export function StaffQuickAccessCards() {
       <h2 className="mb-4 text-lg font-bold" style={{ color: STAFF_NAVY }}>
         Quick Access
       </h2>
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {cards.map(({ label, description, href, icon: Icon }) => (
           <Link key={label} href={href}>
             <Card

@@ -5,6 +5,7 @@ import Image from "next/image"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import {
+  BookOpen,
   Calendar,
   ChevronLeft,
   ClipboardList,
@@ -39,6 +40,7 @@ const NAV_ITEMS = [
   { label: "Announcements", href: "/teacher/announcements", icon: Megaphone },
   { label: "Messages", href: "/teacher/messages", icon: MessageSquare },
   { label: "Settings", href: "/teacher/settings", icon: Settings },
+  { label: "How-to guide", href: "/teacher/guide", icon: BookOpen },
   { label: "Help", href: "/teacher/help", icon: HelpCircle },
 ]
 

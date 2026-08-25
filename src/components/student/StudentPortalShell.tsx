@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { LogOut, UtensilsCrossed } from "lucide-react"
+import { BookOpen, LogOut, UtensilsCrossed } from "lucide-react"
 import { useAuth } from "@/components/providers/AuthProvider"
 import { signOutAndRedirect } from "@/lib/auth/logout"
 import { BRAND } from "@/config/brand"
@@ -75,6 +75,18 @@ export function StudentPortalShell({ children }: { children: React.ReactNode }) 
             )}
           >
             My orders
+          </Link>
+          <Link
+            href="/student/guide"
+            className={cn(
+              "flex flex-1 items-center justify-center gap-2 rounded-xl px-3 py-3 text-sm font-semibold",
+              pathname.startsWith("/student/guide")
+                ? "bg-[#041B52] text-white"
+                : "bg-[#041B52]/8 text-[#041B52]"
+            )}
+          >
+            <BookOpen className="h-4 w-4" aria-hidden />
+            Guide
           </Link>
         </div>
         {user ? (

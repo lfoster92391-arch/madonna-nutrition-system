@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { Calendar, ClipboardList, Megaphone, UtensilsCrossed } from "lucide-react"
+import { BookOpen, Calendar, ClipboardList, Megaphone, UtensilsCrossed } from "lucide-react"
 import { Card } from "@/components/ui/card"
 import { TEACHER_NAVY, TEACHER_SILVER } from "@/components/teacher/layout/teacher-theme"
 
@@ -30,6 +30,12 @@ const cards = [
     href: "/teacher/announcements",
     icon: Megaphone,
   },
+  {
+    label: "How-to guide",
+    description: "Step-by-step workplace help",
+    href: "/teacher/guide",
+    icon: BookOpen,
+  },
 ]
 
 export function TeacherQuickAccessCards() {
@@ -38,7 +44,7 @@ export function TeacherQuickAccessCards() {
       <h2 className="mb-4 text-lg font-bold" style={{ color: TEACHER_NAVY }}>
         Quick Access
       </h2>
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {cards.map(({ label, description, href, icon: Icon }) => (
           <Link key={label} href={href}>
             <Card

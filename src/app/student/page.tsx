@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
-import { CalendarDays, UtensilsCrossed } from "lucide-react"
+import { BookOpen, CalendarDays, UtensilsCrossed } from "lucide-react"
 import { useAuth } from "@/components/providers/AuthProvider"
 import { formatCurrency } from "@/lib/utils"
 
@@ -101,6 +101,16 @@ export default function StudentHomePage() {
           <CalendarDays className="h-5 w-5" aria-hidden />
           <span className="text-lg font-bold">My orders</span>
           <span className="text-sm text-[#64748B]">Upcoming and saved lunches</span>
+        </Link>
+        <Link
+          href="/student/guide"
+          className="flex min-h-[5.5rem] flex-col justify-center gap-2 rounded-2xl border border-[#C8CDD7] bg-white px-5 py-4 text-[#041B52] sm:col-span-2"
+        >
+          <BookOpen className="h-5 w-5" aria-hidden />
+          <span className="text-lg font-bold">How-to guide</span>
+          <span className="text-sm text-[#64748B]">
+            Sign in, order lunch, see limits, and get help from Mrs. Morris or Mrs. Dalfol
+          </span>
         </Link>
       </div>
     </div>
