@@ -87,7 +87,10 @@ function resolvePassword(
 
   const fallback = defaultPassword?.trim()
   if (!fallback) {
-    return { error: "Password required; set a default bulk password or include a password column" }
+    return {
+      error:
+        "Password missing for this row. Set a default bulk password (8+ characters) or include a password in the CSV.",
+    }
   }
   if (fallback.length < 8) {
     return { error: "Default bulk password must be at least 8 characters" }
