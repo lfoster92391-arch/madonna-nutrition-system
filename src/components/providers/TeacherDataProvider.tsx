@@ -11,8 +11,6 @@ import {
 } from "react"
 import { useAuth } from "@/components/providers/AuthProvider"
 import { useDemo } from "@/components/providers/DemoProvider"
-import { DEFAULT_TEACHER_PHOTO_URL } from "@/config/teacher-theme"
-import { mapStudentForTeacher } from "@/lib/teacher/privacy"
 import type {
   StudentLunchSignupView,
   TeacherAnnouncement,
@@ -40,6 +38,7 @@ interface TeacherDataContextValue {
   signups: StudentLunchSignupView[]
   stats: TeacherDashboardStats
   announcements: TeacherAnnouncement[]
+  unreadMessageCount: number
   recentStudentIds: string[]
   rememberRecent: boolean
   selectedStudent: TeacherStudentView | null
@@ -56,6 +55,7 @@ interface TeacherDataContextValue {
     options?: { sliceCount?: number }
   ) => Promise<void>
   refreshSignups: () => Promise<void>
+  setProfilePhoto: (photoUrl: string) => void
 }
 
 const TeacherDataContext = createContext<TeacherDataContextValue | null>(null)
@@ -83,6 +83,7 @@ export function TeacherDataProvider({ children }: { children: ReactNode }) {
   const [signups, setSignups] = useState<StudentLunchSignupView[]>([])
   const [stats, setStats] = useState<TeacherDashboardStats>(EMPTY_STATS)
   const [announcements, setAnnouncements] = useState<TeacherAnnouncement[]>([])
+  const [unreadMessageCount, setUnreadMessageCount] = useState(0)
   const [recentStudentIds, setRecentStudentIds] = useState<string[]>([])
   const [rememberRecent, setRememberRecentState] = useState(true)
   const [selectedStudent, setSelectedStudent] = useState<TeacherStudentView | null>(null)
@@ -98,16 +99,17 @@ export function TeacherDataProvider({ children }: { children: ReactNode }) {
   const loadFromApi = useCallback(async () => {
     if (!user) return
     try {
-      const [profileRes, signupsRes, statsRes, annRes] = await Promise.all([
+      const [profileRes, signupsRes, statsRes, annRes, msgRes] = await Promise.all([
         fetch(`/api/teacher/profile?teacherId=${user.id}`),
         fetch(`/api/teacher/lunch/signups?teacherId=${user.id}`),
         fetch(`/api/teacher/dashboard/stats?teacherId=${user.id}`),
         fetch(`/api/teacher/announcements?teacherId=${user.id}`),
+        fetch(`/api/teacher/messages?teacherId=${user.id}`),
       ])
 
       if (profileRes.ok) {
         const data = await profileRes.json()
-        setProfile({ ...data.profile, photoUrl: data.profile.photoUrl ?? DEFAULT_TEACHER_PHOTO_URL })
+        setProfile(data.profile ?? null)
         setReservation(data.reservation ?? null)
       }
       if (signupsRes.ok) {
@@ -121,6 +123,16 @@ export function TeacherDataProvider({ children }: { children: ReactNode }) {
       if (annRes.ok) {
         const data = await annRes.json()
         setAnnouncements(data.announcements ?? [])
+      }
+      if (msgRes.ok) {
+        const data = await msgRes.json()
+        setUnreadMessageCount(
+          typeof data.unreadCount === "number"
+            ? data.unreadCount
+            : (data.messages ?? []).filter((m: { read?: boolean }) => m.read === false).length
+        )
+      } else {
+        setUnreadMessageCount(0)
       }
     } finally {
       setIsLoading(false)
@@ -140,6 +152,7 @@ export function TeacherDataProvider({ children }: { children: ReactNode }) {
       setSignups([])
       setStats(EMPTY_STATS)
       setAnnouncements([])
+      setUnreadMessageCount(0)
       setIsLoading(false)
     }
   }, [user, databaseEnabled, loadFromApi])
@@ -256,6 +269,10 @@ export function TeacherDataProvider({ children }: { children: ReactNode }) {
     }
   }, [databaseEnabled, user, loadFromApi])
 
+  const setProfilePhoto = useCallback((photoUrl: string) => {
+    setProfile((prev) => (prev ? { ...prev, photoUrl } : prev))
+  }, [])
+
   const value = useMemo(
     () => ({
       profile,
@@ -263,6 +280,7 @@ export function TeacherDataProvider({ children }: { children: ReactNode }) {
       signups,
       stats,
       announcements,
+      unreadMessageCount,
       recentStudentIds,
       rememberRecent,
       selectedStudent,
@@ -275,6 +293,7 @@ export function TeacherDataProvider({ children }: { children: ReactNode }) {
       confirmStudentLunch,
       updateTeacherReservation,
       refreshSignups,
+      setProfilePhoto,
     }),
     [
       profile,
@@ -282,6 +301,7 @@ export function TeacherDataProvider({ children }: { children: ReactNode }) {
       signups,
       stats,
       announcements,
+      unreadMessageCount,
       recentStudentIds,
       rememberRecent,
       selectedStudent,
@@ -294,6 +314,7 @@ export function TeacherDataProvider({ children }: { children: ReactNode }) {
       confirmStudentLunch,
       updateTeacherReservation,
       refreshSignups,
+      setProfilePhoto,
     ]
   )
 

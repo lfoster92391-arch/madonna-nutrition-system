@@ -121,6 +121,7 @@ const GUIDE_STEPS: GuideStep[] = [
     details: [
       "Open Staff Accounts to import or add cafeteria staff and teachers.",
       "Tap Open profile → Take photo or Upload photo → Save photo (same as students).",
+      "Teachers and staff can also update their own badge photo under Settings in their portal.",
       "Set a 4–6 digit Badge ID, then print from Staff directory or Badge Setup → Staff & teacher badges.",
       "Staff can scan their badge at the lunch line when they have a lunch balance.",
     ],

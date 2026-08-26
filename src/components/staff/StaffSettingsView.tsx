@@ -6,6 +6,7 @@ import { Bell, Mail, User, Users } from "lucide-react"
 import { useAuth } from "@/components/providers/AuthProvider"
 import { useDemo } from "@/components/providers/DemoProvider"
 import { useStaffData } from "@/components/providers/StaffDataProvider"
+import { WorkplaceUserPhotoUpload } from "@/components/workplace/WorkplaceUserPhotoUpload"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { STAFF_NAVY, STAFF_SILVER } from "@/components/staff/layout/staff-theme"
@@ -24,7 +25,7 @@ type LinkedChild = {
 export function StaffSettingsView() {
   const { user } = useAuth()
   const { databaseEnabled } = useDemo()
-  const { profile } = useStaffData()
+  const { profile, setProfilePhoto } = useStaffData()
   const [children, setChildren] = useState<LinkedChild[]>([])
   const [loadingChildren, setLoadingChildren] = useState(true)
 
@@ -91,6 +92,23 @@ export function StaffSettingsView() {
             </dd>
           </div>
         </dl>
+
+        {user ? (
+          <div className="mt-6 border-t pt-6" style={{ borderColor: STAFF_SILVER }}>
+            <h3 className="text-base font-semibold" style={{ color: STAFF_NAVY }}>
+              Badge photo
+            </h3>
+            <div className="mt-3">
+              <WorkplaceUserPhotoUpload
+                userId={user.id}
+                displayName={profile?.displayName ?? "Staff"}
+                currentPhoto={profile?.photoUrl}
+                accentColor={STAFF_NAVY}
+                onSaved={setProfilePhoto}
+              />
+            </div>
+          </div>
+        ) : null}
       </Card>
 
       <Card
