@@ -1,10 +1,6 @@
-import { TeacherMealRosterView } from "@/components/teacher/TeacherMealRosterView"
-import { TEACHER_BG } from "@/components/teacher/layout/teacher-theme"
+import { redirect } from "next/navigation"
 
+/** Legacy Meal Roster URL — same list lives at Who signed up for lunch. */
 export default function TeacherMealRosterPage() {
-  return (
-    <div style={{ backgroundColor: TEACHER_BG }}>
-      <TeacherMealRosterView />
-    </div>
-  )
+  redirect("/teacher/who-signed-up")
 }

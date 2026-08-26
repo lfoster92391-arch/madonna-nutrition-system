@@ -26,12 +26,21 @@ export default function StaffDashboardPage() {
           Search any student by MD ID or name, pick published menu days and meal items, then save.
           Reservations count for kitchen prep and clear the kiosk warning.
         </p>
-        <Link
-          href="/staff/sign-up-student"
-          className="mt-4 inline-flex rounded-xl bg-[#041B52] px-4 py-2 text-sm font-semibold text-white"
-        >
-          Sign up a student
-        </Link>
+        <div className="mt-4 flex flex-wrap gap-3">
+          <Link
+            href="/staff/sign-up-student"
+            className="inline-flex rounded-xl bg-[#041B52] px-4 py-2 text-sm font-semibold text-white"
+          >
+            Sign up a student
+          </Link>
+          <Link
+            href="/staff/who-signed-up"
+            className="inline-flex rounded-xl border px-4 py-2 text-sm font-semibold"
+            style={{ borderColor: STAFF_NAVY, color: STAFF_NAVY }}
+          >
+            Who signed up for lunch
+          </Link>
+        </div>
       </Card>
       <Card className="rounded-[20px] border p-5 shadow-sm" style={{ borderColor: "#AEB6C2" }}>
         <h2 className="text-lg font-bold" style={{ color: STAFF_NAVY }}>
