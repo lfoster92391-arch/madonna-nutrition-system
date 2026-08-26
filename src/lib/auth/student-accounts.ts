@@ -104,14 +104,20 @@ export async function upsertStudentPortalAccount(
   }
 
   if (existing) {
+    const shouldUpdatePassword = Boolean(input.password?.trim())
     await prisma.user.update({
       where: { id: existing.id },
       data: {
         ...data,
-        passwordHash: existing.passwordHash || passwordHash,
-        mustChangePassword: existing.passwordHash
-          ? existing.mustChangePassword
-          : mustChangePassword,
+        // Keep existing password unless this call explicitly supplies a new one.
+        passwordHash: shouldUpdatePassword
+          ? passwordHash
+          : existing.passwordHash || passwordHash,
+        mustChangePassword: shouldUpdatePassword
+          ? mustChangePassword
+          : existing.passwordHash
+            ? existing.mustChangePassword
+            : mustChangePassword,
       },
     })
     return { action: "updated", username, email }
