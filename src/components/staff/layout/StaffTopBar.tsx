@@ -1,6 +1,7 @@
 "use client"
 
 import { useMemo } from "react"
+import Image from "next/image"
 import Link from "next/link"
 import { Bell, ChevronDown, Menu, MessageSquare, User } from "lucide-react"
 import { useAuth } from "@/components/providers/AuthProvider"
@@ -26,7 +27,7 @@ function formatToday() {
 
 export function StaffTopBar() {
   const { user } = useAuth()
-  const { profile } = useStaffData()
+  const { profile, unreadMessageCount } = useStaffData()
   const { setMobileSidebarOpen } = useStaffLayout()
   const staffName = profile?.displayName ?? user?.displayName ?? "Staff"
   const firstName = staffName.split(" ")[0] ?? staffName
@@ -76,17 +77,35 @@ export function StaffTopBar() {
 
       <div className="ml-auto flex items-center gap-1.5 sm:gap-2">
         <PortalRoleSwitcher />
-        <TopBarIconButton icon={Bell} label="Notifications" />
-        <Link href="/staff/messages">
-          <TopBarIconButton icon={MessageSquare} label="Messages" />
-        </Link>
+        <TopBarIconButton
+          icon={Bell}
+          label="Announcements"
+          href="/staff/announcements"
+        />
+        <TopBarIconButton
+          icon={MessageSquare}
+          label="Messages"
+          href="/staff/messages"
+          badge={unreadMessageCount}
+        />
         <Link
           href="/staff/settings"
           className="flex min-h-11 items-center gap-2 rounded-2xl border px-2 shadow-sm transition hover:bg-[#0A1E3F]/5 sm:px-3"
           style={{ borderColor: STAFF_SILVER, color: STAFF_NAVY }}
           aria-label="Staff profile"
         >
-          <User className="h-4 w-4" />
+          {profile?.photoUrl ? (
+            <Image
+              src={profile.photoUrl}
+              alt={staffName}
+              width={28}
+              height={28}
+              className="h-7 w-7 rounded-full object-cover"
+              unoptimized={profile.photoUrl.startsWith("data:")}
+            />
+          ) : (
+            <User className="h-4 w-4" />
+          )}
           <span className="hidden lg:inline">{firstName}</span>
         </Link>
       </div>
@@ -98,27 +117,29 @@ function TopBarIconButton({
   icon: Icon,
   label,
   badge,
+  href,
 }: {
   icon: typeof Bell
   label: string
   badge?: number
+  href: string
 }) {
   return (
-    <button
-      type="button"
+    <Link
+      href={href}
       className="relative flex min-h-11 min-w-11 items-center justify-center rounded-2xl border shadow-sm transition hover:bg-[#0A1E3F]/5"
       style={{ borderColor: STAFF_SILVER, color: STAFF_NAVY }}
       aria-label={label}
     >
       <Icon className="h-4 w-4" />
-      {badge ? (
+      {badge && badge > 0 ? (
         <span
           className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-bold text-white"
           style={{ backgroundColor: STAFF_DANGER }}
         >
-          {badge}
+          {badge > 9 ? "9+" : badge}
         </span>
       ) : null}
-    </button>
+    </Link>
   )
 }

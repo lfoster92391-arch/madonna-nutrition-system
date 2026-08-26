@@ -2,7 +2,9 @@
 
 import Link from "next/link"
 import { Bell, Mail, User, Users } from "lucide-react"
+import { useAuth } from "@/components/providers/AuthProvider"
 import { useTeacherData } from "@/components/providers/TeacherDataProvider"
+import { WorkplaceUserPhotoUpload } from "@/components/workplace/WorkplaceUserPhotoUpload"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { TEACHER_NAVY, TEACHER_SILVER } from "@/components/teacher/layout/teacher-theme"
@@ -12,7 +14,8 @@ import { useParentLinkedStudents } from "@/hooks/useParentLinkedStudents"
 import { formatCurrency } from "@/lib/utils"
 
 export function TeacherSettingsView() {
-  const { profile } = useTeacherData()
+  const { user } = useAuth()
+  const { profile, setProfilePhoto } = useTeacherData()
   const { students: children, isLoading: loadingChildren } = useParentLinkedStudents()
 
   return (
@@ -54,6 +57,23 @@ export function TeacherSettingsView() {
             </dd>
           </div>
         </dl>
+
+        {user ? (
+          <div className="mt-6 border-t pt-6" style={{ borderColor: TEACHER_SILVER }}>
+            <h3 className="text-base font-semibold" style={{ color: TEACHER_NAVY }}>
+              Badge photo
+            </h3>
+            <div className="mt-3">
+              <WorkplaceUserPhotoUpload
+                userId={user.id}
+                displayName={profile?.displayName ?? "Teacher"}
+                currentPhoto={profile?.photoUrl}
+                accentColor={TEACHER_NAVY}
+                onSaved={setProfilePhoto}
+              />
+            </div>
+          </div>
+        ) : null}
       </Card>
 
       <Card

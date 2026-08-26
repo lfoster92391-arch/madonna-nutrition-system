@@ -1,28 +1,28 @@
 import { NextResponse } from "next/server"
-import { withStaffAccess } from "@/lib/staff/api"
+import { withTeacherAccess } from "@/lib/teacher/api"
 import { isDatabaseEnabled } from "@/lib/db/config"
 import { resolveSchoolId } from "@/lib/db/school"
 import { prisma } from "@/lib/prisma"
 import { withDatabase } from "@/lib/api/response"
 
 export async function GET(request: Request) {
-  const staffId = new URL(request.url).searchParams.get("staffId")
+  const teacherId = new URL(request.url).searchParams.get("teacherId")
 
   if (!isDatabaseEnabled()) {
-    return withStaffAccess(staffId, async () => {
+    return withTeacherAccess(teacherId, async () => {
       return NextResponse.json({ messages: [], unreadCount: 0 })
     })
   }
 
   const result = await withDatabase(async () => {
-    return withStaffAccess(staffId, async (staff) => {
+    return withTeacherAccess(teacherId, async (teacher) => {
       const schoolId = await resolveSchoolId()
 
       const [announcements, notifications] = await Promise.all([
         prisma.announcement.findMany({
           where: {
             schoolId,
-            audience: { in: ["STAFF", "ALL"] },
+            audience: { in: ["TEACHERS", "ALL"] },
           },
           orderBy: { createdAt: "desc" },
           take: 20,
@@ -30,7 +30,7 @@ export async function GET(request: Request) {
         prisma.notification.findMany({
           where: {
             schoolId,
-            userId: staff.id,
+            userId: teacher.id,
           },
           orderBy: { createdAt: "desc" },
           take: 20,

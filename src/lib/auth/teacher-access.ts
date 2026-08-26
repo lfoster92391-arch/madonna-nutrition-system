@@ -16,6 +16,7 @@ export async function assertTeacherUser(userId: string): Promise<{
   displayName: string
   department: string
   accountBalance: number
+  photo: string | null
 }> {
   if (!isDatabaseEnabled()) {
     throw new TeacherAccessError("Teacher access requires a configured database.")
@@ -31,6 +32,7 @@ export async function assertTeacherUser(userId: string): Promise<{
       role: true,
       department: true,
       accountBalance: true,
+      photo: true,
     },
   })
 
@@ -48,6 +50,7 @@ export async function assertTeacherUser(userId: string): Promise<{
     displayName: `${user.firstName} ${user.lastName}`,
     department: user.department ?? "Faculty",
     accountBalance: Number(user.accountBalance),
+    photo: user.photo ?? null,
   }
 }
 

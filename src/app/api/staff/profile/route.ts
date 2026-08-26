@@ -12,6 +12,7 @@ export async function GET(request: Request) {
         department: staff.department,
         accountBalance: staff.accountBalance,
         linkedStudentIds: staff.linkedStudentIds,
+        photoUrl: staff.photo ?? undefined,
       },
     })
   })

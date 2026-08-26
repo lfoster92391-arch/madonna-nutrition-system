@@ -15,6 +15,7 @@ export async function assertStaffUser(userId: string): Promise<{
   department: string
   accountBalance: number
   linkedStudentIds: string[]
+  photo: string | null
 }> {
   if (!isDatabaseEnabled()) {
     throw new StaffAccessError("Staff access requires a configured database.")
@@ -31,6 +32,7 @@ export async function assertStaffUser(userId: string): Promise<{
       department: true,
       accountBalance: true,
       linkedStudentIds: true,
+      photo: true,
     },
   })
 
@@ -45,5 +47,6 @@ export async function assertStaffUser(userId: string): Promise<{
     department: user.department ?? "Staff",
     accountBalance: Number(user.accountBalance),
     linkedStudentIds: user.linkedStudentIds ?? [],
+    photo: user.photo ?? null,
   }
 }

@@ -23,6 +23,7 @@ export async function GET(request: Request) {
         email: teacher.email,
         department: teacher.department,
         accountBalance: teacher.accountBalance,
+        photoUrl: teacher.photo ?? undefined,
       },
       reservation: reservation
         ? {

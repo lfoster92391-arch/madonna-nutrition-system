@@ -35,7 +35,7 @@ function formatToday() {
 
 export function TeacherTopBar() {
   const { user } = useAuth()
-  const { profile } = useTeacherData()
+  const { profile, unreadMessageCount } = useTeacherData()
   const { setMobileSidebarOpen, setMobileRailOpen } = useTeacherLayout()
   const teacherName = profile?.displayName ?? user?.displayName ?? "Teacher"
   const firstName = teacherName.split(" ")[0] ?? teacherName
@@ -103,10 +103,17 @@ export function TeacherTopBar() {
         >
           <PanelRight className="h-4 w-4" />
         </button>
-        <TopBarIconButton icon={Bell} label="Notifications" badge={2} />
-        <Link href="/teacher/messages">
-          <TopBarIconButton icon={MessageSquare} label="Messages" badge={1} />
-        </Link>
+        <TopBarIconButton
+          icon={Bell}
+          label="Announcements"
+          href="/teacher/announcements"
+        />
+        <TopBarIconButton
+          icon={MessageSquare}
+          label="Messages"
+          href="/teacher/messages"
+          badge={unreadMessageCount}
+        />
         <Link
           href="/teacher/settings"
           className="flex min-h-11 items-center gap-2 rounded-2xl border px-2 shadow-sm transition hover:bg-[#0A1E3F]/5 sm:px-3"
@@ -120,6 +127,7 @@ export function TeacherTopBar() {
               width={28}
               height={28}
               className="h-7 w-7 rounded-full object-cover"
+              unoptimized={profile.photoUrl.startsWith("data:")}
             />
           ) : (
             <User className="h-4 w-4" />
@@ -135,27 +143,29 @@ function TopBarIconButton({
   icon: Icon,
   label,
   badge,
+  href,
 }: {
   icon: typeof Bell
   label: string
   badge?: number
+  href: string
 }) {
   return (
-    <button
-      type="button"
+    <Link
+      href={href}
       className="relative flex min-h-11 min-w-11 items-center justify-center rounded-2xl border shadow-sm transition hover:bg-[#0A1E3F]/5"
       style={{ borderColor: TEACHER_SILVER, color: TEACHER_NAVY }}
       aria-label={label}
     >
       <Icon className="h-4 w-4" />
-      {badge ? (
+      {badge && badge > 0 ? (
         <span
           className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-bold text-white"
           style={{ backgroundColor: TEACHER_DANGER }}
         >
-          {badge}
+          {badge > 9 ? "9+" : badge}
         </span>
       ) : null}
-    </button>
+    </Link>
   )
 }
