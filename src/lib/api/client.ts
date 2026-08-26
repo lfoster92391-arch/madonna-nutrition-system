@@ -394,6 +394,30 @@ export const api = {
       method: "POST",
       body: JSON.stringify(input),
     }),
+  adminImportStudentPortal: (input: {
+    adminUserId: string
+    performedBy: string
+    defaultPassword?: string
+    rows: Record<string, unknown>[]
+  }) =>
+    fetchJson<{
+      created: number
+      updated: number
+      skipped: number
+      enabled: number
+      errors: Array<{ row: number; message: string }>
+      credentials: Array<{
+        mdId: string
+        email: string
+        username: string
+        action: "created" | "updated" | "skipped"
+        enabled: boolean
+        tempPassword?: string
+      }>
+    }>("/api/admin/students/portal-import", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
   adminImportBadges: (input: {
     adminUserId: string
     rows: Record<string, unknown>[]

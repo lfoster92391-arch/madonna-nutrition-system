@@ -1,5 +1,6 @@
 export type ImportExportType =
   | "students"
+  | "studentPortal"
   | "parents"
   | "families"
   | "staff"

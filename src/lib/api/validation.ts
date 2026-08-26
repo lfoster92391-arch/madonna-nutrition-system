@@ -490,6 +490,35 @@ export const staffImportRequestSchema = z.object({
   rows: z.array(staffImportRowSchema).min(1).max(500),
 })
 
+/** Bulk student portal logins — match roster by MD ID; optional email/password per row. */
+export const studentPortalImportRowSchema = z
+  .object({
+    mdId: importOptionalString,
+    externalId: importOptionalString,
+    email: importOptionalEmail,
+    password: importOptionalString,
+  })
+  .superRefine((row, ctx) => {
+    const mdId = (row.mdId || row.externalId || "").trim()
+    if (!mdId) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "mdId (or externalId) is required",
+        path: ["mdId"],
+      })
+    }
+  })
+
+export const studentPortalImportRequestSchema = z.object({
+  adminUserId: z.string().min(1),
+  performedBy: z.string().min(1),
+  defaultPassword: z.preprocess(
+    (val) => (typeof val === "string" && val.trim() === "" ? undefined : val),
+    z.string().trim().min(8, "Default bulk password must be at least 8 characters").optional()
+  ),
+  rows: z.array(studentPortalImportRowSchema).min(1).max(1000),
+})
+
 export const badgeStatusSchema = importBadgeStatusDefaultActive
 export const optionalBadgeStatusSchema = importOptionalBadgeStatus
 

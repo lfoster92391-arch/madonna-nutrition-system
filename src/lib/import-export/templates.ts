@@ -41,6 +41,36 @@ export const IMPORT_EXPORT_TEMPLATES: Record<ImportExportType, ImportExportTempl
       dietaryRestrictions: "",
     },
   },
+  studentPortal: {
+    type: "studentPortal",
+    label: "Student Portal Accounts",
+    filename: "student-portal-accounts-template.csv",
+    columns: [
+      {
+        key: "mdId",
+        label: "MD ID",
+        required: true,
+        description: "Madonna student badge / external ID — must already exist on the roster",
+      },
+      {
+        key: "email",
+        label: "Email",
+        required: false,
+        description: "School email (…@weirtonmadonna.org). Optional if already on the roster",
+      },
+      {
+        key: "password",
+        label: "Password",
+        required: false,
+        description: "Leave blank to use default bulk password",
+      },
+    ],
+    sampleRow: {
+      mdId: "10457",
+      email: "tstudent27@weirtonmadonna.org",
+      password: "",
+    },
+  },
   parents: {
     type: "parents",
     label: "Parent Contacts",

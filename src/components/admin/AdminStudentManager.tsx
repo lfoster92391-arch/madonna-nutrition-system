@@ -7,6 +7,7 @@ import { useQueryClient } from "@tanstack/react-query"
 import { ArrowLeft, Camera, DollarSign, Pencil, Plus, Search, Upload, UserX, X } from "lucide-react"
 import { CsvImportWizard } from "@/components/admin/CsvImportWizard"
 import { DesktopOnly } from "@/components/admin/DesktopOnly"
+import { StudentPortalImportWizard } from "@/components/admin/StudentPortalImportWizard"
 import { ImportExportMenu } from "@/components/admin/import-export/ImportExportMenu"
 import { RecordOfficePayment } from "@/components/admin/RecordOfficePayment"
 import { useDemo } from "@/components/providers/DemoProvider"
@@ -1337,8 +1338,9 @@ export function AdminStudentManager({
 
         {showImportWizard && !sheetOpen && (
           <DesktopOnly>
-            <div ref={importWizardRef}>
+            <div ref={importWizardRef} className="space-y-8">
               <CsvImportWizard />
+              <StudentPortalImportWizard />
             </div>
           </DesktopOnly>
         )}
