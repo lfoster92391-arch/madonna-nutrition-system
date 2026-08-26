@@ -34,8 +34,8 @@ import {
 const NAV_ITEMS = [
   { label: "Dashboard", href: "/teacher", icon: LayoutDashboard, exact: true },
   { label: "Sign up student", href: "/teacher/sign-up-student", icon: UtensilsCrossed },
+  { label: "Who signed up", href: "/teacher/who-signed-up", icon: ClipboardList },
   { label: "Student Lookup", href: "/teacher/student-lookup", icon: Search },
-  { label: "Meal Roster", href: "/teacher/meal-roster", icon: ClipboardList },
   { label: "Lunch Calendar", href: "/teacher/calendar", icon: Calendar },
   { label: "Announcements", href: "/teacher/announcements", icon: Megaphone },
   { label: "Messages", href: "/teacher/messages", icon: MessageSquare },

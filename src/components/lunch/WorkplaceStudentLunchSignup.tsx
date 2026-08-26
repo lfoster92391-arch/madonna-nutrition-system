@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import Image from "next/image"
-import { AlertTriangle, Search, UserRoundSearch } from "lucide-react"
+import Link from "next/link"
+import { AlertTriangle, ClipboardList, Search, UserRoundSearch } from "lucide-react"
 import { useDemo } from "@/components/providers/DemoProvider"
 import { useAuth } from "@/components/providers/AuthProvider"
 import { PizzaSlicePicker } from "@/components/lunch/PizzaSlicePicker"
@@ -69,6 +70,8 @@ type WorkplaceStudentLunchSignupProps = {
   /** Portal label shown in the header, e.g. "Teacher" / "Staff" / "Admin". */
   portalLabel: string
   accentColor?: string
+  /** Optional link to the Who signed up roster (teacher/staff portals). */
+  rosterHref?: string
 }
 
 function emptyDaySelection(isPizza: boolean): DaySelection {
@@ -82,6 +85,7 @@ function emptyDaySelection(isPizza: boolean): DaySelection {
 export function WorkplaceStudentLunchSignup({
   portalLabel,
   accentColor = "#041B52",
+  rosterHref,
 }: WorkplaceStudentLunchSignupProps) {
   const { user } = useAuth()
   const { calendarEvents, databaseEnabled } = useDemo()
@@ -348,6 +352,16 @@ export function WorkplaceStudentLunchSignup({
           Search any student, check published menu days and meal items, then save. Reservations
           count for the kitchen and clear the kiosk “no lunch signup” warning.
         </p>
+        {rosterHref ? (
+          <Link
+            href={rosterHref}
+            className="mt-3 inline-flex items-center gap-2 text-sm font-semibold underline"
+            style={{ color: accentColor }}
+          >
+            <ClipboardList className="h-4 w-4" aria-hidden />
+            Who signed up for lunch
+          </Link>
+        ) : null}
       </div>
 
       <Card className="rounded-[20px] border-[#AEB6C2]/60 p-5 sm:p-6">

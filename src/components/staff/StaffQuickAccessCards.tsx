@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { BookOpen, Calendar, CreditCard, Megaphone, UtensilsCrossed } from "lucide-react"
+import { BookOpen, Calendar, ClipboardList, CreditCard, Megaphone, UtensilsCrossed } from "lucide-react"
 import { Card } from "@/components/ui/card"
 import { STAFF_NAVY, STAFF_SILVER } from "@/components/staff/layout/staff-theme"
 
@@ -11,6 +11,12 @@ const cards = [
     description: "Search any student and reserve lunch",
     href: "/staff/sign-up-student",
     icon: UtensilsCrossed,
+  },
+  {
+    label: "Who signed up for lunch",
+    description: "See today's and this week's signups",
+    href: "/staff/who-signed-up",
+    icon: ClipboardList,
   },
   {
     label: "Lunch Calendar",

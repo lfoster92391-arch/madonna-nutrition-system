@@ -26,10 +26,10 @@ function sectionsFor(portal: WorkplaceGuidePortal): HowToGuideSection[] {
   const teacherOnly =
     portal === "teacher"
       ? [
-          "Teachers can also use Student Lookup and Meal Roster for classroom lunch lists. Staff see their own cafeteria balance under My Account.",
+          "Teachers can also use Student Lookup and Who signed up for lunch to see today’s and this week’s student lunch list. Staff see their own cafeteria balance under My Account.",
         ]
       : [
-          "Staff can check their own cafeteria balance under My Account. Teachers also have Student Lookup and Meal Roster for classroom lists.",
+          "Staff can open Who signed up for lunch to see today’s and this week’s student list, and check their own cafeteria balance under My Account.",
         ]
 
   return [
@@ -73,6 +73,7 @@ function sectionsFor(portal: WorkplaceGuidePortal): HowToGuideSection[] {
         "Search by MD ID or student name, then select the student.",
         "Choose published menu days and meal items (main, side, or milk). On Pizza Day, choose how many slices.",
         "Save the signup. It counts for kitchen prep and helps clear the kiosk “no lunch signup” warning.",
+        `Open Who signed up for lunch (/${portal}/who-signed-up) to see student names, MD IDs, meals, and dates for today and the upcoming school week.`,
         "You can sign up any active student — not only children linked to your parent account.",
       ],
     },
@@ -94,6 +95,7 @@ function sectionsFor(portal: WorkplaceGuidePortal): HowToGuideSection[] {
       body: [
         "Order your own staff lunch for today.",
         "Sign any student up for published lunch days.",
+        "See who signed up for lunch today and this week.",
         "Read cafeteria announcements and messages.",
         "If you are also a parent: switch to Parent to manage your children’s orders, balances, and photos.",
         "Get help from Mrs. Morris or Mrs. Dalfol only.",
@@ -106,6 +108,7 @@ export function WorkplaceHowToGuide({ portal, accentColor }: WorkplaceHowToGuide
   const label = portal === "teacher" ? "Teacher" : "Staff"
   const home = `/${portal}`
   const signup = `/${portal}/sign-up-student`
+  const whoSignedUp = `/${portal}/who-signed-up`
   const help = `/${portal}/help`
   const calendar = `/${portal}/calendar`
 
@@ -120,6 +123,7 @@ export function WorkplaceHowToGuide({ portal, accentColor }: WorkplaceHowToGuide
       helpLinkLabel="Open Help"
       ctas={[
         { href: signup, label: "Sign up a student", primary: true },
+        { href: whoSignedUp, label: "Who signed up for lunch" },
         { href: home, label: "Back to dashboard" },
         { href: calendar, label: "Lunch calendar" },
       ]}

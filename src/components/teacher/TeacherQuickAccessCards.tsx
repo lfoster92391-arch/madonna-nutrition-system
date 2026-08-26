@@ -13,9 +13,9 @@ const cards = [
     icon: UtensilsCrossed,
   },
   {
-    label: "Meal Roster",
-    description: "View today's lunch roster",
-    href: "/teacher/meal-roster",
+    label: "Who signed up for lunch",
+    description: "See today's and this week's signups",
+    href: "/teacher/who-signed-up",
     icon: ClipboardList,
   },
   {

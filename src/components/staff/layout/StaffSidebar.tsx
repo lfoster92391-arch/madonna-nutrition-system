@@ -8,6 +8,7 @@ import {
   BookOpen,
   Calendar,
   ChevronLeft,
+  ClipboardList,
   CreditCard,
   HelpCircle,
   LayoutDashboard,
@@ -35,6 +36,7 @@ import {
 const NAV_ITEMS = [
   { label: "Dashboard", href: "/staff", icon: LayoutDashboard, exact: true },
   { label: "Sign up student", href: "/staff/sign-up-student", icon: UtensilsCrossed },
+  { label: "Who signed up", href: "/staff/who-signed-up", icon: ClipboardList },
   { label: "Lunch Calendar", href: "/staff/calendar", icon: Calendar },
   { label: "Announcements", href: "/staff/announcements", icon: Megaphone },
   { label: "Messages", href: "/staff/messages", icon: MessageSquare },
