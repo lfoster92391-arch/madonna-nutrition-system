@@ -639,8 +639,9 @@ export function UserManager() {
           <div>
             <h1 className="text-3xl font-bold text-primary">User Management</h1>
             <p className="text-silver-foreground">
-              Manage portal accounts, roles, and access — all changes are audit logged. Parent accounts
-              also appear under{" "}
+              Manage portal accounts, roles, and access — all changes are audit logged. Filter by
+              Student and use Reset password for student portal logins (temporary; must change on
+              next login). Parent accounts also appear under{" "}
               <Link href="/admin/imports?tab=families" className="font-semibold text-primary underline">
                 Students &amp; Imports → Parents &amp; Family
               </Link>
@@ -648,7 +649,11 @@ export function UserManager() {
               <Link href="/admin/imports?tab=staff" className="font-semibold text-primary underline">
                 Staff Accounts
               </Link>
-              .
+              . Student Manager (
+              <Link href="/admin/imports" className="font-semibold text-primary underline">
+                Students &amp; Imports
+              </Link>
+              ) has Reset portal password on each student profile.
             </p>
           </div>
           <div className="flex gap-3">

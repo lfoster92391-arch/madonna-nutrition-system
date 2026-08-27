@@ -572,6 +572,13 @@ export const studentImportRowSchema = z
     badgeStatus: importBadgeStatusDefaultActive,
     photo: importOptionalString,
     photoUrl: importOptionalString,
+    /** Physical badge barcode; defaults to mdId on create when omitted. */
+    barcode: importOptionalString,
+    /**
+     * Temporary student portal password. When present (8+ chars), creates/updates the
+     * STUDENT portal login with mustChangePassword=true.
+     */
+    password: importOptionalString,
     parent: importOptionalString,
     parentName: importOptionalString,
     parentEmail: importOptionalEmail,
@@ -595,6 +602,14 @@ export const studentImportRowSchema = z
         code: z.ZodIssueCode.custom,
         message: "mdId or email is required",
         path: ["mdId"],
+      })
+    }
+    const password = row.password?.trim()
+    if (password && password.length < 8) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Password must be at least 8 characters (temporary portal password)",
+        path: ["password"],
       })
     }
   })

@@ -13,6 +13,7 @@ import {
   resolveImportGrade,
 } from "@/lib/students/grade-from-email"
 import { photoStatusForSchoolPhoto } from "@/lib/students/photo-moderation"
+import { upsertStudentPortalAccount } from "@/lib/auth/student-accounts"
 import type { studentImportRowSchema } from "@/lib/api/validation"
 import type { z } from "zod"
 
@@ -148,6 +149,77 @@ async function resolveExistingStudent(input: {
   return null
 }
 
+/**
+ * When the SIS CSV includes a Password column, set it as a temporary student
+ * portal password (mustChangePassword=true) so first login forces a change.
+ */
+async function provisionTempPortalPassword(input: {
+  schoolId: string
+  student: {
+    externalId: string
+    firstName: string
+    lastName: string
+    email?: string | null
+    disabled?: boolean
+  }
+  password?: string
+  performedBy: string
+}): Promise<string | undefined> {
+  const password = input.password?.trim()
+  if (!password) return undefined
+  if (password.length < 8) {
+    return "Password skipped — temporary portal password must be at least 8 characters"
+  }
+  if (input.student.disabled) {
+    return "Password skipped — enable the student before setting a portal password"
+  }
+
+  const school = await prisma.school.findUnique({
+    where: { id: input.schoolId },
+    select: { slug: true },
+  })
+
+  const provisioned = await upsertStudentPortalAccount(prisma, {
+    schoolId: input.schoolId,
+    schoolSlug: school?.slug,
+    student: {
+      externalId: input.student.externalId,
+      firstName: input.student.firstName,
+      lastName: input.student.lastName,
+      email: input.student.email,
+      disabled: false,
+    },
+    password,
+    mustChangePassword: true,
+  })
+
+  if (provisioned.action === "skipped") {
+    return "Password skipped — a non-student account already uses this username or email"
+  }
+
+  await createAuditLog({
+    action: provisioned.action === "created" ? "USER_CREATED" : "PASSWORD_RESET",
+    entity: "user",
+    entityType: "user",
+    entityId: provisioned.username,
+    performedBy: input.performedBy,
+    newValue: {
+      username: provisioned.username,
+      email: provisioned.email,
+      role: "STUDENT",
+      studentExternalId: input.student.externalId,
+      importSource: "sis-student-csv",
+      mustChangePassword: true,
+      action: provisioned.action,
+      temporaryPassword: true,
+    },
+  })
+
+  return provisioned.action === "created"
+    ? "Temporary portal password set (must change on first login)"
+    : "Temporary portal password reset (must change on first login)"
+}
+
 export async function importStudentRows(input: {
   rows: StudentImportRow[]
   schoolId: string
@@ -192,6 +264,8 @@ export async function importStudentRows(input: {
       const balance = row.balance
       // badgeStatus is schema-defaulted to active; treat as explicit only when CSV sent a value.
       const explicitBadge = row.badgeStatus
+      const barcode = row.barcode?.trim() || undefined
+      const portalPassword = row.password?.trim() || undefined
 
       if (match) {
         const existing = match.student
@@ -223,6 +297,8 @@ export async function importStudentRows(input: {
             ? badgeStatusToDb(explicitBadge)
             : undefined
 
+        const disabled = gradeInfo.shouldArchive ? true : false
+
         await prisma.$transaction(async (tx) => {
           if (hasAllergiesColumn) {
             await tx.allergy.deleteMany({ where: { studentId: existing.id } })
@@ -247,7 +323,8 @@ export async function importStudentRows(input: {
               homeroom: row.homeroom?.trim() || undefined,
               ...(balance !== undefined ? { balance } : {}),
               ...(badgeStatus ? { badgeStatus } : {}),
-              disabled: gradeInfo.shouldArchive ? true : false,
+              ...(barcode ? { barcode } : {}),
+              disabled,
               ...photoUpdate,
               ...(hasDietaryColumn ? { dietaryRestrictions } : {}),
             },
@@ -263,14 +340,28 @@ export async function importStudentRows(input: {
           })
         }
 
+        const portalNote = await provisionTempPortalPassword({
+          schoolId: input.schoolId,
+          student: {
+            externalId: mdId,
+            firstName: nextFirst,
+            lastName: nextLast,
+            email: email ?? existing.email,
+            disabled,
+          },
+          password: portalPassword,
+          performedBy: input.performedBy,
+        })
+
         result.updated += 1
+        const baseMessage = gradeInfo.fromEmail
+          ? `Matched via ${match.via}; grade from email`
+          : `Matched via ${match.via}`
         result.rowOutcomes.push({
           row: rowNumber,
           mdId,
           status: "updated",
-          message: gradeInfo.fromEmail
-            ? `Matched via ${match.via}; grade from email`
-            : `Matched via ${match.via}`,
+          message: portalNote ? `${baseMessage}; ${portalNote}` : baseMessage,
         })
         continue
       }
@@ -282,11 +373,12 @@ export async function importStudentRows(input: {
       const createBadgeStatus = badgeStatusToDb(
         gradeInfo.shouldArchive ? "inactive" : (explicitBadge ?? "active")
       )
+      const disabled = gradeInfo.shouldArchive
 
       const student = await prisma.student.create({
         data: {
           externalId: mdId,
-          barcode: mdId,
+          barcode: barcode || mdId,
           badgeStatus: createBadgeStatus,
           firstName,
           lastName,
@@ -296,7 +388,7 @@ export async function importStudentRows(input: {
           balance: balance ?? 0,
           ...schoolPhotoWrite(photo),
           dietaryRestrictions,
-          disabled: gradeInfo.shouldArchive,
+          disabled,
           schoolId: input.schoolId,
           allergies: {
             create: allergiesToCreateInput(
@@ -324,14 +416,28 @@ export async function importStudentRows(input: {
         newValue: { externalId: mdId, email, grade, fromEmail: gradeInfo.fromEmail },
       })
 
+      const portalNote = await provisionTempPortalPassword({
+        schoolId: input.schoolId,
+        student: {
+          externalId: mdId,
+          firstName,
+          lastName,
+          email: email ?? null,
+          disabled,
+        },
+        password: portalPassword,
+        performedBy: input.performedBy,
+      })
+
       result.created += 1
+      const baseMessage = gradeInfo.fromEmail
+        ? "Created with grade from email"
+        : "Created"
       result.rowOutcomes.push({
         row: rowNumber,
         mdId,
         status: "created",
-        message: gradeInfo.fromEmail
-          ? "Created with grade from email"
-          : "Created",
+        message: portalNote ? `${baseMessage}; ${portalNote}` : baseMessage,
       })
     } catch (error) {
       const message = error instanceof Error ? error.message : "Import failed"

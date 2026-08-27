@@ -100,7 +100,8 @@ export async function POST(request: Request, { params }: RouteParams) {
         generateTempPassword: parsed.data.generateTempPassword ?? !parsed.data.password,
       })
       const passwordHash = await bcrypt.hash(password, 10)
-      const forcePasswordChange = parsed.data.forcePasswordChange ?? method === "generated"
+      // Admin-set portal passwords are temporary unless explicitly opted out.
+      const forcePasswordChange = parsed.data.forcePasswordChange ?? true
 
       await prisma.user.update({
         where: { id: portalUser.id },
