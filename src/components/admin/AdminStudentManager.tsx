@@ -866,9 +866,12 @@ export function AdminStudentManager({
 
                       {editing && (
                         <div className="mt-4 rounded-2xl border border-primary/15 bg-primary/[0.03] p-4">
-                          <p className="text-sm font-semibold text-primary">Student portal login</p>
+                          <p className="text-sm font-semibold text-primary">
+                            Reset portal password
+                          </p>
                           <p className="mt-1 text-xs text-silver-foreground">
-                            Primary login is the school email
+                            Sets a temporary password for the student lunch portal. Primary login is
+                            the school email
                             {editing.email ? (
                               <>
                                 {" "}
@@ -878,10 +881,10 @@ export function AdminStudentManager({
                               " (@weirtonmadonna.org on the roster)"
                             )}
                             . MD ID <span className="font-mono">{editing.id}</span> works as a
-                            backup.{" "}
+                            backup. Students must change this password on first login.{" "}
                             {portalUserForEditing
                               ? "Portal account is ready."
-                              : "Resetting a password will create the portal login if needed."}
+                              : "Resetting creates the portal login if needed."}
                           </p>
                           <div className="mt-3 flex flex-wrap gap-2">
                             <Button
@@ -901,14 +904,14 @@ export function AdminStudentManager({
                               variant={portalPasswordMode === "custom" ? "default" : "outline"}
                               onClick={() => setPortalPasswordMode("custom")}
                             >
-                              Set custom password
+                              Set temporary password
                             </Button>
                           </div>
                           {portalPasswordMode === "custom" && (
                             <Input
                               type="text"
                               className="mt-3 max-w-sm"
-                              placeholder="At least 8 characters"
+                              placeholder="At least 8 characters (temporary)"
                               value={portalCustomPassword}
                               onChange={(e) => setPortalCustomPassword(e.target.value)}
                             />
@@ -931,6 +934,14 @@ export function AdminStudentManager({
                               Temp password: {portalTempPassword}
                             </p>
                           )}
+                          {portalPasswordMode === "custom" &&
+                            portalCustomPassword.length >= 8 &&
+                            portalResetMessage &&
+                            !portalTempPassword && (
+                              <p className="mt-2 rounded-xl bg-white px-3 py-2 font-mono text-sm text-primary">
+                                Temp password: {portalCustomPassword}
+                              </p>
+                            )}
                         </div>
                       )}
 

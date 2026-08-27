@@ -52,7 +52,7 @@ export function MustChangePasswordGate({ children }: { children: React.ReactNode
         <div className="my-auto max-h-[min(90dvh,36rem)] w-full max-w-md overflow-y-auto rounded-2xl border border-silver/60 bg-white p-6 shadow-lg">
           <h2 className="text-lg font-bold text-primary">Change your password</h2>
           <p className="mt-2 text-sm text-silver-foreground">
-            Your account was created through a bulk import. Set a new password before continuing.
+            You are using a temporary password. Set a new password before continuing.
           </p>
           <form onSubmit={(e) => void handleSubmit(e)} className="mt-6 space-y-4">
             <div>

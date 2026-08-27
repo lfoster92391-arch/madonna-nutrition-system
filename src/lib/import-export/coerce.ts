@@ -175,6 +175,20 @@ export function normalizeStudentImportRow(row: unknown): unknown {
     out.photoUrl = out.photo
   }
 
+  // Lisa / roster exports often use "Password" for temporary portal passwords
+  if (
+    (out.password === undefined || asTrimmedString(out.password) === "") &&
+    out.Password !== undefined
+  ) {
+    out.password = out.Password
+  }
+  if (
+    (out.barcode === undefined || asTrimmedString(out.barcode) === "") &&
+    out.Barcode !== undefined
+  ) {
+    out.barcode = out.Barcode
+  }
+
   return out
 }
 

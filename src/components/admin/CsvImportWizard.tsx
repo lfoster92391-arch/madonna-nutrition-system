@@ -53,6 +53,8 @@ const studentSchema = z.object({
   parentPhone: z.string().optional(),
   photo: z.string().optional(),
   photoUrl: z.string().optional(),
+  barcode: z.string().optional(),
+  password: z.string().optional(),
   allergies: z.string().optional(),
   dietaryRestrictions: z.string().optional(),
 }).superRefine((d, ctx) => {
@@ -68,6 +70,13 @@ const studentSchema = z.object({
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       message: "firstName+lastName or studentName is required",
+    })
+  }
+  const password = d.password?.trim()
+  if (password && password.length < 8) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Password must be at least 8 characters (temporary portal password)",
     })
   }
 })
@@ -89,6 +98,8 @@ type FieldKey =
   | "parentPhone"
   | "photo"
   | "photoUrl"
+  | "barcode"
+  | "password"
   | "allergies"
   | "dietaryRestrictions"
 
@@ -102,6 +113,8 @@ const OPTIONAL_FIELDS: FieldKey[] = [
   "homeroom",
   "balance",
   "badgeStatus",
+  "barcode",
+  "password",
   "parent",
   "parentEmail",
   "parentPhone",
@@ -122,6 +135,8 @@ const AUTO_MAP_ALIASES: Record<FieldKey, string[]> = {
   homeroom: ["homeroom", "home_room", "room"],
   balance: ["balance", "accountbalance"],
   badgeStatus: ["badgestatus", "badge_status", "active", "isactive", "status", "activestatus"],
+  barcode: ["barcode"],
+  password: ["password", "temppassword", "temp_password"],
   parent: ["parent", "parentname", "parent_name", "guardian", "guardianname"],
   parentEmail: ["parentemail", "parent_email", "guardianemail", "guardian_email"],
   parentPhone: ["parentphone", "parent_phone", "phone"],
@@ -129,6 +144,11 @@ const AUTO_MAP_ALIASES: Record<FieldKey, string[]> = {
   photoUrl: ["photourl", "photo_url", "imageurl", "image_url"],
   allergies: ["allergies", "allergy"],
   dietaryRestrictions: ["dietaryrestrictions", "dietary", "diet"],
+}
+
+type ImportStudentRow = Student & {
+  /** Temporary portal password from CSV Password column */
+  portalPassword?: string
 }
 
 function autoDetectColumn(cols: string[], field: FieldKey): string | undefined {
@@ -176,10 +196,10 @@ export function CsvImportWizard() {
   const [rawRows, setRawRows] = useState<Record<string, string>[]>([])
   const [headers, setHeaders] = useState<string[]>([])
   const [mapping, setMapping] = useState<Partial<Record<FieldKey, string>>>({})
-  const [validRows, setValidRows] = useState<Student[]>([])
+  const [validRows, setValidRows] = useState<ImportStudentRow[]>([])
   const [errorRows, setErrorRows] = useState<{ row: number; errors: string[] }[]>([])
   const [duplicateRows, setDuplicateRows] = useState<number[]>([])
-  const [updateExistingRows, setUpdateExistingRows] = useState<Student[]>([])
+  const [updateExistingRows, setUpdateExistingRows] = useState<ImportStudentRow[]>([])
   const [lastImportId, setLastImportId] = useState<string | null>(null)
   const [dragOver, setDragOver] = useState(false)
 
@@ -228,8 +248,8 @@ export function CsvImportWizard() {
   }
 
   function runValidation() {
-    const parsed: Student[] = []
-    const updates: Student[] = []
+    const parsed: ImportStudentRow[] = []
+    const updates: ImportStudentRow[] = []
     const errors: { row: number; errors: string[] }[] = []
     const duplicates: number[] = []
 
@@ -275,7 +295,8 @@ export function CsvImportWizard() {
         })
       }
 
-      const student: Student = {
+      const portalPassword = result.data.password?.trim() || undefined
+      const student: ImportStudentRow = {
         id: studentId,
         firstName,
         lastName,
@@ -285,12 +306,14 @@ export function CsvImportWizard() {
         balance: result.data.balance ?? 0,
         badgeStatus: gradeInfo.shouldArchive ? "inactive" : result.data.badgeStatus,
         photo: result.data.photoUrl || result.data.photo || "",
+        barcode: result.data.barcode?.trim() || undefined,
         allergies: parseAllergies(result.data.allergies),
         dietaryRestrictions: result.data.dietaryRestrictions
           ? result.data.dietaryRestrictions.split(/[,;]/).map((d) => d.trim()).filter(Boolean)
           : [],
         parentContacts,
         disabled: gradeInfo.shouldArchive,
+        portalPassword,
       }
 
       if (result.data.mdId && existingIds.has(result.data.mdId)) {
@@ -322,6 +345,8 @@ export function CsvImportWizard() {
       balance: student.balance,
       badgeStatus: student.badgeStatus ?? "active",
       photoUrl: student.photo || undefined,
+      barcode: student.barcode ?? "",
+      password: student.portalPassword ?? "",
       parent: student.parentContacts[0]?.name ?? "",
       parentEmail: student.parentContacts[0]?.email ?? "",
       parentPhone: student.parentContacts[0]?.phone ?? "",
@@ -435,9 +460,10 @@ export function CsvImportWizard() {
         >
           <Upload className="h-10 w-10 text-silver-foreground" />
           <p className="mt-4 font-medium text-primary">Drag & drop SIS export CSV here</p>
-          <p className="mt-1 text-sm text-silver-foreground">
-            Identity: mdId or school email, plus names (or Student Name as Last, First). Grade is set from
-            email class year (e.g. …27@weirtonmadonna.org → 12th).
+          <p className="mt-1 max-w-xl text-center text-sm text-silver-foreground">
+            Columns: mdId, firstName, lastName, grade, photoUrl, badgeStatus, barcode, Password
+            (temporary — students must change it on first login). Optional school email sets grade
+            from class year (e.g. …27@weirtonmadonna.org → 12th).
           </p>
           <input
             type="file"

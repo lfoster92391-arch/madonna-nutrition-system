@@ -45,7 +45,10 @@ export async function POST(request: Request, { params }: RouteParams) {
         generateTempPassword: parsed.data.generateTempPassword ?? !parsed.data.password,
       })
       const passwordHash = await bcrypt.hash(password, 10)
-      const forcePasswordChange = parsed.data.forcePasswordChange ?? method === "generated"
+      // Student (and other) admin resets treat the password as temporary unless opted out.
+      const forcePasswordChange =
+        parsed.data.forcePasswordChange ??
+        (existing.role === "STUDENT" || method === "generated")
 
       await prisma.user.update({
         where: { id },

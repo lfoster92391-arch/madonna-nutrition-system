@@ -293,7 +293,7 @@ export function StudentPortalImportWizard() {
         />
         <p className="mt-2 text-xs text-silver-foreground">
           Applied to every portal account whose CSV row has no password. Students must change this
-          password on first login at /login/student.
+          temporary password on first login at /login/student.
         </p>
         {bulkDefaultPassword.length > 0 && !defaultPasswordReady && (
           <p className="mt-2 text-xs text-danger">
@@ -320,7 +320,8 @@ export function StudentPortalImportWizard() {
             </CardTitle>
             <CardDescription>
               Create or update student logins for the student portal (@{STUDENT_EMAIL_DOMAIN}). Match
-              existing roster students by MD ID.
+              existing roster students by MD ID. CSV Password (or the default bulk password) is
+              temporary — students must change it on first login.
             </CardDescription>
           </div>
           <Button
@@ -363,9 +364,10 @@ export function StudentPortalImportWizard() {
                 Drag &amp; drop student portal accounts CSV here
               </p>
               <p className="mt-1 max-w-xl text-center text-sm text-silver-foreground">
-                Required: mdId. Optional: email, password. Email can come from the roster. Set the
-                default bulk password above if your CSV has no password column. Disabled students are
-                enabled so they can sign in.
+                Required: mdId. Optional: email, Password (temporary). Roster CSV columns like
+                firstName/grade/barcode are ignored here — only mdId, email, and password are used.
+                Email can come from the roster. Set the default bulk temporary password above if your
+                CSV has no password column. Disabled students are enabled so they can sign in.
               </p>
               <input
                 type="file"
@@ -534,7 +536,7 @@ export function StudentPortalImportWizard() {
                           {cred.enabled ? " · enabled" : ""}
                         </td>
                         <td className="px-4 py-3 font-mono text-xs">
-                          {cred.tempPassword ?? "—"}
+                          {cred.tempPassword ?? "Temporary (from CSV)"}
                         </td>
                         <td className="px-4 py-3 text-right">
                           {cred.tempPassword && (
