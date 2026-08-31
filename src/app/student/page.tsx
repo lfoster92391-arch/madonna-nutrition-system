@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import Link from "next/link"
 import { BookOpen, CalendarDays, UtensilsCrossed } from "lucide-react"
 import { useAuth } from "@/components/providers/AuthProvider"
@@ -19,33 +19,44 @@ export default function StudentHomePage() {
   const [me, setMe] = useState<StudentMe | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
+  const loadMe = useCallback(async () => {
     if (!user) return
-    let cancelled = false
-    async function load() {
-      try {
-        const res = await fetch("/api/student/me", {
-          headers: { "x-session-user-id": user!.id },
-        })
-        const data = (await res.json().catch(() => ({}))) as {
-          student?: StudentMe
-          error?: string
-        }
-        if (cancelled) return
-        if (!res.ok || !data.student) {
-          setError(data.error ?? "Unable to load your student profile")
-          return
-        }
-        setMe(data.student)
-      } catch {
-        if (!cancelled) setError("Unable to load your student profile")
+    try {
+      const res = await fetch("/api/student/me", {
+        headers: { "x-session-user-id": user.id },
+        cache: "no-store",
+      })
+      const data = (await res.json().catch(() => ({}))) as {
+        student?: StudentMe
+        error?: string
       }
-    }
-    void load()
-    return () => {
-      cancelled = true
+      if (!res.ok || !data.student) {
+        setError(data.error ?? "Unable to load your student profile")
+        return
+      }
+      setError(null)
+      setMe(data.student)
+    } catch {
+      setError("Unable to load your student profile")
     }
   }, [user])
+
+  useEffect(() => {
+    void loadMe()
+  }, [loadMe])
+
+  useEffect(() => {
+    if (!user) return
+    const refresh = () => {
+      if (document.visibilityState === "visible") void loadMe()
+    }
+    window.addEventListener("focus", refresh)
+    document.addEventListener("visibilitychange", refresh)
+    return () => {
+      window.removeEventListener("focus", refresh)
+      document.removeEventListener("visibilitychange", refresh)
+    }
+  }, [user, loadMe])
 
   return (
     <div className="space-y-6">

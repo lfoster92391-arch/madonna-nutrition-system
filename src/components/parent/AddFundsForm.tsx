@@ -11,6 +11,7 @@ import { useAuth } from "@/components/providers/AuthProvider"
 import { useDemo } from "@/components/providers/DemoProvider"
 import { SCHOOL } from "@/config/school"
 import { api } from "@/lib/api/client"
+import { syncBalanceCaches } from "@/lib/client/sync-balance-caches"
 import {
   ADD_FUNDS_MAX,
   ADD_FUNDS_MIN,
@@ -136,8 +137,7 @@ export function AddFundsForm() {
 
   useEffect(() => {
     if (success && databaseEnabled) {
-      void queryClient.invalidateQueries({ queryKey: ["students"] })
-      void queryClient.invalidateQueries({ queryKey: ["transactions"] })
+      void syncBalanceCaches(queryClient, {})
       router.replace("/parent/payments?tab=funding")
     }
   }, [success, databaseEnabled, router, queryClient])

@@ -4,6 +4,7 @@ import { useState } from "react"
 import { useQueryClient } from "@tanstack/react-query"
 import { CheckCircle2, DollarSign, Minus } from "lucide-react"
 import { api } from "@/lib/api/client"
+import { syncBalanceCaches } from "@/lib/client/sync-balance-caches"
 import { cn, formatCurrency } from "@/lib/utils"
 import { formatUserName } from "@/lib/users"
 import type { User } from "@/lib/types"
@@ -99,7 +100,10 @@ export function RecordStaffOfficePayment({
       setAmount("")
       setNote("")
       setConfirming(false)
-      void queryClient.invalidateQueries({ queryKey: ["users"] })
+      await syncBalanceCaches(queryClient, {
+        staffUserId: staffUser.id,
+        staffBalanceAfter: balanceAfter,
+      })
       onDone?.(balanceAfter)
     } catch (err) {
       setConfirming(false)

@@ -4,6 +4,7 @@ import { useMemo, useState } from "react"
 import { useQueryClient } from "@tanstack/react-query"
 import { CheckCircle2, DollarSign, Minus } from "lucide-react"
 import { api } from "@/lib/api/client"
+import { syncBalanceCaches } from "@/lib/client/sync-balance-caches"
 import { useDemo } from "@/components/providers/DemoProvider"
 import { cn, formatCurrency } from "@/lib/utils"
 import { findStudentMatchingScan, transactionMatchesStudent } from "@/lib/scan/scan-id"
@@ -180,8 +181,10 @@ export function RecordOfficePayment({
       setAmount("")
       setNote("")
       setConfirming(false)
-      void queryClient.invalidateQueries({ queryKey: ["students"] })
-      void queryClient.invalidateQueries({ queryKey: ["transactions"] })
+      await syncBalanceCaches(queryClient, {
+        studentId: resolvedStudentId,
+        balanceAfter,
+      })
       onDone?.(balanceAfter)
     } catch (err) {
       setConfirming(false)

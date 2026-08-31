@@ -14,6 +14,7 @@ import { PARENT_CARD, PARENT_NAVY } from "@/components/parent/parent-dashboard-s
 import { Button } from "@/components/ui/button"
 import { Select } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { syncBalanceCaches } from "@/lib/client/sync-balance-caches"
 import { formatCurrency } from "@/lib/utils"
 import { CARD_SAFETY_COPY } from "@/lib/security/card-copy"
 
@@ -33,8 +34,7 @@ export function PaymentsFundingTab() {
 
   useEffect(() => {
     if (success && databaseEnabled) {
-      void queryClient.invalidateQueries({ queryKey: ["students"] })
-      void queryClient.invalidateQueries({ queryKey: ["transactions"] })
+      void syncBalanceCaches(queryClient, {})
       router.replace("/parent/payments?tab=funding")
     }
   }, [success, databaseEnabled, router, queryClient])

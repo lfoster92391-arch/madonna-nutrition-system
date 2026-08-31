@@ -210,16 +210,25 @@ export function DemoProvider({ children }: { children: ReactNode }) {
     queryKey: ["students"],
     queryFn: api.getStudents,
     enabled: dataEnabled,
+    staleTime: 5_000,
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
   })
   const transactionsQuery = useQuery({
     queryKey: ["transactions"],
     queryFn: api.getTransactions,
     enabled: dataEnabled,
+    staleTime: 5_000,
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
   })
   const usersQuery = useQuery({
     queryKey: ["users"],
     queryFn: api.getUsers,
     enabled: dataEnabled,
+    staleTime: 5_000,
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
   })
   const auditLogsQuery = useQuery({
     queryKey: ["audit-logs"],
