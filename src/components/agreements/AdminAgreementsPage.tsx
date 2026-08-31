@@ -9,11 +9,10 @@ import {
   DEFAULT_PUBLISHED_VERSION,
 } from "@/config/agreement-defaults"
 import type { AgreementContent } from "@/config/agreement-defaults"
-import type { AgreementDashboardRow, AgreementVersionDto } from "@/lib/agreements/types"
+import type { AgreementDashboardRow, AgreementEnrollmentRow, AgreementVersionDto } from "@/lib/agreements/types"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+import { Input, Label, Select } from "@/components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ADMIN_NAVY } from "@/components/admin/layout/admin-theme"
 
@@ -30,10 +29,14 @@ export function AdminAgreementsPage() {
   const { user } = useAuth()
   const [versions, setVersions] = useState<AgreementVersionDto[]>([])
   const [rows, setRows] = useState<AgreementDashboardRow[]>([])
+  const [enrollment, setEnrollment] = useState<AgreementEnrollmentRow[]>([])
   const [notifications, setNotifications] = useState<AdminNotification[]>([])
   const [selectedVersionId, setSelectedVersionId] = useState<string | null>(null)
   const [parentQuery, setParentQuery] = useState("")
   const [studentQuery, setStudentQuery] = useState("")
+  const [signedAfter, setSignedAfter] = useState("")
+  const [signedBefore, setSignedBefore] = useState("")
+  const [statusFilter, setStatusFilter] = useState<"all" | "signed" | "pending" | "blocked">("all")
   const [draftContent, setDraftContent] = useState<AgreementContent>(DEFAULT_AGREEMENT_CONTENT)
   const [draftLabel, setDraftLabel] = useState("V1")
   const [effectiveDate, setEffectiveDate] = useState("2025-08-01")
@@ -50,9 +53,15 @@ export function AdminAgreementsPage() {
   )
 
   const load = useCallback(async () => {
+    const params = new URLSearchParams()
+    if (parentQuery.trim()) params.set("parent", parentQuery.trim())
+    if (studentQuery.trim()) params.set("student", studentQuery.trim())
+    if (signedAfter) params.set("signedAfter", signedAfter)
+    if (signedBefore) params.set("signedBefore", signedBefore)
+
     const [versionsRes, dashboardRes] = await Promise.all([
       fetch("/api/agreements/versions"),
-      fetch(`/api/agreements/dashboard?parent=${encodeURIComponent(parentQuery)}&student=${encodeURIComponent(studentQuery)}`),
+      fetch(`/api/agreements/dashboard?${params.toString()}`),
     ])
     if (versionsRes.ok) {
       const data = await versionsRes.json()
@@ -62,9 +71,10 @@ export function AdminAgreementsPage() {
     if (dashboardRes.ok) {
       const data = await dashboardRes.json()
       setRows(data.rows ?? [])
+      setEnrollment(data.enrollment ?? [])
       setNotifications(data.notifications ?? [])
     }
-  }, [parentQuery, studentQuery, selectedVersionId])
+  }, [parentQuery, studentQuery, signedAfter, signedBefore, selectedVersionId])
 
   useEffect(() => {
     void load()
@@ -78,6 +88,17 @@ export function AdminAgreementsPage() {
       setExpiresAt(selectedVersion.expiresAt?.slice(0, 10) ?? "")
     }
   }, [selectedVersion])
+
+  const filteredEnrollment = useMemo(() => {
+    if (statusFilter === "all") return enrollment
+    if (statusFilter === "signed") {
+      return enrollment.filter((row) => row.status === "SIGNED" || row.status === "EXPIRING")
+    }
+    if (statusFilter === "pending") {
+      return enrollment.filter((row) => row.status === "AGREEMENT_REQUIRED")
+    }
+    return enrollment.filter((row) => row.blockReason != null)
+  }, [enrollment, statusFilter])
 
   async function saveDraft() {
     const payload = {
@@ -187,12 +208,112 @@ export function AdminAgreementsPage() {
         </Card>
       ) : null}
 
-      <Tabs defaultValue="dashboard">
+      <Tabs defaultValue="enrollment">
         <TabsList>
-          <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
+          <TabsTrigger value="enrollment">Lunch agreements</TabsTrigger>
+          <TabsTrigger value="dashboard">Signature log</TabsTrigger>
           <TabsTrigger value="builder">Agreement Builder</TabsTrigger>
           <TabsTrigger value="history">Version History</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="enrollment" className="space-y-4">
+          <p className="text-sm text-[#64748B]">
+            See who can order lunch: signed, still needed, or blocked — and why ordering is blocked
+            when a parent thinks they already signed.
+          </p>
+          <div className="flex flex-wrap gap-3">
+            <div className="relative min-w-[200px] flex-1">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#AEB6C2]" />
+              <Input
+                placeholder="Search parent name or email"
+                value={parentQuery}
+                onChange={(e) => setParentQuery(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+            <div className="relative min-w-[200px] flex-1">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#AEB6C2]" />
+              <Input
+                placeholder="Search student name or MD ID"
+                value={studentQuery}
+                onChange={(e) => setStudentQuery(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+            <Input
+              type="date"
+              value={signedAfter}
+              onChange={(e) => setSignedAfter(e.target.value)}
+              className="w-full sm:w-auto"
+              aria-label="Signed on or after"
+            />
+            <Input
+              type="date"
+              value={signedBefore}
+              onChange={(e) => setSignedBefore(e.target.value)}
+              className="w-full sm:w-auto"
+              aria-label="Signed on or before"
+            />
+            <Select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)}
+              className="w-full sm:w-44"
+            >
+              <option value="all">All statuses</option>
+              <option value="signed">Signed / expiring</option>
+              <option value="pending">Agreement needed</option>
+              <option value="blocked">Blocked from ordering</option>
+            </Select>
+            <Button variant="outline" onClick={() => void load()}>
+              Search
+            </Button>
+          </div>
+
+          <Card className="overflow-x-auto rounded-[20px] p-0">
+            <table className="w-full min-w-[960px] text-sm">
+              <thead>
+                <tr className="border-b border-[#AEB6C2]/60 text-left text-[#AEB6C2]">
+                  <th className="p-4 font-medium">Student</th>
+                  <th className="p-4 font-medium">Parent</th>
+                  <th className="p-4 font-medium">Status</th>
+                  <th className="p-4 font-medium">Signed</th>
+                  <th className="p-4 font-medium">Version</th>
+                  <th className="p-4 font-medium">Why blocked?</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredEnrollment.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="p-8 text-center text-[#AEB6C2]">
+                      No students match these filters.
+                    </td>
+                  </tr>
+                ) : (
+                  filteredEnrollment.map((row) => (
+                    <tr key={row.studentId} className="border-b border-[#AEB6C2]/30">
+                      <td className="p-4 font-medium" style={{ color: ADMIN_NAVY }}>
+                        {row.studentName}
+                        <p className="text-xs font-normal text-[#AEB6C2]">MD {row.studentId}</p>
+                      </td>
+                      <td className="p-4">
+                        {row.parentName}
+                        {row.parentEmail ? (
+                          <p className="text-xs text-[#AEB6C2]">{row.parentEmail}</p>
+                        ) : null}
+                      </td>
+                      <td className="p-4">{row.statusLabel}</td>
+                      <td className="p-4">
+                        {row.signedAt ? new Date(row.signedAt).toLocaleString() : "—"}
+                      </td>
+                      <td className="p-4">{row.versionLabel ?? "—"}</td>
+                      <td className="p-4 text-[#64748B]">{row.blockReason ?? "—"}</td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </Card>
+        </TabsContent>
 
         <TabsContent value="dashboard" className="space-y-4">
           <div className="flex flex-wrap gap-3">

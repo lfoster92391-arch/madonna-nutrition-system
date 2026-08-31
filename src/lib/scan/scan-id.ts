@@ -141,8 +141,13 @@ export function findStudentMatchingScan<T extends { id: string; barcode?: string
     .filter((row) => row.score > 0)
     .sort((a, b) => b.score - a.score)
   if (ranked.length === 0) return undefined
-  if (ranked.length === 1 || ranked[0]!.score > ranked[1]!.score) return ranked[0]!.student
-  return ranked[0]!.student
+  const top = ranked[0]!
+  if (ranked.length > 1 && ranked[1]!.score === top.score) {
+    const exactMatches = ranked.filter((row) => row.score >= 100)
+    if (exactMatches.length === 1) return exactMatches[0]!.student
+    return undefined
+  }
+  return top.student
 }
 
 export function staffMatchScore(

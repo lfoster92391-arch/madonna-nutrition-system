@@ -5,10 +5,12 @@ import { STUDENT_LUNCH_PRICE } from "@/config/onboarding-pricing"
 import { createAuditLog } from "@/lib/db/audit"
 import { resolveSchoolId } from "@/lib/db/school"
 import { prisma } from "@/lib/prisma"
-import { computeStudentAgreementStatus } from "@/lib/agreements/student-status"
+import { computeStudentAgreementStatus, agreementBlockReason, formatStudentAgreementStatus } from "@/lib/agreements/student-status"
 import type {
   AgreementDashboardRow,
+  AgreementEnrollmentRow,
   AgreementSignatureDto,
+  AgreementSignatureStatus,
   AgreementVersionDto,
   ParentAgreementStatusDto,
   StudentAgreementStatusDto,
@@ -626,6 +628,176 @@ export async function listAgreementDashboard(input?: {
   return rows
 }
 
+async function resolveParentSignedCurrentVersionForStudent(
+  studentDbId: string,
+  studentExternalId: string,
+  currentVersionId: string
+): Promise<{ signedAt: Date | null; signatureStatus: "SIGNED" } | null> {
+  const parentLinks = await prisma.parentStudent.findMany({
+    where: { studentId: studentDbId },
+    include: {
+      parent: {
+        select: {
+          cafeteriaAgreementAcceptedAt: true,
+          cafeteriaAgreementVersionId: true,
+          email: true,
+          agreementSignatures: {
+            where: { agreementVersionId: currentVersionId, status: "SIGNED" },
+            orderBy: { signedAt: "desc" },
+            take: 1,
+            select: { signedAt: true, status: true },
+          },
+        },
+      },
+    },
+  })
+
+  for (const link of parentLinks) {
+    const parent = link.parent
+    if (
+      acceptedCurrentPublishedVersion(
+        parent.cafeteriaAgreementAcceptedAt,
+        parent.cafeteriaAgreementVersionId,
+        currentVersionId
+      )
+    ) {
+      return { signedAt: parent.cafeteriaAgreementAcceptedAt, signatureStatus: "SIGNED" }
+    }
+    const sig = parent.agreementSignatures[0]
+    if (sig?.status === "SIGNED") {
+      return { signedAt: sig.signedAt, signatureStatus: "SIGNED" }
+    }
+  }
+
+  const linkedUser = await prisma.user.findFirst({
+    where: {
+      OR: [
+        { linkedStudentIds: { has: studentExternalId } },
+        { linkedStudentIds: { has: studentDbId } },
+      ],
+      cafeteriaAgreementVersionId: currentVersionId,
+      cafeteriaAgreementAcceptedAt: { not: null },
+    },
+    select: { cafeteriaAgreementAcceptedAt: true },
+    orderBy: { cafeteriaAgreementAcceptedAt: "desc" },
+  })
+  if (linkedUser?.cafeteriaAgreementAcceptedAt) {
+    return { signedAt: linkedUser.cafeteriaAgreementAcceptedAt, signatureStatus: "SIGNED" }
+  }
+
+  const signature = await prisma.agreementSignature.findFirst({
+    where: {
+      agreementVersionId: currentVersionId,
+      status: "SIGNED",
+      studentIds: { has: studentDbId },
+    },
+    orderBy: { signedAt: "desc" },
+    select: { signedAt: true },
+  })
+  if (signature) {
+    return { signedAt: signature.signedAt, signatureStatus: "SIGNED" }
+  }
+
+  return null
+}
+
+export async function listAgreementEnrollmentStatus(input?: {
+  parentQuery?: string
+  studentQuery?: string
+  signedAfter?: string
+  signedBefore?: string
+}): Promise<AgreementEnrollmentRow[]> {
+  const schoolId = await resolveSchoolId()
+  const currentVersion = await getCurrentPublishedAgreement()
+
+  const students = await prisma.student.findMany({
+    where: { schoolId, disabled: false },
+    select: {
+      id: true,
+      externalId: true,
+      firstName: true,
+      lastName: true,
+      parentLinks: {
+        include: {
+          parent: {
+            select: { name: true, email: true },
+          },
+        },
+      },
+    },
+    orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
+  })
+
+  const rows: AgreementEnrollmentRow[] = []
+
+  for (const student of students) {
+    const parentLink = student.parentLinks[0]
+    const parentName = parentLink?.parent.name ?? "—"
+    const parentEmail = parentLink?.parent.email ?? null
+
+    if (!currentVersion) {
+      rows.push({
+        studentId: student.externalId,
+        studentName: `${student.firstName} ${student.lastName}`,
+        parentName,
+        parentEmail,
+        status: "AGREEMENT_REQUIRED",
+        statusLabel: formatStudentAgreementStatus("AGREEMENT_REQUIRED"),
+        blockReason: "No published cafeteria agreement version.",
+        signedAt: null,
+        versionLabel: null,
+      })
+      continue
+    }
+
+    const statusDto = await getStudentAgreementStatusById(student.externalId)
+    const status = statusDto?.status ?? "AGREEMENT_REQUIRED"
+    rows.push({
+      studentId: student.externalId,
+      studentName: `${student.firstName} ${student.lastName}`,
+      parentName,
+      parentEmail,
+      status,
+      statusLabel: formatStudentAgreementStatus(status),
+      blockReason: agreementBlockReason(status),
+      signedAt: statusDto?.signedAt ?? null,
+      versionLabel: statusDto?.versionLabel ?? currentVersion.versionLabel,
+    })
+  }
+
+  let filtered = rows
+  const parentQ = input?.parentQuery?.trim().toLowerCase()
+  const studentQ = input?.studentQuery?.trim().toLowerCase()
+  if (parentQ) {
+    filtered = filtered.filter(
+      (r) =>
+        r.parentName.toLowerCase().includes(parentQ) ||
+        (r.parentEmail?.toLowerCase().includes(parentQ) ?? false)
+    )
+  }
+  if (studentQ) {
+    filtered = filtered.filter(
+      (r) =>
+        r.studentName.toLowerCase().includes(studentQ) ||
+        r.studentId.toLowerCase().includes(studentQ)
+    )
+  }
+
+  const signedAfter = input?.signedAfter ? new Date(input.signedAfter) : null
+  const signedBefore = input?.signedBefore ? new Date(input.signedBefore) : null
+  if (signedAfter || signedBefore) {
+    filtered = filtered.filter((r) => {
+      if (!r.signedAt) return false
+      const signed = new Date(r.signedAt)
+      if (signedAfter && signed < signedAfter) return false
+      if (signedBefore && signed > signedBefore) return false
+      return true
+    })
+  }
+
+  return filtered
+}
+
 export async function getStudentAgreementStatusById(
   studentId: string
 ): Promise<StudentAgreementStatusDto | null> {
@@ -650,22 +822,37 @@ export async function getStudentAgreementStatusById(
     where: {
       studentId: student.id,
       agreementVersionId: currentVersion.id,
-      status: "SIGNED",
     },
     include: { agreementSignature: true },
+    orderBy: { signedAt: "desc" },
   })
 
-  const signedStatus =
+  let signedStatus: AgreementSignatureStatus | null =
     lunchAgreement?.agreementSignature?.status === "SIGNED" || lunchAgreement?.status === "SIGNED"
       ? "SIGNED"
-      : (lunchAgreement?.agreementSignature?.status ?? null)
+      : (lunchAgreement?.agreementSignature?.status ?? lunchAgreement?.status ?? null)
+
+  let signedAt =
+    lunchAgreement?.signedAt ?? lunchAgreement?.agreementSignature?.signedAt ?? null
+
+  if (signedStatus !== "SIGNED") {
+    const parentSigned = await resolveParentSignedCurrentVersionForStudent(
+      student.id,
+      student.externalId,
+      currentVersion.id
+    )
+    if (parentSigned) {
+      signedStatus = "SIGNED"
+      signedAt = parentSigned.signedAt
+    }
+  }
 
   const status = computeStudentAgreementStatus({
     hasPublishedVersion: true,
     signatureStatus: signedStatus,
     versionExpiresAt: currentVersion.expiresAt ? new Date(currentVersion.expiresAt) : null,
     versionEffectiveDate: new Date(currentVersion.effectiveDate),
-    signedAt: lunchAgreement?.signedAt ?? lunchAgreement?.agreementSignature?.signedAt ?? null,
+    signedAt,
   })
 
   return {
@@ -673,7 +860,7 @@ export async function getStudentAgreementStatusById(
     studentName: `${student.firstName} ${student.lastName}`,
     status,
     versionLabel: currentVersion.versionLabel,
-    signedAt: lunchAgreement?.signedAt?.toISOString() ?? null,
+    signedAt: signedAt?.toISOString() ?? null,
   }
 }
 

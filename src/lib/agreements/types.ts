@@ -53,6 +53,18 @@ export interface AgreementDashboardRow {
   status: AgreementSignatureStatus
 }
 
+export interface AgreementEnrollmentRow {
+  studentId: string
+  studentName: string
+  parentName: string
+  parentEmail: string | null
+  status: StudentAgreementStatus
+  statusLabel: string
+  blockReason: string | null
+  signedAt: string | null
+  versionLabel: string | null
+}
+
 export interface StudentAgreementStatusDto {
   studentId: string
   studentName: string

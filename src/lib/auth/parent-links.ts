@@ -156,6 +156,45 @@ export async function linkParentUserToStudent(input: {
     },
   })
 
+  const published = await prisma.agreementVersion.findFirst({
+    where: { schoolId: user.schoolId, status: "PUBLISHED" },
+    orderBy: { versionNumber: "desc" },
+  })
+  if (
+    published &&
+    parent.cafeteriaAgreementVersionId === published.id &&
+    parent.cafeteriaAgreementAcceptedAt
+  ) {
+    const signature = await prisma.agreementSignature.findFirst({
+      where: {
+        parentId: parent.id,
+        agreementVersionId: published.id,
+        status: "SIGNED",
+      },
+      orderBy: { signedAt: "desc" },
+    })
+    await prisma.lunchAgreement.upsert({
+      where: { parentId_studentId: { parentId: parent.id, studentId: student.id } },
+      update: {
+        agreementVersionId: published.id,
+        agreementSignatureId: signature?.id ?? null,
+        signedAt: parent.cafeteriaAgreementAcceptedAt,
+        status: "SIGNED",
+        acceptedTerms: true,
+      },
+      create: {
+        parentId: parent.id,
+        studentId: student.id,
+        schoolId: user.schoolId,
+        agreementVersionId: published.id,
+        agreementSignatureId: signature?.id ?? null,
+        signedAt: parent.cafeteriaAgreementAcceptedAt,
+        status: "SIGNED",
+        acceptedTerms: true,
+      },
+    })
+  }
+
   return {
     linkedStudentIds: linkedIds,
     studentName: `${student.firstName} ${student.lastName}`,
