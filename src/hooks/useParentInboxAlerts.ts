@@ -90,5 +90,18 @@ export function useParentInboxAlerts() {
     void refresh()
   }, [refresh])
 
+  useEffect(() => {
+    if (!user || !databaseEnabled) return
+    const onFocus = () => {
+      if (document.visibilityState === "visible") void refresh()
+    }
+    window.addEventListener("focus", onFocus)
+    document.addEventListener("visibilitychange", onFocus)
+    return () => {
+      window.removeEventListener("focus", onFocus)
+      document.removeEventListener("visibilitychange", onFocus)
+    }
+  }, [user, databaseEnabled, refresh])
+
   return { alerts, refresh }
 }

@@ -1559,8 +1559,6 @@ export default function ScanStationPage() {
               onDone={(balanceAfter) => {
                 setLocalBalance(balanceAfter)
                 setStudent((prev) => (prev ? { ...prev, balance: balanceAfter } : prev))
-                void queryClient.invalidateQueries({ queryKey: ["students"] })
-                void queryClient.invalidateQueries({ queryKey: ["transactions"] })
               }}
             />
           </div>
@@ -1605,7 +1603,6 @@ export default function ScanStationPage() {
                 setStaffUser((prev) =>
                   prev ? { ...prev, accountBalance: balanceAfter } : prev
                 )
-                void queryClient.invalidateQueries({ queryKey: ["users"] })
               }}
             />
           </div>

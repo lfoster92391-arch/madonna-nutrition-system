@@ -783,7 +783,6 @@ export function AdminStaffManager({
                       setEditing((prev) =>
                         prev ? { ...prev, accountBalance: balanceAfter } : prev
                       )
-                      void queryClient.invalidateQueries({ queryKey: ["users"] })
                     }}
                   />
                 )}

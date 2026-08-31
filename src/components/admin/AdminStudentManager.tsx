@@ -751,8 +751,14 @@ export function AdminStudentManager({
                     <RecordOfficePayment
                       students={students.filter((s) => !isDemoStudentExternalId(s.id))}
                       initialStudentId={paymentStudentId ?? undefined}
-                      onDone={() => {
-                        void queryClient.invalidateQueries({ queryKey: ["students"] })
+                      onDone={(balanceAfter) => {
+                        if (paymentStudentId) {
+                          setEditing((prev) =>
+                            prev && prev.id === paymentStudentId
+                              ? { ...prev, balance: balanceAfter }
+                              : prev
+                          )
+                        }
                       }}
                     />
                   ) : (
@@ -819,8 +825,8 @@ export function AdminStudentManager({
                               </p>
                               <p className="mt-1 text-xs text-silver-foreground">
                                 Add money when cash or a check is received. Take money off for a
-                                correction, refund, or mistake. This writes a history line — it is
-                                not a lunch charge.
+                                correction, unpaid lunch, or mistake — balance may go into debt.
+                                This writes a history line — it is not a lunch charge.
                               </p>
                               <div className="mt-3">
                                 <RecordOfficePayment
@@ -835,10 +841,6 @@ export function AdminStudentManager({
                                       ...prev,
                                       balance: formatBalanceInput(balanceAfter),
                                     }))
-                                    void queryClient.invalidateQueries({ queryKey: ["students"] })
-                                    void queryClient.invalidateQueries({
-                                      queryKey: ["transactions"],
-                                    })
                                   }}
                                 />
                               </div>
