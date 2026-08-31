@@ -22,7 +22,7 @@ export async function POST(request: Request) {
         return badRequest("Invalid staff payment", parsed.error.flatten())
       }
 
-      const { userId, amount, method, note, action } = parsed.data
+      const { userId, amount, method, note, action, allowNegative } = parsed.data
       const staffUser = await prisma.user.findFirst({
         where: {
           id: userId,
@@ -36,6 +36,9 @@ export async function POST(request: Request) {
         return notFound("Staff account not found")
       }
 
+      const mayAllowNegative =
+        Boolean(allowNegative) && (auth.user.role === "ADMIN" || auth.user.role === "CASHIER")
+
       const ledger =
         action === "subtract"
           ? await debitStaffBalance({
@@ -45,6 +48,7 @@ export async function POST(request: Request) {
               performedBy: auth.user.id,
               processedByUserId: auth.user.id,
               note,
+              allowNegative: mayAllowNegative,
             })
           : await creditStaffDeposit({
               userId: staffUser.id,

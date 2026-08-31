@@ -238,11 +238,15 @@ export async function sendLowBalanceEmail(input: {
   userId?: string
   studentId: string
   addFundsUrl?: string
+  /** When true, copy emphasizes debt that needs to be paid. */
+  isNegative?: boolean
 }) {
-  const body = `${input.studentName}'s cafeteria balance is low (${input.balance}). Please add funds.`
+  const body = input.isNegative
+    ? `${input.studentName}'s cafeteria account is in debt (${input.balance}). Please add funds so lunch service is not interrupted.`
+    : `${input.studentName}'s cafeteria balance is low (${input.balance}). Please add funds.`
   return sendEmail({
     to: input.to,
-    subject: "Low Lunch Balance Alert",
+    subject: input.isNegative ? "Lunch Account Debt Alert" : "Low Lunch Balance Alert",
     body,
     html: lowBalanceEmailHtml(input),
     type: "LOW_BALANCE",

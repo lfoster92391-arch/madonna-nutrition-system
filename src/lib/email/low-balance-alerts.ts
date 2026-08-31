@@ -111,8 +111,9 @@ export async function maybeSendLowBalanceAlerts(input: {
     const threshold = getStoredStudentThreshold(prefs, input.studentExternalId)
     const crossedThreshold =
       input.previousBalance >= threshold && input.newBalance < threshold
+    const enteredDebt = input.previousBalance >= 0 && input.newBalance < 0
 
-    if (!crossedThreshold) {
+    if (!crossedThreshold && !enteredDebt) {
       skipped += 1
       continue
     }
@@ -129,6 +130,7 @@ export async function maybeSendLowBalanceAlerts(input: {
       userId: parent.id,
       studentId: input.studentId,
       addFundsUrl: `${PARENT_PORTAL_URL}/parent/payments`,
+      isNegative: input.newBalance < 0,
     })
 
     if (delivery.sent) sent += 1

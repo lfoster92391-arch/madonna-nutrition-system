@@ -142,12 +142,18 @@ export interface DebitStudentBalanceInput {
   performedBy?: string
   processedByUserId?: string
   note?: string
+  /**
+   * When true (admin/office correction), balance may go below $0 (debt).
+   * When false (default), clamps at $0 — kiosk take-off stays non-negative.
+   */
+  allowNegative?: boolean
 }
 
 /**
  * Take money off a student lunch account (correction, refund, or mistake).
  * Records a negative DEPOSIT so history is not a silent overwrite and not a meal charge.
- * Clamps at $0 — meal charges may still go negative, but office take-off will not.
+ * By default clamps at $0. Pass allowNegative for office debt / unpaid-lunch corrections.
+ * Meal charges may still go negative independently of this path.
  */
 export async function debitStudentBalance(
   input: DebitStudentBalanceInput
@@ -160,6 +166,8 @@ export async function debitStudentBalance(
   if (requested.lte(0)) {
     throw new BalanceDebitError("Enter an amount greater than $0.")
   }
+
+  const allowNegative = Boolean(input.allowNegative)
 
   return prisma.$transaction(async (tx) => {
     const student = await tx.student.findUnique({
@@ -175,11 +183,12 @@ export async function debitStudentBalance(
       throw new Error("Student does not belong to this school")
     }
 
-    if (student.balance.lte(0)) {
+    if (!allowNegative && student.balance.lte(0)) {
       throw new BalanceDebitError("Nothing to take off. Balance is already $0 or less.")
     }
 
-    const amountDebited = requested.gt(student.balance) ? student.balance : requested
+    const amountDebited =
+      !allowNegative && requested.gt(student.balance) ? student.balance : requested
     const balanceAfter = student.balance.sub(amountDebited)
     const ledgerAmount = amountDebited.mul(-1)
     const mealType = mealTypeForDebit(input.note)
@@ -212,7 +221,8 @@ export async function debitStudentBalance(
         metadata: {
           amountRequested: input.amountDollars,
           amountDebited: Number(amountDebited),
-          clamped: amountDebited.lt(requested),
+          clamped: !allowNegative && amountDebited.lt(requested),
+          allowNegative,
           source: "office",
           note: input.note?.trim() || null,
         },
@@ -310,11 +320,13 @@ export interface DebitStaffBalanceInput {
   performedBy?: string
   processedByUserId?: string
   note?: string
+  /** When true, staff lunch balance may go below $0. Default clamps at $0. */
+  allowNegative?: boolean
 }
 
 /**
  * Take money off a staff lunch account. Audit-only (staff deposits are not student ledger rows).
- * Clamps at $0 so this is not a meal charge.
+ * By default clamps at $0. Pass allowNegative for office debt corrections.
  */
 export async function debitStaffBalance(
   input: DebitStaffBalanceInput
@@ -327,6 +339,8 @@ export async function debitStaffBalance(
   if (requested.lte(0)) {
     throw new BalanceDebitError("Enter an amount greater than $0.")
   }
+
+  const allowNegative = Boolean(input.allowNegative)
 
   return prisma.$transaction(async (tx) => {
     const staffUser = await tx.user.findFirst({
@@ -343,13 +357,14 @@ export async function debitStaffBalance(
       throw new Error("Staff account not found")
     }
 
-    if (staffUser.accountBalance.lte(0)) {
+    if (!allowNegative && staffUser.accountBalance.lte(0)) {
       throw new BalanceDebitError("Nothing to take off. Balance is already $0 or less.")
     }
 
-    const amountDebited = requested.gt(staffUser.accountBalance)
-      ? staffUser.accountBalance
-      : requested
+    const amountDebited =
+      !allowNegative && requested.gt(staffUser.accountBalance)
+        ? staffUser.accountBalance
+        : requested
     const balanceAfter = staffUser.accountBalance.sub(amountDebited)
 
     await tx.user.update({
@@ -368,7 +383,8 @@ export async function debitStaffBalance(
         metadata: {
           amountRequested: input.amountDollars,
           amountDebited: Number(amountDebited),
-          clamped: amountDebited.lt(requested),
+          clamped: !allowNegative && amountDebited.lt(requested),
+          allowNegative,
           source: "office",
           note: input.note?.trim() || null,
           mealType: mealTypeForDebit(input.note),

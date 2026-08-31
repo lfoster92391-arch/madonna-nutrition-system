@@ -10,6 +10,8 @@ import { officeDepositSchema } from "@/lib/api/validation"
 import { badRequest, notFound, serverError, withDatabase } from "@/lib/api/response"
 import { requireMutatingSession } from "@/lib/api/session-auth"
 import { prisma } from "@/lib/prisma"
+import { maybeSendLowBalanceAlerts } from "@/lib/email/low-balance-alerts"
+import { notifyParentsOfBalanceChange } from "@/lib/parent/student-order-alerts"
 
 export async function POST(request: Request) {
   const result = await withDatabase(async () => {
@@ -23,7 +25,7 @@ export async function POST(request: Request) {
         return badRequest("Invalid office payment", parsed.error.flatten())
       }
 
-      const { studentId, amount, method, note, action } = parsed.data
+      const { studentId, amount, method, note, action, allowNegative } = parsed.data
       const student = await findStudentByScanId(studentId)
       if (!student || student.disabled) {
         return notFound("Student not found or disabled")
@@ -32,6 +34,12 @@ export async function POST(request: Request) {
       if (student.schoolId !== auth.schoolId) {
         return badRequest("Student does not belong to this school")
       }
+
+      // Only ADMIN/CASHIER office sessions may request debt; kiosk omit → clamp at $0.
+      const mayAllowNegative =
+        Boolean(allowNegative) && (auth.user.role === "ADMIN" || auth.user.role === "CASHIER")
+
+      const previousBalance = Number(student.balance)
 
       const ledger =
         action === "subtract"
@@ -42,6 +50,7 @@ export async function POST(request: Request) {
               performedBy: auth.user.id,
               processedByUserId: auth.user.id,
               note,
+              allowNegative: mayAllowNegative,
             })
           : await creditStudentDeposit({
               studentId: student.id,
@@ -55,6 +64,31 @@ export async function POST(request: Request) {
             })
 
       const amountDebited = "amountDebited" in ledger ? ledger.amountDebited : undefined
+
+      if (action === "subtract") {
+        const studentName = `${student.firstName} ${student.lastName}`
+        void notifyParentsOfBalanceChange({
+          schoolId: auth.schoolId,
+          studentId: student.id,
+          studentExternalId: student.externalId,
+          studentName,
+          previousBalance,
+          newBalance: ledger.balanceAfter,
+          reason: "office_adjust",
+        }).catch((error) => {
+          console.error("Office adjust balance alert failed", error)
+        })
+        void maybeSendLowBalanceAlerts({
+          schoolId: auth.schoolId,
+          studentId: student.id,
+          studentExternalId: student.externalId,
+          studentName,
+          previousBalance,
+          newBalance: ledger.balanceAfter,
+        }).catch((error) => {
+          console.error("Office adjust low-balance email failed", error)
+        })
+      }
 
       const transaction = await prisma.transaction.findUnique({
         where: { id: ledger.transactionId },

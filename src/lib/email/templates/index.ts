@@ -30,7 +30,18 @@ export function lowBalanceEmailHtml(input: {
   studentName: string
   balance: string
   addFundsUrl?: string
+  isNegative?: boolean
 }) {
+  if (input.isNegative) {
+    return renderBrandedEmail({
+      title: "Lunch Account Debt",
+      preheader: `${input.studentName}'s account needs funds`,
+      bodyHtml: `<p style="margin:0 0 12px;"><strong>${input.studentName}</strong>'s cafeteria account is in debt: <strong>${input.balance}</strong>.</p>
+      <p style="margin:0;color:#475569;">Please add funds so lunch service is not interrupted.</p>`,
+      ctaLabel: input.addFundsUrl ? "Add funds" : "View account",
+      ctaUrl: input.addFundsUrl ?? PARENT_PORTAL_URL,
+    })
+  }
   return renderBrandedEmail({
     title: "Low Lunch Balance",
     preheader: `${input.studentName}'s account needs funds`,

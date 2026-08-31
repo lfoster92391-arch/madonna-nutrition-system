@@ -65,6 +65,8 @@ export const officeDepositSchema = z.object({
   method: z.enum(["cash", "check", "card", "other"]).default("cash"),
   note: z.string().max(500).optional(),
   action: z.enum(["add", "subtract"]).default("add"),
+  /** Admin/office: allow take-off past $0 into debt. Omitted/false keeps $0 clamp. */
+  allowNegative: z.boolean().optional(),
 })
 
 export const staffDepositSchema = z.object({
@@ -73,6 +75,7 @@ export const staffDepositSchema = z.object({
   method: z.enum(["cash", "check", "card", "other"]).default("cash"),
   note: z.string().max(500).optional(),
   action: z.enum(["add", "subtract"]).default("add"),
+  allowNegative: z.boolean().optional(),
 })
 
 export const parentRegisterSchema = z.object({

@@ -98,6 +98,8 @@ export const api = {
     method?: "cash" | "check" | "card" | "other"
     note?: string
     action?: "add" | "subtract"
+    /** Admin/office: allow take-off into debt (below $0). */
+    allowNegative?: boolean
   }) =>
     fetchJson<
       import("@/lib/types").Transaction & {
@@ -114,6 +116,7 @@ export const api = {
     method?: "cash" | "check" | "card" | "other"
     note?: string
     action?: "add" | "subtract"
+    allowNegative?: boolean
   }) =>
     fetchJson<{
       balanceAfter: number
