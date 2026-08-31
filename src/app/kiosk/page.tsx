@@ -199,6 +199,7 @@ export default function ScanStationPage() {
   const scanInputRef = useRef<HTMLInputElement>(null)
   const scanTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const flashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const completeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const highestSeverity = student ? getHighestAllergySeverity(student.allergies) : null
   const bannerStyle = highestSeverity ? getAllergyBannerStyle(highestSeverity) : null
@@ -351,6 +352,10 @@ export default function ScanStationPage() {
   const armScanner = useCallback(
     (options?: { keepStudent?: boolean }) => {
       const keepStudent = options?.keepStudent ?? false
+      if (completeTimerRef.current) {
+        clearTimeout(completeTimerRef.current)
+        completeTimerRef.current = null
+      }
       if (!keepStudent) {
         setStudent(null)
         setStaffUser(null)
@@ -358,6 +363,7 @@ export default function ScanStationPage() {
         setPosCents(0)
         setLunchSignupAlert(null)
         setLunchSignupDialogOpen(false)
+        setFlashMessage("")
       }
       setScanStatus(keepStudent ? "found" : "ready")
       setScanValue("")
@@ -365,6 +371,26 @@ export default function ScanStationPage() {
     },
     [focusScan]
   )
+
+  const finishCharge = useCallback(
+    (message: string) => {
+      setFlashMessage(message)
+      setScanStatus("complete")
+      if (completeTimerRef.current) clearTimeout(completeTimerRef.current)
+      completeTimerRef.current = setTimeout(() => {
+        completeTimerRef.current = null
+        armScanner()
+      }, FLASH_DISMISS_MS)
+      window.setTimeout(focusScan, 50)
+    },
+    [armScanner, focusScan]
+  )
+
+  useEffect(() => {
+    return () => {
+      if (completeTimerRef.current) clearTimeout(completeTimerRef.current)
+    }
+  }, [])
 
   useEffect(() => {
     if (addFundsOpen) return
@@ -539,6 +565,10 @@ export default function ScanStationPage() {
 
   const loadStudent = useCallback(
     (found: Student) => {
+      if (completeTimerRef.current) {
+        clearTimeout(completeTimerRef.current)
+        completeTimerRef.current = null
+      }
       if (found.disabled) {
         setScanStatus("error")
         setFlashMessage("Student account is disabled.")
@@ -578,6 +608,10 @@ export default function ScanStationPage() {
 
   const loadStaff = useCallback(
     (found: User) => {
+      if (completeTimerRef.current) {
+        clearTimeout(completeTimerRef.current)
+        completeTimerRef.current = null
+      }
       if (found.status !== "active") {
         setScanStatus("error")
         setFlashMessage("Staff account is disabled.")
@@ -773,10 +807,8 @@ export default function ScanStationPage() {
         setStaffUser((prev) =>
           prev ? { ...prev, accountBalance: result.balanceAfter } : prev
         )
-        setFlashMessage(`${mealLabel} recorded for ${staffUser.firstName}!`)
-        setScanStatus("found")
+        finishCharge(`${mealLabel} recorded for ${staffUser.firstName}!`)
         void queryClient.invalidateQueries({ queryKey: ["users"] })
-        window.setTimeout(focusScan, 50)
       } catch (error) {
         setFlashMessage(
           error instanceof Error ? error.message : "Could not charge staff lunch account."
@@ -820,9 +852,7 @@ export default function ScanStationPage() {
         },
         ...prev,
       ])
-      setFlashMessage(`${mealLabel} recorded for ${student.firstName}! (offline)`)
-      setScanStatus("found")
-      window.setTimeout(focusScan, 50)
+      finishCharge(`${mealLabel} recorded for ${student.firstName}! (offline)`)
     }
 
     if (isOffline) {
@@ -833,11 +863,9 @@ export default function ScanStationPage() {
     try {
       const tx = await api.processMeal(student.id, mealLabel, price, undefined, mealType)
       setLocalBalance(tx.balanceAfter)
-      setFlashMessage(`${mealLabel} recorded for ${student.firstName}!`)
-      setScanStatus("found")
+      finishCharge(`${mealLabel} recorded for ${student.firstName}!`)
       void queryClient.invalidateQueries({ queryKey: ["students"] })
       void queryClient.invalidateQueries({ queryKey: ["transactions"] })
-      window.setTimeout(focusScan, 50)
     } catch (error) {
       // Expected / server errors stay online. Only true network loss queues offline.
       if (isNetworkError(error) || !isBrowserOnline()) {

@@ -62,3 +62,18 @@ export function formatStudentAgreementStatus(status: StudentAgreementStatus): st
       return "Revoked"
   }
 }
+
+/** Plain-language reason a student cannot order lunch yet (admin / support). */
+export function agreementBlockReason(status: StudentAgreementStatus): string | null {
+  switch (status) {
+    case "SIGNED":
+    case "EXPIRING":
+      return null
+    case "AGREEMENT_REQUIRED":
+      return "Parent has not signed the current cafeteria agreement for this student."
+    case "RENEWAL_NEEDED":
+      return "Agreement on file is expired — parent must sign the current version."
+    case "REVOKED":
+      return "Agreement was revoked — parent must sign again."
+  }
+}

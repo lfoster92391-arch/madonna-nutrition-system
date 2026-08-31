@@ -9,6 +9,7 @@ import {
   Brain,
   ChefHat,
   DollarSign,
+  FileText,
   IdCard,
   Megaphone,
   MonitorSmartphone,
@@ -79,6 +80,12 @@ const SECTIONS: LauncherSection[] = [
         href: "/admin/badges",
         icon: IdCard,
         importExportType: "badges",
+      },
+      {
+        title: "Lunch agreements",
+        description: "See who signed the cafeteria agreement, who still needs to sign, and why ordering is blocked.",
+        href: "/admin/agreements",
+        icon: FileText,
       },
       {
         title: "Pricing Setup",
