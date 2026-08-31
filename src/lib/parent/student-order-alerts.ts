@@ -138,8 +138,8 @@ export async function notifyParentsOfStudentLunchOrder(input: {
       await prisma.notification.create({
         data: {
           type: "NEGATIVE_BALANCE",
-          title: `Debt alert — ${input.studentName}`,
-          message: `Lunch account is ${formatCurrency(input.currentBalance)} (projected ${formatCurrency(projected)} after this order). Add funds so lunch is not interrupted.`,
+          title: `Debt needs paid — ${input.studentName}`,
+          message: `Lunch account is ${formatCurrency(input.currentBalance)} (projected ${formatCurrency(projected)} after this order). Add funds so lunch service is not interrupted.`,
           channel: "EMAIL",
           emailSent: false,
           read: false,
@@ -219,6 +219,146 @@ export async function notifyParentsOfMealCharge(input: {
           amount: input.amount,
           previousBalance: input.previousBalance,
           newBalance: input.newBalance,
+          studentExternalId: input.studentExternalId,
+        },
+      },
+    })
+    notified += 1
+  }
+
+  const balanceAlerts = await notifyParentsOfBalanceChange({
+    schoolId: input.schoolId,
+    studentId: input.studentId,
+    studentExternalId: input.studentExternalId,
+    studentName: input.studentName,
+    previousBalance: input.previousBalance,
+    newBalance: input.newBalance,
+    reason: "meal_charge",
+  })
+
+  return { notified: notified + balanceAlerts.notified }
+}
+
+const BALANCE_ALERT_DEDUP_HOURS = 12
+
+async function recentlyBalanceAlerted(input: {
+  userId: string
+  studentId: string
+  type: "LOW_BALANCE" | "NEGATIVE_BALANCE"
+}): Promise<boolean> {
+  const since = new Date(Date.now() - BALANCE_ALERT_DEDUP_HOURS * 60 * 60 * 1000)
+  const existing = await prisma.notification.findFirst({
+    where: {
+      userId: input.userId,
+      studentId: input.studentId,
+      type: input.type,
+      createdAt: { gte: since },
+    },
+    select: { id: true },
+  })
+  return Boolean(existing)
+}
+
+/**
+ * In-app LOW_BALANCE / NEGATIVE_BALANCE for linked parents when a lunch account
+ * drops into low funds or debt (office adjust, meal charge, etc.).
+ */
+export async function notifyParentsOfBalanceChange(input: {
+  schoolId: string
+  studentId: string
+  studentExternalId: string
+  studentName: string
+  previousBalance: number
+  newBalance: number
+  reason?: "office_adjust" | "meal_charge" | "order"
+}): Promise<{ notified: number }> {
+  const parents = await findLinkedParentUsersForStudent({
+    schoolId: input.schoolId,
+    studentId: input.studentId,
+    studentExternalId: input.studentExternalId,
+  })
+
+  let notified = 0
+  const enteredDebt = input.newBalance < 0 && input.previousBalance >= 0
+  const stillInDebt =
+    input.newBalance < 0 && (input.reason === "office_adjust" || input.reason === "meal_charge")
+
+  for (const parent of parents) {
+    const prefs = parseStoredParentNotificationPrefs(parent.notificationPrefs)
+    const threshold = getStoredStudentThreshold(prefs, input.studentExternalId)
+    const paused = prefs.pausedStudents?.includes(input.studentExternalId) === true
+
+    if (paused) continue
+
+    if (input.newBalance < 0 && (enteredDebt || stillInDebt)) {
+      if (await recentlyBalanceAlerted({
+        userId: parent.id,
+        studentId: input.studentId,
+        type: "NEGATIVE_BALANCE",
+      })) {
+        continue
+      }
+
+      await prisma.notification.create({
+        data: {
+          type: "NEGATIVE_BALANCE",
+          title: `Debt needs paid — ${input.studentName}`,
+          message: `Lunch account is ${formatCurrency(input.newBalance)}. Add funds so lunch service is not interrupted.`,
+          channel: "EMAIL",
+          emailSent: false,
+          read: false,
+          userId: parent.id,
+          studentId: input.studentId,
+          schoolId: input.schoolId,
+          metadata: {
+            balance: input.newBalance,
+            previousBalance: input.previousBalance,
+            reason: input.reason ?? null,
+            studentExternalId: input.studentExternalId,
+          },
+        },
+      })
+      notified += 1
+      continue
+    }
+
+    if (prefs.lowBalanceAlerts === false) continue
+
+    const enteredLow =
+      input.newBalance >= 0 &&
+      input.newBalance < threshold &&
+      input.previousBalance >= threshold
+    const nowLow =
+      input.newBalance >= 0 &&
+      input.newBalance < threshold &&
+      (input.reason === "office_adjust" || enteredLow)
+
+    if (!nowLow) continue
+
+    if (await recentlyBalanceAlerted({
+      userId: parent.id,
+      studentId: input.studentId,
+      type: "LOW_BALANCE",
+    })) {
+      continue
+    }
+
+    await prisma.notification.create({
+      data: {
+        type: "LOW_BALANCE",
+        title: `Low balance — ${input.studentName}`,
+        message: `Balance is ${formatCurrency(input.newBalance)} (below your ${formatCurrency(threshold)} alert). Add funds before the account runs out.`,
+        channel: "EMAIL",
+        emailSent: false,
+        read: false,
+        userId: parent.id,
+        studentId: input.studentId,
+        schoolId: input.schoolId,
+        metadata: {
+          balance: input.newBalance,
+          previousBalance: input.previousBalance,
+          threshold,
+          reason: input.reason ?? null,
           studentExternalId: input.studentExternalId,
         },
       },

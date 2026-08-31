@@ -136,10 +136,6 @@ export function RecordOfficePayment({
     }
 
     if (action === "subtract") {
-      if (currentBalance <= 0) {
-        setError("Nothing to take off. Balance is already $0 or less.")
-        return
-      }
       if (!confirming) {
         setConfirming(true)
         return
@@ -154,24 +150,27 @@ export function RecordOfficePayment({
         method: action === "add" ? method : undefined,
         note: note.trim() || undefined,
         action,
+        allowNegative: action === "subtract" ? true : undefined,
       })
       const balanceAfter =
         typeof result.balanceAfter === "number"
           ? result.balanceAfter
           : action === "add"
             ? currentBalance + dollars
-            : Math.max(0, currentBalance - dollars)
+            : currentBalance - dollars
       const takenOff =
-        typeof result.amountDebited === "number" ? result.amountDebited : Math.min(dollars, currentBalance)
+        typeof result.amountDebited === "number" ? result.amountDebited : dollars
 
       setLocalBalances((prev) => ({ ...prev, [resolvedStudentId]: balanceAfter }))
       if (action === "subtract") {
-        const clampedNote =
-          takenOff < dollars
-            ? ` Took ${formatCurrency(takenOff)} off (cannot go below $0).`
-            : ""
+        const debtNote =
+          balanceAfter < 0
+            ? " Account is now in debt — linked parents will see a debt alert."
+            : balanceAfter < 10
+              ? " Balance is low — linked parents may see a low-balance alert."
+              : ""
         setSuccess(
-          `Took ${formatCurrency(takenOff)} off. ${selected?.firstName ?? "Student"} now has ${formatCurrency(balanceAfter)}.${clampedNote}`
+          `Took ${formatCurrency(takenOff)} off. ${selected?.firstName ?? "Student"} now has ${formatCurrency(balanceAfter)}.${debtNote}`
         )
       } else {
         setSuccess(
@@ -194,10 +193,9 @@ export function RecordOfficePayment({
 
   const dollarsPreview = Number.parseFloat(amount)
   const takeOffAmount =
-    Number.isFinite(dollarsPreview) && dollarsPreview > 0
-      ? Math.min(dollarsPreview, Math.max(0, currentBalance))
-      : 0
-  const balanceAfterPreview = Math.max(0, currentBalance - takeOffAmount)
+    Number.isFinite(dollarsPreview) && dollarsPreview > 0 ? dollarsPreview : 0
+  const balanceAfterPreview = currentBalance - takeOffAmount
+  const willEnterDebt = action === "subtract" && takeOffAmount > 0 && balanceAfterPreview < 0
 
   const form = (
     <form onSubmit={(e) => void handleSubmit(e)} className="space-y-4">
@@ -333,8 +331,8 @@ export function RecordOfficePayment({
 
       {action === "subtract" && (
         <p className="text-sm text-silver-foreground">
-          Use this for a correction, refund, or typing mistake. This is not a lunch charge. The
-          account will not go below $0.
+          Use this for a correction, refund, unpaid lunch, or office mistake — not a lunch-line
+          charge. Balance may go below $0 (debt). Linked parents get a low-balance or debt alert.
         </p>
       )}
 
@@ -380,7 +378,7 @@ export function RecordOfficePayment({
           placeholder={
             action === "add"
               ? "Check #1234, receipt, etc."
-              : "Why you are taking money off — refund, duplicate deposit, etc."
+              : "Why you are taking money off — unpaid lunch, refund, duplicate deposit, etc."
           }
           value={note}
           onChange={(e) => {
@@ -407,11 +405,18 @@ export function RecordOfficePayment({
       )}
 
       {action === "subtract" && confirming ? (
-        <div className="space-y-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
-          <p className="text-sm text-amber-950">
+        <div
+          className={cn(
+            "space-y-3 rounded-xl border px-4 py-3",
+            willEnterDebt ? "border-red-200 bg-red-50" : "border-amber-200 bg-amber-50"
+          )}
+        >
+          <p className={cn("text-sm", willEnterDebt ? "text-red-950" : "text-amber-950")}>
             Take {formatCurrency(takeOffAmount)} off {selected?.firstName ?? "this student"}&apos;s
-            lunch account? New balance will be {formatCurrency(balanceAfterPreview)}. This is a
-            correction, not a meal charge.
+            lunch account? New balance will be {formatCurrency(balanceAfterPreview)}.
+            {willEnterDebt
+              ? " That puts the account in debt — parents will be asked to add funds."
+              : " This is a correction, not a meal charge."}
           </p>
           <div className="flex flex-wrap gap-2">
             <Button
@@ -450,8 +455,9 @@ export function RecordOfficePayment({
       <CardHeader>
         <CardTitle>Add or take money off</CardTitle>
         <p className="text-sm text-silver-foreground">
-          Add money when a family pays in the office. Take money off for a correction, refund, or
-          mistake. Parent card payments still go through Stripe.
+          Add money when a family pays in the office. Take money off for a correction, unpaid
+          lunch, or mistake — balance may go into debt. Parent card payments still go through
+          Stripe.
         </p>
       </CardHeader>
       <div className="px-6 pb-6">{form}</div>

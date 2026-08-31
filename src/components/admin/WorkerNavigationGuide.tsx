@@ -107,7 +107,7 @@ const GUIDE_STEPS: GuideStep[] = [
     details: [
       "Find the student → Open profile or Add money to account.",
       "Choose Add money or Take money off. Enter the amount and an optional note.",
-      "Add money when they pay cash or check. Take money off for a correction or refund — not a lunch charge. Balance will not go below $0.",
+      "Add money when they pay cash or check. Take money off for a correction, unpaid lunch, or refund — not a lunch charge. Balance may go below $0 (debt); linked parents get low-balance or debt alerts.",
       "Online parent card payments use Stripe — we never store card numbers.",
     ],
     href: "/admin/imports",

@@ -60,10 +60,6 @@ export function RecordStaffOfficePayment({
     }
 
     if (action === "subtract") {
-      if (balance <= 0) {
-        setError("Nothing to take off. Balance is already $0 or less.")
-        return
-      }
       if (!confirming) {
         setConfirming(true)
         return
@@ -78,23 +74,22 @@ export function RecordStaffOfficePayment({
         method: action === "add" ? method : undefined,
         note: note.trim() || undefined,
         action,
+        allowNegative: action === "subtract" ? true : undefined,
       })
       const balanceAfter =
         typeof result.balanceAfter === "number"
           ? result.balanceAfter
           : action === "add"
             ? balance + dollars
-            : Math.max(0, balance - dollars)
+            : balance - dollars
       const takenOff =
-        typeof result.amountDebited === "number" ? result.amountDebited : Math.min(dollars, balance)
+        typeof result.amountDebited === "number" ? result.amountDebited : dollars
       setBalance(balanceAfter)
       if (action === "subtract") {
-        const clampedNote =
-          takenOff < dollars
-            ? ` Took ${formatCurrency(takenOff)} off (cannot go below $0).`
-            : ""
+        const debtNote =
+          balanceAfter < 0 ? " Account is now in debt (negative balance)." : ""
         setSuccess(
-          `Took ${formatCurrency(takenOff)} off. ${formatUserName(staffUser)} now has ${formatCurrency(balanceAfter)} on their lunch account.${clampedNote}`
+          `Took ${formatCurrency(takenOff)} off. ${formatUserName(staffUser)} now has ${formatCurrency(balanceAfter)} on their lunch account.${debtNote}`
         )
       } else {
         setSuccess(
@@ -116,10 +111,9 @@ export function RecordStaffOfficePayment({
 
   const dollarsPreview = Number.parseFloat(amount)
   const takeOffAmount =
-    Number.isFinite(dollarsPreview) && dollarsPreview > 0
-      ? Math.min(dollarsPreview, Math.max(0, balance))
-      : 0
-  const balanceAfterPreview = Math.max(0, balance - takeOffAmount)
+    Number.isFinite(dollarsPreview) && dollarsPreview > 0 ? dollarsPreview : 0
+  const balanceAfterPreview = balance - takeOffAmount
+  const willEnterDebt = action === "subtract" && takeOffAmount > 0 && balanceAfterPreview < 0
 
   return (
     <form onSubmit={(e) => void handleSubmit(e)} className="space-y-4">
@@ -157,8 +151,8 @@ export function RecordStaffOfficePayment({
 
       {action === "subtract" && (
         <p className="text-sm text-silver-foreground">
-          Use this for a correction, refund, or typing mistake. This is not a lunch charge. The
-          account will not go below $0.
+          Use this for a correction, refund, or unpaid meal. Balance may go below $0 (debt). This is
+          not a lunch-line charge.
         </p>
       )}
 
@@ -204,7 +198,7 @@ export function RecordStaffOfficePayment({
           placeholder={
             action === "add"
               ? "Check #1234, receipt, etc."
-              : "Why you are taking money off — refund, duplicate deposit, etc."
+              : "Why you are taking money off — unpaid meal, refund, etc."
           }
           value={note}
           onChange={(e) => {
@@ -231,11 +225,18 @@ export function RecordStaffOfficePayment({
       )}
 
       {action === "subtract" && confirming ? (
-        <div className="space-y-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
-          <p className="text-sm text-amber-950">
+        <div
+          className={cn(
+            "space-y-3 rounded-xl border px-4 py-3",
+            willEnterDebt ? "border-red-200 bg-red-50" : "border-amber-200 bg-amber-50"
+          )}
+        >
+          <p className={cn("text-sm", willEnterDebt ? "text-red-950" : "text-amber-950")}>
             Take {formatCurrency(takeOffAmount)} off {formatUserName(staffUser)}&apos;s lunch
-            account? New balance will be {formatCurrency(balanceAfterPreview)}. This is a
-            correction, not a meal charge.
+            account? New balance will be {formatCurrency(balanceAfterPreview)}.
+            {willEnterDebt
+              ? " That puts the account in debt."
+              : " This is a correction, not a meal charge."}
           </p>
           <div className="flex flex-wrap gap-2">
             <Button
