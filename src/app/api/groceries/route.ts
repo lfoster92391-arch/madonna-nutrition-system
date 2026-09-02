@@ -2,12 +2,20 @@ import { NextResponse } from "next/server"
 import { badRequest, serverError } from "@/lib/api/response"
 import { requireMutatingSession } from "@/lib/api/session-auth"
 import { groceryPurchaseSchema } from "@/lib/api/validation"
+import {
+  currentMonthParam,
+  isDateInMonth,
+  parseMonthParam,
+} from "@/lib/dates/month-range"
 import { getReceivingData, recordGroceryPurchase } from "@/lib/operations/service"
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const month =
+      parseMonthParam(new URL(request.url).searchParams.get("month")) ?? currentMonthParam()
+
     const data = await getReceivingData()
-    const groceries = data.records
+    const allGroceries = data.records
       .filter((r) => r.status === "approved")
       .map((r) => {
         const lineTotal = r.lines.reduce((sum, line) => {
@@ -31,16 +39,14 @@ export async function GET() {
           new Date(b.purchasedAt ?? 0).getTime() - new Date(a.purchasedAt ?? 0).getTime()
       )
 
+    const groceries = allGroceries.filter((g) => isDateInMonth(g.purchasedAt, month))
+    const monthSpend = groceries.reduce((s, g) => s + g.totalCost, 0)
+
     return NextResponse.json({
       source: data.source,
+      month,
       groceries,
-      monthSpend: groceries
-        .filter((g) => {
-          const d = new Date(g.purchasedAt ?? 0)
-          const now = new Date()
-          return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth()
-        })
-        .reduce((s, g) => s + g.totalCost, 0),
+      monthSpend,
     })
   } catch (error) {
     console.error("GET /api/groceries", error)

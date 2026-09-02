@@ -46,7 +46,7 @@ export const SCHOOL_CHOICES: AccessChoice[] = [
     description:
       "Lunch line station — scan student MD IDs or staff badges and ring up meals. Button prices come from Admin → Kiosk / POS.",
     icon: Calculator,
-    href: "/kiosk",
+    href: "/access/school/kiosk",
     enterLabel: "Open Cashier POS",
     secondaryHref: "/login/cashier",
     secondaryLabel: "Sign in for à la carte",

@@ -18,6 +18,11 @@ import type {
   SuggestionsData,
   WasteData,
 } from "@/lib/intelligence/types"
+import {
+  currentMonthParam,
+  monthRangeFromParam,
+  parseMonthParam,
+} from "@/lib/dates/month-range"
 
 export async function tryCompute<T>(fn: () => Promise<T>, fallback: T): Promise<T> {
   try {
@@ -185,14 +190,14 @@ export async function computeForecast(): Promise<ForecastData> {
   }
 }
 
-export async function computeReconciliation(): Promise<ReconciliationData> {
+export async function computeReconciliation(monthParam?: string): Promise<ReconciliationData> {
   const schoolId = await resolveSchoolId()
-  const today = startOfDay()
-  const monthStart = new Date(today.getFullYear(), today.getMonth(), 1)
+  const month = parseMonthParam(monthParam) ?? currentMonthParam()
+  const { start: monthStart, end: monthEnd } = monthRangeFromParam(month)
 
   const [transactions, receiving] = await Promise.all([
     prisma.transaction.findMany({
-      where: { schoolId, createdAt: { gte: monthStart } },
+      where: { schoolId, createdAt: { gte: monthStart, lte: monthEnd } },
       select: { amount: true, mealType: true },
     }),
     prisma.receivingRecord.findMany({
@@ -200,9 +205,15 @@ export async function computeReconciliation(): Promise<ReconciliationData> {
         schoolId,
         status: "approved",
         OR: [
-          { receivedAt: { gte: monthStart } },
-          { approvedAt: { gte: monthStart } },
-          { AND: [{ receivedAt: null }, { approvedAt: null }, { createdAt: { gte: monthStart } }] },
+          { receivedAt: { gte: monthStart, lte: monthEnd } },
+          { approvedAt: { gte: monthStart, lte: monthEnd } },
+          {
+            AND: [
+              { receivedAt: null },
+              { approvedAt: null },
+              { createdAt: { gte: monthStart, lte: monthEnd } },
+            ],
+          },
         ],
       },
       select: { lines: true },
@@ -223,6 +234,7 @@ export async function computeReconciliation(): Promise<ReconciliationData> {
 
   return {
     source: "database",
+    month,
     rows: [],
     mealCosts: [],
     totalRevenue: Math.round(totalRevenue * 100) / 100,

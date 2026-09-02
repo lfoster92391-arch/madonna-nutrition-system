@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { isDatabaseEnabled } from "@/lib/db/config"
+import { parseMonthParam } from "@/lib/dates/month-range"
 import {
   computeAnalytics,
   computeDashboard,
@@ -23,7 +24,9 @@ function isExportType(value: string | null): value is ExportType {
 }
 
 export async function GET(request: Request) {
-  const type = new URL(request.url).searchParams.get("type")
+  const url = new URL(request.url)
+  const type = url.searchParams.get("type")
+  const month = parseMonthParam(url.searchParams.get("month")) ?? undefined
 
   if (!isExportType(type)) {
     return NextResponse.json(
@@ -43,8 +46,11 @@ export async function GET(request: Request) {
     filename = "intelligence-dashboard.csv"
   } else if (type === "reconciliation") {
     const data = !isDatabaseEnabled()
-      ? mockReconciliation
-      : await tryCompute(computeReconciliation, mockReconciliation)
+      ? { ...mockReconciliation, month: month ?? mockReconciliation.month }
+      : await tryCompute(
+          () => computeReconciliation(month),
+          { ...mockReconciliation, month: month ?? mockReconciliation.month }
+        )
     csv = reconciliationToCsv(data)
     filename = "finance-reconciliation.csv"
   } else {

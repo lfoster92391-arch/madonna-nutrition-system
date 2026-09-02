@@ -66,6 +66,8 @@ export interface MealCostRow {
 
 export interface ReconciliationData {
   source: DataSource
+  /** YYYY-MM calendar month for totals (defaults to current month). */
+  month?: string
   rows: ReconciliationRow[]
   mealCosts: MealCostRow[]
   totalRevenue: number

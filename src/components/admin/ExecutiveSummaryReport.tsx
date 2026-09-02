@@ -6,7 +6,8 @@ import { Printer } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { INTELLIGENCE_REFETCH_MS } from "@/lib/intelligence/refresh"
-import type { AnalyticsData, DashboardData, SuggestionsData } from "@/lib/intelligence/types"
+import type { AnalyticsData, DashboardData, ReconciliationData, SuggestionsData } from "@/lib/intelligence/types"
+import { formatMonthLabel } from "@/lib/dates/month-range"
 import { formatCurrency } from "@/lib/utils"
 
 async function fetchJson<T>(url: string): Promise<T> {
@@ -18,10 +19,18 @@ async function fetchJson<T>(url: string): Promise<T> {
 /**
  * Plain-language executive summary for Lisa — live intelligence only, no invented metrics.
  */
-export function ExecutiveSummaryReport() {
+export function ExecutiveSummaryReport({ month }: { month: string }) {
   const dashboardQuery = useQuery({
     queryKey: ["intelligence", "dashboard"],
     queryFn: () => fetchJson<DashboardData>("/api/intelligence/dashboard"),
+    refetchInterval: INTELLIGENCE_REFETCH_MS,
+  })
+  const reconciliationQuery = useQuery({
+    queryKey: ["intelligence", "reconciliation", month],
+    queryFn: () =>
+      fetchJson<ReconciliationData>(
+        `/api/intelligence/reconciliation?month=${encodeURIComponent(month)}`
+      ),
     refetchInterval: INTELLIGENCE_REFETCH_MS,
   })
   const analyticsQuery = useQuery({
@@ -36,11 +45,16 @@ export function ExecutiveSummaryReport() {
   })
 
   const loading =
-    dashboardQuery.isLoading || analyticsQuery.isLoading || suggestionsQuery.isLoading
+    dashboardQuery.isLoading ||
+    analyticsQuery.isLoading ||
+    suggestionsQuery.isLoading ||
+    reconciliationQuery.isLoading
   const dashboard = dashboardQuery.data
   const analytics = analyticsQuery.data
   const suggestions = suggestionsQuery.data
+  const reconciliation = reconciliationQuery.data
   const m = dashboard?.metrics
+  const monthLabel = formatMonthLabel(month)
 
   const paragraphs = useMemo(() => {
     if (!m || !analytics) return [] as string[]
@@ -53,6 +67,11 @@ export function ExecutiveSummaryReport() {
     lines.push(
       `Meals served today: ${m.participationCount}. Revenue today: ${formatCurrency(m.revenueToday)}.`
     )
+    if (reconciliation) {
+      lines.push(
+        `Financials for ${monthLabel}: meal revenue ${formatCurrency(reconciliation.totalRevenue)}, grocery spend ${formatCurrency(reconciliation.totalExpenses)}, net ${formatCurrency(reconciliation.netMargin)}.`
+      )
+    }
     lines.push(
       `Participation rate: ${analytics.participationRate}%. Inventory health: ${m.inventoryHealth}% (${m.lowStockCount} low-stock items of ${m.totalInventoryItems} tracked).`
     )
@@ -70,7 +89,7 @@ export function ExecutiveSummaryReport() {
     }
     lines.push(`Forecast note: ${m.forecastSummary}`)
     return lines
-  }, [analytics, dashboard?.refreshedAt, m, suggestions])
+  }, [analytics, dashboard?.refreshedAt, m, monthLabel, reconciliation, suggestions])
 
   return (
     <Card className="print:border-0 print:shadow-none">
@@ -115,6 +134,22 @@ export function ExecutiveSummaryReport() {
               value={analytics ? `${analytics.participationRate}%` : "—"}
             />
             <Metric label="Waste (week)" value={`${analytics?.waste.wastePercent ?? 0}%`} />
+          </div>
+        )}
+        {reconciliation && (
+          <div className="mt-4 grid gap-3 sm:grid-cols-3 print:grid-cols-3">
+            <Metric
+              label={`Revenue (${monthLabel})`}
+              value={formatCurrency(reconciliation.totalRevenue)}
+            />
+            <Metric
+              label={`Groceries (${monthLabel})`}
+              value={formatCurrency(reconciliation.totalExpenses)}
+            />
+            <Metric
+              label={`Net (${monthLabel})`}
+              value={formatCurrency(reconciliation.netMargin)}
+            />
           </div>
         )}
       </div>
