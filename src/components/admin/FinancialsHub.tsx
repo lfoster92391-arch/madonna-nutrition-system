@@ -11,7 +11,9 @@ import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/ca
 import { Input, Label, Select } from "@/components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import type { ReconciliationData } from "@/lib/intelligence/types"
+import { currentMonthParam, formatMonthLabel, parseMonthParam } from "@/lib/dates/month-range"
 import { formatCurrency } from "@/lib/utils"
+import { MonthPicker } from "@/components/admin/MonthPicker"
 
 type GroceryRow = {
   id: string
@@ -30,14 +32,14 @@ type GroceriesResponse = {
 
 const UNITS = ["ea", "lb", "oz", "case", "bag", "gal", "box", "pack"]
 
-async function fetchGroceries(): Promise<GroceriesResponse> {
-  const res = await fetch("/api/groceries")
+async function fetchGroceries(month: string): Promise<GroceriesResponse> {
+  const res = await fetch(`/api/groceries?month=${encodeURIComponent(month)}`)
   if (!res.ok) throw new Error("Failed to load groceries")
   return res.json()
 }
 
-async function fetchReports(): Promise<ReconciliationData> {
-  const res = await fetch("/api/intelligence/reconciliation")
+async function fetchReports(month: string): Promise<ReconciliationData> {
+  const res = await fetch(`/api/intelligence/reconciliation?month=${encodeURIComponent(month)}`)
   if (!res.ok) throw new Error("Failed to load reports")
   return res.json()
 }
@@ -57,6 +59,18 @@ export function FinancialsHub() {
   const tabParam = searchParams.get("tab")
   const activeTab =
     tabParam === "expenses" || tabParam === "reports" ? tabParam : "groceries"
+  const selectedMonth =
+    parseMonthParam(searchParams.get("month")) ?? currentMonthParam()
+  const monthLabel = formatMonthLabel(selectedMonth)
+  const isCurrentMonth = selectedMonth === currentMonthParam()
+
+  const setSelectedMonth = (month: string) => {
+    const params = new URLSearchParams(searchParams.toString())
+    if (month === currentMonthParam()) params.delete("month")
+    else params.set("month", month)
+    const qs = params.toString()
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false })
+  }
 
   const queryClient = useQueryClient()
   const [form, setForm] = useState({
@@ -71,13 +85,13 @@ export function FinancialsHub() {
   const [savedMessage, setSavedMessage] = useState<string | null>(null)
 
   const { data: groceryData, isLoading: groceriesLoading } = useQuery({
-    queryKey: ["groceries"],
-    queryFn: fetchGroceries,
+    queryKey: ["groceries", selectedMonth],
+    queryFn: () => fetchGroceries(selectedMonth),
   })
 
   const { data: reportData, isLoading: reportsLoading } = useQuery({
-    queryKey: ["intelligence", "reconciliation"],
-    queryFn: fetchReports,
+    queryKey: ["intelligence", "reconciliation", selectedMonth],
+    queryFn: () => fetchReports(selectedMonth),
   })
 
   const saveMutation = useMutation({
@@ -157,17 +171,18 @@ export function FinancialsHub() {
       icon={DollarSign}
       stats={[
         {
-          label: "This month’s groceries",
+          label: isCurrentMonth ? "This month’s groceries" : `Groceries (${monthLabel})`,
           value: formatCurrency(monthSpend),
-          hint: groceries.length ? `${groceries.length} purchases on file` : "None yet",
+          hint: groceries.length ? `${groceries.length} purchases in ${monthLabel}` : "None in this month",
         },
         {
-          label: "Meal revenue (month)",
+          label: isCurrentMonth ? "Meal revenue (month)" : `Meal revenue (${monthLabel})`,
           value: formatCurrency(reportData?.totalRevenue ?? 0),
           variant: "success",
         },
       ]}
     >
+      <MonthPicker value={selectedMonth} onChange={setSelectedMonth} className="mb-2" />
       <Tabs
         value={activeTab}
         onValueChange={(value) => {
@@ -317,7 +332,11 @@ export function FinancialsHub() {
           <Card>
             <CardHeader>
               <CardTitle>Recent groceries</CardTitle>
-              <CardDescription>Newest purchases first</CardDescription>
+              <CardDescription>
+                {isCurrentMonth
+                  ? "Purchases this month, newest first"
+                  : `Purchases in ${monthLabel}, newest first`}
+              </CardDescription>
             </CardHeader>
             <div className="space-y-3 px-4 pb-6 sm:px-6">
               {groceriesLoading && <p className="text-sm text-silver-foreground">Loading…</p>}
@@ -326,7 +345,8 @@ export function FinancialsHub() {
                   <ShoppingBasket className="mx-auto h-10 w-10 text-primary/70" />
                   <p className="mt-3 text-lg font-semibold text-primary">No groceries yet</p>
                   <p className="mt-1 text-sm text-silver-foreground">
-                    Add your first purchase using the form above.
+                    No groceries recorded for {monthLabel}.
+                    {isCurrentMonth ? " Add your first purchase using the form above." : " Try another month or add a purchase with that date."}
                   </p>
                 </div>
               )}
@@ -363,7 +383,7 @@ export function FinancialsHub() {
             <CardHeader>
               <CardTitle>Grocery expenses</CardTitle>
               <CardDescription>
-                Every saved grocery purchase shows here as an expense. Parent card payments are separate.
+                Grocery purchases in {monthLabel}. Parent card payments are separate.
               </CardDescription>
             </CardHeader>
             <div className="px-4 pb-6 sm:px-6">
@@ -372,7 +392,7 @@ export function FinancialsHub() {
                 <div className="rounded-2xl border border-dashed border-silver/70 bg-silver/10 px-4 py-10 text-center">
                   <p className="text-lg font-semibold text-primary">No expenses yet</p>
                   <p className="mt-1 text-sm text-silver-foreground">
-                    No groceries yet — Add your first purchase on the Groceries tab.
+                    No grocery expenses in {monthLabel}.
                   </p>
                   <Button asChild className="mt-4" size="lg">
                     <Link href="/admin/finance?tab=groceries">Add a grocery</Link>
@@ -412,7 +432,7 @@ export function FinancialsHub() {
               <div className="grid gap-4 sm:grid-cols-3">
                 <Card>
                   <CardHeader className="pb-2">
-                    <CardDescription>Meal revenue (this month)</CardDescription>
+                    <CardDescription>Meal revenue ({monthLabel})</CardDescription>
                     <CardTitle className="text-2xl text-success">
                       {formatCurrency(reportData.totalRevenue)}
                     </CardTitle>
@@ -420,7 +440,7 @@ export function FinancialsHub() {
                 </Card>
                 <Card>
                   <CardHeader className="pb-2">
-                    <CardDescription>Grocery spend (this month)</CardDescription>
+                    <CardDescription>Grocery spend ({monthLabel})</CardDescription>
                     <CardTitle className="text-2xl">
                       {formatCurrency(reportData.totalExpenses)}
                     </CardTitle>

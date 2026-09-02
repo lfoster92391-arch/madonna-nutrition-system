@@ -1,9 +1,13 @@
 "use client"
 
+import { Suspense, useMemo } from "react"
 import Link from "next/link"
+import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { BarChart3, Download, FileSpreadsheet } from "lucide-react"
 import { ExecutiveSummaryReport } from "@/components/admin/ExecutiveSummaryReport"
+import { MonthPicker } from "@/components/admin/MonthPicker"
 import { downloadReportCsv } from "@/lib/export/download-report"
+import { currentMonthParam, parseMonthParam } from "@/lib/dates/month-range"
 import { Button } from "@/components/ui/button"
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 
@@ -28,7 +32,28 @@ const REPORTS = [
   },
 ]
 
-export default function AdminReportingPage() {
+function AdminReportingPageInner() {
+  const searchParams = useSearchParams()
+  const router = useRouter()
+  const pathname = usePathname()
+  const selectedMonth =
+    parseMonthParam(searchParams.get("month")) ?? currentMonthParam()
+
+  const setSelectedMonth = (month: string) => {
+    const params = new URLSearchParams(searchParams.toString())
+    if (month === currentMonthParam()) params.delete("month")
+    else params.set("month", month)
+    const qs = params.toString()
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false })
+  }
+
+  const financeHref = useMemo(() => {
+    const params = new URLSearchParams()
+    if (selectedMonth !== currentMonthParam()) params.set("month", selectedMonth)
+    params.set("tab", "reports")
+    return `/admin/finance?${params.toString()}`
+  }, [selectedMonth])
+
   return (
     <div className="min-h-screen bg-white p-3 sm:p-6 md:p-8">
       <div className="mx-auto max-w-5xl space-y-5 sm:space-y-8">
@@ -42,7 +67,9 @@ export default function AdminReportingPage() {
           </p>
         </div>
 
-        <ExecutiveSummaryReport />
+        <MonthPicker value={selectedMonth} onChange={setSelectedMonth} />
+
+        <ExecutiveSummaryReport month={selectedMonth} />
 
         <div className="grid gap-4 md:grid-cols-3 print:hidden">
           {REPORTS.map((report) => (
@@ -59,13 +86,15 @@ export default function AdminReportingPage() {
                   type="button"
                   variant="outline"
                   size="sm"
-                  onClick={() => downloadReportCsv(report.type)}
+                  onClick={() => downloadReportCsv(report.type, selectedMonth)}
                 >
                   <Download className="mr-2 h-4 w-4" />
                   Export CSV
                 </Button>
                 <Button asChild variant="ghost" size="sm">
-                  <Link href={report.href}>Open report</Link>
+                  <Link href={report.type === "reconciliation" ? financeHref : report.href}>
+                    Open report
+                  </Link>
                 </Button>
               </div>
             </Card>
@@ -73,5 +102,19 @@ export default function AdminReportingPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function AdminReportingPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-[40vh] items-center justify-center text-sm text-silver-foreground">
+          Loading reporting…
+        </div>
+      }
+    >
+      <AdminReportingPageInner />
+    </Suspense>
   )
 }
