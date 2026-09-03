@@ -43,3 +43,58 @@ export function isMainLunchKioskMeal(meal: string, mealType?: string | null): bo
   const normalized = meal.trim().toLowerCase()
   return normalized === "student meal" || normalized === "staff meal"
 }
+
+/** Extras / sides that must not move a lunch-line entry to Served by themselves. */
+export function isNonLunchExtraCharge(mealLabel: string): boolean {
+  const n = mealLabel.trim().toLowerCase()
+  if (!n) return false
+  if (
+    n === "milk" ||
+    n === "juice" ||
+    n === "water" ||
+    n === "side" ||
+    n === "sides" ||
+    n === "ala_carte" ||
+    n === "a la carte" ||
+    n === "à la carte" ||
+    n.includes("ala carte") ||
+    n.includes("a la carte") ||
+    n.includes("à la carte")
+  ) {
+    return true
+  }
+  return false
+}
+
+/**
+ * True when a ledger row means the student actually received today's lunch
+ * (kiosk Student/Staff Meal, pizza/lunch labels, or office "money taken off" for lunch).
+ */
+export function isLunchLineServingCharge(input: {
+  type: "MEAL" | "DEPOSIT" | string
+  mealType: string
+  amount: number
+}): boolean {
+  const label = input.mealType?.trim() ?? ""
+  const amount = Number(input.amount)
+
+  if (input.type === "MEAL") {
+    if (isNonLunchExtraCharge(label)) return false
+    if (isMainLunchKioskMeal(label)) return true
+    const n = label.toLowerCase()
+    if (/\b(student meal|staff meal|main lunch|main meal|pizza)\b/.test(n)) return true
+    if (/\blunch\b/.test(n) && !isNonLunchExtraCharge(label)) return true
+    return false
+  }
+
+  // Cashiers often charge forgotten-card / pizza lunch via "Take money off" (negative DEPOSIT).
+  if (input.type === "DEPOSIT" && amount < 0) {
+    const n = label.toLowerCase()
+    if (!n.includes("money taken off")) return false
+    if (/\b(lunch|pizza|meal|slice|forgot|card)\b/.test(n)) return true
+    if (Math.abs(amount) === STUDENT_LUNCH_PRICE) return true
+    return false
+  }
+
+  return false
+}

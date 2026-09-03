@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma"
+import { isLunchLineServingCharge } from "@/lib/lunch-pricing"
 import { isPizzaDayName } from "@/lib/pizza-day"
 import {
   dateKeyUtcNoon,
@@ -130,13 +131,44 @@ async function pizzaSlicesForDate(schoolId: string, dateKey: string): Promise<{
   return { slices, eatingCount: eatingIds.size }
 }
 
+function staffLogCountsAsServed(log: {
+  action: string
+  entityId: string | null
+  metadata: unknown
+}): boolean {
+  if (!log.entityId) return false
+  if (log.action === "MEAL_PURCHASE") {
+    const meta = (log.metadata ?? {}) as { mealType?: string }
+    const label = meta.mealType ?? "Staff Meal"
+    return isLunchLineServingCharge({
+      type: "MEAL",
+      mealType: label,
+      amount: 0,
+    })
+  }
+  if (log.action !== "FUNDS_REMOVED") return false
+  const meta = (log.metadata ?? {}) as {
+    mealType?: string
+    note?: string | null
+    amountDebited?: number
+  }
+  const label = meta.mealType || (meta.note ? `Money taken off — ${meta.note}` : "")
+  if (!label) return false
+  const debited = Number(meta.amountDebited)
+  return isLunchLineServingCharge({
+    type: "DEPOSIT",
+    mealType: label,
+    amount: Number.isFinite(debited) && debited > 0 ? -debited : 0,
+  })
+}
+
 async function buildDaySummary(schoolId: string, dateKey: string): Promise<KitchenDaySummary> {
   const day = dateKeyUtcNoon(dateKey)
   const { start, endExclusive } = schoolDayInstantRange(dateKey)
   const menuTitle = await loadMenuTitle(schoolId, dateKey)
   const pizzaDay = isPizzaDayName(menuTitle)
 
-  const [studentReservations, staffReservations, mealTransactions, staffMealLogs] =
+  const [studentReservations, staffReservations, dayTransactions, staffMealLogs] =
     await Promise.all([
       prisma.lunchReservation.findMany({
         where: { schoolId, date: day, status: "RESERVED" },
@@ -155,8 +187,8 @@ async function buildDaySummary(schoolId: string, dateKey: string): Promise<Kitch
       prisma.transaction.findMany({
         where: {
           schoolId,
-          type: "MEAL",
           createdAt: { gte: start, lt: endExclusive },
+          OR: [{ type: "MEAL" }, { type: "DEPOSIT", amount: { lt: 0 } }],
         },
         include: {
           student: { select: { id: true, externalId: true, firstName: true, lastName: true } },
@@ -166,17 +198,29 @@ async function buildDaySummary(schoolId: string, dateKey: string): Promise<Kitch
       prisma.auditLog.findMany({
         where: {
           schoolId,
-          action: "MEAL_PURCHASE",
           entity: "staff_balance",
           createdAt: { gte: start, lt: endExclusive },
+          action: { in: ["MEAL_PURCHASE", "FUNDS_REMOVED"] },
         },
-        select: { entityId: true, metadata: true },
+        select: { action: true, entityId: true, metadata: true },
       }),
     ])
 
-  const servedStudentIds = new Set(mealTransactions.map((tx) => tx.studentId))
+  // Only real lunch receipt — not milk/juice/side/ala carte alone.
+  const lunchTransactions = dayTransactions.filter((tx) =>
+    isLunchLineServingCharge({
+      type: tx.type,
+      mealType: tx.mealType,
+      amount: Number(tx.amount),
+    })
+  )
+
+  const servedStudentIds = new Set(lunchTransactions.map((tx) => tx.studentId))
   const servedStaffIds = new Set(
-    staffMealLogs.map((log) => log.entityId).filter((id): id is string => Boolean(id))
+    staffMealLogs
+      .filter(staffLogCountsAsServed)
+      .map((log) => log.entityId)
+      .filter((id): id is string => Boolean(id))
   )
 
   const people: KitchenLinePerson[] = []
@@ -225,10 +269,11 @@ async function buildDaySummary(schoolId: string, dateKey: string): Promise<Kitch
   }
 
   const seenWalkUpStudents = new Set<string>()
-  for (const tx of mealTransactions) {
+  for (const tx of lunchTransactions) {
     if (reservedStudentIds.has(tx.studentId) || seenWalkUpStudents.has(tx.studentId)) continue
     seenWalkUpStudents.add(tx.studentId)
-    const mealName = tx.mealType || "Walk-up lunch"
+    const mealName =
+      tx.type === "MEAL" ? tx.mealType || "Walk-up lunch" : "Walk-up lunch"
     bumpMeal(meals, mealName)
     people.push({
       id: `walkup-student:${tx.studentId}`,
@@ -245,16 +290,24 @@ async function buildDaySummary(schoolId: string, dateKey: string): Promise<Kitch
   const staffNameById = new Map<string, string>()
   for (const log of staffMealLogs) {
     if (!log.entityId || reservedStaffIds.has(log.entityId)) continue
-    const meta = (log.metadata ?? {}) as { staffName?: string; mealType?: string }
-    const name = meta.staffName || staffNameById.get(log.entityId) || "Staff"
+    if (!servedStaffIds.has(log.entityId)) continue
+    if (staffNameById.has(log.entityId)) continue
+    const meta = (log.metadata ?? {}) as {
+      staffName?: string
+      mealType?: string
+      note?: string | null
+    }
+    const name = meta.staffName || "Staff"
     staffNameById.set(log.entityId, name)
-    bumpMeal(meals, meta.mealType || "Staff lunch")
+    const mealName =
+      meta.mealType || (meta.note ? `Money taken off — ${meta.note}` : "Staff lunch")
+    bumpMeal(meals, mealName)
     people.push({
       id: `walkup-staff:${log.entityId}`,
       kind: "staff",
       name,
       lunchNumber: "Staff",
-      mealName: meta.mealType || "Staff lunch",
+      mealName,
       sliceCount: null,
       served: true,
       walkUp: true,

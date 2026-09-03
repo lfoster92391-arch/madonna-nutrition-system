@@ -97,7 +97,8 @@ export function KitchenOrdersPage() {
               Who is eating
             </h2>
             <p className="mt-1 text-sm text-[#64748B]">
-              Lunch number and name. Served means the kiosk already charged today’s lunch.
+              Lunch number and name. Served means today’s lunch was charged at the kiosk
+              (Student Meal) or taken off the account for lunch.
             </p>
             {today.people.length === 0 ? (
               <p className="mt-4 text-[#64748B]">Nobody has ordered yet.</p>
