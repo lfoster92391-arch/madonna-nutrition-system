@@ -7,7 +7,6 @@ export type AccessPortalKey = "parent" | "staff" | "teacher" | "cashier" | "admi
 export interface AccessChoice {
   key: AccessPortalKey
   label: string
-  description: string
   icon: LucideIcon
   loginRole?: Exclude<PortalRole, null>
   redirectTo?: string
@@ -22,7 +21,6 @@ export const PARENT_CHOICES: AccessChoice[] = [
   {
     key: "parent",
     label: "Parent portal",
-    description: "Meals, balances, and nutrition for your children.",
     icon: Users,
     loginRole: "parent",
     redirectTo: "/parent",
@@ -31,7 +29,6 @@ export const PARENT_CHOICES: AccessChoice[] = [
   {
     key: "student",
     label: "Student lunch orders",
-    description: "Students sign in with MD ID or school email to order their own lunch.",
     icon: GraduationCap,
     loginRole: "student",
     redirectTo: "/student",
@@ -43,8 +40,6 @@ export const SCHOOL_CHOICES: AccessChoice[] = [
   {
     key: "cashier",
     label: "Cashier / POS",
-    description:
-      "Lunch line station — scan student MD IDs or staff badges and ring up meals. Button prices come from Admin → Kiosk / POS.",
     icon: Calculator,
     href: "/access/school/kiosk",
     enterLabel: "Open Cashier POS",
@@ -54,7 +49,6 @@ export const SCHOOL_CHOICES: AccessChoice[] = [
   {
     key: "teacher",
     label: "Teacher portal",
-    description: "Student lunch signup and your own meal account.",
     icon: BookOpen,
     loginRole: "teacher",
     redirectTo: "/teacher",
@@ -63,7 +57,6 @@ export const SCHOOL_CHOICES: AccessChoice[] = [
   {
     key: "staff",
     label: "Staff portal",
-    description: "Lunch calendar, announcements, and your account.",
     icon: UtensilsCrossed,
     loginRole: "staff",
     redirectTo: "/staff",
@@ -72,7 +65,6 @@ export const SCHOOL_CHOICES: AccessChoice[] = [
   {
     key: "student",
     label: "Student lunch portal",
-    description: "Order your own school lunch. Parents still manage funds and photos.",
     icon: GraduationCap,
     loginRole: "student",
     redirectTo: "/student",
@@ -80,7 +72,6 @@ export const SCHOOL_CHOICES: AccessChoice[] = [
   {
     key: "admin",
     label: "Admin portal",
-    description: "Users, reports, and system administration.",
     icon: Lock,
     loginRole: "admin",
     redirectTo: "/admin",

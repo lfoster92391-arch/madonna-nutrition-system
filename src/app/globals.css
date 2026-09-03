@@ -289,6 +289,67 @@ body {
   }
 }
 
+/* Access / landing option tiles — matte soft-gradient navy (Madonna brand) */
+.madonna-option-btn {
+  --madonna-option-top: #1e4a9e;
+  --madonna-option-mid: #0b2d8f;
+  --madonna-option-bottom: #041b52;
+  color: #fff;
+  background: linear-gradient(
+    180deg,
+    var(--madonna-option-top) 0%,
+    var(--madonna-option-mid) 48%,
+    var(--madonna-option-bottom) 100%
+  );
+  border: 1px solid color-mix(in srgb, #041b52 72%, #000);
+  box-shadow:
+    0 6px 16px rgba(4, 27, 82, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.22),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.12);
+  transition:
+    filter 0.15s ease,
+    box-shadow 0.15s ease,
+    transform 0.15s ease;
+}
+
+.madonna-option-btn:hover {
+  filter: brightness(1.06);
+  box-shadow:
+    0 8px 20px rgba(4, 27, 82, 0.34),
+    inset 0 1px 0 rgba(255, 255, 255, 0.26),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.12);
+}
+
+.madonna-option-btn:active {
+  filter: brightness(0.96);
+  transform: translateY(1px);
+  box-shadow:
+    0 3px 10px rgba(4, 27, 82, 0.26),
+    inset 0 1px 0 rgba(255, 255, 255, 0.16),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.14);
+}
+
+.madonna-option-btn:focus-visible {
+  outline: 2px solid #041b52;
+  outline-offset: 3px;
+}
+
+.madonna-option-btn--active {
+  filter: brightness(1.08);
+  box-shadow:
+    0 8px 22px rgba(4, 27, 82, 0.38),
+    inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.1);
+}
+
+.madonna-option-btn--pill {
+  border-radius: 999px;
+}
+
+.madonna-option-btn--rounded {
+  border-radius: 1rem;
+}
+
 /* Mass-print student badges — hide chrome, keep badge cards */
 @media print {
   .no-print,
