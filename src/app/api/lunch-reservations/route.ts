@@ -17,6 +17,7 @@ import { getSessionUserId } from "@/lib/api/session-auth"
 import { isWeekendDateKey, WEEKEND_MENU_DAY_MESSAGE } from "@/lib/calendar"
 import { canonicalMainMealPricing } from "@/lib/lunch-pricing"
 import { MILK_JUICE_PRICE } from "@/config/onboarding-pricing"
+import { schoolDateKey } from "@/lib/kitchen/school-day"
 import { notifyParentsOfStudentLunchOrder } from "@/lib/parent/student-order-alerts"
 
 const createReservationSchema = z.object({
@@ -285,6 +286,27 @@ export async function POST(request: Request) {
           student: { select: { externalId: true, firstName: true, lastName: true } },
         },
       })
+
+      // Keep teacher meal-roster / live activity in sync with who placed today's order.
+      if (date === schoolDateKey()) {
+        await prisma.studentLunchSignup.upsert({
+          where: { studentId_date: { studentId: student.id, date: eventDate } },
+          update: {
+            mealName: menuEvent.title || "Student Lunch",
+            mealPrice: pricing.totalAmount,
+            signedUpByUserId: sessionUser.id,
+          },
+          create: {
+            studentId: student.id,
+            schoolId: student.schoolId,
+            date: eventDate,
+            mealName: menuEvent.title || "Student Lunch",
+            mealPrice: pricing.totalAmount,
+            paymentMethod: "ACCOUNT",
+            signedUpByUserId: sessionUser.id,
+          },
+        })
+      }
 
       void notifyParentsOfStudentLunchOrder({
         schoolId: student.schoolId,

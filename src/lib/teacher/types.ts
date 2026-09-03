@@ -50,6 +50,42 @@ export interface StudentLunchSignupView {
   signedUpAt: string
 }
 
+export interface StudentLunchActivityItem {
+  id: string
+  mealType: string
+  mealTypeLabel: string
+  status: string
+  statusLabel: string
+  price: number
+  sliceCount: number | null
+  createdAt: string
+  updatedAt?: string
+}
+
+export interface StudentLunchActivityUpcoming extends StudentLunchActivityItem {
+  date: string
+}
+
+export interface StudentLunchLiveActivity {
+  date: string
+  signedUp: boolean
+  activity: {
+    mealName: string | null
+    signedUpAt: string | null
+    paymentMethod: TeacherPaymentMethod | null
+    status: string
+    statusLabel: string
+    signedUpBy: {
+      id: string
+      name: string
+      role: string
+      roleKey: string | null
+    } | null
+    items: StudentLunchActivityItem[]
+  } | null
+  upcoming: StudentLunchActivityUpcoming[]
+}
+
 export interface TeacherDashboardStats {
   studentsSignedUp: number
   payAtKiosk: number

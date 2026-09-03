@@ -3,22 +3,28 @@
 import { useState } from "react"
 import Image from "next/image"
 import Link from "next/link"
+import { useQueryClient } from "@tanstack/react-query"
 import { AlertTriangle } from "lucide-react"
+import { useAuth } from "@/components/providers/AuthProvider"
 import { useTeacherData } from "@/components/providers/TeacherDataProvider"
+import { StudentLunchLiveActivityPanel } from "@/components/teacher/StudentLunchLiveActivityPanel"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
-import { TEACHER_NAVY } from "@/config/teacher-theme"
+import { TEACHER_NAVY } from "@/components/teacher/layout/teacher-theme"
 import { formatCurrency } from "@/lib/utils"
 import { STUDENT_MEAL_PRICE } from "@/lib/teacher/low-funds"
 import type { TeacherPaymentMethod } from "@/lib/teacher/types"
 
 export function StudentFoundPanel() {
+  const { user } = useAuth()
+  const queryClient = useQueryClient()
   const { selectedStudent, confirmStudentLunch } = useTeacherData()
   const [mealSelected, setMealSelected] = useState(true)
   const [paymentMethod, setPaymentMethod] = useState<TeacherPaymentMethod>("account")
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
+  const [activityRefreshToken, setActivityRefreshToken] = useState(0)
 
   if (!selectedStudent) {
     return (
@@ -40,6 +46,10 @@ export function StudentFoundPanel() {
     setMessage(null)
     try {
       await confirmStudentLunch(selectedStudent.id, paymentMethod)
+      setActivityRefreshToken((n) => n + 1)
+      void queryClient.invalidateQueries({
+        queryKey: ["teacher-student-lunch-activity", selectedStudent.id, user?.id],
+      })
       setMessage(
         `Signed ${selectedStudent.firstName} up for today’s main lunch. Kitchen counts and kiosk status are updated.`
       )
@@ -98,6 +108,12 @@ export function StudentFoundPanel() {
           </ul>
         </div>
       ) : null}
+
+      <StudentLunchLiveActivityPanel
+        studentId={selectedStudent.id}
+        studentFirstName={selectedStudent.firstName}
+        refreshToken={activityRefreshToken}
+      />
 
       <div className="mt-4">
         <label
