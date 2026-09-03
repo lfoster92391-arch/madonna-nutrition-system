@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input, Label } from "@/components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { api } from "@/lib/api/client"
+import { api, getSessionHeaders } from "@/lib/api/client"
 import type { VendorRecord } from "@/lib/procurement/vendors"
 
 async function fetchVendors(): Promise<VendorRecord[]> {
@@ -47,17 +47,24 @@ export function ProcurementManager() {
     mutationFn: async () => {
       const res = await fetch("/api/vendors", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...getSessionHeaders() },
         body: JSON.stringify(form),
       })
-      if (!res.ok) throw new Error("Failed to create vendor")
+      if (!res.ok) {
+        const body = (await res.json().catch(() => ({}))) as { error?: string }
+        throw new Error(body.error ?? "Failed to create vendor")
+      }
       return res.json()
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["vendors"] })
       setShowAdd(false)
       setEditingId(null)
+      setImportMessage(null)
       setForm({ name: "", contactName: "", email: "", phone: "", category: "" })
+    },
+    onError: (error: Error) => {
+      setImportMessage(error.message)
     },
   })
 
@@ -65,28 +72,45 @@ export function ProcurementManager() {
     mutationFn: async (id: string) => {
       const res = await fetch(`/api/vendors/${id}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...getSessionHeaders() },
         body: JSON.stringify(form),
       })
-      if (!res.ok) throw new Error("Failed to update vendor")
+      if (!res.ok) {
+        const body = (await res.json().catch(() => ({}))) as { error?: string }
+        throw new Error(body.error ?? "Failed to update vendor")
+      }
       return res.json()
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["vendors"] })
       setShowAdd(false)
       setEditingId(null)
+      setImportMessage(null)
       setForm({ name: "", contactName: "", email: "", phone: "", category: "" })
+    },
+    onError: (error: Error) => {
+      setImportMessage(error.message)
     },
   })
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      const res = await fetch(`/api/vendors/${id}`, { method: "DELETE" })
-      if (!res.ok) throw new Error("Failed to deactivate vendor")
+      const res = await fetch(`/api/vendors/${id}`, {
+        method: "DELETE",
+        headers: { ...getSessionHeaders() },
+      })
+      if (!res.ok) {
+        const body = (await res.json().catch(() => ({}))) as { error?: string }
+        throw new Error(body.error ?? "Failed to deactivate vendor")
+      }
       return res.json()
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["vendors"] })
+      setImportMessage(null)
+    },
+    onError: (error: Error) => {
+      setImportMessage(error.message)
     },
   })
 
