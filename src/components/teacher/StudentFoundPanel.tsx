@@ -8,6 +8,10 @@ import { AlertTriangle } from "lucide-react"
 import { useAuth } from "@/components/providers/AuthProvider"
 import { useTeacherData } from "@/components/providers/TeacherDataProvider"
 import { StudentLunchLiveActivityPanel } from "@/components/teacher/StudentLunchLiveActivityPanel"
+import {
+  TEACHER_TODAY_SIGNUP_ROSTER_QUERY_KEY,
+  TeacherTodaySignupRosterPanel,
+} from "@/components/teacher/TeacherTodaySignupRosterPanel"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { TEACHER_NAVY } from "@/components/teacher/layout/teacher-theme"
@@ -27,16 +31,7 @@ export function StudentFoundPanel() {
   const [activityRefreshToken, setActivityRefreshToken] = useState(0)
 
   if (!selectedStudent) {
-    return (
-      <Card
-        className="flex min-h-[320px] items-center justify-center rounded-[20px] border p-6 shadow-sm"
-        style={{ borderColor: "#AEB6C2" }}
-      >
-        <p className="text-sm text-silver-foreground">
-          Search or select a student to assist with lunch signup.
-        </p>
-      </Card>
-    )
+    return <TeacherTodaySignupRosterPanel />
   }
 
   async function handleConfirm() {
@@ -49,6 +44,9 @@ export function StudentFoundPanel() {
       setActivityRefreshToken((n) => n + 1)
       void queryClient.invalidateQueries({
         queryKey: ["teacher-student-lunch-activity", selectedStudent.id, user?.id],
+      })
+      void queryClient.invalidateQueries({
+        queryKey: TEACHER_TODAY_SIGNUP_ROSTER_QUERY_KEY,
       })
       setMessage(
         `Signed ${selectedStudent.firstName} up for today’s main lunch. Kitchen counts and kiosk status are updated.`
