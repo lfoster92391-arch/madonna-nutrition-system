@@ -8,6 +8,7 @@ import {
   ChevronLeft,
   LayoutDashboard,
   LogOut,
+  ScanLine,
   User,
   X,
 } from "lucide-react"
@@ -124,6 +125,21 @@ export function AdminSidebar() {
           >
             <LayoutDashboard className="h-4 w-4 shrink-0" />
             <span className={cn("truncate", !expanded && "md:hidden")}>Dashboard</span>
+          </Link>
+
+          <Link
+            href="/kiosk"
+            title={!expanded ? "Cashier / POS" : undefined}
+            onClick={closeMobile}
+            className={cn(
+              "flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm font-medium transition",
+              itemIsActive(pathname, "/kiosk")
+                ? "bg-white/15 text-white shadow-sm"
+                : "text-white/75 hover:bg-white/10 hover:text-white"
+            )}
+          >
+            <ScanLine className="h-4 w-4 shrink-0" />
+            <span className={cn("truncate", !expanded && "md:hidden")}>Cashier / POS</span>
           </Link>
 
           {ADMIN_NAV_CATEGORIES.map((category) => {

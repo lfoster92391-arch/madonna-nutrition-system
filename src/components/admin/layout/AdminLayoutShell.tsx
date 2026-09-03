@@ -2,7 +2,6 @@
 
 import { AdminFooter } from "@/components/admin/layout/AdminFooter"
 import { AdminLayoutProvider } from "@/components/admin/layout/admin-layout-context"
-import { AdminQuickActionBar } from "@/components/admin/layout/AdminQuickActionBar"
 import { AdminSidebar } from "@/components/admin/layout/AdminSidebar"
 import { AdminTopBar } from "@/components/admin/layout/AdminTopBar"
 import { AdminUtilityRail } from "@/components/admin/layout/AdminUtilityRail"
@@ -22,7 +21,6 @@ export function AdminLayoutShell({ children }: { children: React.ReactNode }) {
           <div className="flex min-w-0 flex-1 flex-col overflow-x-hidden">
             <div className="admin-print-hide contents">
               <AdminTopBar />
-              <AdminQuickActionBar />
             </div>
             <div className="flex min-h-0 min-w-0 flex-1">
               <main className="min-w-0 flex-1 overflow-x-hidden overflow-y-auto">
