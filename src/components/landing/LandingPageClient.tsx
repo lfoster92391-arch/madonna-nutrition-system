@@ -6,22 +6,16 @@ import { LandingShell } from "@/components/landing/LandingShell"
 import { BRAND } from "@/config/brand"
 
 const NAVY = "#041B52"
-const PARENT_ACCENT = "#0B2D8F"
-const SCHOOL_ACCENT = "#0D7A3B"
 
 const GATES = [
   {
     href: "/access/parent",
     title: "Parent Access",
-    subtitle: "For families",
-    accent: PARENT_ACCENT,
     icon: Users,
   },
   {
     href: "/access/school",
     title: "School Access",
-    subtitle: "Cashier / POS and campus portals",
-    accent: SCHOOL_ACCENT,
     icon: School,
   },
 ] as const
@@ -51,34 +45,18 @@ export function LandingPageClient() {
         </p>
       </header>
 
-      <div className="mx-auto grid w-full min-w-0 grid-cols-1 gap-4 md:grid-cols-2 md:gap-5">
+      <div className="mx-auto flex w-full min-w-0 max-w-xl flex-col gap-3 sm:gap-4">
         {GATES.map((gate, index) => {
           const Icon = gate.icon
           return (
             <Link
               key={gate.href}
               href={gate.href}
-              className="landing-card-enter flex w-full min-w-0 min-h-[7.5rem] flex-col justify-center gap-3 rounded-2xl border border-white/35 bg-white/92 px-5 py-5 text-left shadow-[0_8px_28px_rgba(4,27,82,0.16)] backdrop-blur-md transition hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#041B52] focus-visible:ring-offset-2 max-md:rounded-[18px] sm:min-h-[8.5rem] sm:px-6 sm:py-6"
-              style={{
-                borderTop: `4px solid ${gate.accent}`,
-                animationDelay: `${index * 80}ms`,
-              }}
+              className="landing-card-enter madonna-option-btn madonna-option-btn--rounded flex w-full min-h-14 items-center justify-center gap-3 px-5 py-4 text-center sm:min-h-16 sm:px-6"
+              style={{ animationDelay: `${index * 80}ms` }}
             >
-              <span className="flex items-center gap-3">
-                <span
-                  className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-white"
-                  style={{ color: gate.accent }}
-                  aria-hidden
-                >
-                  <Icon className="h-6 w-6" strokeWidth={1.85} />
-                </span>
-                <span className="min-w-0">
-                  <span className="block text-lg font-bold tracking-tight sm:text-xl" style={{ color: NAVY }}>
-                    {gate.title}
-                  </span>
-                  <span className="mt-0.5 block text-sm font-medium text-[#475569]">{gate.subtitle}</span>
-                </span>
-              </span>
+              <Icon className="h-5 w-5 shrink-0 sm:h-6 sm:w-6" strokeWidth={1.85} aria-hidden />
+              <span className="text-base font-bold tracking-tight sm:text-lg">{gate.title}</span>
             </Link>
           )
         })}
