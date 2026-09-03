@@ -9,6 +9,8 @@ import {
   type AdminNavCategory,
 } from "@/components/admin/layout/admin-nav-groups"
 import { ADMIN_NAVY, ADMIN_SUCCESS } from "@/components/admin/layout/admin-theme"
+import { madonnaOptionBtn } from "@/components/nav/madonna-option-classes"
+import { cn } from "@/lib/utils"
 
 export function AdminDashboard() {
   const { user } = useAuth()
@@ -68,7 +70,10 @@ export function AdminDashboard() {
                   key={`${item.label}-${item.href}`}
                   href={item.href}
                   role="listitem"
-                  className="landing-card-enter madonna-option-btn madonna-option-btn--rounded flex w-full min-h-14 items-center justify-center px-5 py-4 text-center sm:min-h-16 sm:px-6"
+                  className={cn(
+                    madonnaOptionBtn({ shape: "rounded" }),
+                    "landing-card-enter flex w-full min-h-14 items-center justify-center px-5 py-4 text-center sm:min-h-16 sm:px-6"
+                  )}
                   style={{ animationDelay: `${index * 50}ms` }}
                 >
                   <span className="text-base font-bold tracking-tight sm:text-lg">{item.label}</span>
@@ -83,20 +88,22 @@ export function AdminDashboard() {
             </h2>
             <div className="flex flex-col gap-3" role="list">
               {ADMIN_NAV_CATEGORIES.map((category, index) => (
-                <button
-                  key={category.id}
-                  type="button"
-                  role="listitem"
-                  onClick={() => setActiveId(category.id)}
-                  className="landing-card-enter madonna-option-btn madonna-option-btn--rounded flex w-full min-h-14 items-center justify-between gap-3 px-5 py-4 text-left sm:min-h-16 sm:px-6"
-                  style={{ animationDelay: `${index * 40}ms` }}
-                  aria-expanded={false}
-                >
-                  <span className="text-base font-bold tracking-tight sm:text-lg">
-                    {category.label}
-                  </span>
-                  <ChevronDown className="h-5 w-5 shrink-0 text-white/85" aria-hidden />
-                </button>
+                <div key={category.id} role="listitem">
+                  <button
+                    type="button"
+                    onClick={() => setActiveId(category.id)}
+                    className={cn(
+                      madonnaOptionBtn({ shape: "rounded" }),
+                      "landing-card-enter flex w-full min-h-14 items-center justify-between gap-3 px-5 py-4 text-left sm:min-h-16 sm:px-6"
+                    )}
+                    style={{ animationDelay: `${index * 40}ms` }}
+                  >
+                    <span className="text-base font-bold tracking-tight sm:text-lg">
+                      {category.label}
+                    </span>
+                    <ChevronDown className="h-5 w-5 shrink-0 text-white/85" aria-hidden />
+                  </button>
+                </div>
               ))}
             </div>
           </section>
