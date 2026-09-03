@@ -1,14 +1,20 @@
 "use client"
 
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react"
+import Link from "next/link"
 import { useSearchParams } from "next/navigation"
+import { CalendarDays, UtensilsCrossed } from "lucide-react"
 import { useAuth } from "@/components/providers/AuthProvider"
 import { useDemo } from "@/components/providers/DemoProvider"
+import { MenuDayDetails } from "@/components/calendar/MenuDayDetails"
 import { PizzaSlicePicker } from "@/components/lunch/PizzaSlicePicker"
+import { madonnaOptionBtn } from "@/components/nav/madonna-option-classes"
 import { Button } from "@/components/ui/button"
 import { Label, Select } from "@/components/ui/input"
 import { filterPublicCalendarEvents, todayDateKey } from "@/lib/calendar-publish"
 import { isSchoolLunchDateKey } from "@/lib/calendar"
+import { getMealCoverPhoto } from "@/lib/meal-templates"
+import { resolveMenuDay } from "@/lib/menu-day-details"
 import {
   DEFAULT_ONBOARDING_PRICING,
   MILK_JUICE_PRICE,
@@ -18,7 +24,7 @@ import {
   isPizzaDayName,
   pizzaSliceTotal,
 } from "@/lib/pizza-day"
-import { formatCurrency } from "@/lib/utils"
+import { cn, formatCurrency } from "@/lib/utils"
 
 type MealType = "MAIN" | "SIDE" | "MILK"
 
@@ -43,11 +49,10 @@ interface ReservationRow {
 function StudentOrderLunchContent() {
   const searchParams = useSearchParams()
   const { user } = useAuth()
-  const { calendarEvents, databaseEnabled } = useDemo()
+  const { calendarEvents, mealTemplates, databaseEnabled } = useDemo()
   const dateParam = searchParams.get("date") ?? ""
 
   const [studentId, setStudentId] = useState<string | null>(null)
-  const [selectedDate, setSelectedDate] = useState(dateParam)
   const [mealType, setMealType] = useState<MealType>("MAIN")
   const [sliceCount, setSliceCount] = useState(DEFAULT_PIZZA_SLICES)
   const [submitting, setSubmitting] = useState(false)
@@ -57,37 +62,55 @@ function StudentOrderLunchContent() {
 
   const today = todayDateKey()
   const publicEvents = useMemo(() => filterPublicCalendarEvents(calendarEvents), [calendarEvents])
-  const menuDates = useMemo(() => {
-    return publicEvents
-      .filter(
-        (e) => e.category === "menu_day" && e.date >= today && isSchoolLunchDateKey(e.date)
-      )
-      .map((e) => e.date)
-      .filter((date, index, arr) => arr.indexOf(date) === index)
-      .sort()
-  }, [publicEvents, today])
-
-  const selectedMenu = useMemo(
-    () => publicEvents.find((e) => e.category === "menu_day" && e.date === selectedDate),
-    [publicEvents, selectedDate]
+  const mealTemplatesById = useMemo(
+    () => new Map(mealTemplates.map((t) => [t.id, t])),
+    [mealTemplates]
   )
 
-  const pizzaDay = mealType === "MAIN" && isPizzaDayName(selectedMenu?.title)
+  const orderDate = useMemo(() => {
+    if (dateParam && isSchoolLunchDateKey(dateParam)) return dateParam
+    return today
+  }, [dateParam, today])
+
+  const isToday = orderDate === today
+
+  const selectedMenu = useMemo(
+    () => publicEvents.find((e) => e.category === "menu_day" && e.date === orderDate),
+    [publicEvents, orderDate]
+  )
+
+  const resolved = useMemo(
+    () => (selectedMenu ? resolveMenuDay(selectedMenu, mealTemplatesById) : null),
+    [selectedMenu, mealTemplatesById]
+  )
+
+  const cover = useMemo(() => {
+    if (!resolved?.template) return undefined
+    return getMealCoverPhoto(resolved.template.photos)
+  }, [resolved])
+
+  const pizzaDay =
+    mealType === "MAIN" && isPizzaDayName(selectedMenu?.title ?? resolved?.mainName)
   const orderTotal = pizzaDay
     ? pizzaSliceTotal(sliceCount)
     : MEAL_OPTIONS.find((m) => m.value === mealType)?.defaultPrice ??
       DEFAULT_ONBOARDING_PRICING.mainMealPrice
 
-  const submitLabel = useMemo(() => {
-    if (!selectedDate) return "Order lunch"
-    if (selectedDate === today) return "Order lunch for today"
-    const label = new Date(`${selectedDate}T12:00:00`).toLocaleDateString("en-US", {
-      weekday: "short",
-      month: "short",
+  const dateLabel = useMemo(() => {
+    return new Date(`${orderDate}T12:00:00`).toLocaleDateString("en-US", {
+      weekday: "long",
+      month: "long",
       day: "numeric",
     })
-    return `Order lunch for ${label}`
-  }, [selectedDate, today])
+  }, [orderDate])
+
+  const submitLabel = isToday
+    ? "Order Lunch"
+    : `Order lunch for ${new Date(`${orderDate}T12:00:00`).toLocaleDateString("en-US", {
+        weekday: "short",
+        month: "short",
+        day: "numeric",
+      })}`
 
   const loadReservations = useCallback(async () => {
     if (!user || !databaseEnabled) return
@@ -125,20 +148,10 @@ function StudentOrderLunchContent() {
     }
   }, [user, loadReservations])
 
-  useEffect(() => {
-    if (!selectedDate) {
-      if (dateParam && menuDates.includes(dateParam)) {
-        setSelectedDate(dateParam)
-      } else if (menuDates[0]) {
-        setSelectedDate(menuDates[0])
-      }
-    }
-  }, [menuDates, selectedDate, dateParam])
-
   async function handleSubmit() {
     setError(null)
     setMessage(null)
-    if (!user || !studentId || !selectedDate) return
+    if (!user || !studentId || !selectedMenu) return
 
     setSubmitting(true)
     try {
@@ -150,7 +163,7 @@ function StudentOrderLunchContent() {
         },
         body: JSON.stringify({
           studentId,
-          date: selectedDate,
+          date: orderDate,
           mealType,
           price: orderTotal,
           ...(pizzaDay ? { sliceCount } : {}),
@@ -182,70 +195,110 @@ function StudentOrderLunchContent() {
       <section>
         <h1 className="text-2xl font-bold text-[#041B52]">Order lunch</h1>
         <p className="mt-2 text-sm text-[#64748B]">
-          Choose a published menu day and meal for yourself only.
+          {isToday
+            ? "Today’s lunch is shown below. Use the month calendar to sign up for future days."
+            : "Review this day’s lunch, then confirm your order. You can only order for yourself."}
         </p>
       </section>
 
       <section className="rounded-2xl border border-[#C8CDD7] bg-white p-5 sm:p-6">
-        <div className="space-y-4">
-          <div>
-            <Label>Date (published menu)</Label>
-            <Select value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)}>
-              {menuDates.length === 0 ? (
-                <option value="">No published menus</option>
+        <p className="text-xs font-bold uppercase tracking-wide text-[#64748B]">
+          {isToday ? "Today’s lunch" : "Lunch for this day"}
+        </p>
+        <p className="mt-1 text-sm text-[#64748B]">{dateLabel}</p>
+
+        {!selectedMenu ? (
+          <div className="mt-4 flex items-start gap-3">
+            <UtensilsCrossed className="mt-0.5 h-5 w-5 shrink-0 text-[#64748B]" aria-hidden />
+            <div className="min-w-0 flex-1">
+              <p className="text-base font-semibold text-[#041B52]">
+                {isToday ? "No lunch menu published for today" : "No lunch menu for this day"}
+              </p>
+              <p className="mt-2 text-sm text-[#64748B]">
+                {isToday
+                  ? "Check the month calendar to sign up for other school days ahead of time."
+                  : "Pick another day from the month calendar."}
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div className="mt-4 space-y-4">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+              {cover ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={cover}
+                  alt={resolved?.mainName ?? selectedMenu.title}
+                  className="h-36 w-full shrink-0 rounded-xl object-cover sm:h-28 sm:w-28"
+                />
               ) : (
-                menuDates.map((date) => (
-                  <option key={date} value={date}>
-                    {date === today
-                      ? `Today (${date})`
-                      : new Date(`${date}T12:00:00`).toLocaleDateString("en-US", {
-                          weekday: "short",
-                          month: "short",
-                          day: "numeric",
-                          year: "numeric",
-                        })}
-                  </option>
-                ))
+                <div className="flex h-28 w-full shrink-0 items-center justify-center rounded-xl bg-[#F1F5F9] sm:h-28 sm:w-28">
+                  <UtensilsCrossed className="h-8 w-8 text-[#64748B]" aria-hidden />
+                </div>
               )}
-            </Select>
+              <div className="min-w-0 flex-1">
+                <MenuDayDetails
+                  event={selectedMenu}
+                  mealTemplatesById={mealTemplatesById}
+                  compact
+                />
+              </div>
+            </div>
+
+            <div>
+              <Label>Meal</Label>
+              <Select value={mealType} onChange={(e) => setMealType(e.target.value as MealType)}>
+                {MEAL_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                    {option.value === "MAIN" && pizzaDay
+                      ? ` ($1.00 / slice)`
+                      : ` (${formatCurrency(option.defaultPrice)})`}
+                  </option>
+                ))}
+              </Select>
+            </div>
+            {pizzaDay ? (
+              <PizzaSlicePicker sliceCount={sliceCount} onChange={setSliceCount} />
+            ) : null}
+            {error ? <p className="text-sm text-[#D62828]">{error}</p> : null}
+            {message ? <p className="text-sm text-[#00A83E]">{message}</p> : null}
+            <Button
+              type="button"
+              className="w-full"
+              disabled={submitting || !studentId}
+              onClick={() => void handleSubmit()}
+            >
+              {submitting
+                ? "Ordering..."
+                : pizzaDay
+                  ? `${submitLabel} · Total: ${formatCurrency(orderTotal)}`
+                  : submitLabel}
+            </Button>
           </div>
-          {selectedMenu ? (
-            <p className="text-sm text-[#64748B]">
-              Menu: <span className="font-medium text-[#041B52]">{selectedMenu.title}</span>
-            </p>
-          ) : null}
-          <div>
-            <Label>Meal</Label>
-            <Select value={mealType} onChange={(e) => setMealType(e.target.value as MealType)}>
-              {MEAL_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                  {option.value === "MAIN" && pizzaDay
-                    ? ` ($1.00 / slice)`
-                    : ` (${formatCurrency(option.defaultPrice)})`}
-                </option>
-              ))}
-            </Select>
-          </div>
-          {pizzaDay ? (
-            <PizzaSlicePicker sliceCount={sliceCount} onChange={setSliceCount} />
-          ) : null}
-          {error ? <p className="text-sm text-[#D62828]">{error}</p> : null}
-          {message ? <p className="text-sm text-[#00A83E]">{message}</p> : null}
-          <Button
-            type="button"
-            className="w-full"
-            disabled={submitting || !selectedDate || !studentId || menuDates.length === 0}
-            onClick={() => void handleSubmit()}
-          >
-            {submitting
-              ? "Ordering..."
-              : pizzaDay
-                ? `${submitLabel} · Total: ${formatCurrency(orderTotal)}`
-                : submitLabel}
-          </Button>
-        </div>
+        )}
+
+        {!selectedMenu && error ? <p className="mt-3 text-sm text-[#D62828]">{error}</p> : null}
+
+        <Link
+          href="/student/calendar"
+          className={cn(
+            madonnaOptionBtn({ shape: "rounded" }),
+            "mt-5 flex w-full items-center justify-center gap-2 px-4 py-3 text-sm font-bold"
+          )}
+        >
+          <CalendarDays className="h-4 w-4" aria-hidden />
+          View month calendar · Sign up ahead
+        </Link>
       </section>
+
+      {!isToday ? (
+        <p className="text-sm text-[#64748B]">
+          <Link href="/student/order" className="font-semibold text-[#041B52] underline">
+            Back to today’s lunch
+          </Link>
+        </p>
+      ) : null}
 
       <section className="rounded-2xl border border-[#C8CDD7] bg-white p-5 sm:p-6">
         <h2 className="text-lg font-semibold text-[#041B52]">Recent orders</h2>
