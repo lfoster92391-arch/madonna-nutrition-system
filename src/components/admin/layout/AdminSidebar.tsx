@@ -4,26 +4,11 @@ import { useCallback, useEffect, useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import {
-  BarChart3,
-  Brain,
-  ChefHat,
+  ChevronDown,
   ChevronLeft,
-  ClipboardList,
-  FileText,
-  Headphones,
   LayoutDashboard,
   LogOut,
-  Megaphone,
-  MonitorSmartphone,
-  Settings,
-  ShieldAlert,
-  Truck,
-  Tv,
   User,
-  UserPlus,
-  UtensilsCrossed,
-  Wallet,
-  Wrench,
   X,
 } from "lucide-react"
 import { useAuth } from "@/components/providers/AuthProvider"
@@ -31,109 +16,24 @@ import { SCHOOL } from "@/config/school"
 import { signOutAndRedirect } from "@/lib/auth/logout"
 import { cn } from "@/lib/utils"
 import { useAdminLayout } from "@/components/admin/layout/admin-layout-context"
+import { ADMIN_NAV_CATEGORIES } from "@/components/admin/layout/admin-nav-groups"
 import {
   ADMIN_SIDEBAR_DARK,
   ADMIN_SIDEBAR_STORAGE_KEY,
 } from "@/components/admin/layout/admin-theme"
 import { useOverlayLock } from "@/hooks/useOverlayLock"
 
-const NAV_ITEMS: Array<{
-  label: string
-  href: string
-  icon: typeof LayoutDashboard
-  exact?: boolean
-  readOnly?: boolean
-  matchPrefixes?: string[]
-}> = [
-  { label: "Dashboard", href: "/admin", icon: LayoutDashboard, exact: true },
-  {
-    label: "Kitchen board",
-    href: "/admin/kitchen",
-    icon: Tv,
-    exact: true,
-  },
-  {
-    label: "Sunday head count",
-    href: "/admin/kitchen/sunday-head-count",
-    icon: BarChart3,
-  },
-  {
-    label: "Today’s lunch line",
-    href: "/admin/kitchen/orders",
-    icon: ClipboardList,
-  },
-  {
-    label: "Sign up a student",
-    href: "/admin/sign-up-student",
-    icon: UserPlus,
-  },
-  // Menu = lunch calendar (not Cookbook)
-  {
-    label: "Menu",
-    href: "/admin/calendar",
-    icon: UtensilsCrossed,
-    matchPrefixes: ["/admin/calendar", "/admin/menu"],
-  },
-  {
-    label: "Portal preview",
-    href: "/admin/parent-preview",
-    icon: User,
-  },
-  {
-    label: "Cookbook",
-    href: "/admin/cookbook",
-    icon: ChefHat,
-    matchPrefixes: ["/admin/cookbook", "/admin/menu-library"],
-  },
-  {
-    label: "Operations",
-    href: "/admin/receiving",
-    icon: Wrench,
-    matchPrefixes: ["/admin/receiving", "/admin/inventory", "/admin/production", "/admin/receipts"],
-  },
-  {
-    label: "Vendors",
-    href: "/admin/procurement",
-    icon: Truck,
-    matchPrefixes: ["/admin/procurement", "/admin/vendors"],
-  },
-  {
-    label: "Financials",
-    href: "/admin/finance",
-    icon: Wallet,
-    matchPrefixes: ["/admin/finance"],
-  },
-  {
-    label: "Kiosk / POS",
-    href: "/admin/kiosk-buttons",
-    icon: MonitorSmartphone,
-  },
-  { label: "Intelligence", href: "/admin/intelligence", icon: Brain, readOnly: true },
-  { label: "Allergy Review", href: "/admin/allergy-review", icon: ShieldAlert },
-  {
-    label: "Lunch agreements",
-    href: "/admin/agreements",
-    icon: FileText,
-    matchPrefixes: ["/admin/agreements"],
-  },
-  { label: "Communication", href: "/admin/communication", icon: Megaphone },
-  { label: "Reporting", href: "/admin/reporting", icon: BarChart3 },
-  { label: "Settings", href: "/admin/settings", icon: Settings },
-  { label: "Support", href: "/admin/support", icon: Headphones },
-]
+function hrefPath(href: string) {
+  return href.split("?")[0]
+}
 
-function isActive(
-  pathname: string,
-  href: string,
-  exact?: boolean,
-  matchPrefixes?: string[]
-) {
-  if (exact) return pathname === href
-  if (matchPrefixes?.some((p) => pathname === p || pathname.startsWith(`${p}/`))) {
-    return true
-  }
-  const base = href.split("#")[0]
-  return pathname === base || pathname.startsWith(`${base}/`)
+function itemIsActive(pathname: string, href: string) {
+  const pathPart = hrefPath(href)
+  return pathname === pathPart || pathname.startsWith(`${pathPart}/`)
+}
+
+function categoryContainsActive(pathname: string, items: { href: string }[]) {
+  return items.some((item) => itemIsActive(pathname, item.href))
 }
 
 export function AdminSidebar() {
@@ -142,6 +42,7 @@ export function AdminSidebar() {
   const adminName = user?.displayName ?? "Admin User"
   const { mobileSidebarOpen, setMobileSidebarOpen } = useAdminLayout()
   const [expanded, setExpanded] = useState(true)
+  const [openCategoryId, setOpenCategoryId] = useState<string | null>(null)
 
   const closeMobile = useCallback(() => setMobileSidebarOpen(false), [setMobileSidebarOpen])
 
@@ -156,6 +57,13 @@ export function AdminSidebar() {
     setMobileSidebarOpen(false)
   }, [pathname, setMobileSidebarOpen])
 
+  useEffect(() => {
+    const match = ADMIN_NAV_CATEGORIES.find((c) =>
+      categoryContainsActive(pathname, c.items)
+    )
+    if (match) setOpenCategoryId(match.id)
+  }, [pathname])
+
   const toggle = () => {
     setExpanded((prev) => {
       const next = !prev
@@ -163,6 +71,13 @@ export function AdminSidebar() {
       return next
     })
   }
+
+  const expandSidebar = () => {
+    setExpanded(true)
+    localStorage.setItem(ADMIN_SIDEBAR_STORAGE_KEY, "true")
+  }
+
+  const dashboardActive = pathname === "/admin"
 
   return (
     <>
@@ -195,37 +110,97 @@ export function AdminSidebar() {
           </button>
         </div>
 
-        <nav className="flex-1 space-y-0.5 overflow-y-auto px-2 py-4">
-          {NAV_ITEMS.map(({ label, href, icon: Icon, exact, readOnly, matchPrefixes }) => {
-            const active = isActive(pathname, href, exact, matchPrefixes)
+        <nav className="flex-1 space-y-0.5 overflow-y-auto px-2 py-4" aria-label="Admin">
+          <Link
+            href="/admin"
+            title={!expanded ? "Dashboard" : undefined}
+            onClick={closeMobile}
+            className={cn(
+              "flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm font-medium transition",
+              dashboardActive
+                ? "bg-white/15 text-white shadow-sm"
+                : "text-white/75 hover:bg-white/10 hover:text-white"
+            )}
+          >
+            <LayoutDashboard className="h-4 w-4 shrink-0" />
+            <span className={cn("truncate", !expanded && "md:hidden")}>Dashboard</span>
+          </Link>
+
+          {ADMIN_NAV_CATEGORIES.map((category) => {
+            const isOpen = openCategoryId === category.id
+            const hasActive = categoryContainsActive(pathname, category.items)
+            const panelId = `admin-nav-${category.id}`
+
             return (
-              <Link
-                key={label}
-                href={href}
-                title={!expanded ? label : undefined}
-                onClick={closeMobile}
-                className={cn(
-                  "flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm font-medium transition",
-                  active
-                    ? "bg-white/15 text-white shadow-sm"
-                    : "text-white/75 hover:bg-white/10 hover:text-white"
-                )}
-              >
-                <Icon className="h-4 w-4 shrink-0" />
-                <span
+              <div key={category.id} className="pt-0.5">
+                <button
+                  type="button"
+                  title={category.label}
+                  aria-expanded={expanded ? isOpen : undefined}
+                  aria-controls={expanded ? panelId : undefined}
+                  onClick={() => {
+                    if (!expanded) {
+                      expandSidebar()
+                      setOpenCategoryId(category.id)
+                      return
+                    }
+                    setOpenCategoryId(isOpen ? null : category.id)
+                  }}
                   className={cn(
-                    "flex flex-1 items-center gap-2 truncate",
-                    !expanded && "md:hidden"
+                    "flex min-h-11 w-full items-center gap-2 rounded-lg px-3 text-left text-sm font-medium transition",
+                    hasActive || isOpen
+                      ? "bg-white/12 text-white"
+                      : "text-white/75 hover:bg-white/10 hover:text-white"
                   )}
                 >
-                  {label}
-                  {readOnly && (
-                    <span className="rounded px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wide bg-white/20 text-white">
-                      Read Only
-                    </span>
-                  )}
-                </span>
-              </Link>
+                  <span
+                    className={cn(
+                      "h-7 w-7 shrink-0 items-center justify-center rounded-md bg-white/10 text-[10px] font-bold uppercase tracking-wide",
+                      expanded ? "hidden" : "hidden md:flex"
+                    )}
+                    aria-hidden
+                  >
+                    {category.label.slice(0, 2)}
+                  </span>
+                  <span className={cn("flex-1 truncate text-left", !expanded && "md:hidden")}>
+                    {category.label}
+                  </span>
+                  <ChevronDown
+                    className={cn(
+                      "h-4 w-4 shrink-0 text-white/70 transition-transform",
+                      !expanded && "md:hidden",
+                      isOpen && "rotate-180"
+                    )}
+                    aria-hidden
+                  />
+                </button>
+
+                {isOpen && expanded ? (
+                  <div
+                    id={panelId}
+                    className="mt-0.5 ml-3 space-y-0.5 border-l border-white/15 pl-2"
+                  >
+                    {category.items.map((item) => {
+                      const active = itemIsActive(pathname, item.href)
+                      return (
+                        <Link
+                          key={`${category.id}-${item.label}`}
+                          href={item.href}
+                          onClick={closeMobile}
+                          className={cn(
+                            "flex min-h-10 items-center rounded-md px-2.5 text-[13px] font-medium transition",
+                            active
+                              ? "bg-white/15 text-white"
+                              : "text-white/70 hover:bg-white/10 hover:text-white"
+                          )}
+                        >
+                          <span className="truncate">{item.label}</span>
+                        </Link>
+                      )
+                    })}
+                  </div>
+                ) : null}
+              </div>
             )
           })}
         </nav>

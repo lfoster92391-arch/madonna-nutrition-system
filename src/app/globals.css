@@ -289,12 +289,14 @@ body {
   }
 }
 
-/* Access / landing option tiles — matte soft-gradient navy (Madonna brand) */
+/* Access / landing / admin option tiles — matte soft-gradient navy (Madonna brand) */
 .madonna-option-btn {
   --madonna-option-top: #1e4a9e;
   --madonna-option-mid: #0b2d8f;
   --madonna-option-bottom: #041b52;
   color: #fff;
+  font-weight: 700;
+  letter-spacing: -0.01em;
   background: linear-gradient(
     180deg,
     var(--madonna-option-top) 0%,
