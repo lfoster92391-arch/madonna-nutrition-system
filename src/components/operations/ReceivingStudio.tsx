@@ -10,6 +10,7 @@ import { Card, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
+import { getSessionHeaders } from "@/lib/api/client"
 import type { OpsInventoryItem, ReceivingRecord, StorageLocation } from "@/lib/operations/types"
 import type { VendorRecord } from "@/lib/procurement/vendors"
 
@@ -67,10 +68,13 @@ export function ReceivingStudio() {
     mutationFn: async (payload: Record<string, unknown>) => {
       const res = await fetch("/api/receiving", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...getSessionHeaders() },
         body: JSON.stringify(payload),
       })
-      if (!res.ok) throw new Error("Failed to create receiving record")
+      if (!res.ok) {
+        const body = (await res.json().catch(() => ({}))) as { error?: string }
+        throw new Error(body.error ?? "Failed to create receiving record")
+      }
       return res.json()
     },
     onSuccess: invalidate,
@@ -80,10 +84,13 @@ export function ReceivingStudio() {
     mutationFn: async (payload: Record<string, unknown>) => {
       const res = await fetch("/api/receiving", {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...getSessionHeaders() },
         body: JSON.stringify(payload),
       })
-      if (!res.ok) throw new Error("Failed to update receiving record")
+      if (!res.ok) {
+        const body = (await res.json().catch(() => ({}))) as { error?: string }
+        throw new Error(body.error ?? "Failed to update receiving record")
+      }
       return res.json()
     },
     onSuccess: invalidate,
@@ -232,27 +239,38 @@ export function ReceivingStudio() {
                       </Button>
                     )}
                     {record.status === "pending_approval" && (
-                      <div className="flex gap-2">
-                        <Button
-                          size="sm"
-                          onClick={() =>
-                            patchMutation.mutate({
-                              id: record.id,
-                              action: "approve",
-                              approvedBy: "Receiving Studio",
-                              storageLocationId: storageLocationId || data?.storageLocations[0]?.id,
-                            })
-                          }
-                        >
-                          Approve & Post
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => patchMutation.mutate({ id: record.id, action: "reject" })}
-                        >
-                          Reject
-                        </Button>
+                      <div className="flex flex-col items-end gap-2">
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            disabled={patchMutation.isPending}
+                            onClick={() =>
+                              patchMutation.mutate({
+                                id: record.id,
+                                action: "approve",
+                                approvedBy: "Receiving Studio",
+                                storageLocationId: storageLocationId || data?.storageLocations[0]?.id,
+                              })
+                            }
+                          >
+                            Approve & Post
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={patchMutation.isPending}
+                            onClick={() => patchMutation.mutate({ id: record.id, action: "reject" })}
+                          >
+                            Reject
+                          </Button>
+                        </div>
+                        {patchMutation.isError && (
+                          <p className="max-w-xs text-right text-xs text-danger">
+                            {patchMutation.error instanceof Error
+                              ? patchMutation.error.message
+                              : "Update failed"}
+                          </p>
+                        )}
                       </div>
                     )}
                   </div>
