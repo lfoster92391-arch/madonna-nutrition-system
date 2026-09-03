@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { BookOpen, LogOut, UtensilsCrossed } from "lucide-react"
+import { CalendarDays, LogOut, UtensilsCrossed } from "lucide-react"
 import { useAuth } from "@/components/providers/AuthProvider"
 import { madonnaOptionBtn } from "@/components/nav/madonna-option-classes"
 import { signOutAndRedirect } from "@/lib/auth/logout"
@@ -14,8 +14,8 @@ export function StudentPortalShell({ children }: { children: React.ReactNode }) 
   const pathname = usePathname()
   const isHome = pathname === "/student"
   const orderActive = pathname.startsWith("/student/order")
+  const calendarActive = pathname.startsWith("/student/calendar")
   const ordersActive = pathname.startsWith("/student/orders")
-  const guideActive = pathname.startsWith("/student/guide")
 
   return (
     <div className="flex min-h-screen flex-col bg-[#F8F9FB]">
@@ -66,6 +66,16 @@ export function StudentPortalShell({ children }: { children: React.ReactNode }) 
             Order lunch
           </Link>
           <Link
+            href="/student/calendar"
+            className={cn(
+              madonnaOptionBtn({ active: calendarActive, shape: "rounded" }),
+              "flex flex-1 items-center justify-center gap-2 px-3 py-3 text-sm font-bold"
+            )}
+          >
+            <CalendarDays className="h-4 w-4" aria-hidden />
+            Calendar
+          </Link>
+          <Link
             href="/student/orders"
             className={cn(
               madonnaOptionBtn({ active: ordersActive, shape: "rounded" }),
@@ -73,16 +83,6 @@ export function StudentPortalShell({ children }: { children: React.ReactNode }) 
             )}
           >
             My orders
-          </Link>
-          <Link
-            href="/student/guide"
-            className={cn(
-              madonnaOptionBtn({ active: guideActive, shape: "rounded" }),
-              "flex flex-1 items-center justify-center gap-2 px-3 py-3 text-sm font-bold"
-            )}
-          >
-            <BookOpen className="h-4 w-4" aria-hidden />
-            Guide
           </Link>
         </div>
         {user ? (

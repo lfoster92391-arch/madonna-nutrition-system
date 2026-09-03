@@ -1,7 +1,6 @@
-"use client"
+import { redirect } from "next/navigation"
 
-import { StudentHowToGuide } from "@/components/guides/StudentHowToGuide"
-
+/** Student how-to guide removed — send visitors home. */
 export default function StudentGuidePage() {
-  return <StudentHowToGuide />
+  redirect("/student")
 }
